@@ -1,0 +1,10 @@
+#!/bin/bash
+
+DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+
+cd $DIR/../docs
+
+rm -rf source/generated
+sphinx-apidoc -o source/generated ../pfp/
+
+make html

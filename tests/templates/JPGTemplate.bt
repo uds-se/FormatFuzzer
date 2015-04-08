@@ -1,0 +1,1604 @@
+//          010 Editor v2.02 Binary Template
+//
+// File		: JpgTemplate.bt
+// Author	: Mor FTP
+// Purpose	: Designed for jpg files
+// E-Mail	: morftp AT hotmail DOT com
+// LAST MODIFIED : Nov 3 2014
+// This is a detailed JPEG File analysis.
+//Features
+//  1. Huffmann and quantization tables.
+//  2. Exif (APP1) information including jpeg and other thubnail images
+//  3. SOS, SOF0, JIFF and APP0 sections
+//
+// Note : This code doesn't parse all known sections. The reson is the application sections
+//  contain camera specific information and this information sometimes is not public or
+//  related to the camera and not important for image display softwares.
+//
+// New Features: Parses MakerNote for casio qv-r62
+//
+// 2014-11-03	SweetScape
+//  * fixed using FTell instead of Ftell 
+//
+// 2012-10-04	dxp
+//  * added JPEG-LS marker structure.
+//
+// 2009-03-14 modified by Kuang-che Wu
+//  * fix parse fail if encounter unknown APP1
+//  * fix uShort typo
+//  * parse inlined EXIF data correctly
+//  * recognize more sections and fields, especially EXIF tags, GPS tags, and CIFF tags
+//  * and many improvements
+//
+//--------------------------------------
+
+// references:
+// JPEG		http://www.w3.org/Graphics/JPEG/itu-t81.pdf
+// JFIF		http://www.w3.org/Graphics/JPEG/jfif3.pdf
+// EXIF		http://www.exif.org/Exif2-2.PDF
+// CIFF		http://xyrion.org/ciff/CIFFspecV1R04.pdf
+// exiftool	http://www.sno.phy.queensu.ca/~phil/exiftool/
+// JPEG-LS	http://www.itu.int/rec/T-REC-T.87-199806-I/en
+
+
+// set left to right for both endian
+LittleEndian(); BitfieldLeftToRight();
+BigEndian(); BitfieldLeftToRight();
+
+local quad JpegFileEnd = 0;
+local int colorId = 0;
+local int colorSelect = 0;
+local DWORD clr = 0;
+local DWORD jetMap[6*3] = { // blue, red green
+	0x0000cc,0x0000ff,0x0033ff,0x0066ff,0x0099ff,0x00ccff,
+	0x00ffff,0x33ffcc,0x66ff99,0x99ff66,0xccff33,0xffff00,
+	0xffcc00,0xff9900,0xff6600,0xff3300,0xff0000,0xcc0000
+};
+local char CameraMake[32];
+local char CameraModel[40];
+
+local string stack_IFD_dirtype = "";
+
+enum IFD_dirtype {
+	IFD_TYPE_EXIF = 1,
+	IFD_TYPE_GEOTAG,
+	IFD_TYPE_CASIO_QV_R62,
+};
+
+// ------------------------------------------------------------
+// helper functions
+void Stack_push(string &s, int x)
+{
+	s += (char)x;
+}
+
+void Stack_pop(string &s)
+{
+	s = SubStr(s, 0, Strlen(s) - 1);
+}
+
+int Stack_top(string &s)
+{
+	return s[Strlen(s) - 1];
+}
+
+string ReadStringN(int64 pos, int n)
+{
+	local uchar s[n];
+	ReadBytes(s, pos, n);
+	return s;
+}
+
+// ------------------------------------------------------------
+
+void ChangeColor(byte bChangeColor) {
+	if(bChangeColor == 1) {colorSelect++; colorId = 0;}
+	clr = jetMap[(colorSelect%3)*6+(colorId%6)];
+	SetBackColor(clr);
+	//Printf("clrIdx = [%d %d], RGB(%d,%d,%d)\n",colorSelect,colorId,(clr>>16),(clr>>8)&0x00FF,clr&0x0000FF);
+	colorId++;
+}
+
+// ------------------------------------------------------------
+// JPEG
+typedef enum <WORD> tagID
+{
+	M_SOF0  = 0xFFC0, // Start Of Frame N
+	M_SOF1,// N indicates which compression process
+	M_SOF2,// Only SOF0-SOF2 are now in common use
+	M_SOF3,
+	M_DHT, //Huffman Table
+	M_SOF5,
+	M_SOF6,
+	M_SOF7,
+	M_JPG,
+	M_SOF9,
+	M_SOF10,
+	M_SOF11,
+	M_DAC = 0xffcc,
+	M_SOF13,
+	M_SOF14,
+	M_SOF15,
+	M_RST0 = 0xffd0,
+	M_RST1, M_RST2, M_RST3, M_RST4, M_RST5, M_RST6, M_RST7,
+	M_SOI = 0xFFD8, // Start Of Image
+	M_EOI,// End Of Image
+	M_SOS,// Start Of Scan (begins compressed data)
+	M_DQT,
+	M_DNL,
+	M_DRI,
+	M_DHP,
+	M_EXP,
+	M_APP0 = 0xFFE0, // Jfif marker
+	M_APP1,// Exif marker
+	M_APP2,
+	M_APP3,
+	M_APP4,
+	M_APP5,
+	M_APP6,
+	M_APP7,
+	M_APP8,
+	M_APP9,
+	M_APP10,
+	M_APP11,
+	M_APP12,
+	M_APP13,
+	M_APP14,
+	M_APP15,
+	M_JPG0 = 0xfff0,
+	M_JPG1, M_JPG2, M_JPG3, M_JPG4, M_JPG5, M_JPG6, M_JPGLS,
+	M_JPG8, M_JPG9, M_JPG10, M_JPG11, M_JPG12, M_JPG13, M_JPG14, M_JPG15,
+	M_COMM = 0xFFFE  // Comment
+} M_ID <format=hex>;
+
+
+// ------------------------------------------------------------
+// EXIF tags
+
+typedef enum <WORD> tagExifTag {
+	///////////////////////////////////			Format            Comp  Description
+	InteropIndex               = 0x0001,
+	InteropVersion             = 0x0002,
+	SubfileType                = 0x00fe,
+	OldSubfileType             = 0x00ff,
+	ImageWidth                 = 0x0100,
+	ImageHeight                = 0x0101,
+	BitsPerSample              = 0x0102,
+	Compression                = 0x0103,
+	PhotometricInterpretation  = 0x0106,
+	Thresholding               = 0x0107,
+	CellWidth                  = 0x0108,
+	CellLength                 = 0x0109,
+	FillOrder                  = 0x010a,
+	DocumentName               = 0x010d,
+	ImageDescription           = 0x010e,
+	Make                       = 0x010f,
+	Model                      = 0x0110,
+	StripOffsets               = 0x0111,
+	Orientation                = 0x0112,
+	SamplesPerPixel            = 0x0115,
+	RowsPerStrip               = 0x0116,
+	StripByteCounts            = 0x0117,
+	MinSampleValue             = 0x0118,
+	MaxSampleValue             = 0x0119,
+	XResolution                = 0x011a,
+	YResolution                = 0x011b,
+	PlanarConfiguration        = 0x011c,
+	PageName                   = 0x011d,
+	XPosition                  = 0x011e,
+	YPosition                  = 0x011f,
+	FreeOffsets                = 0x0120,
+	FreeByteCounts             = 0x0121,
+	GrayResponseUnit           = 0x0122,
+	GrayResponseCurve          = 0x0123,
+	T4Options                  = 0x0124,
+	T6Options                  = 0x0125,
+	ResolutionUnit             = 0x0128,
+	PageNumber                 = 0x0129,
+	ColorResponseUnit          = 0x012c,
+	TransferFunction           = 0x012d,
+	Software                   = 0x0131,
+	ModifyDate                 = 0x0132,
+	Artist                     = 0x013b,
+	HostComputer               = 0x013c,
+	Predictor                  = 0x013d,
+	WhitePoint                 = 0x013e,
+	PrimaryChromaticities      = 0x013f,
+	ColorMap                   = 0x0140,
+	HalftoneHints              = 0x0141,
+	TileWidth                  = 0x0142,
+	TileLength                 = 0x0143,
+	TileOffsets                = 0x0144,
+	TileByteCounts             = 0x0145,
+	BadFaxLines                = 0x0146,
+	CleanFaxData               = 0x0147,
+	ConsecutiveBadFaxLines     = 0x0148,
+	SubIFD                     = 0x014a,
+	InkSet                     = 0x014c,
+	InkNames                   = 0x014d,
+	NumberofInks               = 0x014e,
+	DotRange                   = 0x0150,
+	TargetPrinter              = 0x0151,
+	ExtraSamples               = 0x0152,
+	SampleFormat               = 0x0153,
+	SMinSampleValue            = 0x0154,
+	SMaxSampleValue            = 0x0155,
+	TransferRange              = 0x0156,
+	ClipPath                   = 0x0157,
+	XClipPathUnits             = 0x0158,
+	YClipPathUnits             = 0x0159,
+	Indexed                    = 0x015a,
+	JPEGTables                 = 0x015b,
+	OPIProxy                   = 0x015f,
+	GlobalParametersIFD        = 0x0190,
+	ProfileType                = 0x0191,
+	FaxProfile                 = 0x0192,
+	CodingMethods              = 0x0193,
+	VersionYear                = 0x0194,
+	ModeNumber                 = 0x0195,
+	Decode                     = 0x01b1,
+	DefaultImageColor          = 0x01b2,
+	JPEGProc                   = 0x0200,
+	ThumbnailOffset            = 0x0201,
+	ThumbnailLength            = 0x0202,
+	JPEGRestartInterval        = 0x0203,
+	JPEGLosslessPredictors     = 0x0205,
+	JPEGPointTransforms        = 0x0206,
+	JPEGQTables                = 0x0207,
+	JPEGDCTables               = 0x0208,
+	JPEGACTables               = 0x0209,
+	YCbCrCoefficients          = 0x0211,
+	YCbCrSubSampling           = 0x0212,
+	YCbCrPositioning           = 0x0213,
+	ReferenceBlackWhite        = 0x0214,
+	StripRowCounts             = 0x022f,
+	ApplicationNotes           = 0x02bc,
+	RelatedImageFileFormat     = 0x1000,
+	RelatedImageWidth          = 0x1001,
+	RelatedImageLength         = 0x1002,
+	ImageID                    = 0x800d,
+	WangAnnotation             = 0x80a4,
+	Matteing                   = 0x80e3,
+	DataType                   = 0x80e4,
+	ImageDepth                 = 0x80e5,
+	TileDepth                  = 0x80e6,
+	Model2                     = 0x827d,
+	CFARepeatPatternDim        = 0x828d,
+	CFAPattern2                = 0x828e,
+	BatteryLevel               = 0x828f,
+	Copyright                  = 0x8298,
+	ExposureTime               = 0x829a,
+	FNumber                    = 0x829d,
+	PixelScale                 = 0x830e,
+	IPTC_NAA                   = 0x83bb,
+	IntergraphPacketData       = 0x8474,
+	IntergraphFlagRegisters    = 0x847f,
+	IntergraphMatrix           = 0x8480,
+	ModelTiePoint              = 0x8482,
+	Site                       = 0x84e0,
+	ColorSequence              = 0x84e1,
+	IT8Header                  = 0x84e2,
+	RasterPadding              = 0x84e3,
+	BitsPerRunLength           = 0x84e4,
+	BitsPerExtendedRunLength   = 0x84e5,
+	ColorTable                 = 0x84e6,
+	ImageColorIndicator        = 0x84e7,
+	BackgroundColorIndicator   = 0x84e8,
+	ImageColorValue            = 0x84e9,
+	BackgroundColorValue       = 0x84ea,
+	PixelIntensityRange        = 0x84eb,
+	TransparencyIndicator      = 0x84ec,
+	ColorCharacterization      = 0x84ed,
+	HCUsage                    = 0x84ee,
+	IPTC_NAA2                  = 0x8568,
+	ModelTransform             = 0x85d8,
+	PhotoshopSettings          = 0x8649,
+	ExifOffset                 = 0x8769,
+	ICC_Profile                = 0x8773,
+	ImageLayer                 = 0x87ac,
+	GeoTiffDirectory           = 0x87af,
+	GeoTiffDoubleParams        = 0x87b0,
+	GeoTiffAsciiParams         = 0x87b1,
+	ExposureProgram            = 0x8822,
+	SpectralSensitivity        = 0x8824,
+	GPSInfo                    = 0x8825,
+	ISO                        = 0x8827,
+	OptoElectricConvFactor     = 0x8828,
+	Interlace                  = 0x8829,
+	TimeZoneOffset             = 0x882a,
+	SelfTimerMode              = 0x882b,
+	FaxRecvParams              = 0x885c,
+	FaxSubAddress              = 0x885d,
+	FaxRecvTime                = 0x885e,
+	ExifVersion                = 0x9000,
+	DateTimeOriginal           = 0x9003,
+	CreateDate                 = 0x9004,
+	ComponentsConfiguration    = 0x9101,
+	CompressedBitsPerPixel     = 0x9102,
+	ShutterSpeedValue          = 0x9201,
+	ApertureValue              = 0x9202,
+	BrightnessValue            = 0x9203,
+	ExposureCompensation       = 0x9204,
+	MaxApertureValue           = 0x9205,
+	SubjectDistance            = 0x9206,
+	MeteringMode               = 0x9207,
+	LightSource                = 0x9208,
+	Flash                      = 0x9209,
+	FocalLength                = 0x920a,
+	FlashEnergy                = 0x920b,
+	SpatialFrequencyResponse   = 0x920c,
+	Noise                      = 0x920d,
+	FocalPlaneXResolution      = 0x920e,
+	FocalPlaneYResolution      = 0x920f,
+	FocalPlaneResolutionUnit   = 0x9210,
+	ImageNumber                = 0x9211,
+	SecurityClassification     = 0x9212,
+	ImageHistory               = 0x9213,
+	SubjectLocation            = 0x9214,
+	ExposureIndex              = 0x9215,
+	TIFF_EPStandardID          = 0x9216,
+	SensingMethod              = 0x9217,
+	StoNits                    = 0x923f,
+	MakerNote                  = 0x927c,
+	UserComment                = 0x9286,
+	SubSecTime                 = 0x9290,
+	SubSecTimeOriginal         = 0x9291,
+	SubSecTimeDigitized        = 0x9292,
+	ImageSourceData            = 0x935c,
+	XPTitle                    = 0x9c9b,
+	XPComment                  = 0x9c9c,
+	XPAuthor                   = 0x9c9d,
+	XPKeywords                 = 0x9c9e,
+	XPSubject                  = 0x9c9f,
+	FlashpixVersion            = 0xa000,
+	ColorSpace                 = 0xa001,
+	ExifImageWidth             = 0xa002,
+	ExifImageLength            = 0xa003,
+	RelatedSoundFile           = 0xa004,
+	InteropOffset              = 0xa005,
+	FlashEnergy2               = 0xa20b,
+	SpatialFrequencyResponse2  = 0xa20c,
+	Noise2                     = 0xa20d,
+	FocalPlaneXResolution2     = 0xa20e,
+	FocalPlaneYResolution2     = 0xa20f,
+	FocalPlaneResolutionUnit2  = 0xa210,
+	ImageNumber2               = 0xa211,
+	SecurityClassification2    = 0xa212,
+	ImageHistory2              = 0xa213,
+	SubjectLocation2           = 0xa214,
+	ExposureIndex2             = 0xa215,
+	TIFF_EPStandardID2         = 0xa216,
+	SensingMethod2             = 0xa217,
+	FileSource                 = 0xa300,
+	SceneType                  = 0xa301,
+	CFAPattern                 = 0xa302,
+	CustomRendered             = 0xa401,
+	ExposureMode               = 0xa402,
+	WhiteBalance               = 0xa403,
+	DigitalZoomRatio           = 0xa404,
+	FocalLengthIn35mmFormat    = 0xa405,
+	SceneCaptureType           = 0xa406,
+	GainControl                = 0xa407,
+	Contrast                   = 0xa408,
+	Saturation                 = 0xa409,
+	Sharpness                  = 0xa40a,
+	DeviceSettingDescription   = 0xa40b,
+	SubjectDistanceRange       = 0xa40c,
+	ImageUniqueID              = 0xa420,
+	GDALMetadata               = 0xa480,
+	GDALNoData                 = 0xa481,
+	Gamma                      = 0xa500,
+	FilmProductCode            = 0xc350,
+	ImageSourceEK              = 0xc351,
+	CaptureConditionsPAR       = 0xc352,
+	CameraOwner                = 0xc353,
+	SerialNumber               = 0xc354,
+	UserSelectGroupTitle       = 0xc355,
+	DealerIDNumber             = 0xc356,
+	CaptureDeviceFID           = 0xc357,
+	EnvelopeNumber             = 0xc358,
+	FrameNumber                = 0xc359,
+	FilmCategory               = 0xc35a,
+	FilmGencode                = 0xc35b,
+	ModelAndVersion            = 0xc35c,
+	FilmSize                   = 0xc35d,
+	SBA_RGBShifts              = 0xc35e,
+	SBAInputImageColorspace    = 0xc35f,
+	SBAInputImageBitDepth      = 0xc360,
+	SBAExposureRecord          = 0xc361,
+	UserAdjSBA_RGBShifts       = 0xc362,
+	ImageRotationStatus        = 0xc363,
+	RollGuidElements           = 0xc364,
+	MetadataNumber             = 0xc365,
+	EditTagArray               = 0xc366,
+	Magnification              = 0xc367,
+	NativeXResolution          = 0xc36c,
+	NativeYResolution          = 0xc36d,
+	KodakEffectsIFD            = 0xc36e,
+	KodakBordersIFD            = 0xc36f,
+	NativeResolutionUnit       = 0xc37a,
+	SourceImageDirectory       = 0xc418,
+	SourceImageFileName        = 0xc419,
+	SourceImageVolumeName      = 0xc41a,
+	OceScanjobDesc             = 0xc427,
+	OceApplicationSelector     = 0xc428,
+	OceIDNumber                = 0xc429,
+	OceImageLogic              = 0xc42a,
+	Annotations                = 0xc44f,
+	PrintQuality               = 0xc46c,
+	ImagePrintStatus           = 0xc46e,
+	PrintIM                    = 0xc4a5,
+	DNGVersion                 = 0xc612,
+	DNGBackwardVersion         = 0xc613,
+	UniqueCameraModel          = 0xc614,
+	LocalizedCameraModel       = 0xc615,
+	CFAPlaneColor              = 0xc616,
+	CFALayout                  = 0xc617,
+	LinearizationTable         = 0xc618,
+	BlackLevelRepeatDim        = 0xc619,
+	BlackLevel                 = 0xc61a,
+	BlackLevelDeltaH           = 0xc61b,
+	BlackLevelDeltaV           = 0xc61c,
+	WhiteLevel                 = 0xc61d,
+	DefaultScale               = 0xc61e,
+	DefaultCropOrigin          = 0xc61f,
+	DefaultCropSize            = 0xc620,
+	ColorMatrix1               = 0xc621,
+	ColorMatrix2               = 0xc622,
+	CameraCalibration1         = 0xc623,
+	CameraCalibration2         = 0xc624,
+	ReductionMatrix1           = 0xc625,
+	ReductionMatrix2           = 0xc626,
+	AnalogBalance              = 0xc627,
+	AsShotNeutral              = 0xc628,
+	AsShotWhiteXY              = 0xc629,
+	BaselineExposure           = 0xc62a,
+	BaselineNoise              = 0xc62b,
+	BaselineSharpness          = 0xc62c,
+	BayerGreenSplit            = 0xc62d,
+	LinearResponseLimit        = 0xc62e,
+	DNGCameraSerialNumber      = 0xc62f,
+	DNGLensInfo                = 0xc630,
+	ChromaBlurRadius           = 0xc631,
+	AntiAliasStrength          = 0xc632,
+	ShadowScale                = 0xc633,
+	DNGPrivateData             = 0xc634,
+	MakerNoteSafety            = 0xc635,
+	CalibrationIlluminant1     = 0xc65a,
+	CalibrationIlluminant2     = 0xc65b,
+	BestQualityScale           = 0xc65c,
+	AliasLayerMetadata         = 0xc660,
+	OwnerName                  = 0xfde8,
+	SerialNumber2              = 0xfde9,
+	Lens                       = 0xfdea,
+	RawFile                    = 0xfe4c,
+	Converter                  = 0xfe4d,
+	WhiteBalance2              = 0xfe4e,
+	Exposure                   = 0xfe51,
+	Shadows                    = 0xfe52,
+	Brightness                 = 0xfe53,
+	Contrast2                  = 0xfe54,
+	Saturation2                = 0xfe55,
+	Sharpness2                 = 0xfe56,
+	Smoothness                 = 0xfe57,
+	MoireFilter                = 0xfe58,
+} ExifTag;
+
+enum <WORD> GeoTag {
+	GPSVersionID,
+	GPSLatitudeRef,
+	GPSLatitude,
+	GPSLongitudeRef,
+	GPSLongitude,
+	GPSAltitudeRef,
+	GPSAltitude,
+	GPSTimeStamp,
+	GPSSatellites,
+	GPSStatus,
+	GPSMeasureMode,
+	GPSDOP,
+	GPSSpeedRef,
+	GPSSpeed,
+	GPSTrackRef,
+	GPSTrack,
+	GPSImgDirectionRef,
+	GPSImgDirection,
+	GPSMapDatum,
+	GPSDestLatitudeRef,
+	GPSDestLatitude,
+	GPSDestLongitudeRef,
+	GPSDestLongitude,
+	GPSDestBearingRef,
+	GPSDestBearing,
+	GPSDestDistanceRef,
+	GPSDestDistance,
+	GPSProcessingMehotd,
+	GPSAreaInformation,
+	GPSDateStamp,
+	GPSDifferential,
+};
+
+// ------------------------------------------------------------
+// Casio tag
+typedef enum <WORD> tagCasioTag2 {
+	PreviewThumbnailDimensions	=	0x0002,//Numeric 	 2 values - x,y dimensions in pixels
+	PreviewThumbnailSize		=	0x0003,//Numeric 	Size in bytes
+	PreviewThumbnailOffset 		=	0x0004,//Numeric 	Offset of Preview Thumbnail
+	CSQualityMode			=	0x0008,//Numeric Lookup	1 = Fine 2 = Super Fine
+	CsImageSize			=	0x0009,//Numeric Lookup 	0 = 640 x 480 pixels 4 = 1600 x 1200 pixels 5 = 2048 x 1536 pixels 20 = 2288 x 1712 pixels 21 = 2592 x 1944 pixels 22 = 2304 x 1728 pixels 36 = 3008 x 2008 pixels
+	CSFocusMode 			=	0x000D,//Numeric Lookup 	0 = Normal 1 = Macro
+	CsIsoSensitivity 		=	0x0014,//Numeric Lookup 	3 = 50 4 = 64 6 = 100 9 = 200
+	CsWhiteBalance 			=	0x0019,//Numeric Lookup 	0 = Auto 1 = Daylight 2 = Shade 3 = Tungsten 4 = Fluorescent 5 = Manual
+	CsFocalLength			=	0x001D,//Numeric 	Units are tenths of a millimetre
+	CsSaturation			=	0x001F,//Numeric Lookup 	0 = -1 1 = Normal 2 = +1
+	CsContrast			=	0x0020,//Numeric Lookup 	0 = -1 1 = Normal 2 = +1
+	CsSharpness 			=	0x0021,//Numeric Lookup 	0 = -1 1 = Normal 2 = +1
+	CsPrintImageMatchingInfo 	=	0x0E00,//PIM 	See Print Image Matching for specification
+	CasioPreviewThumbnail 		=	0x2000,//Numeric 	Alternate thumbnail offset
+	CsWhiteBalanceBias 		=	0x2011,//Numeric
+	CsFlashMode 			=	0x2012,//Numeric Lookup 	12 = Flash 0 = Manual 1 = Auto? 4 = Flash?
+	CsObjectDistance 		=	0x2022,//Numeric 	Units are millimetres
+	CsFlashDistance 		=	0x2034,//Numeric 	0 = Off
+	CsRecordMode 			=	0x3000,//Numeric Lookup 	2 = Normal Mode
+	CsSelfTimer			=	0x3001,//Numeric Lookup 	1 = Off?
+	CsQuality 			=	0x3002,//Numeric Lookup 	3 = Fine
+	CsMeteringMode2			=	0x3003,//Numeric Lookup 	1 = Fixation 6 = Multi-Area Auto Focus
+	CsTimeZone 			=	0x3006,//String
+	CsBestshotMode 			=	0x3007,//Numeric Lookup 	0 = Off 1 = On?
+	CsCCDISOSensitivity 		=	0x3014,//Numeric
+	CsColourMode 			=	0x3015,//Numeric Lookup 	0 = Off
+	CsEnhancement 			=	0x3016,//Numeric Lookup 	0 = Off
+	CsFilter 			=	0x3017,//Numeric Lookup 	0 = Off
+} CasioTag2;
+
+
+// ------------------------------------------------------------
+// Canon CIFF
+typedef uint32 DC_UINT32;
+typedef int32 DC_SINT32;
+typedef float DC_FLOAT32;
+
+typedef struct tgCifDirEntry {
+	uint16 storage_method : 2; // 00 in heap, 01 in entry
+	uint16 data_type : 3;
+	uint16 id_code : 11 <format=hex>;
+	if (storage_method == kStg_InHeapSpace) {
+		DWORD sData; // Data Size (Bytes)
+		DWORD oData; // Data Offset
+	} else {
+		switch (data_type << 11 | id_code) {
+			case kTC_ImageFormat:
+				DC_UINT32 fileFormat;
+				DC_FLOAT32 targetCompressionRatio;
+				break;
+			default:
+				byte data[8];
+				break;
+		}
+	}
+} CifDirEntry <read=ReadCifDirEntry>;
+
+enum CIFFTagStg {
+	kStg_InHeapSpace,
+	kStg_InRecordEntry,
+	kStg_reversed2,
+	kStg_reversed3,
+};
+
+enum CIFFTagDataType {
+	kDT_BYTE	= 0x0000,
+	kDT_ASCII	= 0x0800,
+	kDT_WORD	= 0x1000,
+	kDT_DWORD	= 0x1800,
+	kDT_BYTE2	= 0x2000,
+	kDT_HeapTypeProperty1 = 0x2800,
+	kDT_HeapTypeProperty2 = 0x3000,
+};
+
+enum <uint16> CIFFTagType {
+	kTC_Null = 0,
+	kTC_Free,
+	kTC_ExFree,
+
+	kTC_Description =	0x0805,//kDT_ASCII | 0x0005,
+	kTC_ModelName =		0x080a,//kDT_ASCII | 0x000a,
+	kTC_FirmwareVersion =	0x080b,//kDT_ASCII | 0x000b,
+	kTC_ComponentVersion =	0x080c,//kDT_ASCII | 0x000c,
+	kTC_ROMOperationMode =	0x080d,//kDT_ASCII | 0x000d,
+	kTC_OwnerName =		0x0810,//kDT_ASCII | 0x0010,
+	kTC_ImageFileName =	0x0816,//kDT_ASCII | 0x0016,
+	kTC_ThumbnailFileName =	0x0817,//kDT_ASCII | 0x0017,
+
+	kTC_TargetImageType =	0x100a,//kDT_WORD | 0x000a,
+	kTC_SR_ReleaseMethod =	0x1010,//kDT_WORD | 0x0010,
+	kTC_SR_ReleaseTiming =	0x1011,//kDT_WORD | 0x0011,
+	kTC_ReleaseSetting =	0x1016,//kDT_WORD | 0x0016,
+	kTC_BodySensitivity =	0x101c,//kDT_WORD | 0x001c,
+
+	kTC_ImageFormat =	0x1803,//kDT_DWORD | 0x0003,
+	kTC_RecordID =		0x1804,//kDT_DWORD | 0x0004,
+	kTC_SelfTimerTime =	0x1806,//kDT_DWORD | 0x0006,
+	kTC_SR_TargetDistanceSetting = 0x1807,//kDT_DWORD | 0x0007,
+	kTC_BodyID =		0x180b,//kDT_DWORD | 0x000b,
+	kTC_CapturedTime =	0x180e,//kDT_DWORD | 0x000e,
+	kTC_ImageSpec =		0x1810,//kDT_DWORD | 0x0010,
+	kTC_SR_EF =		0x1813,//kDT_DWORD | 0x0013,
+	kTC_MI_EV =		0x1814,//kDT_DWORD | 0x0014,
+	kTC_SerialNumber =	0x1817,//kDT_DWORD | 0x0017,
+
+	kTC_CameraObject =	0x2807,//0x0007 | kDT_HeapTypeProperty1,
+	kTC_ShootingRecord =	0x3002,//0x0002 | kDT_HeapTypeProperty2,
+	kTC_MeasuredInfo =	0x3003,//0x0003 | kDT_HeapTypeProperty2,
+	kTC_CameraSpecification = 0x3004,//0x0004 | kDT_HeapTypeProperty2,
+};
+
+string ReadCifDirEntry(CifDirEntry &e)
+{
+	local string s;
+	local uint16 tc = e.data_type << 11 | e.id_code;
+	local CIFFTagType x = (CIFFTagType) tc;
+	local CIFFTagStg stg = (CIFFTagStg)e.storage_method;
+	local CIFFTagDataType dt = (CIFFTagDataType)(e.data_type << 11);
+	if (EnumToString(x) != "") {
+		SPrintf(s, "%s, %s",
+				EnumToString(stg),
+				EnumToString(x));
+	} else {
+		SPrintf(s, "%s, %s, 0x%x",
+				EnumToString(stg),
+				EnumToString(dt),
+				e.id_code);
+	}
+
+	return s;
+}
+
+typedef struct tgCDir {
+	ChangeColor(0);
+	//Printf("off %#Lx doff %#Lx dsz %#Lx\n",cifOffset , cDirOffset ,cDirSize);
+	local quad myOffset = cDirOffset;
+	local DWORD S = ReadInt(myOffset + cDirSize - 4);
+	FSeek(cDirOffset + S);
+	//Printf("S @ %#x = %#x FTell %#Lx",S,myOffset + cDirSize - 4,FTell());
+	WORD nDirEntry;
+	//Printf(" nEntry %#x\n",nDirEntry);
+	ChangeColor(0);
+	CifDirEntry dirEntries[nDirEntry]<optimize=false>;
+	DWORD szValues; // = S
+	local int i;
+	for(i=0;i<nDirEntry;i++) {
+		//Printf("%d. Entry %#x = [ %#x  %#x %#x]\n",i,dirEntries[i].Tag,dirEntries[i].Tag & 0xC000,dirEntries[i].Tag & 0x3800,dirEntries[i].Tag & 0x07FF);
+		if (dirEntries[i].storage_method == kStg_InHeapSpace) {
+			// Values are stored at a different location
+			FSeek(myOffset + dirEntries[i].oData);
+			ChangeColor(0);
+			//Printf("%d size %#x offset %#x clrIdx = [%d %d]\n",i,dirEntries[i].sData,dirEntries[i].oData,colorSelect,colorId);
+			switch(dirEntries[i].data_type << 11 | dirEntries[i].id_code) {
+				case kTC_ImageSpec:
+					struct {
+						DC_UINT32 imageWidth;
+						DC_UINT32 imageHeight;
+						DC_FLOAT32 pixelAspectRatio;
+						DC_SINT32 rotationAngle;
+						DC_UINT32 componentBitDepth;
+						DC_UINT32 colorBitDepth;
+						DC_UINT32 colorBW;
+					} DC_IMAGESPEC;
+					break;
+				default:
+					switch(dirEntries[i].data_type << 11) {
+						case kDT_BYTE:
+							struct {
+								byte bData[dirEntries[i].sData];
+							} strBytes;
+							break;
+						case kDT_ASCII:
+							struct {
+								char sData[dirEntries[i].sData];
+							} strStrings;
+							break;
+						case kDT_WORD:
+							struct {
+								WORD wData[dirEntries[i].sData>>1];
+							} str2Bytes;
+							break;
+						case kDT_DWORD:
+							union {
+								DWORD dwData[dirEntries[i].sData>>2];
+								DWORD flData[dirEntries[i].sData>>2];
+							} str4Bytes;
+							break;
+						case kDT_HeapTypeProperty1:
+						case kDT_HeapTypeProperty2:
+							cDirOffset = dirEntries[i].oData + myOffset;
+							cDirSize = dirEntries[i].sData;
+							struct CDIR subDir;
+							break;
+						default:
+							struct {
+								char uData[dirEntries[i].sData];
+							} strUnknown;
+							break;
+					}
+					break;
+			}
+		}
+		//else value is samaller than 8 byte so it is stored in sData and oData of CifDirEntry struct
+	}
+
+} CDIR;
+
+// ------------------------------------------------------------
+// JPEG APPx segments
+const local int dataFormatLength[13] = {0,1,1,2,4,8,1,1,2,4,8,4,8};
+
+typedef enum <WORD> tagDataFormat {
+	uByte = 1,
+	ascString,
+	uShort,
+	uLong,
+	uRatio,
+	sByte,
+	undefined = 7,
+	sShort,
+	sLong = 9,
+	sRatio,
+	sFloat,
+	dFloat,
+} DataFormat;
+
+
+typedef struct tgDIRENTRY {
+	ChangeColor(0);
+	switch (Stack_top(stack_IFD_dirtype)) {
+		case IFD_TYPE_EXIF:
+			ExifTag tagNumber;
+			break;
+		case IFD_TYPE_GEOTAG:
+			GeoTag tagNumber;
+			break;
+		case IFD_TYPE_CASIO_QV_R62:
+			CasioTag2 tagNumber;
+			break;
+	}
+	DataFormat dataFormat;
+	DWORD nComponent;
+	local int j = 0;
+	local int length = -1;
+
+	if (1 <= dataFormat && dataFormat < 13)
+		length = dataFormatLength[dataFormat] * nComponent;
+	else {
+		//Warning("unknown dataFormat = %x", dataFormat);
+	}
+
+	if (1 <= dataFormat && dataFormat < 13 && 0 <= length && length <= 4) {
+		switch (tagNumber) {
+			case ExposureProgram:
+				enum <short> {
+					EP_Not_defined,
+					EP_Manual,
+					EP_Normal_program,
+					EP_Aperture_priority,
+					EP_Shutter_priority,
+					EP_Creative_program,
+					EP_Action_program,
+					EP_Portrait_mode,
+					EP_Landscape_mode,
+				} ExposureProgram;
+				break;
+			case MeteringMode:
+				enum <short> {
+					MM_unknown,
+					MM_Average,
+					MM_CenterWeightedAverage,
+					MM_Spot,
+					MM_MultiSpot,
+					MM_Pattern,
+					MM_Partial,
+					MM_other = 255,
+				} MeteringMode;
+				break;
+			case LightSource:
+				enum <short> {
+					LS_unknown,
+					LS_Daylight,
+					LS_Fluorescent,
+					LS_Tungsten,
+					LS_Flash,
+					LS_Fine_weather = 9,
+					LS_Cloudy_weather,
+					LS_Shade,
+					LS_Daylight_fluorescent,
+					LS_Day_white_fluorescent,
+					LS_Cool_white_fluorescent,
+					LS_White_fluorescent,
+					LS_Standard_light_A,
+					LS_Standard_light_B,
+					LS_Standard_light_C,
+					LS_D55,
+					LS_D65,
+					LS_D75,
+					LS_D50,
+					LS_ISO_studio_tungsten,
+					LS_other_light_scoure = 255,
+				} LightSource;
+				break;
+			case Flash:
+				short unused : 9;
+				short red_eye_mode : 1;
+				short flash_function : 1;
+				short flash_mode : 2;
+				short flash_return : 2;
+				short flash_fired : 1;
+				break;
+			case ExposureMode:
+				enum <short> {
+					EM_Auto_exposure,
+					EM_Manual_exposure,
+					EM_Auto_bracket,
+				} ExposureMode;
+				break;
+			case WhiteBalance:
+				enum <short> {
+					WB_Auto_white_balance,
+					WB_Manual_white_balance,
+				} WhiteBalance;
+				break;
+			case SceneCaptureType:
+				enum <short> {
+					SCT_Standard,
+					SCT_Landscape,
+					SCT_Portrait,
+					SCT_Night_scene,
+				} SceneCaptureType;
+				break;
+			case SubjectDistanceRange:
+				enum <short> {
+					SDR_unknown,
+					SDR_Macro,
+					SDR_Close_view,
+					SDR_Distant_view,
+				} SubjectDistanceRange;
+				break;
+			default:
+				switch (dataFormat) {
+					case uByte:
+						struct {
+							uchar oneByteData[nComponent];
+						} strAscii;
+						break;
+					case ascString:
+						struct StrAscii1 {
+							char oneByteData[nComponent];
+						} strAscii <read=ReadAscString1>;
+						break;
+					case undefined:
+						struct {
+							uchar oneByteData[nComponent];
+						} strAscii;
+						break;
+					case uShort:
+						for (j = 0; j < nComponent; j++)
+							ushort usValue;
+						break;
+					case uLong:
+						if (nComponent == 1)
+							ulong ulValue;
+						break;
+					case sByte:
+						struct {
+							char sBValue[nComponent];
+						} strSByte;
+						break;
+					case sShort:
+						struct {
+							short sisValue[nComponent];
+						} strSShort;
+						break;
+					case sLong:
+						if (nComponent == 1)
+							ulong siLValue;
+						break;
+					case sFloat:
+						if (nComponent == 1)
+							float flValue;
+						break;
+				}
+				break;
+		}
+		if (length != 4)
+			uchar padding[4 - length];
+	} else {
+			DWORD offsetData;
+	}
+} DIRENTRY<read=ReadDirEntry>;
+
+string ReadDirEntry(DIRENTRY &entry) {
+	local char no[50];
+	SPrintf(no,"Tag# = 0x%x (%s)",entry.tagNumber, EnumToString(entry.tagNumber));
+	return no;
+}
+
+
+typedef struct tgIFD {
+	WORD nDirEntry;
+	DIRENTRY dirEntry[nDirEntry]<optimize=false>;
+	DWORD nextIFDoffset;
+	local int i = 0;
+	for(i=0;i<nDirEntry;i++) {
+		ChangeColor(0);
+		switch(dirEntry[i].tagNumber) {
+			case Make:
+				ReadBytes(CameraMake,offset + dirEntry[i].offsetData,dirEntry[i].nComponent);
+				Printf("Maker: %s\n",CameraMake);
+				break;
+			case Model:
+				ReadBytes(CameraModel,offset + dirEntry[i].offsetData,dirEntry[i].nComponent);
+				Printf("Model: %s\n",CameraModel);
+				break;
+		}
+
+
+		if (!(1 <= dirEntry[i].dataFormat && dirEntry[i].dataFormat < 13))
+			continue;
+		if (dataFormatLength[dirEntry[i].dataFormat] * dirEntry[i].nComponent <= 4) {
+			continue;
+		}
+
+		FSeek(offset + dirEntry[i].offsetData);
+		switch(dirEntry[i].tagNumber) {
+			default:
+				switch(dirEntry[i].dataFormat) {
+					case ascString:
+						struct StrAscii {
+							char oneByteData[dirEntry[i].nComponent];
+						} strAscii <read=ReadAscString>;
+						break;
+					case undefined:
+						struct {
+							uchar oneByteData[dirEntry[i].nComponent];
+						} strAscii;
+						break;
+					case uShort:
+						struct {
+							ushort usValue[dirEntry[i].nComponent];
+						} strUShort;
+						break;
+					case uLong:
+						struct {
+							ulong ulValue[dirEntry[i].nComponent];
+						} strULong;
+						break;
+					case uRatio:
+						struct URatio {
+							struct {
+								DWORD num;
+								DWORD den;
+							} uRValue[dirEntry[i].nComponent];
+						} strURatio <read=ReadURatio>;
+						break;
+					case sByte:
+						struct {
+							char sBValue[dirEntry[i].nComponent];
+						} strSByte;
+						break;
+					case sShort:
+						struct {
+							short sisValue[dirEntry[i].nComponent];
+						} strSShort;
+						break;
+					case sLong:
+						struct {
+							ulong siLValue[dirEntry[i].nComponent];
+						} strSLong;
+						break;
+					case sRatio:
+						struct {
+							struct {
+								int num;
+								int den;
+							} siRValue[dirEntry[i].nComponent];
+						} strSRatio;
+						break;
+					case sFloat:
+						struct {
+							float flValue[dirEntry[i].nComponent];
+						} strsFloat;
+						break;
+					case dFloat:
+						struct {
+							double dFValue[dirEntry[i].nComponent];
+						} strdFloat;
+						break;
+				}
+		}
+	}
+
+	for(i=0;i<nDirEntry;i++) {
+		ChangeColor(0);
+		switch(dirEntry[i].tagNumber) {
+			case ExifOffset:
+				FSeek(offset + dirEntry[i].ulValue);
+				Stack_push(stack_IFD_dirtype, IFD_TYPE_EXIF);
+				struct IFD subDir;
+				Stack_pop(stack_IFD_dirtype);
+				break;
+			case GPSInfo:
+				FSeek(offset + dirEntry[i].ulValue);
+				Stack_push(stack_IFD_dirtype, IFD_TYPE_GEOTAG);
+				struct IFD subDir;
+				Stack_pop(stack_IFD_dirtype);
+				break;
+			case InteropOffset:
+				FSeek(offset + dirEntry[i].ulValue);
+				Stack_push(stack_IFD_dirtype, IFD_TYPE_EXIF);
+				struct IFD subDir;
+				Stack_pop(stack_IFD_dirtype);
+				break;
+			case MakerNote:
+				if(!Strncmp("CASIO COMPUTER CO.,LTD",CameraMake,22) &&
+						!Strncmp("QV-R62",CameraModel,6)) {
+					FSeek(offset + dirEntry[i].ulValue);
+					struct {
+						char Header[6];
+						Stack_push(stack_IFD_dirtype, IFD_TYPE_CASIO_QV_R62);
+						struct IFD CasioIFD;
+						Stack_pop(stack_IFD_dirtype);
+					} CasioMake;
+				}
+				break;
+			case CasioPreviewThumbnail:
+				FSeek(offset + dirEntry[i].ulValue);
+				Printf("Casio Thumbnail Offset = %#Lx\n",offset + dirEntry[i].ulValue);
+				local quad JpegFileEnd2 = JpegFileEnd;
+				JpegFileEnd = FTell() + dirEntry[i].nComponent;
+				struct JPGFILE CasioMakerThumbnail;
+				JpegFileEnd = JpegFileEnd2;
+				break;
+		}
+	}
+} IFD;
+
+string ReadAscString1(StrAscii1 &s)
+{
+	return s.oneByteData;
+}
+string ReadAscString(StrAscii &s)
+{
+	return s.oneByteData;
+}
+
+string ReadURatio(URatio &ur)
+{
+	local int i;
+	local string s;
+	local string result = "";
+	for (i = 0; exists(ur.uRValue[i]); i++) {
+		SPrintf(s, "%d/%d", ur.uRValue[i].num, ur.uRValue[i].den);
+		result += s + " ";
+	}
+	return result;
+}
+
+
+typedef struct tagApp0 {
+	M_ID marker;
+	WORD szSection;
+
+	if (ReadStringN(FTell(), 5) == "JFIF") {
+		// JFIF Main
+		char  App0Type[5];
+		short versionHigh:8;
+		short versionLow:8;
+		ubyte units;
+		WORD Xdensity;
+		WORD Ydensity;
+		ubyte xThumbnail;
+		ubyte yThumbnail;
+		if (xThumbnail != 0 && yThumbnail != 0) {
+			struct {
+				uchar r, g, b;
+			} rgb[(ushort)xThumbnail * yThumbnail];
+		}
+	} else if(ReadStringN(FTell(), 5) == "JFXX") {
+		// JFIF Extension
+		char  App0Type[5];
+		byte extension_code <format=hex>;
+		switch (extension_code) {
+			case 0x10:
+				local quad JpegFileEnd2 = JpegFileEnd;
+				JpegFileEnd = FTell() + szSection - 8;
+				struct JPGFILE thumbnail;
+				JpegFileEnd = JpegFileEnd2;
+				break;
+			case 0x11:
+				ubyte xThumbnail;
+				ubyte yThumbnail;
+				struct {
+					uchar r, g, b;
+				} palette[256];
+				uchar pixel[szSection - 8];
+				break;
+			case 0x13:
+				ubyte xThumbnail;
+				ubyte yThumbnail;
+				struct {
+					uchar r, g, b;
+				} pixel[(ushort)xThumbnail * yThumbnail];
+				break;
+			default:
+				//Warning("Unknown JFXX");
+				char unknown[szSection - 8];
+		}
+	} else if((ReadStringN(FTell(), 2) == "II" || ReadStringN(FTell(), 2) == "MM")
+			&& ReadStringN(FTell() + 6, 8) == "HEAPJPGM") {
+		// Canon CIFF
+		local quad cDirSize  = 0;
+		local quad cDirOffset = 0;
+		local quad cifOffset = FTell();
+		//CIFF Header
+		char ByteOrder[2];
+		if(!Strncmp(ByteOrder,"II",2)) LittleEndian();
+		DWORD HeaderLength;
+		char type[4]; // "HEAP"
+		char subtype[4]; // "JPGM"
+
+		//Ciff Directory
+		cDirOffset  = HeaderLength + cifOffset;
+		cDirSize    = szSection - 2 - HeaderLength;
+		CDIR  APP0_Ciff;
+		BigEndian();
+		FSeek(cifOffset + szSection - 2);
+	}
+	else {
+		//Warning("Unknown APP0");
+		char unknown[szSection - 2];
+	}
+} APP0;
+
+typedef struct tgAPP1 {
+	M_ID marker;
+	WORD szSection;
+
+	if (ReadStringN(FTell(), 5) == "Exif") {
+		char EXIF[6];
+		local quad offset = FTell();
+		byte align[2];
+		if(align[0]=='I') { LittleEndian(); }
+		WORD tagMark; // 0x002a
+		DWORD offsetFirstIFD;
+		if(offsetFirstIFD!=8)
+			FSeek(offset + offsetFirstIFD);
+		ChangeColor(0);
+		Stack_push(stack_IFD_dirtype, IFD_TYPE_EXIF);
+		IFD ifdMainImage;
+		Stack_pop(stack_IFD_dirtype);
+		if(ifdMainImage.nextIFDoffset) {
+			FSeek(offset + ifdMainImage.nextIFDoffset);
+			ChangeColor(0);
+			Stack_push(stack_IFD_dirtype, IFD_TYPE_EXIF);
+			IFD ifdThumbnailImage;
+			Stack_pop(stack_IFD_dirtype);
+			local int i = 0;
+			local int thumbOffset = 0;
+			local int thumbLength = 0;
+			local int compression = 10;
+			for(i;i<ifdThumbnailImage.nDirEntry;i++) {
+				switch(ifdThumbnailImage.dirEntry[i].tagNumber) {
+					case Compression:
+						compression = ifdThumbnailImage.dirEntry[i].usValue;
+						break;
+					case ThumbnailOffset:
+					case StripOffsets:
+						thumbOffset = ifdThumbnailImage.dirEntry[i].ulValue;
+						break;
+					case ThumbnailLength:
+					case StripByteCounts:
+						thumbLength = ifdThumbnailImage.dirEntry[i].ulValue;
+						break;
+				}
+			}
+			if(thumbLength && thumbOffset) {
+				FSeek(offset + thumbOffset);
+				Printf("Thumbnail Offset = %#Lx\n",offset + thumbOffset);
+				if(compression == 6) {
+					local quad JpegFileEnd2 = JpegFileEnd;
+					JpegFileEnd = FTell() + thumbLength;
+					struct JPGFILE thumbnail;
+					JpegFileEnd = JpegFileEnd2;
+				}
+				else
+					char imageData[thumbLength];
+			}
+		}
+		FSeek(offset + szSection - 8);
+		if(align[0]=='I') { BigEndian(); }
+	} else if (ReadStringN(FTell(), 29) == "http://ns.adobe.com/xap/1.0/") {
+		// http://www.adobe.com/products/xmp/
+		char XAP[29];
+		char remain[szSection - 31];
+	} else {
+		//Warning("Unknown APP1");
+		char unknown[szSection - 2];
+	}
+} APP1;
+
+typedef struct tgAPP2 {
+	M_ID marker;
+	WORD szSection;
+
+	if (ReadStringN(FTell(), 5) == "FPXR") {
+			char FPXR[5];
+			uchar version;
+			char remain[szSection - 8];
+			//Warning("Unknown FPXR");
+	} else if (ReadStringN(FTell(), 12) == "ICC_PROFILE") {
+			char ICC_PROFILE[12];
+			uchar block_num;
+			uchar block_total;
+			char data[szSection - 16];
+	} else {
+		//Warning("Unknown APP2");
+		char unknown[szSection - 2];
+	}
+} APP2;
+
+typedef struct tagAPP12 {
+	M_ID marker;
+	WORD szSection;
+
+	if (ReadStringN(FTell(), 5) == "Ducky") {
+		// refer to ExifTool APP12.pm
+		char Ducky[5];
+		local WORD s = szSection;
+		while (s > 0) {
+			struct {
+				enum <uint16> {
+					DK_End,
+					DK_Quality,
+					DK_Comment,
+					DK_Copyright,
+				} tag;
+				if (tag == DK_End)
+					break;
+
+				uint16 len;
+
+				switch (tag) {
+					case DK_End:
+						break;
+					case DK_Quality:
+						uint32 value;
+						break;
+					case DK_Comment:
+						uint32 count;
+						char comment[len - 4];
+						break;
+					case DK_Copyright:
+						uint32 count;
+						char comment[len - 4];
+						break;
+					default:
+						char unknown[len];
+						break;
+				}
+			} entry;
+			if (entry.tag == DK_End)
+				break;
+			s -= sizeof(entry);
+		}
+	} else {
+		//Warning("Unknown APP12");
+		char unknown[szSection - 2];
+	}
+} APP12;
+
+typedef struct tagAPP13 {
+	M_ID marker;
+	WORD szSection;
+
+	if (ReadStringN(FTell(), 14) == "Photoshop 3.0") {
+		// refer to ExifTool Photoshop.pm
+		char photoshop30[14];
+		local int remainsize = szSection - 16;
+		while (remainsize > 0) {
+			struct {
+				char type[4];
+				if (type == "8BIM") {
+				} else if (type == "PHUT" || type == "DCSR" || type == "AgHg") {
+				} else {
+					char unknown[remainsize - 4];
+					break;
+				}
+				enum <uint16> {
+					PS_IPTCData = 0x0404,
+					PS_JPEG_Quality = 0x0406,
+					PS_PhotoshopBGRThumbnail = 0x0409,
+					PS_CopyrightFlag = 0x040a,
+					PS_URL = 0x040b,
+					PS_PhotoshopThumbnail = 0x040c,
+					PS_ICC_Profile = 0x040f,
+					PS_GlobalAltitude = 0x0419,
+					PS_EXIFInfo = 0x0422,
+					PS_XMP = 0x0424,
+					PS_IPTCDigest = 0x0425,
+					PS_ClippingPathName = 0x0bb7,
+				} tag;
+				uchar namelen;
+				if (namelen)
+					char name[namelen];
+				if (namelen % 2 != 1)
+					char padding;
+				uint32 size;
+				if (size)
+					char data[size];
+				if (size % 2 != 0)
+					char padding;
+			} block;
+			remainsize -= sizeof(block);
+		}
+	} else if (ReadStringN(FTell(), 9) == "Adobe_CM") {
+		char adobe_cm[9];
+		uchar AdobeCMType;
+		if (szSection != 12)
+			char unknown[szSection - 12];
+	} else {
+		//Warning("Unknown APP13");
+		char unknown[szSection - 2];
+	}
+} APP13;
+
+typedef struct tagAPP14 {
+	M_ID marker;
+	WORD szSection;
+
+	if (ReadStringN(FTell(), 5) == "Adobe") {
+		// http://partners.adobe.com/public/developer/en/ps/sdk/5116.DCT_Filter.pdf
+		char adobe[5];
+		uint16 version;
+		uint16 flag0;
+		uint16 flag1;
+		uchar color_transform_code;
+		if (FTell() < szSection + startof(szSection)) char unknown[szSection + startof(szSection) - FTell()];
+	} else {
+		//Warning("Unknown APP14");
+		char unknown[szSection - 2];
+	}
+} APP14;
+
+// ------------------------------------------------------------
+// JPEG segments
+typedef struct tagSOS {
+	M_ID marker;
+	WORD szSection;
+	ubyte nr_comp;
+	ChangeColor(0);
+	struct COMPSOS {
+		ubyte AC:4;
+		ubyte DC:4;
+	} comp[nr_comp];
+	uchar Ss;
+	uchar Se;
+	uchar Ah : 4;
+	uchar Al : 4;
+} SOS;
+
+typedef struct tagUNK {
+	M_ID UnknownMarker;
+	//Warning("Unknown Section 0x%08x %s", UnknownMarker, EnumToString(UnknownMarker));
+	WORD szSection;
+	if (FTell() + szSection - 2 >= JpegFileEnd) {
+		Warning("unknown section length pass the end of jpeg file");
+		ubyte unknown[JpegFileEnd - FTell()];
+	} else {
+		ubyte unknown[szSection-2];
+	}
+} UNKNOWN;
+
+typedef struct tagDHT {
+	M_ID marker;
+	WORD szSection;
+	local WORD huffsz = szSection - 2;
+	while(huffsz > 0) {
+		ChangeColor(0);
+		struct Huffmann_Table {
+			ubyte htInfo;
+			ubyte length[16];
+			local int sumLen = 0;
+			local int i = 0;
+			for(i;i<16;i++) {
+				sumLen += length[i];
+			}
+			ubyte HTV[sumLen];
+		} huff_table;
+		huffsz -= sizeof(huff_table);
+	}
+} DHT;
+
+typedef struct tagDQT {
+	M_ID marker;
+	WORD szSection;
+	local WORD qtsz = szSection - 2;
+	while(qtsz > 0) {
+		ChangeColor(0);
+		struct QuanTable {
+			uchar Pq : 4;
+			uchar Tq : 4;
+			if (Pq == 0)
+				byte qTable[64];
+			else
+				uint16 qTable[64];
+		} qtable;
+		qtsz -= sizeof(qtable);
+	}
+} DQT;
+
+typedef struct tagDRI {
+	M_ID marker;
+	WORD szSection;
+	WORD Ri;
+} DRI;
+
+typedef struct tagDHP {
+	M_ID marker;
+	WORD szSection;
+	uchar P;
+	uint16 Y;
+	uint16 X;
+	uchar Nf;
+	struct {
+		uchar id;
+		uchar h_factor : 4;
+		uchar v_factor : 4;
+		uchar Tq;
+	} component_param[Nf];
+} DHP;
+
+typedef struct tgSOFx {
+	M_ID marker;
+	WORD szSection;
+	ubyte precision;
+	WORD Y_image;
+	WORD X_image;
+	ubyte nr_comp;
+	ChangeColor(0);
+	struct COMPS {
+		ubyte compId;
+		ubyte Horz:4;
+		ubyte Vert:4;
+		ubyte compNr;
+	} comp[nr_comp];
+} SOFx;
+
+typedef struct tagCOMMENT {
+	M_ID CommentMarker;
+	WORD szSection;
+	char comment[szSection-2];
+
+
+	local char comments[szSection-1] = {0};
+	local int i = 0;
+	Memcpy(comments,comment,szSection-2);
+	for(i=0;i<szSection-1;i++) {
+		if(comments[i]==0) comments[i] = 'x';
+	}
+	comments[szSection-2] = 0;
+	Printf("\nCOMMENT :\n%s\n\n",comments);
+
+} COMMENT<read=ReadComment>;
+
+typedef struct tagJPGLS {
+    M_ID marker;
+    WORD szSection;
+
+    uchar precision <comment="bits per sample">;
+    WORD Y_numlines;
+    WORD X_numcols;
+    uchar Nf <comment="number of components in frame">;
+    uchar C_compID;
+    uchar sub_sampling;
+    uchar Tq <comment="always 0">;
+
+    if (11 < szSection)
+		uchar uknown[szSection - 11];
+} JPGLS;
+
+string ReadComment( COMMENT &com )
+{
+	return com.comment;
+}
+
+JpegFileEnd = FileSize();
+
+// ------------------------------------------------------------
+// JPEG file
+
+SetBackColor(jetMap[0]);
+typedef struct tgJPGFile {
+	local int was_bigendian = IsBigEndian();
+	BigEndian();
+	local WORD NextMarker;
+	local quad fpos2;
+	local byte bEOI = 0;
+	while(FTell() < JpegFileEnd && !bEOI) {
+		// skip optional 0xff before marker
+		while (ReadUShort(FTell()) == 0xffff) FSkip(1);
+
+		NextMarker  = ReadUShort(FTell());
+		switch(NextMarker) {
+		case M_SOI:
+			M_ID SOIMarker;
+			Printf("Start of Image Marker\n");
+			break;
+		case M_SOS:
+			SOS  scanStart;
+			Printf("Start of Scan Marker\n");
+			NextMarker = ReadUShort(JpegFileEnd - 2);
+			fpos2 = 0;
+			while(NextMarker != M_EOI) {
+				NextMarker = ReadUShort(JpegFileEnd - 2 - (++fpos2));
+			}
+			char scanData[JpegFileEnd - FTell() - 2 - fpos2];
+			ChangeColor(1);
+			M_ID EOIMarker;
+			Printf("End of File Image\n");
+			if(fpos2) char unknownPadding[fpos2];
+			bEOI = 1;
+			break;
+		case M_APP0:
+			APP0 app0;
+			break;
+		case M_DHT:
+			DHT dht;
+			break;
+		case M_DQT:
+			DQT dqt;
+			break;
+		case M_DRI:
+			DRI dri;
+			break;
+		case M_DHP:
+			DHP dhp;
+			break;
+		case M_SOF0:
+			SOFx sof0;
+			break;
+		case M_SOF1:
+			SOFx sof1;
+			break;
+		case M_SOF2:
+			SOFx sof2;
+			break;
+		case M_APP1:
+			APP1 app1;
+			break;
+		case M_APP2:
+			APP2 app2;
+			break;
+		case M_APP12:
+			APP12 app12;
+			break;
+		case M_APP13:
+			APP13 app13;
+			break;
+		case M_APP14:
+			APP14 app14;
+			break;
+		case M_COMM:
+			COMMENT comment;
+			break;
+        case M_JPGLS:
+            JPGLS jpgls;
+            break;
+		default:
+			UNKNOWN unknownSection;
+			break;
+		}
+		ChangeColor(!bEOI);
+	}
+	if (!was_bigendian)
+		LittleEndian();
+} JPGFILE;
+
+JPGFILE jpgfile;
