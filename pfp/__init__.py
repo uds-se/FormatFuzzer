@@ -14,5 +14,5 @@ def parse(stream, template):
 
 	"""
 	interpretor = interp.PfpInterp()
-	dom = interp.parse(stream, template)
+	dom = interpretor.parse(stream, template)
 	return dom
