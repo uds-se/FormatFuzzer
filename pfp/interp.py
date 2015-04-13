@@ -4,6 +4,7 @@
 Python format parser
 """
 
+import copy
 import sys
 import os
 
@@ -81,10 +82,13 @@ class Scope(object):
 		while True:
 			orig_names = self._search("types", name)
 			if orig_names is not None:
+				name = orig_names[-1]
 				# pop off the typedefd name
 				res.pop()
 				# add back on the original names
 				res += orig_names
+			else:
+				break
 
 		return res
 	
@@ -253,9 +257,9 @@ class PfpInterp(object):
 		:returns: TODO
 
 		"""
-		import pdb ; pdb.set_trace()
 		struct = fields.Struct()
 
+		# new scope
 		scope.push()
 
 		for decl in node.decls:
@@ -274,7 +278,6 @@ class PfpInterp(object):
 		:returns: TODO
 
 		"""
-		import pdb ; pdb.set_trace()
 		cls = self._resolve_to_field_class(node.names, scope, ctxt)
 		return cls(stream)
 	
@@ -288,7 +291,14 @@ class PfpInterp(object):
 		:returns: TODO
 
 		"""
-		pass
+		# don't actually handle the TypeDecl and Identifier nodes,
+		# just directly add the types. Example structure:
+		#
+		#	 Typedef: BLAH, [], ['typedef']
+    	#		TypeDecl: BLAH, []
+      	#			IdentifierType: ['unsigned', 'char']
+		#	
+		scope.add_type(node.name, node.type.type.names)
 	
 	# -----------------------------
 	# UTILITY
@@ -308,29 +318,30 @@ class PfpInterp(object):
 			"char":		"Char",
 			"int":		"Int",
 			"long": 	"Int",
-			#"double":	fields.Double,
-			#"float":	fields.Float
+			"short":	"Short",
+			"double":	"Double",
+			"float":	"Float"
 		}
 
 		core = names[-1]
 		
 		if core not in switch:
 			# will return a list of resolved names
-			cores = scope.get_type(core)
-			if cores[-1] not in switch:
-				raise UnresolvedType(
+			resolved_names = scope.get_type(core)
+			if resolved_names[-1] not in switch:
+				raise errors.UnresolvedType(
 					"The type {!r} ({!r}) could not be resolved".format(
 						" ".join(names),
-						" ".join(defined_type)
+						" ".join(resolved_names)
 					)
 				)
 			names = copy.copy(names)
 			names.pop()
-			names += cores
+			names += resolved_names
 
 		res = switch[names[-1]]
 
-		if names[-1] in ["char", "int", "long"] and "unsigned" in names[:-1]:
+		if names[-1] in ["char", "short", "int", "long"] and "unsigned" in names[:-1]:
 			res = "U" + res
 
 		cls = getattr(fields, res)

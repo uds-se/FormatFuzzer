@@ -42,6 +42,35 @@ class TestBasic(unittest.TestCase):
 				} data;
 			"""
 		)
+	
+	def test_nested_basic_parse(self):
+		dom = self._test_parse_build(
+			"\x00\x01\x02\x03",
+			"""
+				struct DATA {
+					char a;
+					char b;
+
+					struct {
+						char a;
+						char b;
+					} nested;
+				} data;
+			"""
+		)
+	
+	def test_typedef_basic_parse(self):
+		dom = self._test_parse_build(
+			"\xff\x00\x00\xff",
+			"""
+				typedef unsigned short BLAH;
+				BLAH a;
+				short b;
+			"""
+		)
+		import pdb ; pdb.set_trace()
+		self.assertTrue(dom.a, 0xff00)
+		self.assertEqual(dom.b, 0xff)
 
 if __name__ == "__main__":
 	unittest.main()

@@ -38,6 +38,9 @@ class Field(object):
 		:returns: None
 		"""
 		raise NotImplemented("Inheriting classes must implement the _pfp__parse function")
+	
+	def __repr__(self):
+		return "{}({!r})".format(self.__class__.__name__, self._pfp__value)
 
 class Struct(Field):
 	"""The struct field"""
@@ -112,6 +115,9 @@ class Struct(Field):
 		else:
 			# default getattr instead
 			return super(Struct, self).__setattr__(name, value)
+	
+	def __repr__(self):
+		return object.__repr__(self)
 
 class Dom(Struct):
 	"""The result of an interpreted template"""
