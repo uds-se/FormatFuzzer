@@ -52,7 +52,7 @@ class Struct(Field):
 
 		super(Struct, self).__init__(name)
 	
-	def _pfp__add_child(self, child, name):
+	def _pfp__add_child(self, name, child):
 		"""Add a child to the Struct field
 
 		:child: A :class:`.Field` instance
@@ -131,6 +131,8 @@ class NumberBase(Field):
 
 	width = 4 				# number of bytes
 	format = "i"			# default signed int
+
+	_pfp__value = 0			# default value
 
 	def _pfp__parse(self, stream):
 		"""Parse the IO stream for this numeric field

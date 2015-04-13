@@ -29,7 +29,8 @@ class Scope(object):
 		"""
 		self._curr_scope = {
 			"types": {},
-			"locals": {}
+			"locals": {},
+			"vars": {}
 		}
 		self._scope_stack.append(self._curr_scope)
 	
@@ -41,6 +42,48 @@ class Scope(object):
 		self._scope_stack.pop()
 		self._curr_scope = self._scope_stack[-1]
 	
+	def add_var(self, field_name, field):
+		"""Add a var to the current scope (vars are fields that
+		parse the input stream)
+
+		:field_name: TODO
+		:field: TODO
+		:returns: TODO
+
+		"""
+		# TODO do we allow clobbering of vars???
+		self._curr_scope["vars"][field_name] = field
+	
+	def get_var(self, name):
+		"""Return the first var of name ``name`` in the current
+		scope stack (remember, vars are the ones that parse the
+		input stream)
+
+		:name: The name of the id
+		:returns: TODO
+
+		"""
+		return self._search("vars", name)
+	
+	def add_local(self, field_name, field):
+		"""Add a local variable in the current scope
+
+		:field_name: The field's name
+		:field: The field
+		:returns: None
+
+		"""
+		field._pfp__name = field_name
+		# TODO do we allow clobbering of locals???
+		self._curr_scope["locals"][field_name] = field
+	
+	def get_local(self, name):
+		"""Get the local field (search for it) from the scope stack
+
+		:name: The name of the local field
+		"""
+		return self._search("locals", name)
+	
 	def add_type(self, new_name, orig_names):
 		"""Record the typedefd name for orig_names. Resolve orig_names
 		to their core names and save those.
@@ -50,6 +93,7 @@ class Scope(object):
 		:returns: TODO
 
 		"""
+		# TODO do we allow clobbering of types???
 		res = copy.copy(orig_names)
 		resolved_names = self._resolve_name(res[-1])
 		if resolved_names is not None:
@@ -66,6 +110,21 @@ class Scope(object):
 
 		"""
 		return self._search("types", name)
+	
+	def get_id(self, name):
+		"""Get the first id matching ``name``. Will either be a local
+		or a var. Locals will be search before vars.
+
+		:name: TODO
+		:returns: TODO
+
+		"""
+		local = self._search("locals", name)
+		if local is not None:
+			return local
+
+		var = self._search("vars", name)
+		return var
 	
 	# ------------------
 	# PRIVATE
@@ -94,11 +153,11 @@ class Scope(object):
 	
 	def _search(self, category, name):
 		"""Search the scope stack for the name in the specified
-		category (types/locals).
+		category (types/locals/vars).
 
-		:category: the category to search in (locals/types)
+		:category: the category to search in (locals/types/vars)
 		:name: name to search for
-		:returns: None if not found, the result of the found local/type
+		:returns: None if not found, the result of the found local/type/id
 		"""
 		idx = len(self._scope_stack) - 1
 		curr = self._curr_scope
@@ -193,7 +252,11 @@ class PfpInterp(object):
 			AST.TypeDecl:		self._handle_type_decl,
 			AST.Struct:			self._handle_struct,
 			AST.IdentifierType:	self._handle_identifier_type,
-			AST.Typedef:		self._handle_typedef
+			AST.Typedef:		self._handle_typedef,
+			AST.Constant:		self._handle_constant,
+			AST.BinaryOp:		self._handle_binary_op,
+			AST.Assignment:		self._handle_assignment,
+			AST.ID:				self._handle_id
 		}
 
 		if type(node) is tuple:
@@ -232,7 +295,24 @@ class PfpInterp(object):
 
 		"""
 		field = self._handle_node(node.type, scope, ctxt, stream)
-		ctxt._pfp__add_child(field, node.name)
+		
+		# locals still get a field instance, but DON'T parse the
+		# stream!
+		if "local" in node.quals:
+			field = field()
+			scope.add_local(node.name, field)
+
+			# this should only be able to be done with locals, right?
+			# if not, move it to the bottom of the function
+			if node.init is not None:
+				field._pfp__value = self._handle_node(node.init, scope, ctxt, stream)
+		else:
+			# by this point, structs are already instantiated (they need to be
+			# in order to set the new context)
+			if not isinstance(field, fields.Field):
+				field = field(stream)
+			scope.add_var(node.name, field)
+			ctxt._pfp__add_child(node.name, field)
 	
 	def _handle_type_decl(self, node, scope, ctxt, stream):
 		"""TODO: Docstring for _handle_type_decl.
@@ -279,7 +359,7 @@ class PfpInterp(object):
 
 		"""
 		cls = self._resolve_to_field_class(node.names, scope, ctxt)
-		return cls(stream)
+		return cls
 	
 	def _handle_typedef(self, node, scope, ctxt, stream):
 		"""TODO: Docstring for _handle_typedef.
@@ -300,9 +380,114 @@ class PfpInterp(object):
 		#	
 		scope.add_type(node.name, node.type.type.names)
 	
+	def _handle_constant(self, node, scope, ctxt, sream):
+		"""TODO: Docstring for _handle_constant.
+
+		:node: TODO
+		:scope: TODO
+		:ctxt: TODO
+		:stream: TODO
+		:returns: TODO
+
+		"""
+		switch = {
+			"int": int,
+			"long": int,
+			"float": float,
+			"double": float,
+
+			# cut out the quotes
+			"char": lambda x: ord(x[1:-1]),
+
+			# TODO should this be unicode?? will probably bite me later...
+			# cut out the quotes
+			"string": lambda x: str(x[1:-1])
+		}
+
+		if node.type in switch:
+			return switch[node.type](node.value)
+
+		raise UnsupportedConstantType(node.type, node.coord)
+	
+	def _handle_binary_op(self, node, scope, ctxt, stream):
+		"""TODO: Docstring for _handle_binary_op.
+
+		:node: TODO
+		:scope: TODO
+		:ctxt: TODO
+		:stream: TODO
+		:returns: TODO
+
+		"""
+		switch = {
+			"+": lambda x,y: x+y,
+			"-": lambda x,y: x-y,
+			"*": lambda x,y: x*y,
+			"/": lambda x,y: x/y,
+			"|": lambda x,y: x|y,
+			"^": lambda x,y: x^y,
+			"&": lambda x,y: x&y,
+			"%": lambda x,y: x%y
+		}
+
+		left_val = self._get_value(node.left, scope, ctxt, stream)
+		right_val = self._get_value(node.right, scope, ctxt, stream)
+
+		if node.op in switch:
+			return switch[node.op](left_val, right_val)
+	
+	def _handle_id(self, node, scope, ctxt, stream):
+		"""Handle an ID node (return a field object for the ID)
+
+		:node: TODO
+		:scope: TODO
+		:ctxt: TODO
+		:stream: TODO
+		:returns: TODO
+
+		"""
+		field = scope.get_id(node.name)
+
+		if field is None:
+			raise errors.UnresolvedID(node.name, node.coord)
+
+		return field
+	
+	def _handle_assignment(self, node, scope, ctxt, stream):
+		"""Handle assignment nodes
+
+		:node: TODO
+		:scope: TODO
+		:ctxt: TODO
+		:stream: TODO
+		:returns: TODO
+
+		"""
+		field = self._handle_node(node.lvalue, scope, ctxt, stream)
+		value = self._handle_node(node.rvalue, scope, ctxt, stream)
+		field._pfp__value = value
+	
 	# -----------------------------
 	# UTILITY
 	# -----------------------------
+
+	def _get_value(self, node, scope, ctxt, stream):
+		"""Return the value of the node. It is expected to be
+		either an AST.ID instance or a constant
+
+		:node: TODO
+		:returns: TODO
+
+		"""
+
+		res = self._handle_node(node, scope, ctxt, stream)
+
+		if isinstance(res, fields.Field):
+			return res._pfp__value
+
+		# assume it's a constant
+		else:
+			return res
 	
 	def _resolve_to_field_class(self, names, scope, ctxt):
 		"""Resolve the names to a class in fields.py, resolving past

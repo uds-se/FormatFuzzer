@@ -68,9 +68,92 @@ class TestBasic(unittest.TestCase):
 				short b;
 			"""
 		)
-		import pdb ; pdb.set_trace()
 		self.assertTrue(dom.a, 0xff00)
 		self.assertEqual(dom.b, 0xff)
+	
+	def test_local(self):
+		dom = self._test_parse_build(
+			"",
+			"""
+				local int i;
+			"""
+		)
+	
+	def test_local_assignment_int(self):
+		dom = self._test_parse_build(
+			"",
+			"""
+				local int i = 10;
+			"""
+		)
+
+	def test_local_assignment_char(self):
+		dom = self._test_parse_build(
+			"",
+			"""
+				local char i = 'A';
+			"""
+		)
+
+	def test_local_assignment_float(self):
+		dom = self._test_parse_build(
+			"",
+			"""
+				local float i = 0.5f;
+			"""
+		)
+
+	def test_local_assignment_double(self):
+		dom = self._test_parse_build(
+			"",
+			"""
+				local double i = 0.5;
+			"""
+		)
+
+	def test_local_assignment_long(self):
+		dom = self._test_parse_build(
+			"",
+			"""
+				local long i = 555l;
+			"""
+		)
+
+	def test_local_assignment_string(self):
+		dom = self._test_parse_build(
+			"",
+			"""
+				local string i = "hello";
+			"""
+		)
+
+	def test_local_binary_arithmetic(self):
+		dom = self._test_parse_build(
+			"",
+			"""
+				local int i = 0;
+				local int j = 10;
+				local int k;
+				k = i + j;
+				k = i - j;
+				k = i * j;
+				k = i / j;
+				k = i % j;
+				k = i ^ j;
+				k = i & j;
+				k = i | j;
+			"""
+		)
+
+	def test_unary_arithmetic(self):
+		dom = self._test_parse_build(
+			"",
+			"""
+				local int i = 0;
+				i++;
+				i--;
+			"""
+		)
 
 if __name__ == "__main__":
 	unittest.main()
