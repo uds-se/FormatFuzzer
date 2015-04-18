@@ -152,6 +152,52 @@ class TestBasic(unittest.TestCase):
 				local int i = 0;
 				i++;
 				i--;
+				~i;
+				!i;
+			"""
+		)
+	
+	def test_comparisons(self):
+		dom = self._test_parse_build(
+			"",
+			"""
+				local int i;
+				i > 10;
+				i >= 10;
+				i < 10;
+				i <= 10;
+				i != 10;
+				i == 10;
+			"""
+		)
+	
+	# is this even what you call this?
+	def test_binary_assignment(self):
+		dom = self._test_parse_build(
+			"",
+			"""
+				local int i;
+				i += 10;
+				i -= 10;
+				i *= 10;
+				i /= 10;
+				i %= 10;
+				i ^= 10;
+				i &= 10;
+				i <<= 10;
+				i >>= 10;
+			"""
+		)
+	
+	def test_function(self):
+		dom = self._test_parse_build(
+			"",
+			"""
+				void func(int a, int b) {
+					local int c = a + b;
+				}
+
+				func(10, 20);
 			"""
 		)
 

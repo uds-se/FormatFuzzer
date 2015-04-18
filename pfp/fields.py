@@ -21,6 +21,23 @@ class Field(object):
 		if stream is not None:
 			self._pfp__parse(stream)
 	
+	def _pfp__get_root_value(self, val):
+		"""helper function to fetch the root value of an object"""
+		if isinstance(val, Field):
+			return val._pfp__value
+		else:
+			return val
+	
+	def _pfp__set_value(self, new_val):
+		"""Set the new value if type checking is passes, potentially
+		(TODO? reevaluate this) casting the value to something else
+
+		:new_val: The new value
+		:returns: TODO
+
+		"""
+		self._pfp__value = self._pfp__get_root_value(new_val)
+	
 	def _pfp__build(self, output_stream=None):
 		"""Pack this field into a string. If output_stream is specified,
 		write the output into the output stream
@@ -41,6 +58,10 @@ class Field(object):
 	
 	def __repr__(self):
 		return "{}({!r})".format(self.__class__.__name__, self._pfp__value)
+
+class Void(Field):
+	"""The void field - used for return value of a function"""
+	pass
 
 class Struct(Field):
 	"""The struct field"""
@@ -178,6 +199,37 @@ class NumberBase(Field):
 		if isinstance(other, NumberBase):
 			other = other._pfp__value
 		return cmp(self._pfp__value, other)
+	
+	def __iadd__(self, other):
+		self._pfp__value += other
+	def __isub__(self, other):
+		self._pfp__value -= other
+	def __imul__(self, other):
+		self._pfp__value *= other
+	def __idiv__(self, other):
+		self._pfp__value /= other
+	def __iand__(self, other):
+		self._pfp__value &= other
+	def __ixor__(self, other):
+		self._pfp__value ^= other
+	def __ifloordiv__(self, other):
+		self._pfp__value //= other
+	def __imod__(self, other):
+		self._pfp__value %= other
+	def __ipow__(self, other):
+		self._pfp__value **= other
+	def __ilshift__(self, other):
+		self._pfp__value <<= other
+	def __irshift__(self, other):
+		self._pfp__value >>= other
+
+	def __invert__(self):
+		return ~self._pfp__value
+	
+	def __getattr__(self, val):
+		if val.startswith("__") and attr.endswith("__"):
+			return getattr(self._pfp__value, val)
+		raise AttributeError()
 
 class Char(NumberBase):
 	width = 1

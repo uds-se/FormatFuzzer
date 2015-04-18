@@ -13,6 +13,8 @@ from py010parser import c_ast as AST
 
 from . import fields
 from . import errors
+from . import functions
+
 
 class Scope(object):
 	"""A class to keep track of the current scope of the interpreter"""
@@ -33,6 +35,22 @@ class Scope(object):
 			"vars": {}
 		}
 		self._scope_stack.append(self._curr_scope)
+	
+	def clone(self):
+		"""Return a new Scope object that has the curr_scope
+		pinned at the current one
+		:returns: A new scope object
+
+		"""
+		# TODO is this really necessary to create a brand new one?
+		# I think it is... need to think about it more.
+		# or... are we going to need ref counters and a global
+		# scope object that allows a view into (or a snapshot of)
+		# a specific scope stack?
+		res = Scope()
+		res._scope_stack = self._scope_stack
+		res._curr_scope = self._curr_scope
+		return res
 	
 	def pop(self):
 		"""Leave the current scope
@@ -178,7 +196,24 @@ class PfpInterp(object):
 	def __init__(self):
 		"""
 		"""
-		pass
+		self._node_switch = {
+			AST.FileAST:		self._handle_file_ast,
+			AST.Decl:			self._handle_decl,
+			AST.TypeDecl:		self._handle_type_decl,
+			AST.Struct:			self._handle_struct,
+			AST.IdentifierType:	self._handle_identifier_type,
+			AST.Typedef:		self._handle_typedef,
+			AST.Constant:		self._handle_constant,
+			AST.BinaryOp:		self._handle_binary_op,
+			AST.Assignment:		self._handle_assignment,
+			AST.ID:				self._handle_id,
+			AST.UnaryOp:		self._handle_unary_op,
+			AST.FuncDef:		self._handle_func_def,
+			AST.FuncCall:		self._handle_func_call,
+			AST.FuncDecl:		self._handle_func_decl,
+			AST.ParamList:		self._handle_param_list,
+			AST.ExprList:		self._handle_expr_list
+		}
 	
 	# --------------------
 	# PUBLIC
@@ -233,6 +268,7 @@ class PfpInterp(object):
 		# may change (e.g. compressed data)
 		return self._handle_node(self._ast, None, None, self._stream)
 
+
 	def _handle_node(self, node, scope, ctxt, stream):
 		"""Recursively handle nodes in the 010 AST
 
@@ -246,26 +282,13 @@ class PfpInterp(object):
 		if scope is None:
 			scope = Scope()
 
-		switch = {
-			AST.FileAST:		self._handle_file_ast,
-			AST.Decl:			self._handle_decl,
-			AST.TypeDecl:		self._handle_type_decl,
-			AST.Struct:			self._handle_struct,
-			AST.IdentifierType:	self._handle_identifier_type,
-			AST.Typedef:		self._handle_typedef,
-			AST.Constant:		self._handle_constant,
-			AST.BinaryOp:		self._handle_binary_op,
-			AST.Assignment:		self._handle_assignment,
-			AST.ID:				self._handle_id
-		}
-
 		if type(node) is tuple:
 			node = node[1]
 
-		if node.__class__ not in switch:
-			raise errors.UnsupportedASTNode("Pfp can not yet interpret {} nodes".format(node.__class__.__name__))
+		if node.__class__ not in self._node_switch:
+			raise errors.UnsupportedASTNode(node.coord, node.__class__.__name__)
 
-		return switch[node.__class__](node, scope, ctxt, stream)
+		return self._node_switch[node.__class__](node, scope, ctxt, stream)
 	
 	def _handle_file_ast(self, node, scope, ctxt, stream):
 		"""TODO: Docstring for _handle_file_ast.
@@ -300,12 +323,25 @@ class PfpInterp(object):
 		# stream!
 		if "local" in node.quals:
 			field = field()
-			scope.add_local(node.name, field)
+			scope.add_local(node.name, fields)
 
 			# this should only be able to be done with locals, right?
 			# if not, move it to the bottom of the function
 			if node.init is not None:
 				field._pfp__value = self._handle_node(node.init, scope, ctxt, stream)
+
+		elif isinstance(field, functions.Function):
+			# eh, just add it as a local...
+			# maybe the whole local/vars thinking needs to change...
+			# and we should only have ONE map TODO
+			field.name = node.name
+			scope.add_local(node.name, field)
+
+		elif getattr(node, "is_func_param", False):
+			# we want to keep this as a class and not instantiate it
+			# instantiation will be done in functions.ParamListDef.instantiate
+			field = (node.name, field)
+
 		else:
 			# by this point, structs are already instantiated (they need to be
 			# in order to set the new context)
@@ -313,6 +349,8 @@ class PfpInterp(object):
 				field = field(stream)
 			scope.add_var(node.name, field)
 			ctxt._pfp__add_child(node.name, field)
+
+		return field
 	
 	def _handle_type_decl(self, node, scope, ctxt, stream):
 		"""TODO: Docstring for _handle_type_decl.
@@ -407,7 +445,7 @@ class PfpInterp(object):
 		if node.type in switch:
 			return switch[node.type](node.value)
 
-		raise UnsupportedConstantType(node.type, node.coord)
+		raise UnsupportedConstantType(node.coord, node.type)
 	
 	def _handle_binary_op(self, node, scope, ctxt, stream):
 		"""TODO: Docstring for _handle_binary_op.
@@ -427,14 +465,45 @@ class PfpInterp(object):
 			"|": lambda x,y: x|y,
 			"^": lambda x,y: x^y,
 			"&": lambda x,y: x&y,
-			"%": lambda x,y: x%y
+			"%": lambda x,y: x%y,
+			">": lambda x,y: x>y,
+			"<": lambda x,y: x<y,
+			">=": lambda x,y: x>=y,
+			"<=": lambda x,y: x<=y,
+			"==": lambda x,y: x == y,
+			"!=": lambda x,y: x != y
 		}
 
 		left_val = self._get_value(node.left, scope, ctxt, stream)
 		right_val = self._get_value(node.right, scope, ctxt, stream)
 
-		if node.op in switch:
-			return switch[node.op](left_val, right_val)
+		if node.op not in switch:
+			raise errors.UnsupportedBinaryOperator(node.coord, node.op)
+
+		return switch[node.op](left_val, right_val)
+	
+	def _handle_unary_op(self, node, scope, ctxt, stream):
+		"""TODO: Docstring for _handle_unary_op.
+
+		:node: TODO
+		:scope: TODO
+		:ctxt: TODO
+		:stream: TODO
+		:returns: TODO
+
+		"""
+		switch = {
+			"p++": lambda x,v: x.__iadd__(1),
+			"p--": lambda x,v: x.__isub__(1),
+			"~":   lambda x,v: ~x,
+			"!":   lambda x,v: not x
+		}
+
+		if node.op not in switch:
+			raise errors.UnsupportedUnaryOperator(node.coord, node.op)
+
+		field = self._handle_node(node.expr, scope, ctxt, stream)
+		switch[node.op](field, 1)
 	
 	def _handle_id(self, node, scope, ctxt, stream):
 		"""Handle an ID node (return a field object for the ID)
@@ -449,7 +518,7 @@ class PfpInterp(object):
 		field = scope.get_id(node.name)
 
 		if field is None:
-			raise errors.UnresolvedID(node.name, node.coord)
+			raise errors.UnresolvedID(node.coord, node.name)
 
 		return field
 	
@@ -466,6 +535,90 @@ class PfpInterp(object):
 		field = self._handle_node(node.lvalue, scope, ctxt, stream)
 		value = self._handle_node(node.rvalue, scope, ctxt, stream)
 		field._pfp__value = value
+	
+	def _handle_func_def(self, node, scope, ctxt, stream):
+		"""Handle FuncDef nodes
+
+		:node: TODO
+		:scope: TODO
+		:ctxt: TODO
+		:stream: TODO
+		:returns: TODO
+
+		"""
+		func = self._handle_node(node.decl, scope, ctxt, stream)
+		func.code = node.body
+	
+	def _handle_param_list(self, node, scope, ctxt, stream):
+		"""Handle ParamList nodes
+
+		:node: TODO
+		:scope: TODO
+		:ctxt: TODO
+		:stream: TODO
+		:returns: TODO
+
+		"""
+		# params should be a list of tuples:
+		# [(<name>, <field_class>), ...]
+		params = []
+		for param in node.params:
+			param = self._handle_node(param, scope, ctxt, stream)
+			params.append(param)
+
+		param_list = functions.ParamListDef(params, node.coord)
+		return param_list
+	
+	def _handle_func_decl(self, node, scope, ctxt, stream):
+		"""Handle FuncDecl nodes
+
+		:node: TODO
+		:scope: TODO
+		:ctxt: TODO
+		:stream: TODO
+		:returns: TODO
+
+		"""
+		# could just call _handle_param_list directly...
+		for param in node.args.params:
+			# see the check in _handle_decl for how this is kept from
+			# being added to the local context/scope
+			param.is_func_param = True
+		params = self._handle_node(node.args, scope, ctxt, stream)
+
+		func_type = self._handle_node(node.type, scope, ctxt, stream)
+
+		func = functions.Function(func_type, params, scope)
+		return func
+
+	def _handle_func_call(self, node, scope, ctxt, stream):
+		"""Handle FuncCall nodes
+
+		:node: TODO
+		:scope: TODO
+		:ctxt: TODO
+		:stream: TODO
+		:returns: TODO
+
+		"""
+		func_args = self._handle_node(node.args, scope, ctxt, stream)
+		func = self._handle_node(node.name, scope, ctxt, stream)
+		func.call(func_args, ctxt, stream, self)
+	
+	def _handle_expr_list(self, node, scope, ctxt, stream):
+		"""Handle ExprList nodes
+
+		:node: TODO
+		:scope: TODO
+		:ctxt: TODO
+		:stream: TODO
+		:returns: TODO
+
+		"""
+		exprs = [
+			self._handle_node(expr, scope, ctxt, stream) for expr in node.exprs
+		]
+		return exprs
 	
 	# -----------------------------
 	# UTILITY
@@ -505,7 +658,8 @@ class PfpInterp(object):
 			"long": 	"Int",
 			"short":	"Short",
 			"double":	"Double",
-			"float":	"Float"
+			"float":	"Float",
+			"void":		"Void"
 		}
 
 		core = names[-1]
@@ -514,12 +668,7 @@ class PfpInterp(object):
 			# will return a list of resolved names
 			resolved_names = scope.get_type(core)
 			if resolved_names[-1] not in switch:
-				raise errors.UnresolvedType(
-					"The type {!r} ({!r}) could not be resolved".format(
-						" ".join(names),
-						" ".join(resolved_names)
-					)
-				)
+				raise errors.UnresolvedType(node.coord, " ".join(names), " ".join(resolved_names))
 			names = copy.copy(names)
 			names.pop()
 			names += resolved_names

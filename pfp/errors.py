@@ -7,26 +7,38 @@ Errors for pfp
 class PrematureEOF(Exception): pass
 # TODO
 
-class UnsupportedASTNode(Exception): pass
-# TODO
+class PfpError(Exception):
+	"""Base class for pfp exceptions"""
+	def __init__(self, coord, *args):
+		super(PfpError, self).__init__(self.msg.format(*args) + " at {}".format(coord))
 
-class UnresolvedType(Exception): pass
-# TODO
+class InvalidArguments(PfpError):
+	msg = "Invalid arguments, received {!r}, expected {!r}"
 
-class UnsupportedConstantType(Exception):
+class InvalidState(PfpError):
+	msg = "Pfp has reached an invalid state"
+
+class UnsupportedASTNode(PfpError):
+	msg = "Pfp can not yet interpret {!r} nodes"
+
+class UnresolvedType(PfpError):
+	"""These exceptions will be raised when a type cannot be resolved"""
+	msg = "The type {!r} ({!r}) could not be resolved"
+
+class UnsupportedConstantType(PfpError):
 	"""These exceptions will be raised when a constant type is encountered
 	that can not yet be handled (or not implemented yet)"""
-	def __init__(self, constant_type, coord):
-		super(UnsupportedConstantType, self).__init__("Unsupported constant type {!r} at {}".format(
-			constant_type, coord
-		))
-		
+	msg = "Unsupported constant type {!r}"
 
-class UnresolvedID(Exception):
+class UnresolvedID(PfpError):
 	"""These exceptionsn will be raised when a referenced ID cannot
 	be resolved"""
+	msg = "Could not resolve field {!r}"
 
-	def __init__(self, field_name, coord):
-		super(UnresolvedID, self).__init__("Could not resolve field {!r} at {}".format(
-			field_name, coord
-		))
+class UnsupportedUnaryOperator(PfpError):
+	"""docstring for UnsupportedUnaryOperator"""
+	msg = "Unsupported unary operator {!r}"
+
+class UnsupportedBinaryOperator(PfpError):
+	"""docstring for UnsupportedUnaryOperator"""
+	msg = "Unsupported binary operator {!r}"
