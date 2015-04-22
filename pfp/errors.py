@@ -10,7 +10,11 @@ class PrematureEOF(Exception): pass
 class PfpError(Exception):
 	"""Base class for pfp exceptions"""
 	def __init__(self, coord, *args):
-		super(PfpError, self).__init__(self.msg.format(*args) + " at {}".format(coord))
+		super(PfpError, self).__init__((self.msg + " at {}").format(*(args + (coord,))))
+
+class InterpReturn(PfpError):
+	def __init__(self, ret_val):
+		self.value = ret_val
 
 class InvalidArguments(PfpError):
 	msg = "Invalid arguments, received {!r}, expected {!r}"

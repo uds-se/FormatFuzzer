@@ -5,16 +5,17 @@ Python format parser
 """
 
 import copy
+import glob
 import sys
 import os
 
 import py010parser
 from py010parser import c_ast as AST
 
-from . import fields
-from . import errors
-from . import functions
-
+import pfp.fields as fields
+import pfp.errors as errors
+import pfp.functions as functions
+import pfp.builtin as builtin
 
 class Scope(object):
 	"""A class to keep track of the current scope of the interpreter"""
@@ -193,9 +194,35 @@ class PfpInterp(object):
 	"""
 	"""
 
+	_builtins = {}
+
+	@classmethod
+	def add_builtin(cls, name, func, ret):
+		cls._builtins[name] = functions.NativeFunction(
+			name, func, ret
+		)
+	
+	@classmethod
+	def define_builtins(cls):
+		"""Define the builtin functions for PFP
+		"""
+		if len(cls._builtins) > 0:
+			return
+
+		glob_pattern = os.path.join(os.path.dirname(__file__), "builtin", "*.py")
+		for filename in glob.glob(glob_pattern):
+			basename = os.path.basename(filename).replace(".py", "")
+			if basename == "__init__":
+				continue
+			mod_base = __import__("pfp.builtin", globals(), locals(), fromlist=[basename])
+			mod = getattr(mod_base, basename)
+			setattr(mod, "PYVAL", fields.get_value) 
+
 	def __init__(self):
 		"""
 		"""
+		self.__class__.define_builtins()
+
 		self._node_switch = {
 			AST.FileAST:		self._handle_file_ast,
 			AST.Decl:			self._handle_decl,
@@ -212,7 +239,10 @@ class PfpInterp(object):
 			AST.FuncCall:		self._handle_func_call,
 			AST.FuncDecl:		self._handle_func_decl,
 			AST.ParamList:		self._handle_param_list,
-			AST.ExprList:		self._handle_expr_list
+			AST.ExprList:		self._handle_expr_list,
+			AST.Compound:		self._handle_compound,
+			AST.Return:			self._handle_return,
+			AST.ArrayDecl:		self._handle_array_decl
 		}
 	
 	# --------------------
@@ -262,8 +292,6 @@ class PfpInterp(object):
 		#			  TypeDecl: d, []
 		#				IdentifierType: ['char']
 
-		print(self._ast.show())
-
 		# it is important to pass the stream in as the stream
 		# may change (e.g. compressed data)
 		return self._handle_node(self._ast, None, None, self._stream)
@@ -280,7 +308,7 @@ class PfpInterp(object):
 
 		"""
 		if scope is None:
-			scope = Scope()
+			scope = self._create_scope()
 
 		if type(node) is tuple:
 			node = node[1]
@@ -429,21 +457,25 @@ class PfpInterp(object):
 
 		"""
 		switch = {
-			"int": int,
-			"long": int,
-			"float": float,
-			"double": float,
+			"int": (int, fields.Int),
+			"long": (int, fields.Int),
+			"float": (float, fields.Float),
+			"double": (float, fields.Double),
 
 			# cut out the quotes
-			"char": lambda x: ord(x[1:-1]),
+			"char": (lambda x: ord(x[1:-1]), fields.Char),
 
 			# TODO should this be unicode?? will probably bite me later...
 			# cut out the quotes
-			"string": lambda x: str(x[1:-1])
+			"string": (lambda x: str(x[1:-1]), fields.String)
 		}
 
 		if node.type in switch:
-			return switch[node.type](node.value)
+			#return switch[node.type](node.value)
+			conversion,field_cls = switch[node.type]
+			field = field_cls()
+			field._pfp__set_value(conversion(node.value))
+			return field
 
 		raise UnsupportedConstantType(node.coord, node.type)
 	
@@ -547,7 +579,7 @@ class PfpInterp(object):
 
 		"""
 		func = self._handle_node(node.decl, scope, ctxt, stream)
-		func.code = node.body
+		func.body = node.body
 	
 	def _handle_param_list(self, node, scope, ctxt, stream):
 		"""Handle ParamList nodes
@@ -589,6 +621,7 @@ class PfpInterp(object):
 		func_type = self._handle_node(node.type, scope, ctxt, stream)
 
 		func = functions.Function(func_type, params, scope)
+
 		return func
 
 	def _handle_func_call(self, node, scope, ctxt, stream):
@@ -603,7 +636,7 @@ class PfpInterp(object):
 		"""
 		func_args = self._handle_node(node.args, scope, ctxt, stream)
 		func = self._handle_node(node.name, scope, ctxt, stream)
-		func.call(func_args, ctxt, stream, self)
+		func.call(func_args, ctxt, scope, stream, self, node.coord)
 	
 	def _handle_expr_list(self, node, scope, ctxt, stream):
 		"""Handle ExprList nodes
@@ -620,9 +653,74 @@ class PfpInterp(object):
 		]
 		return exprs
 	
+	def _handle_compound(self, node, scope, ctxt, stream):
+		"""Handle Compound nodes
+
+		:node: TODO
+		:scope: TODO
+		:ctxt: TODO
+		:stream: TODO
+		:returns: TODO
+
+		"""
+		scope.push()
+
+		try:
+			for child in node.children():
+				self._handle_node(child, scope, ctxt, stream)
+
+		# in case a return occurs, be sure to pop the scope
+		# (returns are implemented by raising an exception)
+		finally:
+			scope.pop()
+	
+	def _handle_return(self, node, scope, ctxt, stream):
+		"""Handle Return nodes
+
+		:node: TODO
+		:scope: TODO
+		:ctxt: TODO
+		:stream: TODO
+		:returns: TODO
+
+		"""
+		ret_val = self._handle_node(node.expr, scope, ctxt, stream)
+		raise errors.InterpReturn(ret_val)
+	
+	def _handle_array_decl(self, node, scope, ctxt, stream):
+		"""Handle ArrayDecl nodes
+
+		:node: TODO
+		:scope: TODO
+		:ctxt: TODO
+		:stream: TODO
+		:returns: TODO
+
+		"""
+		array_size = self._handle_node(node.dim, scope, ctxt, stream)
+		# TODO node.dim_quals
+		# node.type
+		field_cls = self._handle_node(node.type, scope, ctxt, stream)
+		array = fields.Array(array_size, field_cls)
+		array._pfp__name = node.type.declname
+		array._pfp__parse(stream)
+		return array
+	
 	# -----------------------------
 	# UTILITY
 	# -----------------------------
+	
+	def _create_scope(self):
+		"""TODO: Docstring for _create_scope.
+		:returns: TODO
+
+		"""
+		res = Scope()
+
+		for func_name,native_func in self._builtins.iteritems():
+			res.add_local(func_name, native_func)
+
+		return res
 
 	def _get_value(self, node, scope, ctxt, stream):
 		"""Return the value of the node. It is expected to be
@@ -659,7 +757,9 @@ class PfpInterp(object):
 			"short":	"Short",
 			"double":	"Double",
 			"float":	"Float",
-			"void":		"Void"
+			"void":		"Void",
+			"string":	"String",
+			"wstring":	"WString"
 		}
 
 		core = names[-1]

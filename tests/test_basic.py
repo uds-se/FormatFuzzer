@@ -200,6 +200,27 @@ class TestBasic(unittest.TestCase):
 				func(10, 20);
 			"""
 		)
+	
+	def test_builtin(self):
+		dom = self._test_parse_build(
+			"",
+			"""
+				Printf("hello there");
+				Printf("%d", 10);
+			"""
+		)
+	
+	def test_custom_func(self):
+		dom = self._test_parse_build(
+			"",
+			"""
+				int add(int n1, int n2) {
+					return n1 + n2;
+				}
+
+				Printf("%d", add(5, 8));
+			"""
+		)
 
 if __name__ == "__main__":
 	unittest.main()

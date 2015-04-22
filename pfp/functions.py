@@ -18,9 +18,9 @@ class Function(object):
 		self._scope = scope.clone()
 		self._params = params
 	
-	def call(self, args, ctxt, stream, interp):
+	def call(self, args, ctxt, scope, stream, interp, coord):
 		if self.body is None:
-			raise errors.InvalidState()
+			raise errors.InvalidState(coord)
 
 		# scopes will be pushed and popped by the Compound node handler!
 		# If a return statement is interpreted in the function,
@@ -32,8 +32,9 @@ class Function(object):
 		params = self._params.instantiate(self._scope, args)
 
 		ret_val = None
+		import pdb ; pdb.set_trace()
 		try:
-			interp._handle_node(self._node, self._scope, ctxt, stream)
+			interp._handle_node(self.body, self._scope, ctxt, stream)
 		except errors.InterpReturn as e:
 			# TODO do some type checking on the return value??
 			# perhaps this should be done when initially traversing
@@ -44,6 +45,23 @@ class Function(object):
 			self._scope.pop()
 
 		return ret_val
+
+class NativeFunction(object):
+	"""A class for native functions"""
+	def __init__(self, name, func, ret):
+		"""
+		"""
+		super(NativeFunction, self).__init__()
+		self._pfp__name = name
+		self.name = name
+		self.func = func
+		self.ret = ret
+	
+	def call(self, args, ctxt, scope, stream, interp, coord):
+		res = self.func(args, ctxt, scope, stream)
+		res_field = self.ret()
+		res_field._pfp__set_value(res)
+		return res_field
 
 class ParamListDef(object):
 	"""docstring for ParamList"""
@@ -75,12 +93,12 @@ class ParamListDef(object):
 				[x.__class__.__name__ for x in param_instances]
 			)
 
-		for x in xrange(args):
+		for x in xrange(len(args)):
 			param = param_instances[x]
 			param._pfp__set_value(args[x])
-			scope.add_local(param.name, param)
+			scope.add_local(param._pfp__name, param)
 
-		return ParamList(param_instances, args)
+		return ParamList(param_instances)
 
 class ParamList(object):
 	"""Used for when a function is actually called. See ParamListDef
@@ -92,7 +110,7 @@ class ParamList(object):
 		# for use by __getitem__
 		self._params_map = {}
 		for param in self.params:
-			self._params_map[param.name] = param
+			self._params_map[param._pfp__name] = param
 	
 	def __iter__(self):
 		"""Return an iterator that will iterate through each of the

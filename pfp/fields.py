@@ -6,6 +6,13 @@ from . import errors
 BIG_ENDIAN = ">"
 LITTLE_ENDIAN = "<"
 
+def get_value(field):
+	if isinstance(field, Field):
+		return field._pfp__value
+	else:
+		return field
+PYVAL = get_value
+
 class Field(object):
 	"""Core class for all fields used in the Pfp DOM.
 	
@@ -258,3 +265,123 @@ class Int64(NumberBase):
 
 class UInt64(Int64):
 	format = "Q"
+
+class Float(NumberBase):
+	width = 4
+	format = "f"
+
+class Double(NumberBase):
+	width = 8
+	format = "d"
+
+# --------------------------------
+
+class Array(Field):
+	width = -1
+
+	def __init__(self, width, field_cls, stream=None):
+		""" Create an array field of size "width" from the stream
+		"""
+		self.width = width
+		self.field_cls = field_cls
+		self.items = []
+
+		if stream is not None:
+			self._pfp__parse(stream)
+
+	def _pfp__parse(self, stream):
+		# optimizations... should reuse existing fields??
+		self.items = []
+		for x in range(PYVAL(self.width)):
+			field = self.field_cls()
+			field._pfp__name = "{}[{}]".format(
+				self._pfp__name,
+				x
+			)
+			field._pfp__parse(stream)
+			self.items.append(field)
+	
+	def _pfp__build(self, stream=None):
+		res = 0 if stream is not None else ""
+		for item in self.items:
+			res += item._pfp__build(stream=stream)
+		return res
+	
+	def __getitem__(self, idx):
+		return self.items[idx]
+	
+	def __setitem__(self, idx, value):
+		if isinstance(value, Field):
+			self.items[idx] = value
+		else:
+			self.items[idx]._pfp__set_value(value)
+
+# http://www.sweetscape.com/010editor/manual/ArraysStrings.htm
+class String(Field):
+	"""A null-terminated string. String fields are interchangeable
+	with char arrays"""
+
+	# if the width is -1 when parse is called, read until null
+	# termination.
+	width = -1
+	read_size = 1
+	terminator = "\x00"
+
+	def _pfp__parse(self, stream):
+		"""Read from the stream until the string is null-terminated
+
+		:stream: The input stream
+		:returns: None
+
+		"""
+		res = ""
+		while True:
+			byte = stream.read(self.read_size)
+			if len(byte) < self.read_size:
+				raise errors.PrematureEOF()
+			# note that the null terminator must be added back when
+			# built again!
+			if byte == self.terminator:
+				break
+			res += byte
+		self._pfp__value = res
+	
+	def _pfp__build(self, stream=None):
+		"""Build the String field
+
+		:stream: TODO
+		:returns: TODO
+
+		"""
+		if stream is None:
+			return self._pfp__value + "\x00"
+		else:
+			return stream.write(self._pfp__value + "\x00")
+	
+	def __cmp__(self, other):
+		"""Compare the String field to something else, either another
+		String field or a raw python string
+
+		:other: Another String field or a native python value
+		:returns: result of cmp()
+
+		"""
+		if isinstance(other, Field):
+			return cmp(self._pfp__value, other._pfp__value)
+		else:
+			return cmp(self._pfp__value, other)
+
+class WString(String):
+	width = -1
+	read_size = 2
+	terminator = "\x00\x00"
+
+	def _pfp__parse(self, stream):
+		String._pfp__parse(self, stream)
+		self._pfp__value = self._pfp__value.decode("utf-16le")
+	
+	def _pfp__build(self, stream=None):
+		if stream is None:
+			return self._pfp__value.encode("utf-16le") + "\x00\x00"
+		else:
+			return stream.write(self._pfp__value.encode("utf-16le") + "\x00\x00")

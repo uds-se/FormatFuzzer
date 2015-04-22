@@ -3,8 +3,6 @@
 import os
 import sys
 
-from . import interp
-
 def parse(stream, template):
 	"""Parse the stream using the supplied template
 
@@ -13,6 +11,8 @@ def parse(stream, template):
 	:returns: pfp DOM
 
 	"""
-	interpretor = interp.PfpInterp()
+	import pfp.interp
+
+	interpretor = pfp.interp.PfpInterp()
 	dom = interpretor.parse(stream, template)
 	return dom
