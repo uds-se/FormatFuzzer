@@ -221,6 +221,18 @@ class TestBasic(unittest.TestCase):
 				Printf("%d", add(5, 8));
 			"""
 		)
+	
+	def test_custom_func2(self):
+		dom = self._test_parse_build(
+			"",
+			"""
+				string prepend(string orig) {
+					return "blah: " + orig;
+				}
+
+				Printf(prepend("hello"));
+			"""
+		)
 
 if __name__ == "__main__":
 	unittest.main()

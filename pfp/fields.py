@@ -207,6 +207,19 @@ class NumberBase(Field):
 			other = other._pfp__value
 		return cmp(self._pfp__value, other)
 	
+	def _dom_class(self, obj1, obj2):
+		"""Return the dominating numeric class between the two
+
+		:obj1: TODO
+		:obj2: TODO
+		:returns: TODO
+
+		"""
+		if isinstance(obj1, Double) or isinstance(obj2, Double):
+			return Double
+		if isinstance(obj1, Float) or isinstance(obj2, Float):
+			return Float
+	
 	def __iadd__(self, other):
 		self._pfp__value += other
 	def __isub__(self, other):
@@ -229,6 +242,9 @@ class NumberBase(Field):
 		self._pfp__value <<= other
 	def __irshift__(self, other):
 		self._pfp__value >>= other
+	
+	def __add__(self, other):
+		res = self.__class__()
 
 	def __invert__(self):
 		return ~self._pfp__value
@@ -318,7 +334,7 @@ class Array(Field):
 
 # http://www.sweetscape.com/010editor/manual/ArraysStrings.htm
 class String(Field):
-	"""A null-terminated string. String fields are interchangeable
+	"""A null-terminated string. String fields should be interchangeable
 	with char arrays"""
 
 	# if the width is -1 when parse is called, read until null
@@ -370,6 +386,35 @@ class String(Field):
 			return cmp(self._pfp__value, other._pfp__value)
 		else:
 			return cmp(self._pfp__value, other)
+	
+	def __add__(self, other):
+		"""Add two strings together. If other is not a String instance,
+		a fields.String instance will still be returned
+
+		:other: TODO
+		:returns: TODO
+
+		"""
+		res_field = String()
+		res = ""
+		if isinstance(other, String):
+			res = self._pfp__value + other._pfp__value
+		else:
+			res = self._pfp__value + other
+		res_field._pfp__set_value(res)
+		return res_field
+	
+	def __iadd__(self, other):
+		"""In-place addition to this String field
+
+		:other: TODO
+		:returns: TODO
+
+		"""
+		if isinstance(other, String):
+			self._pfp__value += other._pfp__value
+		else:
+			self._pfp__value += other
 
 class WString(String):
 	width = -1

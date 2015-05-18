@@ -32,7 +32,6 @@ class Function(object):
 		params = self._params.instantiate(self._scope, args)
 
 		ret_val = None
-		import pdb ; pdb.set_trace()
 		try:
 			interp._handle_node(self.body, self._scope, ctxt, stream)
 		except errors.InterpReturn as e:

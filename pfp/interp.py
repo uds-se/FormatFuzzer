@@ -506,8 +506,8 @@ class PfpInterp(object):
 			"!=": lambda x,y: x != y
 		}
 
-		left_val = self._get_value(node.left, scope, ctxt, stream)
-		right_val = self._get_value(node.right, scope, ctxt, stream)
+		left_val = self._handle_node(node.left, scope, ctxt, stream)
+		right_val = self._handle_node(node.right, scope, ctxt, stream)
 
 		if node.op not in switch:
 			raise errors.UnsupportedBinaryOperator(node.coord, node.op)
@@ -636,7 +636,7 @@ class PfpInterp(object):
 		"""
 		func_args = self._handle_node(node.args, scope, ctxt, stream)
 		func = self._handle_node(node.name, scope, ctxt, stream)
-		func.call(func_args, ctxt, scope, stream, self, node.coord)
+		return func.call(func_args, ctxt, scope, stream, self, node.coord)
 	
 	def _handle_expr_list(self, node, scope, ctxt, stream):
 		"""Handle ExprList nodes

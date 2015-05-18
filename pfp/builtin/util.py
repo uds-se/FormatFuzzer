@@ -15,7 +15,6 @@ def printf(params, ctxt, scope, stream):
 		print(PYVAL(params[0]))
 		return
 
-	import pdb ; pdb.set_trace()
 	to_print = PYVAL(params[0]) % tuple(PYVAL(x) for x in params[1:])
 	res = len(to_print)
 	sys.stdout.write(to_print)
