@@ -4,4 +4,8 @@ DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 
 cd $DIR/../tests
 
-python -m unittest discover
+if [[ $# -ne 1 ]] ; then
+	python -m unittest discover
+else
+	python -m unittest $@
+fi

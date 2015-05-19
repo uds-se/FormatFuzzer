@@ -245,6 +245,11 @@ class NumberBase(Field):
 	
 	def __add__(self, other):
 		res = self.__class__()
+		res._pfp__set_value(
+			self._pfp__value +
+			self._pfp__get_root_value(other)
+		)
+		return res
 
 	def __invert__(self):
 		return ~self._pfp__value
