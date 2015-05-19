@@ -2,7 +2,11 @@
 # encoding: utf-8
 
 import os
-import StringIO
+try:
+	from StringIO import StringIO
+# StringIO does not exist in python3
+except ImportError as e:
+	from io import StringIO
 import struct
 import sys
 import unittest
@@ -21,7 +25,7 @@ class TestNumericFields(unittest.TestCase):
 		pass
 	
 	def _do_parse(self, field, data):
-		field._pfp__parse(StringIO.StringIO(data))
+		field._pfp__parse(StringIO(data))
 	
 	def _do_endian_tests(self, field, format):
 		field.endian = pfp.fields.BIG_ENDIAN
@@ -75,7 +79,7 @@ class TestStrings(unittest.TestCase):
 		pass
 
 	def _test_parse_build(self, data, template):
-		dom = pfp.parse(StringIO.StringIO(data), template)
+		dom = pfp.parse(StringIO(data), template)
 		self.assertEqual(dom._pfp__build(), data)
 		return dom
 	
@@ -124,7 +128,7 @@ class TestArrays(unittest.TestCase):
 		pass
 	
 	def _do_parse(self, field, data):
-		field._pfp__parse(StringIO.StringIO(data))
+		field._pfp__parse(StringIO(data))
 	
 	def _do_endian_tests(self, field, format):
 		field.endian = pfp.fields.BIG_ENDIAN
@@ -136,7 +140,7 @@ class TestArrays(unittest.TestCase):
 		self.assertEquals(field, 1)
 
 	def _test_parse_build(self, data, template):
-		dom = pfp.parse(StringIO.StringIO(data), template)
+		dom = pfp.parse(StringIO(data), template)
 		self.assertEqual(dom._pfp__build(), data)
 		return dom
 	

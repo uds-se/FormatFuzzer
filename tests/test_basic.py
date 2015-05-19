@@ -2,7 +2,12 @@
 # encoding: utf-8
 
 import os
-import StringIO
+try:
+	from StringIO import StringIO
+
+# StringIO does not exist in python3
+except ImportError as e:
+	from io import StringIO
 import sys
 import unittest
 
@@ -18,7 +23,7 @@ class TestBasic(unittest.TestCase):
 		pass
 	
 	def _test_parse_build(self, data, template):
-		dom = pfp.parse(StringIO.StringIO(data), template)
+		dom = pfp.parse(StringIO(data), template)
 		self.assertEqual(dom._pfp__build(), data)
 		return dom
 	
