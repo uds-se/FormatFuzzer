@@ -221,34 +221,88 @@ class NumberBase(Field):
 			return Float
 	
 	def __iadd__(self, other):
-		self._pfp__value += other
+		self._pfp__value += self._pfp__get_root_value(other)
 	def __isub__(self, other):
-		self._pfp__value -= other
+		self._pfp__value -= self._pfp__get_root_value(other)
 	def __imul__(self, other):
-		self._pfp__value *= other
+		self._pfp__value *= self._pfp__get_root_value(other)
 	def __idiv__(self, other):
-		self._pfp__value /= other
+		self._pfp__value /= self._pfp__get_root_value(other)
 	def __iand__(self, other):
-		self._pfp__value &= other
+		self._pfp__value &= self._pfp__get_root_value(other)
 	def __ixor__(self, other):
-		self._pfp__value ^= other
+		self._pfp__value ^= self._pfp__get_root_value(other)
+	def __ior__(self, other):
+		self._pfp__value |= self._pfp__get_root_value(other)
 	def __ifloordiv__(self, other):
-		self._pfp__value //= other
+		self._pfp__value //= self._pfp__get_root_value(other)
 	def __imod__(self, other):
-		self._pfp__value %= other
+		self._pfp__value %= self._pfp__get_root_value(other)
 	def __ipow__(self, other):
-		self._pfp__value **= other
+		self._pfp__value **= self._pfp__get_root_value(other)
 	def __ilshift__(self, other):
-		self._pfp__value <<= other
+		self._pfp__value <<= self._pfp__get_root_value(other)
 	def __irshift__(self, other):
-		self._pfp__value >>= other
+		self._pfp__value >>= self._pfp__get_root_value(other)
 	
 	def __add__(self, other):
 		res = self.__class__()
-		res._pfp__set_value(
-			self._pfp__value +
-			self._pfp__get_root_value(other)
-		)
+		res._pfp__set_value(self._pfp__value + self._pfp__get_root_value(other))
+		return res
+	
+	def __sub__(self, other):
+		res = self.__class__()
+		res._pfp__set_value(self._pfp__value - self._pfp__get_root_value(other))
+		return res
+	
+	def __mul__(self, other):
+		res = self.__class__()
+		res._pfp__set_value(self._pfp__value * self._pfp__get_root_value(other))
+		return res
+	
+	def __div__(self, other):
+		res = self.__class__()
+		res._pfp__set_value(self._pfp__value / self._pfp__get_root_value(other))
+		return res
+	
+	def __and__(self, other):
+		res = self.__class__()
+		res._pfp__set_value(self._pfp__value & self._pfp__get_root_value(other))
+		return res
+	
+	def __xor__(self, other):
+		res = self.__class__()
+		res._pfp__set_value(self._pfp__value ^ self._pfp__get_root_value(other))
+		return res
+	
+	def __or__(self, other):
+		res = self.__class__()
+		res._pfp__set_value(self._pfp__value | self._pfp__get_root_value(other))
+		return res
+	
+	def __floordiv__(self, other):
+		res = self.__class__()
+		res._pfp__set_value(self._pfp__value // self._pfp__get_root_value(other))
+		return res
+	
+	def __mod__(self, other):
+		res = self.__class__()
+		res._pfp__set_value(self._pfp__value % self._pfp__get_root_value(other))
+		return res
+	
+	def __pow__(self, other):
+		res = self.__class__()
+		res._pfp__set_value(self._pfp__value ** self._pfp__get_root_value(other))
+		return res
+
+	def __lshift__(self, other):
+		res = self.__class__()
+		res._pfp__set_value(self._pfp__value << self._pfp__get_root_value(other))
+		return res
+
+	def __rshift__(self, other):
+		res = self.__class__()
+		res._pfp__set_value(self._pfp__value >> self._pfp__get_root_value(other))
 		return res
 
 	def __invert__(self):

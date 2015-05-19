@@ -351,12 +351,13 @@ class PfpInterp(object):
 		# stream!
 		if "local" in node.quals:
 			field = field()
-			scope.add_local(node.name, fields)
+			scope.add_local(node.name, field)
 
 			# this should only be able to be done with locals, right?
 			# if not, move it to the bottom of the function
 			if node.init is not None:
-				field._pfp__value = self._handle_node(node.init, scope, ctxt, stream)
+				val = self._handle_node(node.init, scope, ctxt, stream)
+				field._pfp__set_value(val)
 
 		elif isinstance(field, functions.Function):
 			# eh, just add it as a local...
@@ -457,9 +458,11 @@ class PfpInterp(object):
 
 		"""
 		switch = {
-			"int": (int, fields.Int),
-			"long": (int, fields.Int),
-			"float": (float, fields.Float),
+			"int": (long, fields.Int),
+			"long": (long, fields.Int),
+			# TODO this isn't quite right, but py010parser wouldn't have
+			# parsed it if it wasn't correct...
+			"float": (lambda x: float(x.replace("f", "")), fields.Float),
 			"double": (float, fields.Double),
 
 			# cut out the quotes
@@ -566,7 +569,7 @@ class PfpInterp(object):
 		"""
 		field = self._handle_node(node.lvalue, scope, ctxt, stream)
 		value = self._handle_node(node.rvalue, scope, ctxt, stream)
-		field._pfp__value = value
+		field._pfp__set_value(value)
 	
 	def _handle_func_def(self, node, scope, ctxt, stream):
 		"""Handle FuncDef nodes
