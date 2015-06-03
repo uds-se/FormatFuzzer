@@ -14,6 +14,7 @@ import unittest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import pfp
+import pfp.six as six
 
 class TestBasic(unittest.TestCase):
 	def setUp(self):
@@ -24,7 +25,7 @@ class TestBasic(unittest.TestCase):
 	
 	def _test_parse_build(self, data, template):
 		dom = pfp.parse(StringIO(data), template)
-		self.assertEqual(dom._pfp__build(), data)
+		self.assertEqual(dom._pfp__build(), six.binary(data))
 		return dom
 	
 	def test_single_decl_parse(self):
@@ -73,7 +74,7 @@ class TestBasic(unittest.TestCase):
 				short b;
 			"""
 		)
-		self.assertTrue(dom.a, 0xff00)
+		self.assertEqual(dom.a, 0xff00)
 		self.assertEqual(dom.b, 0xff)
 	
 	def test_local(self):

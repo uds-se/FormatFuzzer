@@ -16,6 +16,7 @@ import pfp.fields as fields
 import pfp.errors as errors
 import pfp.functions as functions
 import pfp.builtin as builtin
+import pfp.six as six
 
 class Scope(object):
 	"""A class to keep track of the current scope of the interpreter"""
@@ -458,8 +459,8 @@ class PfpInterp(object):
 
 		"""
 		switch = {
-			"int": (long, fields.Int),
-			"long": (long, fields.Int),
+			"int": (lambda x: int(str(x).replace("l", "")), fields.Int),
+			"long": (lambda x: int(str(x).replace("l", "")), fields.Int),
 			# TODO this isn't quite right, but py010parser wouldn't have
 			# parsed it if it wasn't correct...
 			"float": (lambda x: float(x.replace("f", "")), fields.Float),
@@ -720,7 +721,7 @@ class PfpInterp(object):
 		"""
 		res = Scope()
 
-		for func_name,native_func in self._builtins.iteritems():
+		for func_name,native_func in six.iteritems(self._builtins):
 			res.add_local(func_name, native_func)
 
 		return res

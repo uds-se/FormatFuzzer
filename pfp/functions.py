@@ -1,4 +1,5 @@
-from . import errors
+import pfp.errors as errors
+import pfp.six as six
 
 class Function(object):
 	"""A class to maintain function state and arguments"""
@@ -92,7 +93,7 @@ class ParamListDef(object):
 				[x.__class__.__name__ for x in param_instances]
 			)
 
-		for x in xrange(len(args)):
+		for x in six.moves.range(len(args)):
 			param = param_instances[x]
 			param._pfp__set_value(args[x])
 			scope.add_local(param._pfp__name, param)

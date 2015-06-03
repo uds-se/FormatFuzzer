@@ -1,7 +1,8 @@
 
 import struct
 
-from . import errors
+import pfp.errors as errors
+import pfp.six as six
 
 BIG_ENDIAN = ">"
 LITTLE_ENDIAN = "<"
@@ -62,6 +63,58 @@ class Field(object):
 		:returns: None
 		"""
 		raise NotImplemented("Inheriting classes must implement the _pfp__parse function")
+
+	def __cmp__(self, other):
+		"""Compare the Field to something else, either another
+		Field or something else
+
+		:other: Another Field instance or something else
+		:returns: result of cmp()
+
+		"""
+		val = get_value(other)
+		return cmp(self._pfp__value, val)
+	
+	def __lt__(self, other):
+		"""Compare the Field to something else, either another
+		Field or something else
+
+		:other: The other field
+		:returns: True if equal
+		"""
+		val = get_value(other)
+		return self._pfp__value < val
+	
+	def __gt__(self, other):
+		"""Compare the Field to something else, either another
+		Field or something else
+
+		:other: The other field
+		:returns: True if equal
+		"""
+		val = get_value(other)
+		return self._pfp__value > val
+	
+	def __ge__(self, other):
+		val = get_value(other)
+		return self._pfp__value >= val
+	
+	def __le__(self, other):
+		val = get_value(other)
+		return self._pfp__value >= val
+	
+	def __ne__(self, other):
+		val = get_value(other)
+		return self._pfp__value >= val
+	
+	def __eq__(self, other):
+		"""See if the two items are equal (True/False)
+
+		:other: 
+		:returns: 
+		"""
+		val = get_value(other)
+		return self._pfp__value == val
 	
 	def __repr__(self):
 		return "{}({!r})".format(self.__class__.__name__, self._pfp__value)
@@ -110,7 +163,7 @@ class Struct(Field):
 
 		"""
 		# returns either num bytes written or total data
-		res = "" if stream is None else 0
+		res = six.binary("") if stream is None else 0
 
 		# iterate IN ORDER
 		for child in self._pfp__children:
@@ -168,7 +221,8 @@ class NumberBase(Field):
 		:stream: An IO stream that can be read from
 		:returns: The number of bytes parsed
 		"""
-		data = stream.read(self.width)
+		raw_data = stream.read(self.width)
+		data = six.binary(raw_data)
 
 		if len(data) < self.width:
 			raise errors.PrematureEOF()
@@ -196,16 +250,6 @@ class NumberBase(Field):
 			return stream.write(data)
 		else:
 			return data
-	
-	def __cmp__(self, other):
-		"""Custom comparison function so code like below will work: ::
-		
-			field = Int()
-			field._pfp__parse(StringIO.StringIO("\\x00\\x00\\x00\\x01"))
-			field == 1 # should be True"""
-		if isinstance(other, NumberBase):
-			other = other._pfp__value
-		return cmp(self._pfp__value, other)
 	
 	def _dom_class(self, obj1, obj2):
 		"""Return the dominating numeric class between the two
@@ -258,6 +302,14 @@ class NumberBase(Field):
 	def __mul__(self, other):
 		res = self.__class__()
 		res._pfp__set_value(self._pfp__value * self._pfp__get_root_value(other))
+		return res
+	
+	def __truediv__(self, other):
+		res = self.__class__()
+		# if truediv is being called, then / should also behave like
+		# truediv (2/3 == 0.6666 instead of 0 [classic division])
+		# the default in python 3 is truediv
+		res._pfp__set_value(self._pfp__value / self._pfp__get_root_value(other))
 		return res
 	
 	def __div__(self, other):
@@ -377,7 +429,7 @@ class Array(Field):
 			self.items.append(field)
 	
 	def _pfp__build(self, stream=None):
-		res = 0 if stream is not None else ""
+		res = 0 if stream is not None else six.binary("")
 		for item in self.items:
 			res += item._pfp__build(stream=stream)
 		return res
@@ -400,7 +452,7 @@ class String(Field):
 	# termination.
 	width = -1
 	read_size = 1
-	terminator = "\x00"
+	terminator = six.binary("\x00")
 
 	def _pfp__parse(self, stream):
 		"""Read from the stream until the string is null-terminated
@@ -409,9 +461,9 @@ class String(Field):
 		:returns: None
 
 		"""
-		res = ""
+		res = six.binary("")
 		while True:
-			byte = stream.read(self.read_size)
+			byte = six.binary(stream.read(self.read_size))
 			if len(byte) < self.read_size:
 				raise errors.PrematureEOF()
 			# note that the null terminator must be added back when
@@ -429,22 +481,9 @@ class String(Field):
 
 		"""
 		if stream is None:
-			return self._pfp__value + "\x00"
+			return self._pfp__value + six.binary("\x00")
 		else:
-			return stream.write(self._pfp__value + "\x00")
-	
-	def __cmp__(self, other):
-		"""Compare the String field to something else, either another
-		String field or a raw python string
-
-		:other: Another String field or a native python value
-		:returns: result of cmp()
-
-		"""
-		if isinstance(other, Field):
-			return cmp(self._pfp__value, other._pfp__value)
-		else:
-			return cmp(self._pfp__value, other)
+			return stream.write(self._pfp__value + six.binary("\x00"))
 	
 	def __add__(self, other):
 		"""Add two strings together. If other is not a String instance,
@@ -478,14 +517,15 @@ class String(Field):
 class WString(String):
 	width = -1
 	read_size = 2
-	terminator = "\x00\x00"
+	terminator = six.binary("\x00\x00")
 
 	def _pfp__parse(self, stream):
 		String._pfp__parse(self, stream)
-		self._pfp__value = self._pfp__value.decode("utf-16le")
+		self._pfp__value = six.binary(self._pfp__value.decode("utf-16le"))
 	
 	def _pfp__build(self, stream=None):
+		val = self._pfp__value.decode("ISO-8859-1").encode("utf-16le") + b"\x00\x00"
 		if stream is None:
-			return self._pfp__value.encode("utf-16le") + "\x00\x00"
+			return val
 		else:
-			return stream.write(self._pfp__value.encode("utf-16le") + "\x00\x00")
+			return stream.write(val)

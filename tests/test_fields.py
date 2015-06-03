@@ -16,6 +16,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 import pfp
 import pfp.errors
 from pfp.fields import *
+import pfp.six as six
 
 class TestNumericFields(unittest.TestCase):
 	def setUp(self):
@@ -25,7 +26,7 @@ class TestNumericFields(unittest.TestCase):
 		pass
 	
 	def _do_parse(self, field, data):
-		field._pfp__parse(StringIO(data))
+		field._pfp__parse(StringIO(data.decode("ISO-8859-1")))
 	
 	def _do_endian_tests(self, field, format):
 		field.endian = pfp.fields.BIG_ENDIAN
@@ -34,10 +35,10 @@ class TestNumericFields(unittest.TestCase):
 
 		field.endian = pfp.fields.LITTLE_ENDIAN
 		self._do_parse(field, struct.pack("<" + format, 1))
-		self.assertEquals(field, 1)
+		self.assertEqual(field, 1)
 	
 	def test_default_endian(self):
-		self.assertEquals(pfp.fields.NumberBase.endian, pfp.fields.BIG_ENDIAN)
+		self.assertEqual(pfp.fields.NumberBase.endian, pfp.fields.BIG_ENDIAN)
 	
 	def test_char(self):
 		field = Char()
@@ -80,7 +81,7 @@ class TestStrings(unittest.TestCase):
 
 	def _test_parse_build(self, data, template):
 		dom = pfp.parse(StringIO(data), template)
-		self.assertEqual(dom._pfp__build(), data)
+		self.assertEqual(dom._pfp__build(), six.binary(data))
 		return dom
 	
 	def test_basic_string(self):
@@ -93,8 +94,8 @@ class TestStrings(unittest.TestCase):
 				} greetings;
 			"""
 		)
-		self.assertEqual(dom.greetings.hello, "hello there")
-		self.assertEqual(dom.greetings.goodbye, "good byte")
+		self.assertEqual(dom.greetings.hello, six.binary("hello there"))
+		self.assertEqual(dom.greetings.goodbye, six.binary("good byte"))
 	
 	def test_basic_wstring(self):
 		dom = self._test_parse_build(
@@ -106,8 +107,8 @@ class TestStrings(unittest.TestCase):
 				} greetings;
 			"""
 		)
-		self.assertEqual(dom.greetings.hello, "hello there")
-		self.assertEqual(dom.greetings.goodbye, "good byte")
+		self.assertEqual(dom.greetings.hello, six.binary("hello there"))
+		self.assertEqual(dom.greetings.goodbye, six.binary("good byte"))
 	
 	def test_unterminated_string(self):
 		with self.assertRaises(pfp.errors.PrematureEOF):
@@ -137,11 +138,11 @@ class TestArrays(unittest.TestCase):
 
 		field.endian = pfp.fields.LITTLE_ENDIAN
 		self._do_parse(field, struct.pack("<" + format, 1))
-		self.assertEquals(field, 1)
+		self.assertEqual(field, 1)
 
 	def _test_parse_build(self, data, template):
 		dom = pfp.parse(StringIO(data), template)
-		self.assertEqual(dom._pfp__build(), data)
+		self.assertEqual(dom._pfp__build(), six.binary(data))
 		return dom
 	
 	def test_char_array(self):
