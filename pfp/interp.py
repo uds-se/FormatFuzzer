@@ -15,7 +15,7 @@ from py010parser import c_ast as AST
 import pfp.fields as fields
 import pfp.errors as errors
 import pfp.functions as functions
-import pfp.builtin as builtin
+import pfp.native as native
 import pfp.six as six
 
 class Scope(object):
@@ -195,34 +195,40 @@ class PfpInterp(object):
 	"""
 	"""
 
-	_builtins = {}
+	_natives = {}
 
 	@classmethod
-	def add_builtin(cls, name, func, ret):
-		cls._builtins[name] = functions.NativeFunction(
+	def add_native(cls, name, func, ret, interp=None):
+		if interp is None:
+			natives = cls._natives
+		else:
+			# the instance's natives
+			natives = interp._natives
+
+		natives[name] = functions.NativeFunction(
 			name, func, ret
 		)
 	
 	@classmethod
-	def define_builtins(cls):
-		"""Define the builtin functions for PFP
+	def define_natives(cls):
+		"""Define the native functions for PFP
 		"""
-		if len(cls._builtins) > 0:
+		if len(cls._natives) > 0:
 			return
 
-		glob_pattern = os.path.join(os.path.dirname(__file__), "builtin", "*.py")
+		glob_pattern = os.path.join(os.path.dirname(__file__), "native", "*.py")
 		for filename in glob.glob(glob_pattern):
 			basename = os.path.basename(filename).replace(".py", "")
 			if basename == "__init__":
 				continue
-			mod_base = __import__("pfp.builtin", globals(), locals(), fromlist=[basename])
+			mod_base = __import__("pfp.native", globals(), locals(), fromlist=[basename])
 			mod = getattr(mod_base, basename)
 			setattr(mod, "PYVAL", fields.get_value) 
 
 	def __init__(self):
 		"""
 		"""
-		self.__class__.define_builtins()
+		self.__class__.define_natives()
 
 		self._node_switch = {
 			AST.FileAST:		self._handle_file_ast,
@@ -638,7 +644,10 @@ class PfpInterp(object):
 		:returns: TODO
 
 		"""
-		func_args = self._handle_node(node.args, scope, ctxt, stream)
+		if node.args is None:
+			func_args = []
+		else:
+			func_args = self._handle_node(node.args, scope, ctxt, stream)
 		func = self._handle_node(node.name, scope, ctxt, stream)
 		return func.call(func_args, ctxt, scope, stream, self, node.coord)
 	
@@ -721,7 +730,7 @@ class PfpInterp(object):
 		"""
 		res = Scope()
 
-		for func_name,native_func in six.iteritems(self._builtins):
+		for func_name,native_func in six.iteritems(self._natives):
 			res.add_local(func_name, native_func)
 
 		return res

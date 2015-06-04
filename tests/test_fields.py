@@ -18,7 +18,9 @@ import pfp.errors
 from pfp.fields import *
 import pfp.six as six
 
-class TestNumericFields(unittest.TestCase):
+import utils
+
+class TestNumericFields(unittest.TestCase, utils.UtilsMixin):
 	def setUp(self):
 		pass
 
@@ -72,17 +74,12 @@ class TestNumericFields(unittest.TestCase):
 		field = UInt64()
 		self._do_endian_tests(field, "Q")
 
-class TestStrings(unittest.TestCase):
+class TestStrings(unittest.TestCase, utils.UtilsMixin):
 	def setUp(self):
 		pass
 	
 	def tearDown(self):
 		pass
-
-	def _test_parse_build(self, data, template):
-		dom = pfp.parse(StringIO(data), template)
-		self.assertEqual(dom._pfp__build(), six.binary(data))
-		return dom
 	
 	def test_basic_string(self):
 		dom = self._test_parse_build(
@@ -121,7 +118,7 @@ class TestStrings(unittest.TestCase):
 				"""
 			)
 
-class TestArrays(unittest.TestCase):
+class TestArrays(unittest.TestCase, utils.UtilsMixin):
 	def setUp(self):
 		pass
 
@@ -140,11 +137,6 @@ class TestArrays(unittest.TestCase):
 		self._do_parse(field, struct.pack("<" + format, 1))
 		self.assertEqual(field, 1)
 
-	def _test_parse_build(self, data, template):
-		dom = pfp.parse(StringIO(data), template)
-		self.assertEqual(dom._pfp__build(), six.binary(data))
-		return dom
-	
 	def test_char_array(self):
 		dom = self._test_parse_build(
 			"AABBCC",

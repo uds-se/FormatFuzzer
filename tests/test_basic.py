@@ -14,19 +14,18 @@ import unittest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import pfp
+import pfp.fields
+import pfp.interp
 import pfp.six as six
 
-class TestBasic(unittest.TestCase):
+import utils
+
+class TestBasic(unittest.TestCase, utils.UtilsMixin):
 	def setUp(self):
 		pass
 
 	def tearDown(self):
 		pass
-	
-	def _test_parse_build(self, data, template):
-		dom = pfp.parse(StringIO(data), template)
-		self.assertEqual(dom._pfp__build(), six.binary(data))
-		return dom
 	
 	def test_single_decl_parse(self):
 		dom = self._test_parse_build(
@@ -213,7 +212,8 @@ class TestBasic(unittest.TestCase):
 			"""
 				Printf("hello there");
 				Printf("%d", 10);
-			"""
+			""",
+			stdout="hello there10"
 		)
 	
 	def test_custom_func(self):
@@ -225,7 +225,8 @@ class TestBasic(unittest.TestCase):
 				}
 
 				Printf("%d", add(5, 8));
-			"""
+			""",
+			stdout="13"
 		)
 	
 	def test_custom_func2(self):
@@ -237,7 +238,25 @@ class TestBasic(unittest.TestCase):
 				}
 
 				Printf(prepend("hello"));
+			""",
+			stdout="blah: hello"
+		)
+	
+	def test_native_func(self):
+		func_called = False
+		def func(params, ctxt, scope, stream):
+			func_called = True
+			return 555
+
+		interp = pfp.interp.PfpInterp()
+		interp.add_native(name="func", func=func, ret=pfp.fields.Int)
+
+		dom = self._test_parse_build(
+			"",
 			"""
+			Printf("%d", func());
+			""",
+			stdout="555"
 		)
 
 if __name__ == "__main__":

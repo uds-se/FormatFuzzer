@@ -1,6 +1,6 @@
 import sys
 
-from pfp.builtin import native
+from pfp.native import native
 import pfp.fields
 
 @native(name="Printf", ret=pfp.fields.Int)
@@ -12,7 +12,7 @@ def printf(params, ctxt, scope, stream):
 
 	"""
 	if len(params) == 1:
-		print(PYVAL(params[0]))
+		sys.stdout.write(PYVAL(params[0]))
 		return
 
 	to_print = PYVAL(params[0]) % tuple(PYVAL(x) for x in params[1:])
