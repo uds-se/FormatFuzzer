@@ -10,7 +10,7 @@ except ImportError as e:
 	from io import StringIO
 
 import pfp
-import pfp.six as six
+import pfp.utils
 
 class UtilsMixin(object):
 	def _test_parse_build(self, data, template, stdout=None):
@@ -24,6 +24,6 @@ class UtilsMixin(object):
 			output = fake_stdout.getvalue()
 			self.assertEqual(output, stdout)
 
-		self.assertEqual(dom._pfp__build(), six.binary(data))
+		self.assertEqual(dom._pfp__build(), pfp.utils.binary(data))
 
 		return dom

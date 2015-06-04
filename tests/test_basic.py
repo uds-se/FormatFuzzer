@@ -16,7 +16,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 import pfp
 import pfp.fields
 import pfp.interp
-import pfp.six as six
+import pfp.utils
 
 import utils
 

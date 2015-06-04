@@ -6,6 +6,7 @@ Python format parser
 
 import copy
 import glob
+import six
 import sys
 import os
 
@@ -16,7 +17,7 @@ import pfp.fields as fields
 import pfp.errors as errors
 import pfp.functions as functions
 import pfp.native as native
-import pfp.six as six
+import pfp.utils as utils
 
 class Scope(object):
 	"""A class to keep track of the current scope of the interpreter"""

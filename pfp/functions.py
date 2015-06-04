@@ -1,5 +1,7 @@
+import six
+
 import pfp.errors as errors
-import pfp.six as six
+import pfp.utils as utils
 
 class Function(object):
 	"""A class to maintain function state and arguments"""

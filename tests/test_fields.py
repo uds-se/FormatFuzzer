@@ -16,7 +16,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 import pfp
 import pfp.errors
 from pfp.fields import *
-import pfp.six as six
+import pfp.utils
 
 import utils
 
@@ -91,8 +91,8 @@ class TestStrings(unittest.TestCase, utils.UtilsMixin):
 				} greetings;
 			"""
 		)
-		self.assertEqual(dom.greetings.hello, six.binary("hello there"))
-		self.assertEqual(dom.greetings.goodbye, six.binary("good byte"))
+		self.assertEqual(dom.greetings.hello, pfp.utils.binary("hello there"))
+		self.assertEqual(dom.greetings.goodbye, pfp.utils.binary("good byte"))
 	
 	def test_basic_wstring(self):
 		dom = self._test_parse_build(
@@ -104,8 +104,8 @@ class TestStrings(unittest.TestCase, utils.UtilsMixin):
 				} greetings;
 			"""
 		)
-		self.assertEqual(dom.greetings.hello, six.binary("hello there"))
-		self.assertEqual(dom.greetings.goodbye, six.binary("good byte"))
+		self.assertEqual(dom.greetings.hello, pfp.utils.binary("hello there"))
+		self.assertEqual(dom.greetings.goodbye, pfp.utils.binary("good byte"))
 	
 	def test_unterminated_string(self):
 		with self.assertRaises(pfp.errors.PrematureEOF):

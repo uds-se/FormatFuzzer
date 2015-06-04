@@ -24,7 +24,8 @@ setup(
     url='https://github.com/d0c-s4vage/pfp',
     platforms='Cross Platform',
 	install_requires = [
-		"py010parser"
+		"py010parser",
+		"six"
 	],
     classifiers = [
         'Programming Language :: Python :: 2',

@@ -1,8 +1,9 @@
 
+import six
 import struct
 
 import pfp.errors as errors
-import pfp.six as six
+import pfp.utils as utils
 
 BIG_ENDIAN = ">"
 LITTLE_ENDIAN = "<"
@@ -163,7 +164,7 @@ class Struct(Field):
 
 		"""
 		# returns either num bytes written or total data
-		res = six.binary("") if stream is None else 0
+		res = utils.binary("") if stream is None else 0
 
 		# iterate IN ORDER
 		for child in self._pfp__children:
@@ -222,7 +223,7 @@ class NumberBase(Field):
 		:returns: The number of bytes parsed
 		"""
 		raw_data = stream.read(self.width)
-		data = six.binary(raw_data)
+		data = utils.binary(raw_data)
 
 		if len(data) < self.width:
 			raise errors.PrematureEOF()
@@ -429,7 +430,7 @@ class Array(Field):
 			self.items.append(field)
 	
 	def _pfp__build(self, stream=None):
-		res = 0 if stream is not None else six.binary("")
+		res = 0 if stream is not None else utils.binary("")
 		for item in self.items:
 			res += item._pfp__build(stream=stream)
 		return res
@@ -452,7 +453,7 @@ class String(Field):
 	# termination.
 	width = -1
 	read_size = 1
-	terminator = six.binary("\x00")
+	terminator = utils.binary("\x00")
 
 	def _pfp__parse(self, stream):
 		"""Read from the stream until the string is null-terminated
@@ -461,9 +462,9 @@ class String(Field):
 		:returns: None
 
 		"""
-		res = six.binary("")
+		res = utils.binary("")
 		while True:
-			byte = six.binary(stream.read(self.read_size))
+			byte = utils.binary(stream.read(self.read_size))
 			if len(byte) < self.read_size:
 				raise errors.PrematureEOF()
 			# note that the null terminator must be added back when
@@ -481,9 +482,9 @@ class String(Field):
 
 		"""
 		if stream is None:
-			return self._pfp__value + six.binary("\x00")
+			return self._pfp__value + utils.binary("\x00")
 		else:
-			return stream.write(self._pfp__value + six.binary("\x00"))
+			return stream.write(self._pfp__value + utils.binary("\x00"))
 	
 	def __add__(self, other):
 		"""Add two strings together. If other is not a String instance,
@@ -517,11 +518,11 @@ class String(Field):
 class WString(String):
 	width = -1
 	read_size = 2
-	terminator = six.binary("\x00\x00")
+	terminator = utils.binary("\x00\x00")
 
 	def _pfp__parse(self, stream):
 		String._pfp__parse(self, stream)
-		self._pfp__value = six.binary(self._pfp__value.decode("utf-16le"))
+		self._pfp__value = utils.binary(self._pfp__value.decode("utf-16le"))
 	
 	def _pfp__build(self, stream=None):
 		val = self._pfp__value.decode("ISO-8859-1").encode("utf-16le") + b"\x00\x00"
