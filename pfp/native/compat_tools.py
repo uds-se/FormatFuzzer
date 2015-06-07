@@ -388,7 +388,7 @@ def FindFirst(params, ctxt, scope, stream):
 #    int method=0, 
 #    double tolerance=0.0, 
 #    int wildcardMatchLength=24 )
-@native(name="FindInFiles", ret=pfp.fields.TFindInFilesResults)
+@native(name="FindInFiles", ret=pfp.fields.Void)
 def FindInFiles(params, ctxt, scope, stream):
 	"""
 	Searches for a given set of data across multiple files. See the FindAll
@@ -426,7 +426,7 @@ def FindNext(params, ctxt, scope, stream):
 #    int64 start=0, 
 #    int64 size=0, 
 #    int requireNull=false )
-@native(name="FindStrings", ret=pfp.fields.TFindStringsResults)
+@native(name="FindStrings", ret=pfp.fields.Void)
 def FindStrings(params, ctxt, scope, stream):
 	"""
 	Attempts to locate any strings within a binary file similar to the Find

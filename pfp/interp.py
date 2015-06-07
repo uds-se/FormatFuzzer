@@ -260,7 +260,13 @@ class PfpInterp(object):
 			basename = os.path.basename(filename).replace(".py", "")
 			if basename == "__init__":
 				continue
-			mod_base = __import__("pfp.native", globals(), locals(), fromlist=[basename])
+
+			try:
+				mod_base = __import__("pfp.native", globals(), locals(), fromlist=[basename])
+			except Exception as e:
+				sys.stderr.write("can not import native module {} at '{}'".format(basename, filename))
+				continue
+
 			mod = getattr(mod_base, basename)
 			setattr(mod, "PYVAL", fields.get_value) 
 

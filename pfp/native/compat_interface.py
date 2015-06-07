@@ -454,7 +454,7 @@ def InputString(params, ctxt, scope, stream):
 #    const char title[],
 #    const char caption[],
 #    const wstring defaultValue )
-@native(name="InputWString", ret=pfp.fields.Wstring)
+@native(name="InputWString", ret=pfp.fields.WString)
 def InputWString(params, ctxt, scope, stream):
 	pass
 
