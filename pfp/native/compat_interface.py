@@ -506,7 +506,21 @@ def PasteFromClipboard(params, ctxt, scope, stream):
 #int Printf( const char format[] [, argument, ... ] ) 
 @native(name="Printf", ret=pfp.fields.Int)
 def Printf(params, ctxt, scope, stream):
-	pass
+	"""Prints format string to stdout
+
+	:params: TODO
+	:returns: TODO
+
+	"""
+	if len(params) == 1:
+		sys.stdout.write(PYVAL(params[0]))
+		return
+
+	to_print = PYVAL(params[0]) % tuple(PYVAL(x) for x in params[1:])
+	res = len(to_print)
+	sys.stdout.write(to_print)
+	sys.stdout.flush()
+	return res
 
 #int64 ProcessGetHeapLocalAddress( int index )
 @native(name="ProcessGetHeapLocalAddress", ret=pfp.fields.Int64)
