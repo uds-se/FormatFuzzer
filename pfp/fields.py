@@ -380,6 +380,12 @@ class Short(NumberBase):
 class UShort(Short):
 	format = "H"
 
+class WChar(Short):
+	pass
+
+class WUChar(UShort):
+	pass
+
 class Int(NumberBase):
 	width = 4
 	format = "i"

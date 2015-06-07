@@ -6,6 +6,7 @@ Python format parser
 
 import copy
 import glob
+import logging
 import six
 import sys
 import os
@@ -19,10 +20,35 @@ import pfp.functions as functions
 import pfp.native as native
 import pfp.utils as utils
 
+logging.basicConfig(level=logging.CRITICAL)
+
+class DebugLogger(object):
+	def __init__(self, active=False):
+		self._log = logging.getLogger("")
+		self._indent = 0
+		self._active = active
+		if self._active:
+			self._log.setLevel(logging.DEBUG)
+	
+	def debug(self, prefix, msg, indent_change=0):
+		if not self._active:
+			return
+
+		self._indent += indent_change
+		self._log.debug("\n".join(prefix + ": " + "  "*self._indent + line for line in msg.split("\n")))
+	
+	def inc(self):
+		self._indent += 1
+	
+	def dec(self):
+		self._indent -= 1
+
 class Scope(object):
 	"""A class to keep track of the current scope of the interpreter"""
-	def __init__(self):
+	def __init__(self, logger):
 		super(Scope, self).__init__()
+
+		self._log = logger
 
 		self._scope_stack = []
 		self.push()
@@ -32,6 +58,7 @@ class Scope(object):
 		:returns: TODO
 
 		"""
+		self._dlog("pushing new scope")
 		self._curr_scope = {
 			"types": {},
 			"locals": {},
@@ -43,14 +70,14 @@ class Scope(object):
 		"""Return a new Scope object that has the curr_scope
 		pinned at the current one
 		:returns: A new scope object
-
 		"""
+		self._dlog("cloning the stack")
 		# TODO is this really necessary to create a brand new one?
 		# I think it is... need to think about it more.
 		# or... are we going to need ref counters and a global
 		# scope object that allows a view into (or a snapshot of)
 		# a specific scope stack?
-		res = Scope()
+		res = Scope(self._log)
 		res._scope_stack = self._scope_stack
 		res._curr_scope = self._curr_scope
 		return res
@@ -60,6 +87,7 @@ class Scope(object):
 		:returns: TODO
 
 		"""
+		self._dlog("popping scope")
 		self._scope_stack.pop()
 		self._curr_scope = self._scope_stack[-1]
 	
@@ -72,6 +100,7 @@ class Scope(object):
 		:returns: TODO
 
 		"""
+		self._dlog("adding var '{}'".format(field_name))
 		# TODO do we allow clobbering of vars???
 		self._curr_scope["vars"][field_name] = field
 	
@@ -84,6 +113,7 @@ class Scope(object):
 		:returns: TODO
 
 		"""
+		self._dlog("getting var '{}'".format(name))
 		return self._search("vars", name)
 	
 	def add_local(self, field_name, field):
@@ -94,6 +124,7 @@ class Scope(object):
 		:returns: None
 
 		"""
+		self._dlog("adding local '{}'".format(field_name))
 		field._pfp__name = field_name
 		# TODO do we allow clobbering of locals???
 		self._curr_scope["locals"][field_name] = field
@@ -103,6 +134,7 @@ class Scope(object):
 
 		:name: The name of the local field
 		"""
+		self._dlog("getting local '{}'".format(name))
 		return self._search("locals", name)
 	
 	def add_type(self, new_name, orig_names):
@@ -114,6 +146,7 @@ class Scope(object):
 		:returns: TODO
 
 		"""
+		self._dlog("adding a type '{}'".format(new_name))
 		# TODO do we allow clobbering of types???
 		res = copy.copy(orig_names)
 		resolved_names = self._resolve_name(res[-1])
@@ -130,6 +163,7 @@ class Scope(object):
 		:returns: An array of resolved names associated with the typedef'd name
 
 		"""
+		self._dlog("getting type '{}'".format(name))
 		return self._search("types", name)
 	
 	def get_id(self, name):
@@ -140,6 +174,7 @@ class Scope(object):
 		:returns: TODO
 
 		"""
+		self._dlog("getting id '{}'".format(name))
 		local = self._search("locals", name)
 		if local is not None:
 			return local
@@ -151,10 +186,13 @@ class Scope(object):
 	# PRIVATE
 	# ------------------
 
+	def _dlog(self, msg):
+		self._log.debug(" scope", msg)
+
 	def _resolve_name(self, name):
 		"""TODO: Docstring for _resolve_names.
 
-		:names: TODO
+		:name: TODO
 		:returns: TODO
 
 		"""
@@ -226,10 +264,13 @@ class PfpInterp(object):
 			mod = getattr(mod_base, basename)
 			setattr(mod, "PYVAL", fields.get_value) 
 
-	def __init__(self):
+	def __init__(self, debug=False):
 		"""
 		"""
 		self.__class__.define_natives()
+
+		self._log = DebugLogger(debug)
+		self._debug = debug
 
 		self._node_switch = {
 			AST.FileAST:		self._handle_file_ast,
@@ -253,6 +294,10 @@ class PfpInterp(object):
 			AST.ArrayDecl:		self._handle_array_decl
 		}
 	
+	def _dlog(self, msg, indent_increase=0):
+		"""log the message to the log"""
+		self._log.debug("interp", msg, indent_increase)
+	
 	# --------------------
 	# PUBLIC
 	# --------------------
@@ -266,9 +311,12 @@ class PfpInterp(object):
 		:returns: Pfp Dom
 
 		"""
+		self._dlog("parsing")
+
 		self._stream = stream
 		self._template = template
 		self._ast = py010parser.parse_string(template)
+		self._dlog("parsed template into ast")
 
 		return self._run()
 	
@@ -300,6 +348,8 @@ class PfpInterp(object):
 		#			  TypeDecl: d, []
 		#				IdentifierType: ['char']
 
+		self._dlog("interpreting template")
+
 		# it is important to pass the stream in as the stream
 		# may change (e.g. compressed data)
 		return self._handle_node(self._ast, None, None, self._stream)
@@ -321,10 +371,17 @@ class PfpInterp(object):
 		if type(node) is tuple:
 			node = node[1]
 
+		self._dlog("handling node type {}".format(node.__class__.__name__))
+		self._log.inc()
+
 		if node.__class__ not in self._node_switch:
 			raise errors.UnsupportedASTNode(node.coord, node.__class__.__name__)
 
-		return self._node_switch[node.__class__](node, scope, ctxt, stream)
+		res = self._node_switch[node.__class__](node, scope, ctxt, stream)
+
+		self._log.dec()
+
+		return res
 	
 	def _handle_file_ast(self, node, scope, ctxt, stream):
 		"""TODO: Docstring for _handle_file_ast.
@@ -337,6 +394,7 @@ class PfpInterp(object):
 
 		"""
 		ctxt = fields.Dom()
+		self._dlog("handling file AST with {} children".format(len(node.children())))
 
 		for child in node.children():
 			self._handle_node(child, scope, ctxt, stream)
@@ -354,6 +412,7 @@ class PfpInterp(object):
 
 		"""
 		field = self._handle_node(node.type, scope, ctxt, stream)
+		self._dlog("handling decl")
 		
 		# locals still get a field instance, but DON'T parse the
 		# stream!
@@ -729,7 +788,7 @@ class PfpInterp(object):
 		:returns: TODO
 
 		"""
-		res = Scope()
+		res = Scope(self._log)
 
 		for func_name,native_func in six.iteritems(self._natives):
 			res.add_local(func_name, native_func)

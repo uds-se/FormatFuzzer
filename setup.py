@@ -30,5 +30,5 @@ setup(
     classifiers = [
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 3',],
-    packages=['pfp'],
+    packages=['pfp', 'pfp.native'],
 )

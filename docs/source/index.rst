@@ -3,8 +3,20 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to PFP's documentation!
+PFP - Python Format Parser
 ===============================
+
+Pfp (python format parser) is a python interpreter for
+`010 Editor <http://www.sweetscape.com/010editor/>`_.
+
+Pfp uses `py010parser <https://github.com/d0c-s4vage/py010parser>`_ to
+parse 010 templates into an AST, which is then interpreted by
+pfp. Pfp then returns a DOM object which can be used to access
+individual fields of the defined data structure: ::
+
+    import pfp
+
+    png = pfp.parse(data_file="image.png", template_file="png_template.bt")
 
 Contents:
 
