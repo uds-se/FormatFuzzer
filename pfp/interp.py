@@ -726,7 +726,7 @@ class PfpInterp(object):
 		:returns: TODO
 
 		"""
-		self._dlog("handling assignment".format(field, value))
+		self._dlog("handling assignment")
 		field = self._handle_node(node.lvalue, scope, ctxt, stream)
 		self._dlog("field = {}".format(field))
 		value = self._handle_node(node.rvalue, scope, ctxt, stream)
