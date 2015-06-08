@@ -52,6 +52,11 @@ class Scope(object):
 
 		self._scope_stack = []
 		self.push()
+	
+	def level(self):
+		"""Return the current scope level
+		"""
+		return len(self._scope_stack)
 		
 	def push(self):
 		"""Create a new scope
@@ -234,10 +239,17 @@ class PfpInterp(object):
 	"""
 	"""
 
+	# do not break (execute until finished)
+	BREAK_NONE = 0
+	# break on the next instruction on the same level
+	BREAK_OVER = 1
+	# break on the next instruction regardless of level
+	BREAK_INTO = 2
+
 	_natives = {}
 
 	@classmethod
-	def add_native(cls, name, func, ret, interp=None):
+	def add_native(cls, name, func, ret, interp=None, send_interp=False):
 		if interp is None:
 			natives = cls._natives
 		else:
@@ -245,7 +257,7 @@ class PfpInterp(object):
 			natives = interp._natives
 
 		natives[name] = functions.NativeFunction(
-			name, func, ret
+			name, func, ret, send_interp
 		)
 	
 	@classmethod
@@ -276,7 +288,12 @@ class PfpInterp(object):
 		self.__class__.define_natives()
 
 		self._log = DebugLogger(debug)
+		# TODO nested debuggers aren't currently allowed
+		self._debugger = None
 		self._debug = debug
+		self._break_type = self.BREAK_NONE
+		self._break_level = 0
+		self._no_debug = False
 
 		self._node_switch = {
 			AST.FileAST:		self._handle_file_ast,
@@ -321,10 +338,57 @@ class PfpInterp(object):
 
 		self._stream = stream
 		self._template = template
+		self._template_lines = self._template.split("\n")
 		self._ast = py010parser.parse_string(template)
 		self._dlog("parsed template into ast")
 
 		return self._run()
+	
+	def step_over(self):
+		"""Perform one step of the interpreter
+		"""
+		self.set_break(self.BREAK_OVER)
+	
+	def step_into(self):
+		"""Step over/into the next statement
+		"""
+		self.set_break(self.BREAK_INTO)
+	
+	def cont(self):
+		"""Continue the interpreter
+		"""
+		self.set_break(self.BREAK_NONE)
+	
+	def eval(self, statement):
+		"""Eval the supplied statement(s)
+		"""
+		self._no_debug = True
+		ast = py010parser.parse_string(statement)
+
+		# explicitly iterate over each of the children so that
+		# _handle_file_ast isn't called
+		for child in ast.children():
+			self._handle_node(child, self._scope, self._root, self._stream)
+
+		self._no_debug = False
+	
+	def set_break(self, break_type):
+		"""Set if the interpreter should break.
+
+		:returns: TODO
+		"""
+		self._break_type = break_type
+		self._break_level = self._scope.level()
+	
+	def get_curr_lines(self):
+		"""Return the current line number in the template,
+		as well as the surrounding source lines
+		"""
+		start = max(0, self._coord.line - 3)
+		end = min(len(self._template_lines), self._coord.line + 3)
+
+		lines = [(x, self._template_lines[x]) for x in range(start, end, 1)]
+		return self._coord.line, lines
 	
 	# --------------------
 	# PRIVATE
@@ -360,7 +424,6 @@ class PfpInterp(object):
 		# may change (e.g. compressed data)
 		return self._handle_node(self._ast, None, None, self._stream)
 
-
 	def _handle_node(self, node, scope, ctxt, stream):
 		"""Recursively handle nodes in the 010 AST
 
@@ -369,13 +432,28 @@ class PfpInterp(object):
 		:ctxt: TODO
 		:stream: TODO
 		:returns: TODO
-
 		"""
 		if scope is None:
-			scope = self._create_scope()
+			self._scope = scope = self._create_scope()
 
 		if type(node) is tuple:
 			node = node[1]
+
+		self._coord = node.coord
+
+		if not self._no_debug and self._break_type != self.BREAK_NONE:
+			# always break
+			if self._break_type == self.BREAK_INTO:
+				self._break_level = self._scope.level()
+				self.debugger.cmdloop()
+
+			# level <= _break_level
+			elif self._break_type == self.BREAK_OVER:
+				if self._scope.level() <= self._break_level:
+					self._break_level = self._scope.level()
+					self.debugger.cmdloop()
+				else:
+					pass
 
 		self._dlog("handling node type {}".format(node.__class__.__name__))
 		self._log.inc()
@@ -399,7 +477,7 @@ class PfpInterp(object):
 		:returns: TODO
 
 		"""
-		ctxt = fields.Dom()
+		self._root = ctxt = fields.Dom()
 		self._dlog("handling file AST with {} children".format(len(node.children())))
 
 		for child in node.children():
@@ -464,6 +542,7 @@ class PfpInterp(object):
 		:returns: TODO
 
 		"""
+		self._dlog("handling type decl")
 		decl = self._handle_node(node.type, scope, ctxt, stream)
 		return decl
 	
@@ -477,6 +556,7 @@ class PfpInterp(object):
 		:returns: TODO
 
 		"""
+		self._dlog("handling struct")
 		struct = fields.Struct()
 
 		# new scope
@@ -498,6 +578,7 @@ class PfpInterp(object):
 		:returns: TODO
 
 		"""
+		self._dlog("handling identifier")
 		cls = self._resolve_to_field_class(node.names, scope, ctxt)
 		return cls
 	
@@ -511,6 +592,7 @@ class PfpInterp(object):
 		:returns: TODO
 
 		"""
+		self._dlog("handling typedef '{}' ({})".format(node.name, node.type.type.names))
 		# don't actually handle the TypeDecl and Identifier nodes,
 		# just directly add the types. Example structure:
 		#
@@ -530,6 +612,7 @@ class PfpInterp(object):
 		:returns: TODO
 
 		"""
+		self._dlog("handling constant type {}".format(node.type))
 		switch = {
 			"int": (lambda x: int(str(x).replace("l", "")), fields.Int),
 			"long": (lambda x: int(str(x).replace("l", "")), fields.Int),
@@ -565,6 +648,7 @@ class PfpInterp(object):
 		:returns: TODO
 
 		"""
+		self._dlog("handling binary operation {}".format(node.op))
 		switch = {
 			"+": lambda x,y: x+y,
 			"-": lambda x,y: x-y,
@@ -600,6 +684,7 @@ class PfpInterp(object):
 		:returns: TODO
 
 		"""
+		self._dlog("handling unary op {}".format(node.op))
 		switch = {
 			"p++": lambda x,v: x.__iadd__(1),
 			"p--": lambda x,v: x.__isub__(1),
@@ -623,6 +708,7 @@ class PfpInterp(object):
 		:returns: TODO
 
 		"""
+		self._dlog("handling id {}".format(node.name))
 		field = scope.get_id(node.name)
 
 		if field is None:
@@ -640,8 +726,11 @@ class PfpInterp(object):
 		:returns: TODO
 
 		"""
+		self._dlog("handling assignment".format(field, value))
 		field = self._handle_node(node.lvalue, scope, ctxt, stream)
+		self._dlog("field = {}".format(field))
 		value = self._handle_node(node.rvalue, scope, ctxt, stream)
+		self._dlog("value = {}".format(value))
 		field._pfp__set_value(value)
 	
 	def _handle_func_def(self, node, scope, ctxt, stream):
@@ -654,6 +743,7 @@ class PfpInterp(object):
 		:returns: TODO
 
 		"""
+		self._dlog("handling function definition")
 		func = self._handle_node(node.decl, scope, ctxt, stream)
 		func.body = node.body
 	
@@ -667,6 +757,7 @@ class PfpInterp(object):
 		:returns: TODO
 
 		"""
+		self._dlog("handling param list")
 		# params should be a list of tuples:
 		# [(<name>, <field_class>), ...]
 		params = []
@@ -687,6 +778,7 @@ class PfpInterp(object):
 		:returns: TODO
 
 		"""
+		self._dlog("handling func decl")
 		# could just call _handle_param_list directly...
 		for param in node.args.params:
 			# see the check in _handle_decl for how this is kept from
@@ -710,6 +802,7 @@ class PfpInterp(object):
 		:returns: TODO
 
 		"""
+		self._dlog("handling function call to '{}'".format(node.name.name))
 		if node.args is None:
 			func_args = []
 		else:
@@ -727,6 +820,7 @@ class PfpInterp(object):
 		:returns: TODO
 
 		"""
+		self._dlog("handling expression list")
 		exprs = [
 			self._handle_node(expr, scope, ctxt, stream) for expr in node.exprs
 		]
@@ -742,6 +836,7 @@ class PfpInterp(object):
 		:returns: TODO
 
 		"""
+		self._dlog("handling compound statement")
 		scope.push()
 
 		try:
@@ -763,7 +858,9 @@ class PfpInterp(object):
 		:returns: TODO
 
 		"""
+		self._dlog("handling return")
 		ret_val = self._handle_node(node.expr, scope, ctxt, stream)
+		self._dlog("return value = {}".format(ret_val))
 		raise errors.InterpReturn(ret_val)
 	
 	def _handle_array_decl(self, node, scope, ctxt, stream):
@@ -776,10 +873,13 @@ class PfpInterp(object):
 		:returns: TODO
 
 		"""
+		self._dlog("handling array declaration '{}'".format(node.type.declname))
 		array_size = self._handle_node(node.dim, scope, ctxt, stream)
+		self._dlog("array size = {}".format(array_size))
 		# TODO node.dim_quals
 		# node.type
 		field_cls = self._handle_node(node.type, scope, ctxt, stream)
+		self._dlog("field class = {}".format(field_cls))
 		array = fields.Array(array_size, field_cls)
 		array._pfp__name = node.type.declname
 		array._pfp__parse(stream)

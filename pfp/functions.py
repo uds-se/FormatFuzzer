@@ -50,7 +50,7 @@ class Function(object):
 
 class NativeFunction(object):
 	"""A class for native functions"""
-	def __init__(self, name, func, ret):
+	def __init__(self, name, func, ret, send_interp=False):
 		"""
 		"""
 		super(NativeFunction, self).__init__()
@@ -58,9 +58,13 @@ class NativeFunction(object):
 		self.name = name
 		self.func = func
 		self.ret = ret
+		self.send_interp = send_interp
 	
 	def call(self, args, ctxt, scope, stream, interp, coord):
-		res = self.func(args, ctxt, scope, stream)
+		if self.send_interp:
+			res = self.func(args, ctxt, scope, stream, interp)
+		else:
+			res = self.func(args, ctxt, scope, stream)
 		res_field = self.ret()
 		res_field._pfp__set_value(res)
 		return res_field
