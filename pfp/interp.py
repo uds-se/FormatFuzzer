@@ -63,12 +63,12 @@ class Scope(object):
 		:returns: TODO
 
 		"""
-		self._dlog("pushing new scope")
 		self._curr_scope = {
 			"types": {},
 			"locals": {},
 			"vars": {}
 		}
+		self._dlog("pushing new scope, scope level = {}".format(self.level()))
 		self._scope_stack.append(self._curr_scope)
 	
 	def clone(self):
@@ -92,8 +92,8 @@ class Scope(object):
 		:returns: TODO
 
 		"""
-		self._dlog("popping scope")
 		self._scope_stack.pop()
+		self._dlog("popping scope, scope level = {}".format(self.level()))
 		self._curr_scope = self._scope_stack[-1]
 	
 	def add_var(self, field_name, field):
@@ -300,6 +300,7 @@ class PfpInterp(object):
 			AST.Decl:			self._handle_decl,
 			AST.TypeDecl:		self._handle_type_decl,
 			AST.Struct:			self._handle_struct,
+			AST.StructRef:		self._handle_struct_ref,
 			AST.IdentifierType:	self._handle_identifier_type,
 			AST.Typedef:		self._handle_typedef,
 			AST.Constant:		self._handle_constant,
@@ -359,18 +360,32 @@ class PfpInterp(object):
 		"""
 		self.set_break(self.BREAK_NONE)
 	
-	def eval(self, statement):
-		"""Eval the supplied statement(s)
+	def eval(self, statement, ctxt=None):
+		"""Eval a single statement (something returnable)
 		"""
 		self._no_debug = True
-		ast = py010parser.parse_string(statement)
 
-		# explicitly iterate over each of the children so that
-		# _handle_file_ast isn't called
-		for child in ast.children():
-			self._handle_node(child, self._scope, self._root, self._stream)
+		statement = statement.strip()
+		if statement.endswith(";"):
+			statement = statement[:-1]
 
-		self._no_debug = False
+		statement = "( " + statement + " )"
+		if not statement.endswith(";"):
+			statement += ";"
+		statement = "return " + statement
+		self._dlog("evaluating statement: {}".format(statement))
+		
+		ast = py010parser.parse_string(statement, predefine_types=False)
+
+		try:
+			# explicitly iterate over each of the children so that
+			# _handle_file_ast isn't called
+			for child in ast.children():
+				self._handle_node(child, self._scope, self._ctxt, self._stream)
+		except errors.InterpReturn as e:
+			return e.value
+		finally:
+			self._no_debug = False
 	
 	def set_break(self, break_type):
 		"""Set if the interpreter should break.
@@ -384,8 +399,8 @@ class PfpInterp(object):
 		"""Return the current line number in the template,
 		as well as the surrounding source lines
 		"""
-		start = max(0, self._coord.line - 3)
-		end = min(len(self._template_lines), self._coord.line + 3)
+		start = max(0, self._coord.line - 5)
+		end = min(len(self._template_lines), self._coord.line + 4)
 
 		lines = [(x, self._template_lines[x]) for x in range(start, end, 1)]
 		return self._coord.line, lines
@@ -435,13 +450,22 @@ class PfpInterp(object):
 		"""
 		if scope is None:
 			self._scope = scope = self._create_scope()
+		self._ctxt = ctxt
 
 		if type(node) is tuple:
 			node = node[1]
 
-		self._coord = node.coord
+		# need to check this so that debugger-eval'd statements
+		# don't mess with the current state
+		if not self._no_debug:
+			self._coord = node.coord
 
-		if not self._no_debug and self._break_type != self.BREAK_NONE:
+		self._dlog("handling node type {}, line {}".format(node.__class__.__name__, node.coord.line if node.coord is not None else "?"))
+		self._log.inc()
+
+		breakable = self._node_is_breakable(node)
+
+		if breakable and not self._no_debug and self._break_type != self.BREAK_NONE:
 			# always break
 			if self._break_type == self.BREAK_INTO:
 				self._break_level = self._scope.level()
@@ -454,9 +478,6 @@ class PfpInterp(object):
 					self.debugger.cmdloop()
 				else:
 					pass
-
-		self._dlog("handling node type {}".format(node.__class__.__name__))
-		self._log.inc()
 
 		if node.__class__ not in self._node_switch:
 			raise errors.UnsupportedASTNode(node.coord, node.__class__.__name__)
@@ -495,8 +516,8 @@ class PfpInterp(object):
 		:returns: TODO
 
 		"""
-		field = self._handle_node(node.type, scope, ctxt, stream)
 		self._dlog("handling decl")
+		field = self._handle_node(node.type, scope, ctxt, stream)
 		
 		# locals still get a field instance, but DON'T parse the
 		# stream!
@@ -546,6 +567,25 @@ class PfpInterp(object):
 		decl = self._handle_node(node.type, scope, ctxt, stream)
 		return decl
 	
+	def _handle_struct_ref(self, node, scope, ctxt, stream):
+		"""TODO: Docstring for _handle_struct_ref.
+
+		:node: TODO
+		:scope: TODO
+		:ctxt: TODO
+		:stream: TODO
+		:returns: TODO
+
+		"""
+		self._dlog("handling struct ref")
+
+		# name
+		# field
+		struct = self._handle_node(node.name, scope, ctxt, stream)
+		sub_field = getattr(struct, node.field.name)
+
+		return sub_field
+	
 	def _handle_struct(self, node, scope, ctxt, stream):
 		"""TODO: Docstring for _handle_struct.
 
@@ -565,6 +605,9 @@ class PfpInterp(object):
 		for decl in node.decls:
 			# new context! (struct)
 			self._handle_node(decl, scope, struct, stream)
+
+		# need to pop the scope!
+		scope.pop()
 
 		return struct
 	
@@ -708,6 +751,11 @@ class PfpInterp(object):
 		:returns: TODO
 
 		"""
+		if node.name == "__root":
+			return self._root
+		if node.name == "__this":
+			return ctxt
+
 		self._dlog("handling id {}".format(node.name))
 		field = scope.get_id(node.name)
 
@@ -779,12 +827,16 @@ class PfpInterp(object):
 
 		"""
 		self._dlog("handling func decl")
-		# could just call _handle_param_list directly...
-		for param in node.args.params:
-			# see the check in _handle_decl for how this is kept from
-			# being added to the local context/scope
-			param.is_func_param = True
-		params = self._handle_node(node.args, scope, ctxt, stream)
+
+		if node.args is not None:
+			# could just call _handle_param_list directly...
+			for param in node.args.params:
+				# see the check in _handle_decl for how this is kept from
+				# being added to the local context/scope
+				param.is_func_param = True
+			params = self._handle_node(node.args, scope, ctxt, stream)
+		else:
+			params = functions.ParamListDef([], node.coord)
 
 		func_type = self._handle_node(node.type, scope, ctxt, stream)
 
@@ -888,6 +940,31 @@ class PfpInterp(object):
 	# -----------------------------
 	# UTILITY
 	# -----------------------------
+
+	def _node_is_breakable(self, node):
+		breakable_classes = [
+			AST.FileAST,
+			AST.Decl,
+			#AST.TypeDecl,
+			#AST.Struct,
+			#AST.IdentifierType,
+			AST.Typedef,
+			#AST.Constant,
+			AST.BinaryOp,
+			AST.Assignment,
+			#AST.ID,
+			AST.UnaryOp,
+			#AST.FuncDef,
+			AST.FuncCall,
+			#AST.FuncDecl,
+			#AST.ParamList,
+			AST.ExprList,
+			#AST.Compound,
+			AST.Return,
+			AST.ArrayDecl,
+		]
+
+		return node.__class__ in breakable_classes
 	
 	def _create_scope(self):
 		"""TODO: Docstring for _create_scope.

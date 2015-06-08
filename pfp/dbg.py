@@ -5,6 +5,8 @@ import cmd
 import os
 import sys
 
+import pfp.errors as errors
+
 class PfpDbg(cmd.Cmd, object):
 	"""The pfp debugger cmd.Cmd class"""
 	
@@ -18,20 +20,14 @@ class PfpDbg(cmd.Cmd, object):
 		super(PfpDbg, self).__init__()
 
 		self._interp = interp
+		self._do_print_from_last_cmd = False
 	
-	def precmd(self, args_line):
-		"""Print the current coords of the interp
-		"""
-		curr_line,lines = self._interp.get_curr_lines()
-
-		for line_no, line in lines:
-			prefix = "    "
-			line_no += 1
-			if line_no == curr_line:
-				prefix = "--> "
-			print("{}{:3d} {}".format(prefix, line_no, line.replace("\t", "    ")))
-
-		return args_line
+	def update(self, ctxt, scope):
+		self._ctxt = ctxt
+		self._scope = scope
+	
+	def preloop(self):
+		self.print_lines()
 	
 	def default(self, line):
 		cmd, arg, line = self.parseline(line)
@@ -48,33 +44,82 @@ class PfpDbg(cmd.Cmd, object):
 	def do_next(self, args):
 		"""Step over the next statement
 		"""
+		self._do_print_from_last_cmd = True
 		self._interp.step_over()
 		return True
 	
 	def do_step(self, args):
 		"""Step into the next statement
 		"""
+		self._do_print_from_last_cmd = True
 		self._interp.step_into()
 		return True
+	
+	def do_s(self, args):
+		"""Step into the next statement
+		"""
+		return self.do_step(args)
 	
 	def do_continue(self, args):
 		"""Continue the interpreter
 		"""
+		self._do_print_from_last_cmd = True
 		self._interp.cont()
 		return True
 	
 	def do_eval(self, args):
 		"""Eval the user-supplied statement
 		"""
-		self._interp.eval(args)
-		return True
+		try:
+			res = self._interp.eval(args)
+			print(res)
+		except errors.UnresolvedID as e:
+			print("ERROR: " + e.message)
+		except Exception as e:
+			print("ERROR: " + e.message)
+			
+		return False
+	
+	def do_show(self, args):
+		"""Show the current structure
+		"""
+		args = args.strip()
+
+		to_show = self._interp._root
+		if args != "":
+			try:
+				to_show = self._interp.eval(args)
+			except Exception as e:
+				print("ERROR: " + e.message)
+				return False
+
+		print(to_show._pfp__show())
+	
+	def do_list(self, args):
+		"""List the current location in the template
+		"""
+		self.print_lines()
+		return False
 	
 	def do_quit(self, args):
 		"""The quit command
 		"""
+		self._interp.set_break(self._interp.BREAK_NONE)
 		return True
 	
 	def do_EOF(self, args):
 		"""The eof command
 		"""
 		return True
+	
+	# ---------------------
+
+	def print_lines(self):
+		curr_line,lines = self._interp.get_curr_lines()
+
+		for line_no, line in lines:
+			prefix = "    "
+			line_no += 1
+			if line_no == curr_line:
+				prefix = "--> "
+			print("{}{:3d} {}".format(prefix, line_no, line.replace("\t", "    ")))

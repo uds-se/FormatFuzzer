@@ -119,6 +119,9 @@ class Field(object):
 	
 	def __repr__(self):
 		return "{}({!r})".format(self.__class__.__name__, self._pfp__value)
+	
+	def _pfp__show(self, level=0):
+		return repr(self)
 
 class Void(Field):
 	"""The void field - used for return value of a function"""
@@ -200,6 +203,22 @@ class Struct(Field):
 	
 	def __repr__(self):
 		return object.__repr__(self)
+	
+	def _pfp__show(self, level=0):
+		"""Show the
+		"""
+		res = []
+		res.append("{}struct {{".format(
+			"  "*level
+		))
+		for child in self._pfp__children:
+			res.append("{}{} = {}".format(
+				"  "*(level+1),
+				child._pfp__name,
+				child._pfp__show(level+1)
+			))
+		res.append("{}}}".format("  "*level))
+		return "\n".join(res)
 
 class Dom(Struct):
 	"""The result of an interpreted template"""
@@ -366,14 +385,23 @@ class NumberBase(Field):
 			return getattr(self._pfp__value, val)
 		raise AttributeError()
 
-class Char(NumberBase):
+class IntBase(NumberBase):
+	def __repr__(self):
+		f = ":0{}x".format(self.width)
+		return ("{}({!r} [{" + f + "}])").format(
+			self.__class__.__name__,
+			self._pfp__value,
+			self._pfp__value
+		)
+
+class Char(IntBase):
 	width = 1
 	format = "b"
 
 class UChar(Char):
 	format = "B"
 
-class Short(NumberBase):
+class Short(IntBase):
 	width = 2
 	format = "h"
 
@@ -386,14 +414,14 @@ class WChar(Short):
 class WUChar(UShort):
 	pass
 
-class Int(NumberBase):
+class Int(IntBase):
 	width = 4
 	format = "i"
 
 class UInt(Int):
 	format = "I"
 
-class Int64(NumberBase):
+class Int64(IntBase):
 	width = 8
 	format = "q"
 
