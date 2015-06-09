@@ -12,6 +12,7 @@ import sys
 import os
 
 import py010parser
+import py010parser.c_parser
 from py010parser import c_ast as AST
 
 import pfp.fields as fields
@@ -276,7 +277,8 @@ class PfpInterp(object):
 			try:
 				mod_base = __import__("pfp.native", globals(), locals(), fromlist=[basename])
 			except Exception as e:
-				sys.stderr.write("can not import native module {} at '{}'".format(basename, filename))
+				sys.stderr.write("cannot import native module {} at '{}'".format(basename, filename))
+				raise e
 				continue
 
 			mod = getattr(mod_base, basename)
@@ -294,6 +296,9 @@ class PfpInterp(object):
 		self._break_type = self.BREAK_NONE
 		self._break_level = 0
 		self._no_debug = False
+		
+		# this speeds things up a bit
+		self._parser = py010parser.c_parser.CParser()
 
 		self._node_switch = {
 			AST.FileAST:		self._handle_file_ast,
@@ -340,7 +345,7 @@ class PfpInterp(object):
 		self._stream = stream
 		self._template = template
 		self._template_lines = self._template.split("\n")
-		self._ast = py010parser.parse_string(template)
+		self._ast = py010parser.parse_string(template, parser=self._parser)
 		self._dlog("parsed template into ast")
 
 		return self._run()
@@ -366,22 +371,33 @@ class PfpInterp(object):
 		self._no_debug = True
 
 		statement = statement.strip()
-		if statement.endswith(";"):
-			statement = statement[:-1]
 
-		statement = "( " + statement + " )"
 		if not statement.endswith(";"):
 			statement += ";"
-		statement = "return " + statement
+
+		ast = py010parser.parse_string(statement, parser=self._parser)
+
+		#if "=" in statement:
+			#if not statement.endswith(";"):
+				#statement += ";"
+		#else:
+			#if statement.endswith(";"):
+				#statement = statement[:-1]
+			#statement = "( " + statement + " )"
+			#if not statement.endswith(";"):
+				#statement += ";"
+			#statement = "return " + statement
 		self._dlog("evaluating statement: {}".format(statement))
 		
-		ast = py010parser.parse_string(statement, predefine_types=False)
-
 		try:
-			# explicitly iterate over each of the children so that
-			# _handle_file_ast isn't called
-			for child in ast.children():
-				self._handle_node(child, self._scope, self._ctxt, self._stream)
+			if len(ast.children()) == 1:
+				res = self._handle_node(ast.children()[0], self._scope, self._ctxt, self._stream)
+				return res
+			else:
+				# explicitly iterate over each of the children so that
+				# _handle_file_ast isn't called
+				for child in ast.children():
+					self._handle_node(child, self._scope, self._ctxt, self._stream)
 		except errors.InterpReturn as e:
 			return e.value
 		finally:
@@ -437,7 +453,13 @@ class PfpInterp(object):
 
 		# it is important to pass the stream in as the stream
 		# may change (e.g. compressed data)
-		return self._handle_node(self._ast, None, None, self._stream)
+		res = self._handle_node(self._ast, None, None, self._stream)
+
+		# final drop-in after everything has executed
+		if self._break_type != self.BREAK_NONE:
+			self.debugger.cmdloop("execution finished")
+
+		return res
 
 	def _handle_node(self, node, scope, ctxt, stream):
 		"""Recursively handle nodes in the 010 AST
@@ -498,7 +520,7 @@ class PfpInterp(object):
 		:returns: TODO
 
 		"""
-		self._root = ctxt = fields.Dom()
+		self._root = ctxt = fields.Dom("__root")
 		self._dlog("handling file AST with {} children".format(len(node.children())))
 
 		for child in node.children():

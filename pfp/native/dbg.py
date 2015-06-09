@@ -6,7 +6,7 @@ import pfp.fields
 from pfp.dbg import PfpDbg
 
 @native(name="Int3", ret=pfp.fields.Void, send_interp=True)
-def int3(params, ctxt, scope, stream, interp):
+def int3(params, ctxt, scope, stream, coord, interp):
 	if interp._no_debug:
 		return
 

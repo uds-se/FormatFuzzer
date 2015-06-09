@@ -209,15 +209,15 @@ class Struct(Field):
 		"""
 		res = []
 		res.append("{}struct {{".format(
-			"  "*level
+			"    "*level
 		))
 		for child in self._pfp__children:
-			res.append("{}{} = {}".format(
-				"  "*(level+1),
+			res.append("{}{:10s} = {}".format(
+				"    "*(level+1),
 				child._pfp__name,
 				child._pfp__show(level+1)
 			))
-		res.append("{}}}".format("  "*level))
+		res.append("{}}}".format("    "*level))
 		return "\n".join(res)
 
 class Dom(Struct):
@@ -387,7 +387,7 @@ class NumberBase(Field):
 
 class IntBase(NumberBase):
 	def __repr__(self):
-		f = ":0{}x".format(self.width)
+		f = ":0{}x".format(self.width*2)
 		return ("{}({!r} [{" + f + "}])").format(
 			self.__class__.__name__,
 			self._pfp__value,

@@ -21,7 +21,7 @@ import pfp.fields
 #    int64 crcPolynomial=-1, 
 #    int64 crcInitValue=-1 )
 @native(name="Checksum", ret=pfp.fields.Int64)
-def Checksum(params, ctxt, scope, stream):
+def Checksum(params, ctxt, scope, stream, coord):
 	"""
 	Runs a simple checksum on a file and returns the result as a int64. The
 	algorithm can be one of the following constants:
@@ -62,7 +62,7 @@ def Checksum(params, ctxt, scope, stream):
 #    int64 crcPolynomial=-1, 
 #    int64 crcInitValue=-1 )
 @native(name="ChecksumAlgArrayStr", ret=pfp.fields.Int)
-def ChecksumAlgArrayStr(params, ctxt, scope, stream):
+def ChecksumAlgArrayStr(params, ctxt, scope, stream, coord):
 	"""
 	Similar to the ChecksumAlgStr function except that the checksum is
 	run on data stored in an array instead of in a file. The data for the
@@ -83,7 +83,7 @@ def ChecksumAlgArrayStr(params, ctxt, scope, stream):
 #    int64 crcPolynomial=-1, 
 #    int64 crcInitValue=-1 )
 @native(name="ChecksumAlgArrayBytes", ret=pfp.fields.Int)
-def ChecksumAlgArrayBytes(params, ctxt, scope, stream):
+def ChecksumAlgArrayBytes(params, ctxt, scope, stream, coord):
 	"""
 	Similar to the ChecksumAlgStr function except that the checksum is run
 	on data in an array instead of in a file and the results are stored
@@ -106,7 +106,7 @@ def ChecksumAlgArrayBytes(params, ctxt, scope, stream):
 #    int64 crcPolynomial=-1, 
 #    int64 crcInitValue=-1 )
 @native(name="ChecksumAlgStr", ret=pfp.fields.Int)
-def ChecksumAlgStr(params, ctxt, scope, stream):
+def ChecksumAlgStr(params, ctxt, scope, stream, coord):
 	"""
 	Similar to the Checksum algorithm except the following algorithm
 	constants are supported:
@@ -157,7 +157,7 @@ def ChecksumAlgStr(params, ctxt, scope, stream):
 #    int64 crcPolynomial=-1, 
 #    int64 crcInitValue=-1 )
 @native(name="ChecksumAlgBytes", ret=pfp.fields.Int)
-def ChecksumAlgBytes(params, ctxt, scope, stream):
+def ChecksumAlgBytes(params, ctxt, scope, stream, coord):
 	"""
 	This function is identical to the ChecksumAlgStr function except that
 	the checksum is returned as a byte array in the result argument. The
@@ -178,7 +178,7 @@ def ChecksumAlgBytes(params, ctxt, scope, stream):
 #    int64 minmatchlength=8, 
 #    int64 quickmatch=512 )
 @native(name="Compare", ret=pfp.fields.Void)
-def Compare(params, ctxt, scope, stream):
+def Compare(params, ctxt, scope, stream, coord):
 	"""
 	Runs a comparison between two files or between two blocks of data. The
 	type argument indicates the type of comparison that should be run
@@ -209,7 +209,7 @@ def Compare(params, ctxt, scope, stream):
 
 #char ConvertASCIIToEBCDIC( char ascii )
 @native(name="ConvertASCIIToEBCDIC", ret=pfp.fields.Char)
-def ConvertASCIIToEBCDIC(params, ctxt, scope, stream):
+def ConvertASCIIToEBCDIC(params, ctxt, scope, stream, coord):
 	"""
 	Converts the given ASCII character into an EBCDIC character and returns the result.
 	"""
@@ -221,7 +221,7 @@ def ConvertASCIIToEBCDIC(params, ctxt, scope, stream):
 #    ubyte unicode[], 
 #    int bigendian=false )
 @native(name="ConvertASCIIToUNICODE", ret=pfp.fields.Void)
-def ConvertASCIIToUNICODE(params, ctxt, scope, stream):
+def ConvertASCIIToUNICODE(params, ctxt, scope, stream, coord):
 	"""
 	Converts an ASCII string into an array of bytes and stores them in the
 	unicode argument. len indicates the number of characters to convert
@@ -236,7 +236,7 @@ def ConvertASCIIToUNICODE(params, ctxt, scope, stream):
 #    const char ascii[], 
 #    ushort unicode[] )
 @native(name="ConvertASCIIToUNICODEW", ret=pfp.fields.Void)
-def ConvertASCIIToUNICODEW(params, ctxt, scope, stream):
+def ConvertASCIIToUNICODEW(params, ctxt, scope, stream, coord):
 	"""
 	Converts an ASCII string into an array of words and stores the array in
 	the unicode argument. The number of characters to convert is given by
@@ -246,7 +246,7 @@ def ConvertASCIIToUNICODEW(params, ctxt, scope, stream):
 
 #char ConvertEBCDICToASCII( char ebcdic )
 @native(name="ConvertEBCDICToASCII", ret=pfp.fields.Char)
-def ConvertEBCDICToASCII(params, ctxt, scope, stream):
+def ConvertEBCDICToASCII(params, ctxt, scope, stream, coord):
 	"""
 	Converts the given EBCDIC character into an ASCII character and returns the result.
 	"""
@@ -258,7 +258,7 @@ def ConvertEBCDICToASCII(params, ctxt, scope, stream):
 #    char ascii[], 
 #    int bigendian=false )
 @native(name="ConvertUNICODEToASCII", ret=pfp.fields.Void)
-def ConvertUNICODEToASCII(params, ctxt, scope, stream):
+def ConvertUNICODEToASCII(params, ctxt, scope, stream, coord):
 	"""
 	Converts an array of UNICODE characters in the unicode argument into
 	ASCII bytes and stores them in the ascii array. len indicates the
@@ -274,7 +274,7 @@ def ConvertUNICODEToASCII(params, ctxt, scope, stream):
 #    const ushort unicode[], 
 #    char ascii[] )
 @native(name="ConvertUNICODEToASCIIW", ret=pfp.fields.Void)
-def ConvertUNICODEToASCIIW(params, ctxt, scope, stream):
+def ConvertUNICODEToASCIIW(params, ctxt, scope, stream, coord):
 	"""
 	Converts the array of words in the unicode argument to ASCII bytes and
 	saves them to the ascii argument. The number of characters to convert
@@ -291,7 +291,7 @@ def ConvertUNICODEToASCIIW(params, ctxt, scope, stream):
 #    int bytesperrow=16, 
 #    int wordaddresses=0 )
 @native(name="ExportFile", ret=pfp.fields.Int)
-def ExportFile(params, ctxt, scope, stream):
+def ExportFile(params, ctxt, scope, stream, coord):
 	"""
 	Exports the currently open file to a file on disk given by filename
 	using one of the following type formats:
@@ -335,7 +335,7 @@ def ExportFile(params, ctxt, scope, stream):
 #    int64 size=0, 
 #    int wildcardMatchLength=24 )
 @native(name="FindAll", ret=pfp.fields.Void)
-def FindAll(params, ctxt, scope, stream):
+def FindAll(params, ctxt, scope, stream, coord):
 	"""
 	This function converts the argument data into a set of hex bytes
 	and then searches the current file for all occurrences of those
@@ -369,7 +369,7 @@ def FindAll(params, ctxt, scope, stream):
 #    int64 size=0, 
 #    int wildcardMatchLength=24 )
 @native(name="FindFirst", ret=pfp.fields.Int64)
-def FindFirst(params, ctxt, scope, stream):
+def FindFirst(params, ctxt, scope, stream, coord):
 	"""
 	This function is identical to the FindAll function except that the
 	return value is the position of the first occurrence of the target
@@ -389,7 +389,7 @@ def FindFirst(params, ctxt, scope, stream):
 #    double tolerance=0.0, 
 #    int wildcardMatchLength=24 )
 @native(name="FindInFiles", ret=pfp.fields.Void)
-def FindInFiles(params, ctxt, scope, stream):
+def FindInFiles(params, ctxt, scope, stream, coord):
 	"""
 	Searches for a given set of data across multiple files. See the FindAll
 	function for information on the data, matchcase, wholeword, method,
@@ -408,7 +408,7 @@ def FindInFiles(params, ctxt, scope, stream):
 
 #int64 FindNext( int dir=1 )
 @native(name="FindNext", ret=pfp.fields.Int64)
-def FindNext(params, ctxt, scope, stream):
+def FindNext(params, ctxt, scope, stream, coord):
 	"""
 	This function returns the position of the next occurrence of the
 	target value specified with the FindFirst function. If dir is 1, the
@@ -427,7 +427,7 @@ def FindNext(params, ctxt, scope, stream):
 #    int64 size=0, 
 #    int requireNull=false )
 @native(name="FindStrings", ret=pfp.fields.Void)
-def FindStrings(params, ctxt, scope, stream):
+def FindStrings(params, ctxt, scope, stream, coord):
 	"""
 	Attempts to locate any strings within a binary file similar to the Find
 	Strings dialog which is accessed by clicking 'Search > Find Strings'
@@ -472,7 +472,7 @@ def FindStrings(params, ctxt, scope, stream):
 
 #int GetSectorSize()
 @native(name="GetSectorSize", ret=pfp.fields.Int)
-def GetSectorSize(params, ctxt, scope, stream):
+def GetSectorSize(params, ctxt, scope, stream, coord):
 	"""
 	Returns the size in bytes of the sectors for this drive. If this
 	file is not a drive, the current sector size is defined using the
@@ -488,7 +488,7 @@ def GetSectorSize(params, ctxt, scope, stream):
 #    step=0, 
 #    int64 skip=0 )
 @native(name="HexOperation", ret=pfp.fields.Int)
-def HexOperation(params, ctxt, scope, stream):
+def HexOperation(params, ctxt, scope, stream, coord):
 	"""
 	Perform any of the operations on hex data as available in the Hex
 	Operations dialog. The operation parameter chooses which operation to
@@ -536,7 +536,7 @@ def HexOperation(params, ctxt, scope, stream):
 
 #int64 Histogram( int64 start, int64 size, int64 result[256] )
 @native(name="Histogram", ret=pfp.fields.Int64)
-def Histogram(params, ctxt, scope, stream):
+def Histogram(params, ctxt, scope, stream, coord):
 	"""
 	Counts the number of bytes of each value in the file from 0 up to
 	255. The bytes are counting starting from address start and continuing
@@ -547,9 +547,9 @@ def Histogram(params, ctxt, scope, stream):
 	"""
 	pass
 
-#int ImportFile( int type, char filename[], int wordaddresses=false, int defaultByteValue=-1 )
+#int ImportFile( int type, char filename[], int wordaddresses=false, int defaultByteValue=-1 , coord)
 @native(name="ImportFile", ret=pfp.fields.Int)
-def ImportFile(params, ctxt, scope, stream):
+def ImportFile(params, ctxt, scope, stream, coord):
 	"""
 	Attempts to import the file specified by filename in one of the
 	supported import formats. The format is given by the type argument
@@ -578,7 +578,7 @@ def ImportFile(params, ctxt, scope, stream):
 
 #int IsDrive()
 @native(name="IsDrive", ret=pfp.fields.Int)
-def IsDrive(params, ctxt, scope, stream):
+def IsDrive(params, ctxt, scope, stream, coord):
 	"""
 	Returns true if the current file is a physical or logical drive,
 	or false otherwise (see Editing Drives).
@@ -587,7 +587,7 @@ def IsDrive(params, ctxt, scope, stream):
 
 #int IsLogicalDrive()
 @native(name="IsLogicalDrive", ret=pfp.fields.Int)
-def IsLogicalDrive(params, ctxt, scope, stream):
+def IsLogicalDrive(params, ctxt, scope, stream, coord):
 	"""
 	Returns true if the current file is a logical drive, or false otherwise
 	(see Editing Drives).
@@ -596,7 +596,7 @@ def IsLogicalDrive(params, ctxt, scope, stream):
 
 #int IsPhysicalDrive()
 @native(name="IsPhysicalDrive", ret=pfp.fields.Int)
-def IsPhysicalDrive(params, ctxt, scope, stream):
+def IsPhysicalDrive(params, ctxt, scope, stream, coord):
 	"""
 	Returns true if the current file is a physical drive, or false
 	otherwise (see Editing Drives).
@@ -605,7 +605,7 @@ def IsPhysicalDrive(params, ctxt, scope, stream):
 
 #int IsProcess()
 @native(name="IsProcess", ret=pfp.fields.Int)
-def IsProcess(params, ctxt, scope, stream):
+def IsProcess(params, ctxt, scope, stream, coord):
 	"""
 	Returns true if the current file is a process, or false otherwise
 	(see Editing Processes).
@@ -614,7 +614,7 @@ def IsProcess(params, ctxt, scope, stream):
 
 #int OpenLogicalDrive( char driveletter )
 @native(name="OpenLogicalDrive", ret=pfp.fields.Int)
-def OpenLogicalDrive(params, ctxt, scope, stream):
+def OpenLogicalDrive(params, ctxt, scope, stream, coord):
 	"""
 	Opens the drive with the given driveLetter as a new file in the
 	editor. For example, 'OpenLogicalDrive('c');'. This function returns
@@ -625,7 +625,7 @@ def OpenLogicalDrive(params, ctxt, scope, stream):
 
 #int OpenPhysicalDrive( int physicalID )
 @native(name="OpenPhysicalDrive", ret=pfp.fields.Int)
-def OpenPhysicalDrive(params, ctxt, scope, stream):
+def OpenPhysicalDrive(params, ctxt, scope, stream, coord):
 	"""
 	Opens the physical drive physicalID as a new file in the editor
 	(see Editing Drives). For example, 'OpenPhysicalDrive(0);'. This
@@ -635,7 +635,7 @@ def OpenPhysicalDrive(params, ctxt, scope, stream):
 
 #int OpenProcessById( int processID, int openwriteable=true )
 @native(name="OpenProcessById", ret=pfp.fields.Int)
-def OpenProcessById(params, ctxt, scope, stream):
+def OpenProcessById(params, ctxt, scope, stream, coord):
 	"""
 	Opens a process identified by the processID number (see Editing
 	Processes). If openwriteable is true, only bytes that can be modified
@@ -646,7 +646,7 @@ def OpenProcessById(params, ctxt, scope, stream):
 
 #int OpenProcessByName( char processname[], int openwriteable=true )
 @native(name="OpenProcessByName", ret=pfp.fields.Int)
-def OpenProcessByName(params, ctxt, scope, stream):
+def OpenProcessByName(params, ctxt, scope, stream, coord):
 	"""
 	Attempts to open a process given by the name processname as a new
 	file in the editor. For example: 'OpenProcessByName( "cmd.exe" );'
@@ -669,7 +669,7 @@ def OpenProcessByName(params, ctxt, scope, stream):
 #    int padwithzeros=false, 
 #    int wildcardMatchLength=24 )
 @native(name="ReplaceAll", ret=pfp.fields.Int)
-def ReplaceAll(params, ctxt, scope, stream):
+def ReplaceAll(params, ctxt, scope, stream, coord):
 	"""
 	This function converts the arguments finddata and replacedata into
 	a set of bytes, and then finds all occurrences of the find bytes

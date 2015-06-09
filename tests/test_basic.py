@@ -244,7 +244,7 @@ class TestBasic(unittest.TestCase, utils.UtilsMixin):
 	
 	def test_native_func(self):
 		func_called = False
-		def func(params, ctxt, scope, stream):
+		def func(params, ctxt, scope, stream, coord):
 			func_called = True
 			return 555
 

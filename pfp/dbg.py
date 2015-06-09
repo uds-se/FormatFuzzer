@@ -72,16 +72,19 @@ class PfpDbg(cmd.Cmd, object):
 		"""
 		try:
 			res = self._interp.eval(args)
-			print(res)
+			if res is not None:
+				print(res._pfp__show())
 		except errors.UnresolvedID as e:
 			print("ERROR: " + e.message)
 		except Exception as e:
+			raise
 			print("ERROR: " + e.message)
 			
 		return False
 	
 	def do_show(self, args):
-		"""Show the current structure
+		"""Show the current structure of __root (no args),
+		or show the result of the expression.
 		"""
 		args = args.strip()
 
@@ -94,6 +97,9 @@ class PfpDbg(cmd.Cmd, object):
 				return False
 
 		print(to_show._pfp__show())
+	def do_x(self, args):
+		pass
+	do_x = do_show
 	
 	def do_list(self, args):
 		"""List the current location in the template

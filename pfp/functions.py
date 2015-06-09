@@ -62,9 +62,9 @@ class NativeFunction(object):
 	
 	def call(self, args, ctxt, scope, stream, interp, coord):
 		if self.send_interp:
-			res = self.func(args, ctxt, scope, stream, interp)
+			res = self.func(args, ctxt, scope, stream, coord, interp)
 		else:
-			res = self.func(args, ctxt, scope, stream)
+			res = self.func(args, ctxt, scope, stream, coord)
 		res_field = self.ret()
 		res_field._pfp__set_value(res)
 		return res_field
