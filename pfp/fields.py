@@ -393,6 +393,12 @@ class IntBase(NumberBase):
 			self._pfp__value,
 			self._pfp__value
 		)
+	
+	def __truediv__(self, other):
+		"""dividing ints should not return a float (python 3
+		true div behavior). So force floordiv
+		"""
+		return self // other
 
 class Char(IntBase):
 	width = 1
