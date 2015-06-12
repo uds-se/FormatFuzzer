@@ -23,6 +23,32 @@ import pfp.utils as utils
 
 logging.basicConfig(level=logging.CRITICAL)
 
+class StructUnionDef(object):
+
+	"""A class used to instantiate structs/unions as
+	needed (used for typedefs)"""
+
+	def __init__(self, interp, node):
+		"""Save the interpreter and the node so that when
+		this instance is called (will act like instantiation),
+		the interpreter is just told to handle the node
+		
+		:interp: The interpreter
+		:node: The node to interpret upon instantiation
+		"""
+		self._interp = interp
+		self._node = node
+	
+	def __call__(self, stream):
+		"""Create an instance of the struct/union
+
+		:stream: The stream that data will be parsed from
+		:returns: A struct or union instance
+		"""
+		# TODO stream should be optional to act like other fields classes
+		res = self._interp._handle_node(self._node, stream=stream)
+		return res
+
 class DebugLogger(object):
 	def __init__(self, active=False):
 		self._log = logging.getLogger("")
@@ -142,6 +168,15 @@ class Scope(object):
 		"""
 		self._dlog("getting local '{}'".format(name))
 		return self._search("locals", name)
+	
+	def add_type_struct_or_union(self, name, node):
+		"""Store the node with the name. When it is instantiated,
+		the node itself will be handled.
+
+		:name: name of the typedefd struct/union
+		:node: the union/struct node
+		"""
+		self._curr_scope["types"][name] = node
 	
 	def add_type(self, new_name, orig_names):
 		"""Record the typedefd name for orig_names. Resolve orig_names
@@ -284,7 +319,7 @@ class PfpInterp(object):
 			mod = getattr(mod_base, basename)
 			setattr(mod, "PYVAL", fields.get_value) 
 
-	def __init__(self, debug=False):
+	def __init__(self, debug=False, parser=None):
 		"""
 		"""
 		self.__class__.define_natives()
@@ -296,15 +331,21 @@ class PfpInterp(object):
 		self._break_type = self.BREAK_NONE
 		self._break_level = 0
 		self._no_debug = False
+
+		self._ctxt = None
+		self._scope = None
 		
+		if parser is None:
+			parser = py010parser.c_parser.CParser()
 		# this speeds things up a bit
-		self._parser = py010parser.c_parser.CParser()
+		self._parser = parser
 
 		self._node_switch = {
 			AST.FileAST:		self._handle_file_ast,
 			AST.Decl:			self._handle_decl,
 			AST.TypeDecl:		self._handle_type_decl,
 			AST.Struct:			self._handle_struct,
+			AST.Union:			self._handle_union,
 			AST.StructRef:		self._handle_struct_ref,
 			AST.IdentifierType:	self._handle_identifier_type,
 			AST.Typedef:		self._handle_typedef,
@@ -348,7 +389,8 @@ class PfpInterp(object):
 		self._ast = py010parser.parse_string(template, parser=self._parser)
 		self._dlog("parsed template into ast")
 
-		return self._run()
+		res = self._run()
+		return res
 	
 	def step_over(self):
 		"""Perform one step of the interpreter
@@ -461,7 +503,7 @@ class PfpInterp(object):
 
 		return res
 
-	def _handle_node(self, node, scope, ctxt, stream):
+	def _handle_node(self, node, scope=None, ctxt=None, stream=None):
 		"""Recursively handle nodes in the 010 AST
 
 		:node: TODO
@@ -471,8 +513,15 @@ class PfpInterp(object):
 		:returns: TODO
 		"""
 		if scope is None:
-			self._scope = scope = self._create_scope()
-		self._ctxt = ctxt
+			if self._scope is None:
+				self._scope = scope = self._create_scope()
+			else:
+				scope = self._scope
+
+		if ctxt is None and self._ctxt is not None:
+			ctxt = self._ctxt
+		else:
+			self._ctxt = ctxt
 
 		if type(node) is tuple:
 			node = node[1]
@@ -608,6 +657,36 @@ class PfpInterp(object):
 
 		return sub_field
 	
+	def _handle_union(self, node, scope, ctxt, stream):
+		"""TODO: Docstring for _handle_union.
+
+		:node: TODO
+		:scope: TODO
+		:ctxt: TODO
+		:stream: TODO
+		:returns: TODO
+
+		"""
+		self._dlog("handling union")
+		union = fields.Union()
+
+		scope.push()
+
+		max_pos = 0
+		for decl in node.decls:
+			start_pos = stream.tell()
+			# new context! (union)
+			self._handle_node(decl, scope, union, stream)
+			end_pos = stream.tell()
+			if end_pos > max_pos:
+				max_pos = end_pos
+			stream.seek(start_pos, 0)
+		stream.seek(max_pos, 0)
+
+		scope.pop()
+
+		return union
+	
 	def _handle_struct(self, node, scope, ctxt, stream):
 		"""TODO: Docstring for _handle_struct.
 
@@ -657,15 +736,22 @@ class PfpInterp(object):
 		:returns: TODO
 
 		"""
-		self._dlog("handling typedef '{}' ({})".format(node.name, node.type.type.names))
-		# don't actually handle the TypeDecl and Identifier nodes,
-		# just directly add the types. Example structure:
-		#
-		#	 Typedef: BLAH, [], ['typedef']
-    	#		TypeDecl: BLAH, []
-      	#			IdentifierType: ['unsigned', 'char']
-		#	
-		scope.add_type(node.name, node.type.type.names)
+		is_union_or_struct = (node.type.type.__class__ in [AST.Union, AST.Struct])
+
+		if is_union_or_struct:
+			scope.add_type_struct_or_union(node.name, node.type.type)
+		else:
+			names = node.type.type.names
+
+			self._dlog("handling typedef '{}' ({})".format(node.name, names))
+			# don't actually handle the TypeDecl and Identifier nodes,
+			# just directly add the types. Example structure:
+			#
+			#	 Typedef: BLAH, [], ['typedef']
+			#		TypeDecl: BLAH, []
+			#			IdentifierType: ['unsigned', 'char']
+			#	
+			scope.add_type(node.name, names)
 	
 	def _handle_constant(self, node, scope, ctxt, sream):
 		"""TODO: Docstring for _handle_constant.
@@ -1032,6 +1118,7 @@ class PfpInterp(object):
 			"char":		"Char",
 			"int":		"Int",
 			"long": 	"Int",
+			"uint64":	"UInt64",
 			"short":	"Short",
 			"double":	"Double",
 			"float":	"Float",
@@ -1044,9 +1131,14 @@ class PfpInterp(object):
 		
 		if core not in switch:
 			# will return a list of resolved names
-			resolved_names = scope.get_type(core)
+			type_info = scope.get_type(core)
+			if isinstance(type_info, AST.Node):
+				return StructUnionDef(self, type_info)
+			resolved_names = type_info
+			if resolved_names is None:
+				raise errors.UnresolvedType(self._coord, " ".join(names), " ")
 			if resolved_names[-1] not in switch:
-				raise errors.UnresolvedType(node.coord, " ".join(names), " ".join(resolved_names))
+				raise errors.UnresolvedType(self._coord, " ".join(names), " ".join(resolved_names))
 			names = copy.copy(names)
 			names.pop()
 			names += resolved_names

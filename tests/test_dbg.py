@@ -28,13 +28,15 @@ class TestDebug(unittest.TestCase, utils.UtilsMixin):
 	def test_debug_prompt(self):
 		return
 		dom = pfp.parse(
-			StringIO("aaaabbbbcccchello there\x00"),
+			StringIO("aaaabbbbcccchello there\x00\x05abcdf"),
 			"""
 			Int3();
 			int a;
 			int b;
 			int c;
 			string greeting;
+			unsigned char length;
+			char str[length];
 			"""
 		)
 

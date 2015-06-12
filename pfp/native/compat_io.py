@@ -19,8 +19,8 @@ import pfp.errors as errors
 @native(name="BigEndian", ret=pfp.fields.Void)
 def BigEndian(params, ctxt, scope, stream, coord):
 	if len(params) > 0:
-		raise errors.InvalidArguments()
-	fields.NumberBase.endian = pfp.fields.BIG_ENDIAN
+		raise errors.InvalidArguments(coord, "0 arguments", "{} args".format(len(params)))
+	pfp.fields.NumberBase.endian = pfp.fields.BIG_ENDIAN
 
 #void BitfieldDisablePadding()
 @native(name="BitfieldDisablePadding", ret=pfp.fields.Void)
@@ -115,19 +115,29 @@ def InsertBytes(params, ctxt, scope, stream, coord):
 #int IsBigEndian()
 @native(name="IsBigEndian", ret=pfp.fields.Int)
 def IsBigEndian(params, ctxt, scope, stream, coord):
-	pass
+	if len(params) > 0:
+		raise errors.InvalidArguments(coord, "0 arguments", "{} args".format(len(params)))
+	if pfp.fields.NumberBase.endian == pfp.fields.BIG_ENDIAN:
+		return 1
+	else:
+		return 0
 
 #int IsLittleEndian()
 @native(name="IsLittleEndian", ret=pfp.fields.Int)
 def IsLittleEndian(params, ctxt, scope, stream, coord):
-	pass
+	if len(params) > 0:
+		raise errors.InvalidArguments(coord, "0 arguments", "{} args".format(len(params)))
+	if pfp.fields.NumberBase.endian == pfp.fields.LITTLE_ENDIAN:
+		return 0
+	else:
+		return 1
 
 #void LittleEndian()
 @native(name="LittleEndian", ret=pfp.fields.Void)
 def LittleEndian(params, ctxt, scope, stream, coord):
 	if len(params) > 0:
-		raise errors.InvalidArguments()
-	fields.NumberBase.endian = pfp.fields.LITTLE_ENDIAN
+		raise errors.InvalidArguments(coord, "0 arguments", "{} args".format(len(params)))
+	pfp.fields.NumberBase.endian = pfp.fields.LITTLE_ENDIAN
 
 #int MakeDir( string dir )
 @native(name="MakeDir", ret=pfp.fields.Int)

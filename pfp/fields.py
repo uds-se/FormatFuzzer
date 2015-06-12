@@ -129,6 +129,9 @@ class Void(Field):
 
 class Struct(Field):
 	"""The struct field"""
+
+	_pfp__show_name = "struct"
+
 	def __init__(self, name=None):
 		# ordered list of children
 		super(Struct, self).__setattr__("_pfp__children", [])
@@ -140,6 +143,7 @@ class Struct(Field):
 	def _pfp__add_child(self, name, child):
 		"""Add a child to the Struct field
 
+		:name: The name of the child
 		:child: A :class:`.Field` instance
 		:returns: None
 		"""
@@ -151,7 +155,7 @@ class Struct(Field):
 		"""Parse the incoming stream
 
 		:stream: Input stream to be parsed
-		:returns: Nothing
+		:returns: Number of bytes parsed
 
 		"""
 		res = 0
@@ -205,11 +209,11 @@ class Struct(Field):
 		return object.__repr__(self)
 	
 	def _pfp__show(self, level=0):
-		"""Show the
+		"""Show the contents of the struct
 		"""
 		res = []
-		res.append("{}struct {{".format(
-			"    "*level
+		res.append("{} {{".format(
+			self._pfp__show_name
 		))
 		for child in self._pfp__children:
 			res.append("{}{:10s} = {}".format(
@@ -219,6 +223,77 @@ class Struct(Field):
 			))
 		res.append("{}}}".format("    "*level))
 		return "\n".join(res)
+
+class Union(Struct):
+	"""A union field, where each member is an alternate
+	view of the data"""
+
+	_pfp__buff = None
+	_pfp__size = 0
+	_pfp__show_name = "union"
+
+	def __init__(self, name=None):
+		"""Init the union and its buff stream
+		"""
+		super(Union, self).__init__(name)
+		self._pfp__buff = six.BytesIO()
+
+	def _pfp__add_child(self, name, child):
+		"""Add a child to the Union field
+
+		:name: The name of the child
+		:child: A :class:`.Field` instance
+		:returns: None
+		"""
+		super(Union, self)._pfp__add_child(name, child)
+		self._pfp__buff.seek(0, 0)
+		child._pfp__build(stream=self._pfp__buff)
+		self._pfp__buff.seek(0, 0)
+	
+	def _pfp__parse(self, stream):
+		"""Parse the incoming stream
+
+		:stream: Input stream to be parsed
+		:returns: Number of bytes parsed
+		"""
+		max_res = 0
+		for child in self._pfp__children:
+			child_res = child._pfp__parse(stream)
+			if child_res > max_res:
+				max_res = child_res
+
+			# rewind the stream
+			stream.seek(child_res, -1)
+		self._pfp__size = max_res
+
+		self._pfp__buff = six.StringIO(stream.read(self._pfp__size))
+		return max_res
+	
+	def _pfp__build(self, stream=None):
+		"""Build the union and write the result into the stream.
+
+		:stream: None
+		:returns: None
+		"""
+		if stream is None:
+			return self._pfp__buff.getvalue()
+		else:
+			return stream.write(self._pfp__buff.getvalue())
+	
+	def __setattr__(self, name, value):
+		"""Custom __setattr__ to keep track of the order things
+		are writen (to mimic writing to memory)
+		"""
+		res = super(Union, self).__setattr__(name, value)
+		children_map = super(Struct, self).__getattribute__("_pfp__children_map")
+
+		if name in children_map:
+			field = getattr(self, name)
+			# back to the start of the buffer
+			self._pfp__buff.seek(0, 0)
+			field._pfp__build(stream=self._pfp__buff)
+
+		return res
 
 class Dom(Struct):
 	"""The result of an interpreted template"""
@@ -267,7 +342,8 @@ class NumberBase(Field):
 			self._pfp__value
 		)
 		if stream is not None:
-			return stream.write(data)
+			stream.write(data)
+			return len(data)
 		else:
 			return data
 	
@@ -521,10 +597,12 @@ class String(Field):
 		:returns: TODO
 
 		"""
+		data = self._pfp__value + utils.binary("\x00")
 		if stream is None:
-			return self._pfp__value + utils.binary("\x00")
+			return data
 		else:
-			return stream.write(self._pfp__value + utils.binary("\x00"))
+			stream.write(data)
+			return len(data)
 	
 	def __add__(self, other):
 		"""Add two strings together. If other is not a String instance,
@@ -569,4 +647,5 @@ class WString(String):
 		if stream is None:
 			return val
 		else:
-			return stream.write(val)
+			stream.write(val)
+			return len(val)

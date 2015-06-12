@@ -39,9 +39,6 @@ class TestNumericFields(unittest.TestCase, utils.UtilsMixin):
 		self._do_parse(field, struct.pack("<" + format, 1))
 		self.assertEqual(field, 1)
 	
-	def test_default_endian(self):
-		self.assertEqual(pfp.fields.NumberBase.endian, pfp.fields.BIG_ENDIAN)
-	
 	def test_char(self):
 		field = Char()
 		self._do_endian_tests(field, "b")

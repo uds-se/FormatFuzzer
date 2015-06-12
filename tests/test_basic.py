@@ -68,6 +68,8 @@ class TestBasic(unittest.TestCase, utils.UtilsMixin):
 		dom = self._test_parse_build(
 			"\xff\x00\x00\xff",
 			"""
+				BigEndian();
+
 				typedef unsigned short BLAH;
 				BLAH a;
 				short b;
@@ -257,6 +259,37 @@ class TestBasic(unittest.TestCase, utils.UtilsMixin):
 			Printf("%d", func());
 			""",
 			stdout="555"
+		)
+	
+	def test_struct(self):
+		dom = self._test_parse_build(
+			"abcddcba",
+			"""
+				typedef struct {
+					int some_int;
+				} blah;
+
+				blah some_struct;
+				blah some_struct2;
+			""",
+		)
+	
+	def test_union(self):
+		dom = self._test_parse_build(
+			"abcd",
+			"""
+				typedef union {
+					int some_int;
+					struct {
+						char a;
+						char b;
+						char c;
+						char d;
+					} some_chars;
+				} blah;
+
+				blah some_union;
+			"""
 		)
 
 if __name__ == "__main__":
