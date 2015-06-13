@@ -35,11 +35,12 @@ class StructUnionDef(object):
 		
 		:interp: The interpreter
 		:node: The node to interpret upon instantiation
+		:stream: The stream that data will be parsed from
 		"""
 		self._interp = interp
 		self._node = node
 	
-	def __call__(self, stream):
+	def __call__(self, stream=None):
 		"""Create an instance of the struct/union
 
 		:stream: The stream that data will be parsed from
@@ -344,6 +345,7 @@ class PfpInterp(object):
 			AST.FileAST:		self._handle_file_ast,
 			AST.Decl:			self._handle_decl,
 			AST.TypeDecl:		self._handle_type_decl,
+			AST.ByRefDecl:		self._handle_byref_decl,
 			AST.Struct:			self._handle_struct,
 			AST.Union:			self._handle_union,
 			AST.StructRef:		self._handle_struct_ref,
@@ -361,7 +363,14 @@ class PfpInterp(object):
 			AST.ExprList:		self._handle_expr_list,
 			AST.Compound:		self._handle_compound,
 			AST.Return:			self._handle_return,
-			AST.ArrayDecl:		self._handle_array_decl
+			AST.ArrayDecl:		self._handle_array_decl,
+			AST.InitList:		self._handle_init_list,
+			AST.If:				self._handle_if,
+			AST.For:			self._handle_for,
+			AST.While:			self._handle_while,
+			AST.DeclList:		self._handle_decl_list,
+			AST.Break:			self._handle_break,
+			AST.Continue:		self._handle_continue
 		}
 	
 	def _dlog(self, msg, indent_increase=0):
@@ -419,27 +428,13 @@ class PfpInterp(object):
 
 		ast = py010parser.parse_string(statement, parser=self._parser)
 
-		#if "=" in statement:
-			#if not statement.endswith(";"):
-				#statement += ";"
-		#else:
-			#if statement.endswith(";"):
-				#statement = statement[:-1]
-			#statement = "( " + statement + " )"
-			#if not statement.endswith(";"):
-				#statement += ";"
-			#statement = "return " + statement
 		self._dlog("evaluating statement: {}".format(statement))
 		
 		try:
-			if len(ast.children()) == 1:
-				res = self._handle_node(ast.children()[0], self._scope, self._ctxt, self._stream)
-				return res
-			else:
-				# explicitly iterate over each of the children so that
-				# _handle_file_ast isn't called
-				for child in ast.children():
-					self._handle_node(child, self._scope, self._ctxt, self._stream)
+			res = None
+			for child in ast.children():
+				res = self._handle_node(child, self._scope, self._ctxt, self._stream)
+			return res
 		except errors.InterpReturn as e:
 			return e.value
 		finally:
@@ -460,7 +455,7 @@ class PfpInterp(object):
 		start = max(0, self._coord.line - 5)
 		end = min(len(self._template_lines), self._coord.line + 4)
 
-		lines = [(x, self._template_lines[x]) for x in range(start, end, 1)]
+		lines = [(x, self._template_lines[x]) for x in six.moves.range(start, end, 1)]
 		return self._coord.line, lines
 	
 	# --------------------
@@ -589,10 +584,15 @@ class PfpInterp(object):
 		"""
 		self._dlog("handling decl")
 		field = self._handle_node(node.type, scope, ctxt, stream)
+
+		if getattr(node, "is_func_param", False):
+			# we want to keep this as a class and not instantiate it
+			# instantiation will be done in functions.ParamListDef.instantiate
+			field = (node.name, field)
 		
 		# locals still get a field instance, but DON'T parse the
 		# stream!
-		if "local" in node.quals:
+		elif "local" in node.quals:
 			field = field()
 			scope.add_local(node.name, field)
 
@@ -609,11 +609,6 @@ class PfpInterp(object):
 			field.name = node.name
 			scope.add_local(node.name, field)
 
-		elif getattr(node, "is_func_param", False):
-			# we want to keep this as a class and not instantiate it
-			# instantiation will be done in functions.ParamListDef.instantiate
-			field = (node.name, field)
-
 		else:
 			# by this point, structs are already instantiated (they need to be
 			# in order to set the new context)
@@ -622,6 +617,23 @@ class PfpInterp(object):
 			scope.add_var(node.name, field)
 			ctxt._pfp__add_child(node.name, field)
 
+		return field
+	
+	def _handle_byref_decl(self, node, scope, ctxt, stream):
+		"""TODO: Docstring for _handle_byref_decl.
+
+		:node: TODO
+		:scope: TODO
+		:ctxt: TODO
+		:stream: TODO
+		:returns: TODO
+
+		"""
+		self._dlog("handling byref decl")
+		field = self._handle_node(node.type.type, scope, ctxt, stream)
+		# this will not really be used (maybe except for introspection)
+		# with byref function params
+		field.byref = True
 		return field
 	
 	def _handle_type_decl(self, node, scope, ctxt, stream):
@@ -672,20 +684,39 @@ class PfpInterp(object):
 
 		scope.push()
 
-		max_pos = 0
-		for decl in node.decls:
-			start_pos = stream.tell()
-			# new context! (union)
-			self._handle_node(decl, scope, union, stream)
-			end_pos = stream.tell()
-			if end_pos > max_pos:
-				max_pos = end_pos
-			stream.seek(start_pos, 0)
-		stream.seek(max_pos, 0)
+		try:
+			max_pos = 0
+			for decl in node.decls:
+				start_pos = stream.tell()
+				# new context! (union)
+				self._handle_node(decl, scope, union, stream)
+				end_pos = stream.tell()
+				if end_pos > max_pos:
+					max_pos = end_pos
+				stream.seek(start_pos, 0)
+			stream.seek(max_pos, 0)
 
-		scope.pop()
+		finally:
+			scope.pop()
 
 		return union
+	
+	def _handle_init_list(self, node, scope, ctxt, stream):
+		"""Handle InitList nodes (e.g. when initializing a struct)
+
+		:node: TODO
+		:scope: TODO
+		:ctxt: TODO
+		:stream: TODO
+		:returns: TODO
+
+		"""
+		self._dlog("handling init list")
+		res = []
+		for _,init_child in node.children():
+			init_field = self._handle_node(init_child, scope, ctxt, stream)
+			res.append(init_field)
+		return res
 	
 	def _handle_struct(self, node, scope, ctxt, stream):
 		"""TODO: Docstring for _handle_struct.
@@ -703,12 +734,14 @@ class PfpInterp(object):
 		# new scope
 		scope.push()
 
-		for decl in node.decls:
-			# new context! (struct)
-			self._handle_node(decl, scope, struct, stream)
+		try:
+			for decl in node.decls:
+				# new context! (struct)
+				self._handle_node(decl, scope, struct, stream)
 
-		# need to pop the scope!
-		scope.pop()
+		finally:
+			# need to pop the scope!
+			scope.pop()
 
 		return struct
 	
@@ -1045,6 +1078,118 @@ class PfpInterp(object):
 		array._pfp__parse(stream)
 		return array
 	
+	def _handle_if(self, node, scope, ctxt, stream):
+		"""Handle If nodes
+
+		:node: TODO
+		:scope: TODO
+		:ctxt: TODO
+		:stream: TODO
+		:returns: TODO
+
+		"""
+		self._dlog("handling if")
+		cond = self._handle_node(node.cond, scope, ctxt, stream)
+		if cond:
+			# there should always be an iftrue
+			return self._handle_node(node.iftrue, scope, ctxt, stream)
+		else:
+			if node.iffalse is not None:
+				return self._handle_node(node.iffalse, scope, ctxt, stream)
+	
+	def _handle_for(self, node, scope, ctxt, stream):
+		"""Handle For nodes
+
+		:node: TODO
+		:scope: TODO
+		:ctxt: TODO
+		:stream: TODO
+		:returns: TODO
+
+		"""
+		self._dlog("handling for")
+		if node.init is not None:
+			# perform the init
+			self._handle_node(node.init, scope, ctxt, stream)
+
+		while node.cond is None or self._handle_node(node.cond, scope, ctxt, stream):
+			if node.stmt is not None:
+				try:
+					# do the for body
+					self._handle_node(node.stmt, scope, ctxt, stream)
+				except errors.InterpBreak as e:
+					break
+				
+				# we still need to interpret the "next" statement,
+				# so just pass
+				except errors.InterpContinue as e:
+					pass
+
+			if node.next is not None:
+				# do the next statement
+				self._handle_node(node.next, scope, ctxt, stream)
+	
+	def _handle_while(self, node, scope, ctxt, stream):
+		"""Handle break node
+
+		:node: TODO
+		:scope: TODO
+		:ctxt: TODO
+		:stream: TODO
+		:returns: TODO
+
+		"""
+		self._dlog("handling while")
+		while node.cond is None or self._handle_node(node.cond, scope, ctxt, stream):
+			if node.stmt is not None:
+				try:
+					self._handle_node(node.stmt, scope, ctxt, stream)
+				except errors.InterpBreak as e:
+					break
+				except errors.InterpContinue as e:
+					pass
+
+	def _handle_break(self, node, scope, ctxt, stream):
+		"""Handle break node
+
+		:node: TODO
+		:scope: TODO
+		:ctxt: TODO
+		:stream: TODO
+		:returns: TODO
+
+		"""
+		self._dlog("handling break")
+		raise errors.InterpBreak()
+	
+	def _handle_continue(self, node, scope, ctxt, stream):
+		"""Handle continue node
+
+		:node: TODO
+		:scope: TODO
+		:ctxt: TODO
+		:stream: TODO
+		:returns: TODO
+
+		"""
+		self._dlog("handling continue")
+		raise errors.InterpContinue()
+	
+	def _handle_decl_list(self, node, scope, ctxt, stream):
+		"""Handle For nodes
+
+		:node: TODO
+		:scope: TODO
+		:ctxt: TODO
+		:stream: TODO
+		:returns: TODO
+
+		"""
+		self._dlog("handling decl list")
+		# just handle each declaration
+		for decl in node.decls:
+			self._handle_node(decl, scope, ctxt, stream)
+	
 	# -----------------------------
 	# UTILITY
 	# -----------------------------
@@ -1053,6 +1198,7 @@ class PfpInterp(object):
 		breakable_classes = [
 			AST.FileAST,
 			AST.Decl,
+			#AST.ByRefDecl,
 			#AST.TypeDecl,
 			#AST.Struct,
 			#AST.IdentifierType,
@@ -1066,10 +1212,12 @@ class PfpInterp(object):
 			AST.FuncCall,
 			#AST.FuncDecl,
 			#AST.ParamList,
-			AST.ExprList,
+			#AST.ExprList,
 			#AST.Compound,
 			AST.Return,
 			AST.ArrayDecl,
+			AST.Continue,
+			AST.Break,
 		]
 
 		return node.__class__ in breakable_classes

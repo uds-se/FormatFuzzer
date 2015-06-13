@@ -86,11 +86,17 @@ class ParamListDef(object):
 		"""
 		param_instances = []
 
+		BYREF = "byref"
+
 		# TODO are default values for function parameters allowed in 010?
 		for param_name, param_cls in self._params:
-			field = param_cls()
-			field._pfp__name = param_name
-			param_instances.append(field)
+			# we don't instantiate a copy of byref params
+			if getattr(param_cls, "byref", False):
+				param_instances.append(BYREF)
+			else:
+				field = param_cls()
+				field._pfp__name = param_name
+				param_instances.append(field)
 
 		if len(args) != len(param_instances):
 			raise errors.InvalidArguments(
@@ -101,14 +107,21 @@ class ParamListDef(object):
 
 		for x in six.moves.range(len(args)):
 			param = param_instances[x]
-			param._pfp__set_value(args[x])
-			scope.add_local(param._pfp__name, param)
+			if param is BYREF:
+				param = args[x]
+				param_instances[x] = param
+				scope.add_local(self._params[x][0], param)
+			else:
+				param._pfp__set_value(args[x])
+				scope.add_local(param._pfp__name, param)
 
 		return ParamList(param_instances)
 
 class ParamList(object):
 	"""Used for when a function is actually called. See ParamListDef
-	for how function definitions store function parameter definitions"""
+	for how function definitions store function parameter definitions
+	"""
+
 	def __init__(self, params):
 		super(ParamList, self).__init__()
 		self.params = params

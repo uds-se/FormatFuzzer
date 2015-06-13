@@ -86,6 +86,10 @@ class Field(object):
 		val = get_value(other)
 		return self._pfp__value < val
 	
+	def __le__(self, other):
+		val = get_value(other)
+		return self._pfp__value <= val
+	
 	def __gt__(self, other):
 		"""Compare the Field to something else, either another
 		Field or something else
@@ -100,13 +104,9 @@ class Field(object):
 		val = get_value(other)
 		return self._pfp__value >= val
 	
-	def __le__(self, other):
-		val = get_value(other)
-		return self._pfp__value >= val
-	
 	def __ne__(self, other):
 		val = get_value(other)
-		return self._pfp__value >= val
+		return self._pfp__value != val
 	
 	def __eq__(self, other):
 		"""See if the two items are equal (True/False)
@@ -132,13 +132,26 @@ class Struct(Field):
 
 	_pfp__show_name = "struct"
 
-	def __init__(self, name=None):
+	def __init__(self, stream=None):
 		# ordered list of children
 		super(Struct, self).__setattr__("_pfp__children", [])
 		# for quick child access
 		super(Struct, self).__setattr__("_pfp__children_map", {})
 
-		super(Struct, self).__init__(name)
+		super(Struct, self).__init__()
+	
+	def _pfp__set_value(self, value):
+		"""Initialize the struct. Value should be an array of
+		fields, one each for each struct member.
+
+		:value: An array of fields to initialize the struct with
+		:returns: None
+		"""
+		if len(value) != len(self._pfp__children):
+			raise errors.PfpError("struct initialization has wrong number of members")
+
+		for x in six.moves.range(len(self._pfp__children)):
+			self._pfp__children[x]._pfp__set_value(value[x])
 	
 	def _pfp__add_child(self, name, child):
 		"""Add a child to the Struct field
@@ -536,7 +549,7 @@ class Array(Field):
 	def _pfp__parse(self, stream):
 		# optimizations... should reuse existing fields??
 		self.items = []
-		for x in range(PYVAL(self.width)):
+		for x in six.moves.range(PYVAL(self.width)):
 			field = self.field_cls()
 			field._pfp__name = "{}[{}]".format(
 				self._pfp__name,

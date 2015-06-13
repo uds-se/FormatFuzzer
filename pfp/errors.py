@@ -4,45 +4,49 @@
 Errors for pfp
 """
 
-class PrematureEOF(Exception): pass
-# TODO
+class PfpError(Exception): pass
 
-class PfpError(Exception):
+class PrematureEOF(PfpError): pass
+
+class InterpBreak(PfpError): pass
+class InterpContinue(PfpError): pass
+
+class CoordError(PfpError):
 	"""Base class for pfp exceptions"""
 	def __init__(self, coord, *args):
-		super(PfpError, self).__init__((self.msg + " at {}").format(*(args + (coord,))))
+		super(CoordError, self).__init__((self.msg + " at {}").format(*(args + (coord,))))
 
-class InterpReturn(PfpError):
+class InterpReturn(CoordError):
 	def __init__(self, ret_val):
 		self.value = ret_val
 
-class InvalidArguments(PfpError):
+class InvalidArguments(CoordError):
 	msg = "Invalid arguments, received {!r}, expected {!r}"
 
-class InvalidState(PfpError):
+class InvalidState(CoordError):
 	msg = "Pfp has reached an invalid state"
 
-class UnsupportedASTNode(PfpError):
+class UnsupportedASTNode(CoordError):
 	msg = "Pfp can not yet interpret {!r} nodes"
 
-class UnresolvedType(PfpError):
+class UnresolvedType(CoordError):
 	"""These exceptions will be raised when a type cannot be resolved"""
 	msg = "The type {!r} ({!r}) could not be resolved"
 
-class UnsupportedConstantType(PfpError):
+class UnsupportedConstantType(CoordError):
 	"""These exceptions will be raised when a constant type is encountered
 	that can not yet be handled (or not implemented yet)"""
 	msg = "Unsupported constant type {!r}"
 
-class UnresolvedID(PfpError):
+class UnresolvedID(CoordError):
 	"""These exceptionsn will be raised when a referenced ID cannot
 	be resolved"""
 	msg = "Could not resolve field {!r}"
 
-class UnsupportedUnaryOperator(PfpError):
+class UnsupportedUnaryOperator(CoordError):
 	"""docstring for UnsupportedUnaryOperator"""
 	msg = "Unsupported unary operator {!r}"
 
-class UnsupportedBinaryOperator(PfpError):
+class UnsupportedBinaryOperator(CoordError):
 	"""docstring for UnsupportedUnaryOperator"""
 	msg = "Unsupported binary operator {!r}"

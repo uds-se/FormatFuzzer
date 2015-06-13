@@ -274,6 +274,21 @@ class TestBasic(unittest.TestCase, utils.UtilsMixin):
 			""",
 		)
 	
+	def test_struct_initialization(self):
+		dom = self._test_parse_build(
+			"",
+			"""
+				typedef struct {
+					char a;
+					char b;
+					char c;
+					char d;
+				} blah;
+
+				local blah some_struct = { 'a', 'b', 'c', 'd'};
+			"""
+		)
+	
 	def test_union(self):
 		dom = self._test_parse_build(
 			"abcd",
@@ -290,6 +305,219 @@ class TestBasic(unittest.TestCase, utils.UtilsMixin):
 
 				blah some_union;
 			"""
+		)
+
+class TestByRef(unittest.TestCase, utils.UtilsMixin):
+	def setUp(self):
+		pass
+
+	def tearDown(self):
+		pass
+	
+	def test_non_byref_native_type(self):
+		dom = self._test_parse_build(
+			"",
+			"""
+				void test_func(local int value) {
+					value = 20;
+				}
+				local int blah = 10;
+				test_func(blah);
+				Printf("%d", blah);
+			""",
+			stdout="10"
+		)
+	
+	def test_non_byref_complex(self):
+		dom = self._test_parse_build(
+			"abcd",
+			"""
+				typedef struct {
+					char a;
+					char b;
+					char c;
+					char d;
+				} some_struct_t;
+
+				void test_func(some_struct_t &var) {
+					Printf("a: %d", var.a);
+					Printf("b: %d", var.b);
+					Printf("c: %d", var.c);
+					Printf("d: %d", var.d);
+				}
+
+				some_struct_t blah;
+				test_func(blah);
+			""",
+			stdout="a: 97b: 98c: 99d: 100"
+		)
+
+class TestControlFlow(unittest.TestCase, utils.UtilsMixin):
+	def setUp(self):
+		pass
+
+	def tearDown(self):
+		pass
+	
+	def test_if1(self):
+		dom = self._test_parse_build(
+			"",
+			"""
+				local int b = 10;
+				if(b == 10) {
+					Printf("true");
+				} else if(b == 11) {
+					Printf("false");
+				} else {
+					Printf("false");
+				}
+			""",
+			stdout="true"
+		)
+
+	def test_if2(self):
+		dom = self._test_parse_build(
+			"",
+			"""
+				local int b = 10;
+				if(b == 11) {
+					Printf("false");
+				} else if(b == 10) {
+					Printf("true");
+				} else {
+					Printf("false");
+				}
+			""",
+			stdout="true"
+		)
+
+	def test_if3(self):
+		dom = self._test_parse_build(
+			"",
+			"""
+				local int b = 10;
+				if(b == 11) {
+					Printf("false");
+				} else if(b == 12) {
+					Printf("false");
+				} else {
+					Printf("true");
+				}
+			""",
+			stdout="true"
+		)
+	
+	def test_for1(self):
+		dom = self._test_parse_build(
+			"",
+			"""
+				local int j = 0;
+				for(local int j = 0; j < 10; j++ ) {
+					Printf("a");
+				}
+			""",
+			stdout="a"*10
+		)
+
+	def test_for2(self):
+		dom = self._test_parse_build(
+			"",
+			"""
+				local int j = 0;
+				for(; j < 10; j++ ) {
+					Printf("a");
+				}
+			""",
+			stdout="a"*10
+		)
+
+	def test_for3(self):
+		dom = self._test_parse_build(
+			"",
+			"""
+				local int j = 0;
+				for(; j < 10; j++ ) {
+					Printf("a");
+					break;
+				}
+			""",
+			stdout="a"
+		)
+
+	def test_for4(self):
+		dom = self._test_parse_build(
+			"",
+			"""
+				local int j = 0;
+				for(; j < 10; j++ ) {
+					if(j % 2 == 0) {
+						continue;
+					}
+					Printf("a");
+				}
+			""",
+			stdout="aaaaa"
+		)
+
+	def test_for5(self):
+		dom = self._test_parse_build(
+			"",
+			"""
+				local int j = 0;
+				for(;; j++ ) {
+					Printf("a");
+					if(j == 3) {
+						break;
+					}
+				}
+			""",
+			stdout="aaaa"
+		)
+	
+	def test_while1(self):
+		dom = self._test_parse_build(
+			"",
+			"""
+				local int j = 0;
+				while(j < 3) {
+					j++;
+					Printf("a");
+				}
+			""",
+			stdout="aaa"
+		)
+	
+	def test_while2(self):
+		dom = self._test_parse_build(
+			"",
+			"""
+				local int j = 0;
+				while(1) {
+					Printf("a");
+					j++;
+					if(j == 3) {
+						break;
+					}
+				}
+			""",
+			stdout="aaa"
+		)
+	
+	def test_while3(self):
+		dom = self._test_parse_build(
+			"",
+			"""
+				local int j = 0;
+				while(1) {
+					Printf("a");
+					j++;
+					if(j != 3) {
+						continue;
+					}
+					break;
+				}
+			""",
+			stdout="aaa"
 		)
 
 if __name__ == "__main__":
