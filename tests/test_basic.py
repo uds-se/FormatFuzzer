@@ -149,6 +149,7 @@ class TestBasic(unittest.TestCase, utils.UtilsMixin):
 				k = i ^ j;
 				k = i & j;
 				k = i | j;
+				k = i || j;
 			"""
 		)
 

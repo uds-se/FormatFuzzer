@@ -201,6 +201,16 @@ class TestArrays(unittest.TestCase, utils.UtilsMixin):
 		self.assertEqual(dom.structs[0].some_char, 0x41)
 		self.assertEqual(dom.structs[1].some_char, 0x42)
 		self.assertEqual(dom.structs[2].some_char, 0x43)
+	
+	def test_array_ref(self):
+		dom = self._test_parse_build(
+			"abcd",
+			"""
+				char bytes[4];
+				Printf("%02x", bytes[0]);
+			""",
+			stdout="61"
+		)
 
 if __name__ == "__main__":
 	unittest.main()

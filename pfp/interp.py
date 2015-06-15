@@ -248,7 +248,7 @@ class Scope(object):
 	
 	def get_id(self, name):
 		"""Get the first id matching ``name``. Will either be a local
-		or a var. Locals will be search before vars.
+		or a var. Locals will be searched before vars.
 
 		:name: TODO
 		:returns: TODO
@@ -683,8 +683,8 @@ class PfpInterp(object):
 			# in order to set the new context)
 			if not isinstance(field, fields.Field):
 				field = field(stream)
-			scope.add_var(node.name, field)
-			ctxt._pfp__add_child(node.name, field)
+			field_res = ctxt._pfp__add_child(node.name, field)
+			scope.add_var(node.name, field_res)
 
 		return field
 	
@@ -951,6 +951,7 @@ class PfpInterp(object):
 			"%": lambda x,y: x%y,
 			">": lambda x,y: x>y,
 			"<": lambda x,y: x<y,
+			"||": lambda x,y: x or y,
 			">=": lambda x,y: x>=y,
 			"<=": lambda x,y: x<=y,
 			"==": lambda x,y: x == y,
@@ -1143,7 +1144,7 @@ class PfpInterp(object):
 
 		"""
 		self._dlog("handling compound statement")
-		scope.push()
+		#scope.push()
 
 		try:
 			for child in node.children():
@@ -1152,7 +1153,8 @@ class PfpInterp(object):
 		# in case a return occurs, be sure to pop the scope
 		# (returns are implemented by raising an exception)
 		finally:
-			scope.pop()
+			#scope.pop()
+			pass
 	
 	def _handle_return(self, node, scope, ctxt, stream):
 		"""Handle Return nodes
@@ -1201,7 +1203,9 @@ class PfpInterp(object):
 		:returns: TODO
 
 		"""
-		import pdb ; pdb.set_trace()
+		ary = self._handle_node(node.name, scope, ctxt, stream)
+		subscript = self._handle_node(node.subscript, scope, ctxt, stream)
+		return ary[fields.PYVAL(subscript)]
 	
 	def _handle_if(self, node, scope, ctxt, stream):
 		"""Handle If nodes

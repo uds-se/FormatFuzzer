@@ -184,10 +184,10 @@ class Struct(Field):
 		if name in self._pfp__children_map:
 			existing_child = self._pfp__children_map[name]
 			if isinstance(existing_child, Array):
-				# TODO
-				#if existing_child.field_cls != child.__class__
-				#	raise errors.PfpError("implicit arrays must be sequential!")
+				if existing_child.field_cls != child.__class__:
+					raise errors.PfpError("implicit arrays must be sequential!")
 				existing_child.append(child)
+				return existing_child
 			else:
 				if self._pfp__children[-1].__class__ != child.__class__:
 					raise errors.PfpError("implicit arrays must be sequential!")
@@ -197,13 +197,21 @@ class Struct(Field):
 				ary._pfp__name = name
 				ary.append(existing_child)
 				ary.append(child)
-				idx = self._pfp__children.index(existing_child)
-				self._pfp__children[idx] = ary
+
+				exist_idx = -1
+				for idx,child in enumerate(self._pfp__children):
+					if child is existing_child:
+						exist_idx = idx
+						break
+
+				self._pfp__children[exist_idx] = ary
 				self._pfp__children_map[name] = ary
+				return ary
 		else:
 			self._pfp__children.append(child)
 			child._pfp__name = name
 			self._pfp__children_map[name] = child
+			return child
 	
 	def _pfp__parse(self, stream):
 		"""Parse the incoming stream
@@ -229,7 +237,10 @@ class Struct(Field):
 
 		# iterate IN ORDER
 		for child in self._pfp__children:
-			res += child._pfp__build(stream)
+			child_res = child._pfp__build(stream)
+			if child_res is None:
+				import pdb; pdb.set_trace()
+			res += child_res
 
 		return res
 	
@@ -329,10 +340,12 @@ class Union(Struct):
 		:stream: None
 		:returns: None
 		"""
+		val = self._pfp__buff.getvalue()
 		if stream is None:
-			return self._pfp__buff.getvalue()
+			return val
 		else:
-			return stream.write(self._pfp__buff.getvalue())
+			stream.write(self._pfp__buff.getvalue())
+			return len(val)
 	
 	def __setattr__(self, name, value):
 		"""Custom __setattr__ to keep track of the order things
