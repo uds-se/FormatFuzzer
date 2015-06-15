@@ -7,6 +7,7 @@ Python format parser
 import copy
 import glob
 import logging
+import re
 import six
 import sys
 import os
@@ -23,32 +24,68 @@ import pfp.utils as utils
 
 logging.basicConfig(level=logging.CRITICAL)
 
-class StructUnionDef(object):
+class Decls(object):
+	def __init__(self, decls, coord):
+		self.decls = decls
+		self.coord = coord
 
-	"""A class used to instantiate structs/unions as
-	needed (used for typedefs)"""
+class UnionDecls(Decls): pass
+class StructDecls(Decls): pass
 
-	def __init__(self, interp, node):
-		"""Save the interpreter and the node so that when
-		this instance is called (will act like instantiation),
-		the interpreter is just told to handle the node
-		
-		:interp: The interpreter
-		:node: The node to interpret upon instantiation
-		:stream: The stream that data will be parsed from
-		"""
-		self._interp = interp
-		self._node = node
-	
-	def __call__(self, stream=None):
-		"""Create an instance of the struct/union
+def StructUnionDef(typedef_name, interp, node):
+	if isinstance(node, AST.Struct):
+		cls = fields.Struct
+		decls = StructDecls(node.decls, node.coord)
+	elif isinstance(node, AST.Union):
+		cls = fields.Union
+		decls = UnionDecls(node.decls, node.coord)
 
-		:stream: The stream that data will be parsed from
-		:returns: A struct or union instance
-		"""
-		# TODO stream should be optional to act like other fields classes
-		res = self._interp._handle_node(self._node, stream=stream)
-		return res
+	def __init__(self, stream=None):
+		cls.__init__(self, stream)
+
+		self._pfp__interp._handle_node(
+			decls,
+			ctxt=self,
+			stream=stream
+		)
+
+	new_class = type(typedef_name, (cls,), {
+		"__init__":		__init__,
+		"_pfp__node":	node,
+		"_pfp__interp":	interp
+	})
+	return new_class
+
+#class StructUnionDef(object):
+#
+#	"""A class used to instantiate structs/unions as
+#	needed (used for typedefs)"""
+#
+#	def __init__(self, interp, node):
+#		"""Save the interpreter and the node so that when
+#		this instance is called (will act like instantiation),
+#		the interpreter is just told to handle the node
+#		
+#		:interp: The interpreter
+#		:node: The node to interpret upon instantiation
+#		:stream: The stream that data will be parsed from
+#		"""
+#		self._interp = interp
+#		self._node = node
+#		self._typedef_name = node._pfp__typedef_name
+#	
+#	def __call__(self, stream=None):
+#		"""Create an instance of the struct/union
+#
+#		:stream: The stream that data will be parsed from
+#		:returns: A struct or union instance
+#		"""
+#		# TODO stream should be optional to act like other fields classes
+#		res = self._interp._handle_node(self._node, stream=stream)
+#		res._pfp__typedef_name = self._typedef_name
+#		# UGH TODO HACK HACK HACK!!! stupid
+#		res._pfp__class = self
+#		return res
 
 class DebugLogger(object):
 	def __init__(self, active=False):
@@ -170,14 +207,15 @@ class Scope(object):
 		self._dlog("getting local '{}'".format(name))
 		return self._search("locals", name)
 	
-	def add_type_struct_or_union(self, name, node):
+	def add_type_struct_or_union(self, name, interp, node):
 		"""Store the node with the name. When it is instantiated,
 		the node itself will be handled.
 
 		:name: name of the typedefd struct/union
 		:node: the union/struct node
+		:interp: the 010 interpreter
 		"""
-		self._curr_scope["types"][name] = node
+		self._curr_scope["types"][name] = StructUnionDef(name, interp, node)
 	
 	def add_type(self, new_name, orig_names):
 		"""Record the typedefd name for orig_names. Resolve orig_names
@@ -284,6 +322,7 @@ class PfpInterp(object):
 	BREAK_INTO = 2
 
 	_natives = {}
+	_predefines = []
 
 	@classmethod
 	def add_native(cls, name, func, ret, interp=None, send_interp=False):
@@ -296,6 +335,10 @@ class PfpInterp(object):
 		natives[name] = functions.NativeFunction(
 			name, func, ret, send_interp
 		)
+	
+	@classmethod
+	def add_predefine(cls, template):
+		cls._predefines.append(template)
 	
 	@classmethod
 	def define_natives(cls):
@@ -318,7 +361,8 @@ class PfpInterp(object):
 				continue
 
 			mod = getattr(mod_base, basename)
-			setattr(mod, "PYVAL", fields.get_value) 
+			setattr(mod, "PYVAL", fields.get_value)
+			setattr(mod, "PYSTR", fields.get_str)
 
 	def __init__(self, debug=False, parser=None):
 		"""
@@ -370,7 +414,10 @@ class PfpInterp(object):
 			AST.While:			self._handle_while,
 			AST.DeclList:		self._handle_decl_list,
 			AST.Break:			self._handle_break,
-			AST.Continue:		self._handle_continue
+			AST.Continue:		self._handle_continue,
+			AST.ArrayRef:		self._handle_array_ref,
+			StructDecls:		self._handle_struct_decls,
+			UnionDecls:			self._handle_union_decls,
 		}
 	
 	def _dlog(self, msg, indent_increase=0):
@@ -395,7 +442,7 @@ class PfpInterp(object):
 		self._stream = stream
 		self._template = template
 		self._template_lines = self._template.split("\n")
-		self._ast = py010parser.parse_string(template, parser=self._parser)
+		self._ast = self._parse_string(template)
 		self._dlog("parsed template into ast")
 
 		res = self._run()
@@ -426,7 +473,7 @@ class PfpInterp(object):
 		if not statement.endswith(";"):
 			statement += ";"
 
-		ast = py010parser.parse_string(statement, parser=self._parser)
+		ast = self._parse_string(statement, predefines=False)
 
 		self._dlog("evaluating statement: {}".format(statement))
 		
@@ -462,6 +509,21 @@ class PfpInterp(object):
 	# PRIVATE
 	# --------------------
 	
+	def _parse_string(self, string, predefines=True):
+		exts = []
+		if predefines:
+			for predefine in self._predefines:
+				try:
+					ast = py010parser.parse_string(predefine, parser=self._parser)
+					exts += ast.ext
+				except:
+					pass
+
+		res = py010parser.parse_string(string, parser=self._parser)
+		res.ext = exts + res.ext
+
+		return res
+	
 	def _run(self):
 		"""Interpret the parsed 010 AST
 		:returns: PfpDom
@@ -488,9 +550,13 @@ class PfpInterp(object):
 
 		self._dlog("interpreting template")
 
-		# it is important to pass the stream in as the stream
-		# may change (e.g. compressed data)
-		res = self._handle_node(self._ast, None, None, self._stream)
+		try:
+			# it is important to pass the stream in as the stream
+			# may change (e.g. compressed data)
+			res = self._handle_node(self._ast, None, None, self._stream)
+		except errors.InterpReturn as e:
+			# TODO handle exit/return codes (e.g. return -1)
+			pass
 
 		# final drop-in after everything has executed
 		if self._break_type != self.BREAK_NONE:
@@ -590,9 +656,9 @@ class PfpInterp(object):
 			# instantiation will be done in functions.ParamListDef.instantiate
 			field = (node.name, field)
 		
-		# locals still get a field instance, but DON'T parse the
+		# locals and consts still get a field instance, but DON'T parse the
 		# stream!
-		elif "local" in node.quals:
+		elif "local" in node.quals or "const" in node.quals:
 			field = field()
 			scope.add_local(node.name, field)
 
@@ -601,6 +667,9 @@ class PfpInterp(object):
 			if node.init is not None:
 				val = self._handle_node(node.init, scope, ctxt, stream)
 				field._pfp__set_value(val)
+
+			if "const" in node.quals:
+				field._pfp__freeze()
 
 		elif isinstance(field, functions.Function):
 			# eh, just add it as a local...
@@ -682,6 +751,12 @@ class PfpInterp(object):
 		self._dlog("handling union")
 		union = fields.Union()
 
+		self._handle_node(UnionDecls(node.decls, node.coord), scope, union, stream)
+
+		return union
+	
+	def _handle_union_decls(self, node, scope, ctxt, stream):
+		self._dlog("handling union decls")
 		scope.push()
 
 		try:
@@ -689,7 +764,7 @@ class PfpInterp(object):
 			for decl in node.decls:
 				start_pos = stream.tell()
 				# new context! (union)
-				self._handle_node(decl, scope, union, stream)
+				self._handle_node(decl, scope, ctxt, stream)
 				end_pos = stream.tell()
 				if end_pos > max_pos:
 					max_pos = end_pos
@@ -698,8 +773,6 @@ class PfpInterp(object):
 
 		finally:
 			scope.pop()
-
-		return union
 	
 	def _handle_init_list(self, node, scope, ctxt, stream):
 		"""Handle InitList nodes (e.g. when initializing a struct)
@@ -731,19 +804,24 @@ class PfpInterp(object):
 		self._dlog("handling struct")
 		struct = fields.Struct()
 
+		self._handle_node(StructDecls(node.decls, node.coord), scope, struct, stream)
+
+		return struct
+	
+	def _handle_struct_decls(self, node, scope, ctxt, stream):
+		self._dlog("handling struct decls")
+
 		# new scope
 		scope.push()
 
 		try:
 			for decl in node.decls:
 				# new context! (struct)
-				self._handle_node(decl, scope, struct, stream)
+				self._handle_node(decl, scope, ctxt, stream)
 
 		finally:
 			# need to pop the scope!
 			scope.pop()
-
-		return struct
 	
 	def _handle_identifier_type(self, node, scope, ctxt, stream):
 		"""TODO: Docstring for _handle_identifier_type.
@@ -758,7 +836,7 @@ class PfpInterp(object):
 		self._dlog("handling identifier")
 		cls = self._resolve_to_field_class(node.names, scope, ctxt)
 		return cls
-	
+
 	def _handle_typedef(self, node, scope, ctxt, stream):
 		"""TODO: Docstring for _handle_typedef.
 
@@ -772,7 +850,8 @@ class PfpInterp(object):
 		is_union_or_struct = (node.type.type.__class__ in [AST.Union, AST.Struct])
 
 		if is_union_or_struct:
-			scope.add_type_struct_or_union(node.name, node.type.type)
+			self._dlog("handling typedef struct/union '{}'".format(node.name))
+			scope.add_type_struct_or_union(node.name, self, node.type.type)
 		else:
 			names = node.type.type.names
 
@@ -786,7 +865,30 @@ class PfpInterp(object):
 			#	
 			scope.add_type(node.name, names)
 	
-	def _handle_constant(self, node, scope, ctxt, sream):
+	def _str_to_int(self, string):
+		"""Check for the hex
+		"""
+		string = string.lower()
+		if string.endswith("l"):
+			string = string[:-1]
+		if string.lower().startswith("0x"):
+			# should always match
+			match = re.match(r'0[xX]([a-fA-F0-9]+)', string)
+			return int(match.group(1), 0x10)
+		else:
+			return int(string)
+	
+	def _choose_const_int_class(self, val):
+		if -0x80000000 < val < 0x80000000:
+			return fields.Int
+		elif 0 <= val < 0x100000000:
+			return fields.UInt
+		elif -0x8000000000000000 < val < 0x8000000000000000:
+			return fields.Int64
+		elif 0 <= val < 0x10000000000000000:
+			return fields.UInt64
+	
+	def _handle_constant(self, node, scope, ctxt, stream):
 		"""TODO: Docstring for _handle_constant.
 
 		:node: TODO
@@ -798,11 +900,11 @@ class PfpInterp(object):
 		"""
 		self._dlog("handling constant type {}".format(node.type))
 		switch = {
-			"int": (lambda x: int(str(x).replace("l", "")), fields.Int),
-			"long": (lambda x: int(str(x).replace("l", "")), fields.Int),
+			"int": (self._str_to_int, self._choose_const_int_class),
+			"long": (self._str_to_int, self._choose_const_int_class),
 			# TODO this isn't quite right, but py010parser wouldn't have
 			# parsed it if it wasn't correct...
-			"float": (lambda x: float(x.replace("f", "")), fields.Float),
+			"float": (lambda x: float(x.lower().replace("f", "")), fields.Float),
 			"double": (float, fields.Double),
 
 			# cut out the quotes
@@ -816,8 +918,13 @@ class PfpInterp(object):
 		if node.type in switch:
 			#return switch[node.type](node.value)
 			conversion,field_cls = switch[node.type]
+			val = conversion(node.value)
+
+			if hasattr(field_cls, "__call__") and not type(field_cls) is type:
+				field_cls = field_cls(val)
+
 			field = field_cls()
-			field._pfp__set_value(conversion(node.value))
+			field._pfp__set_value(val)
 			return field
 
 		raise UnsupportedConstantType(node.coord, node.type)
@@ -873,14 +980,20 @@ class PfpInterp(object):
 			"p++": lambda x,v: x.__iadd__(1),
 			"p--": lambda x,v: x.__isub__(1),
 			"~":   lambda x,v: ~x,
-			"!":   lambda x,v: not x
+			"!":   lambda x,v: not x,
+			"-":   lambda x,v: -x
 		}
 
 		if node.op not in switch:
 			raise errors.UnsupportedUnaryOperator(node.coord, node.op)
 
 		field = self._handle_node(node.expr, scope, ctxt, stream)
-		switch[node.op](field, 1)
+		res = switch[node.op](field, 1)
+		if res in [True, False]:
+			new_res = field.__class__()
+			new_res._pfp__set_value(1 if res == True else 0)
+			res = new_res
+		return res
 	
 	def _handle_id(self, node, scope, ctxt, stream):
 		"""Handle an ID node (return a field object for the ID)
@@ -1077,6 +1190,18 @@ class PfpInterp(object):
 		array._pfp__name = node.type.declname
 		array._pfp__parse(stream)
 		return array
+	
+	def _handle_array_ref(self, node, scope, ctxt, stream):
+		"""Handle ArrayRef nodes
+
+		:node: TODO
+		:scope: TODO
+		:ctxt: TODO
+		:stream: TODO
+		:returns: TODO
+
+		"""
+		import pdb ; pdb.set_trace()
 	
 	def _handle_if(self, node, scope, ctxt, stream):
 		"""Handle If nodes
@@ -1280,8 +1405,8 @@ class PfpInterp(object):
 		if core not in switch:
 			# will return a list of resolved names
 			type_info = scope.get_type(core)
-			if isinstance(type_info, AST.Node):
-				return StructUnionDef(self, type_info)
+			if type(type_info) is type and issubclass(type_info, fields.Field):
+				return type_info
 			resolved_names = type_info
 			if resolved_names is None:
 				raise errors.UnresolvedType(self._coord, " ".join(names), " ")

@@ -7,13 +7,31 @@ compatability with 010 editor functions. Some of these functions
 are nops, some are fully implemented.
 """
 
+import binascii
 import sys
 
-from pfp.native import native
+from pfp.native import native, predefine
 import pfp.fields
 
 # http://www.sweetscape.com/010editor/manual/FuncTools.htm
 
+predefine("""
+	const int CHECKSUM_BYTE = 0; // Treats the file as a set of unsigned bytes
+	const int CHECKSUM_SHORT_LE = 1; // Treats the file as a set of unsigned little-endian shorts
+	const int CHECKSUM_SHORT_BE = 2; // Treats the file as a set of unsigned big-endian shorts
+	const int CHECKSUM_INT_LE = 3; // Treats the file as a set of unsigned little-endian ints
+	const int CHECKSUM_INT_BE = 4; // Treats the file as a set of unsigned big-endian ints
+	const int CHECKSUM_INT64_LE = 5; // Treats the file as a set of unsigned little-endian int64s
+	const int CHECKSUM_INT64_BE = 6; // Treats the file as a set of unsigned big-endian int64s
+	const int CHECKSUM_SUM8 = 7; // Same as CHECKSUM_BYTE except result output as 8-bits
+	const int CHECKSUM_SUM16 = 8; // Same as CHECKSUM_BYTE except result output as 16-bits
+	const int CHECKSUM_SUM32 = 9; // Same as CHECKSUM_BYTE except result output as 32-bits
+	const int CHECKSUM_SUM64 = 10; // Same as CHECKSUM_BYTE
+	const int CHECKSUM_CRC16 = 11;
+	const int CHECKSUM_CRCCCITT = 12;
+	const int CHECKSUM_CRC32 = 13;
+	const int CHECKSUM_ADLER32 = 14;
+""")
 #int64 Checksum( 
 #    int algorithm, 
 #    int64 start=0, 
@@ -51,7 +69,69 @@ def Checksum(params, ctxt, scope, stream, coord):
 	values as described in the Check Sum/Hash Algorithms topic. A negative
 	number is returned on error.
 	"""
-	pass
+	checksum_types = {
+		0: "CHECKSUM_BYTE", # Treats the file as a set of unsigned bytes
+		1: "CHECKSUM_SHORT_LE", # Treats the file as a set of unsigned little-endian shorts
+		2: "CHECKSUM_SHORT_BE", # Treats the file as a set of unsigned big-endian shorts
+		3: "CHECKSUM_INT_LE", # Treats the file as a set of unsigned little-endian ints
+		4: "CHECKSUM_INT_BE", # Treats the file as a set of unsigned big-endian ints
+		5: "CHECKSUM_INT64_LE", # Treats the file as a set of unsigned little-endian int64s
+		6: "CHECKSUM_INT64_BE", # Treats the file as a set of unsigned big-endian int64s
+		7: "CHECKSUM_SUM8", # Same as CHECKSUM_BYTE except result output as 8-bits
+		8: "CHECKSUM_SUM16", # Same as CHECKSUM_BYTE except result output as 16-bits
+		9: "CHECKSUM_SUM32", # Same as CHECKSUM_BYTE except result output as 32-bits
+		10: "CHECKSUM_SUM64", # Same as CHECKSUM_BYTE
+		11: "CHECKSUM_CRC16",
+		12: "CHECKSUM_CRCCCITT",
+		13: _crc32,
+		14: "CHECKSUM_ADLER32"
+	}
+
+	if len(params) < 1:
+		raise errors.InvalidArguments(coord, "at least 1 argument", "{} args".format(len(params)))
+	
+	alg = PYVAL(params[0])
+	if alg not in checksum_types:
+		raise errors.InvalidArguments(coord, "checksum alg must be one of (0-14)", "{}".format(alg))
+	
+	start = 0
+	if len(params) > 1:
+		start = PYVAL(params[1])
+	
+	size = 0
+	if len(params) > 2:
+		size = PYVAL(params[2])
+	
+	crc_poly = -1
+	if len(params) > 3:
+		crc_poly = PYVAL(params[3])
+	
+	crc_init = -1
+	if len(params) > 4:
+		crc_init = PYVAL(params[4])
+	
+	stream_pos = stream.tell()
+
+	if start + size == 0:
+		stream.seek(0, 0)
+		data = stream.read()
+	else:
+		stream.seek(start, 0)
+		data = stream.read(size)
+	
+	try:
+		return checksum_types[alg](data, crc_init, crc_poly)
+	
+	finally:
+		# yes, this does execute even though a return statement
+		# exists within the try
+		stream.seek(stream_pos, 0)
+
+def _crc32(data, crc_init=-1, crc_poly=-1):
+	if crc_init == -1:
+		return binascii.crc32(data)
+	else:
+		return binascii.crc32(data, crc_init)
 
 #int ChecksumAlgArrayStr( 
 #    int algorithm, 
@@ -66,13 +146,13 @@ def ChecksumAlgArrayStr(params, ctxt, scope, stream, coord):
 	"""
 	Similar to the ChecksumAlgStr function except that the checksum is
 	run on data stored in an array instead of in a file. The data for the
-	checksum should be passed in the buffer array and the size parameter
+	checksum should be raise NotImplementeded in the buffer array and the size parameter
 	lists the number of bytes in the array. The result from the checksum
 	will be stored in the result string and the number of characters
 	in the string will be returned, or -1 if an error occurred. See the
 	ChecksumAlgStr function for a list of available algorithms.
 	"""
-	pass
+	raise NotImplemented
 
 #int ChecksumAlgArrayBytes( 
 #    int algorithm, 
@@ -88,14 +168,14 @@ def ChecksumAlgArrayBytes(params, ctxt, scope, stream, coord):
 	Similar to the ChecksumAlgStr function except that the checksum is run
 	on data in an array instead of in a file and the results are stored
 	in an array of bytes instead of a string. The data for the checksum
-	should be passed in the buffer array and the size parameter lists the
+	should be raise NotImplementeded in the buffer array and the size parameter lists the
 	number of bytes in the array. The result of the checksum operation
 	will be stored as a set of hex bytes in the parameter result. The
 	function will return the number of bytes placed in the result array
 	or -1 if an error occurred. See the ChecksumAlgStr function for a
 	list of available algorithms.
 	"""
-	pass
+	raise NotImplemented
 
 #int ChecksumAlgStr(
 #    int algorithm, 
@@ -146,7 +226,7 @@ def ChecksumAlgStr(params, ctxt, scope, stream, coord):
 	topic. See the Checksum function above for an explanation of the
 	different checksum constants.
 	"""
-	pass
+	raise NotImplemented
 
 #int ChecksumAlgBytes( 
 #    int algorithm, 
@@ -163,7 +243,7 @@ def ChecksumAlgBytes(params, ctxt, scope, stream, coord):
 	the checksum is returned as a byte array in the result argument. The
 	return value is the number of bytes returned in the array.
 	"""
-	pass
+	raise NotImplemented
 
 #TCompareResults Compare( 
 #    int type, 
@@ -205,7 +285,7 @@ def Compare(params, ctxt, scope, stream, coord):
 	COMPARE_ONLY_IN_A=2
 	COMPARE_ONLY_IN_B=3
 	"""
-	pass
+	raise NotImplemented
 
 #char ConvertASCIIToEBCDIC( char ascii )
 @native(name="ConvertASCIIToEBCDIC", ret=pfp.fields.Char)
@@ -213,7 +293,7 @@ def ConvertASCIIToEBCDIC(params, ctxt, scope, stream, coord):
 	"""
 	Converts the given ASCII character into an EBCDIC character and returns the result.
 	"""
-	pass
+	raise NotImplemented
 
 #void ConvertASCIIToUNICODE( 
 #    int len, 
@@ -229,7 +309,7 @@ def ConvertASCIIToUNICODE(params, ctxt, scope, stream, coord):
 	is true, the bytes are stored in big-endian mode, otherwise the
 	bytes are stored in little-endian mode.
 	"""
-	pass
+	raise NotImplemented
 
 #void ConvertASCIIToUNICODEW( 
 #    int len, 
@@ -242,7 +322,7 @@ def ConvertASCIIToUNICODEW(params, ctxt, scope, stream, coord):
 	the unicode argument. The number of characters to convert is given by
 	the len argument and the unicode argument must have size at least len.
 	"""
-	pass
+	raise NotImplemented
 
 #char ConvertEBCDICToASCII( char ebcdic )
 @native(name="ConvertEBCDICToASCII", ret=pfp.fields.Char)
@@ -250,7 +330,7 @@ def ConvertEBCDICToASCII(params, ctxt, scope, stream, coord):
 	"""
 	Converts the given EBCDIC character into an ASCII character and returns the result.
 	"""
-	pass
+	raise NotImplemented
 
 #void ConvertUNICODEToASCII( 
 #    int len, 
@@ -267,7 +347,7 @@ def ConvertUNICODEToASCII(params, ctxt, scope, stream, coord):
 	true, the bytes are stored in big-endian mode, otherwise the bytes
 	are stored in little-endian mode.
 	"""
-	pass
+	raise NotImplemented
 
 #void ConvertUNICODEToASCIIW( 
 #    int len, 
@@ -280,7 +360,7 @@ def ConvertUNICODEToASCIIW(params, ctxt, scope, stream, coord):
 	saves them to the ascii argument. The number of characters to convert
 	is given by len. unicode and ascii must be of size at least size len.
 	"""
-	pass
+	raise NotImplemented
 
 #int ExportFile( 
 #    int type, 
@@ -322,7 +402,7 @@ def ExportFile(params, ctxt, scope, stream, coord):
 	will be written using word-based addresses. See Importing/Exporting
 	Files for more information on exporting.
 	"""
-	pass
+	raise NotImplemented
 
 #TFindResults FindAll( 
 #    <datatype> data, 
@@ -356,7 +436,7 @@ def FindAll(params, ctxt, scope, stream, coord):
 
 	The return value is a TFindResults structure. This structure contains a count variable indicating the number of matches, and a start array holding an array of starting positions, plus a size array which holds an array of target lengths. For example, use the following code to find all occurrences of the ASCII string "Test" in a file:
 	"""
-	pass
+	raise NotImplemented
 
 #int64 FindFirst( 
 #    <datatype> data, 
@@ -375,7 +455,7 @@ def FindFirst(params, ctxt, scope, stream, coord):
 	return value is the position of the first occurrence of the target
 	found. A negative number is returned if the value could not be found.
 	"""
-	pass
+	raise NotImplemented
 
 #TFindInFilesResults FindInFiles( 
 #    <datatype> data, 
@@ -404,7 +484,7 @@ def FindInFiles(params, ctxt, scope, stream, coord):
 	a count variable indicating the number of matches, plus an array of
 	start and size variables indicating the match position. For example:
 	"""
-	pass
+	raise NotImplemented
 
 #int64 FindNext( int dir=1 )
 @native(name="FindNext", ret=pfp.fields.Int64)
@@ -416,7 +496,7 @@ def FindNext(params, ctxt, scope, stream, coord):
 	return value is the address of the found data, or -1 if the target
 	is not found.
 	"""
-	pass
+	raise NotImplemented
 
 #TFindStringsResults FindStrings( 
 #    int minStringLength, 
@@ -468,7 +548,7 @@ def FindStrings(params, ctxt, scope, stream, coord):
 	is a Unicode string. For example, the following code finds all ASCII
 	strings of length at least 5 containing the characters "A..Za..z$&":
 	"""
-	pass
+	raise NotImplemented
 
 #int GetSectorSize()
 @native(name="GetSectorSize", ret=pfp.fields.Int)
@@ -478,7 +558,7 @@ def GetSectorSize(params, ctxt, scope, stream, coord):
 	file is not a drive, the current sector size is defined using the
 	'View > Division Lines > Set Sector Size' menu option.
 	"""
-	pass
+	raise NotImplemented
 
 #int HexOperation( 
 #    int operation, 
@@ -499,7 +579,7 @@ def HexOperation(params, ctxt, scope, stream, coord):
 	upon which operation is used (see the Hex Operations dialog). operand
 	can be any of the basic numeric or floating point types and the type
 	of this parameter tells the function how to interpret the data. For
-	example, if a 'ushort' is passed as an operand, the block of data is
+	example, if a 'ushort' is raise NotImplementeded as an operand, the block of data is
 	considered as an array of 'ushort' using the current endian. If step
 	is non-zero, the operand is incremented by step after each operation
 	and if skip is non-zero, skip number of bytes are skipped after each
@@ -532,7 +612,7 @@ def HexOperation(params, ctxt, scope, stream, coord):
 	16 to 48 as an array of floats and add the value 3.0 to each float
 	in the array:
 	"""
-	pass
+	raise NotImplemented
 
 #int64 Histogram( int64 start, int64 size, int64 result[256] )
 @native(name="Histogram", ret=pfp.fields.Int64)
@@ -545,7 +625,7 @@ def Histogram(params, ctxt, scope, stream, coord):
 	values found in the given range of data. The return value is the
 	total number of bytes read.
 	"""
-	pass
+	raise NotImplemented
 
 #int ImportFile( int type, char filename[], int wordaddresses=false, int defaultByteValue=-1 , coord)
 @native(name="ImportFile", ret=pfp.fields.Int)
@@ -574,7 +654,7 @@ def ImportFile(params, ctxt, scope, stream, coord):
 	from the Importing Options dialog is used. See Importing/Exporting
 	Files for more information on importing.
 	"""
-	pass
+	raise NotImplemented
 
 #int IsDrive()
 @native(name="IsDrive", ret=pfp.fields.Int)
@@ -583,7 +663,7 @@ def IsDrive(params, ctxt, scope, stream, coord):
 	Returns true if the current file is a physical or logical drive,
 	or false otherwise (see Editing Drives).
 	"""
-	pass
+	raise NotImplemented
 
 #int IsLogicalDrive()
 @native(name="IsLogicalDrive", ret=pfp.fields.Int)
@@ -592,7 +672,7 @@ def IsLogicalDrive(params, ctxt, scope, stream, coord):
 	Returns true if the current file is a logical drive, or false otherwise
 	(see Editing Drives).
 	"""
-	pass
+	raise NotImplemented
 
 #int IsPhysicalDrive()
 @native(name="IsPhysicalDrive", ret=pfp.fields.Int)
@@ -601,7 +681,7 @@ def IsPhysicalDrive(params, ctxt, scope, stream, coord):
 	Returns true if the current file is a physical drive, or false
 	otherwise (see Editing Drives).
 	"""
-	pass
+	raise NotImplemented
 
 #int IsProcess()
 @native(name="IsProcess", ret=pfp.fields.Int)
@@ -610,7 +690,7 @@ def IsProcess(params, ctxt, scope, stream, coord):
 	Returns true if the current file is a process, or false otherwise
 	(see Editing Processes).
 	"""
-	pass
+	raise NotImplemented
 
 #int OpenLogicalDrive( char driveletter )
 @native(name="OpenLogicalDrive", ret=pfp.fields.Int)
@@ -621,7 +701,7 @@ def OpenLogicalDrive(params, ctxt, scope, stream, coord):
 	a negative number on failure. See Editing Drives for more information
 	on drive editing.
 	"""
-	pass
+	raise NotImplemented
 
 #int OpenPhysicalDrive( int physicalID )
 @native(name="OpenPhysicalDrive", ret=pfp.fields.Int)
@@ -631,7 +711,7 @@ def OpenPhysicalDrive(params, ctxt, scope, stream, coord):
 	(see Editing Drives). For example, 'OpenPhysicalDrive(0);'. This
 	function returns a negative number on failure.
 	"""
-	pass
+	raise NotImplemented
 
 #int OpenProcessById( int processID, int openwriteable=true )
 @native(name="OpenProcessById", ret=pfp.fields.Int)
@@ -642,7 +722,7 @@ def OpenProcessById(params, ctxt, scope, stream, coord):
 	are opened, otherwise all readable bytes are opened. A negative
 	number if returned if this function fails.
 	"""
-	pass
+	raise NotImplemented
 
 #int OpenProcessByName( char processname[], int openwriteable=true )
 @native(name="OpenProcessByName", ret=pfp.fields.Int)
@@ -654,7 +734,7 @@ def OpenProcessByName(params, ctxt, scope, stream, coord):
 	otherwise all readable bytes are opened. A negative number if returned
 	if this function fails. See Editing Processes for more information.
 	"""
-	pass
+	raise NotImplemented
 
 #int ReplaceAll( 
 #    <datatype> finddata, 
@@ -681,4 +761,4 @@ def ReplaceAll(params, ctxt, scope, stream, coord):
 	the same length as the find data. The return value is the number of
 	replacements made.
 	"""
-	pass
+	raise NotImplemented

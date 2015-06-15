@@ -44,7 +44,7 @@ class TestNumericFields(unittest.TestCase, utils.UtilsMixin):
 		self._do_endian_tests(field, "b")
 	
 	def test_uchar(self):
-		field = Char()
+		field = UChar()
 		self._do_endian_tests(field, "b")
 	
 	def test_short(self):
@@ -156,6 +156,51 @@ class TestArrays(unittest.TestCase, utils.UtilsMixin):
 
 		dom.blah[5] = 10
 		self.assertEqual(dom.blah[5], 10)
+	
+	def test_char_array_string_compare(self):
+		dom = self._test_parse_build(
+			"AABBCC",
+			"""
+				char blah[6];
+				if(blah == "AABBCC") {
+					Printf("true");
+				}
+			""",
+		)
+
+	def test_implicit_array_basic(self):
+		dom = self._test_parse_build(
+			"ABCD",
+			"""
+				while(!FEof()) {
+					char chars;
+				}
+			"""
+		)
+		self.assertEqual(len(dom.chars), 4)
+	
+	def test_implicit_array_complex(self):
+		dom = self._test_parse_build(
+			"\x01A\x02B\x03C",
+			"""
+				typedef struct {
+					uchar some_val;
+					char some_char;
+				} some_struct;
+
+				local int i = 0;
+				for(i = 0; i < 3; i++) {
+					some_struct structs;
+				}
+			""",
+		)
+		self.assertEqual(len(dom.structs), 3)
+		self.assertEqual(dom.structs[0].some_val, 0x01)
+		self.assertEqual(dom.structs[1].some_val, 0x02)
+		self.assertEqual(dom.structs[2].some_val, 0x03)
+		self.assertEqual(dom.structs[0].some_char, 0x41)
+		self.assertEqual(dom.structs[1].some_char, 0x42)
+		self.assertEqual(dom.structs[2].some_char, 0x43)
 
 if __name__ == "__main__":
 	unittest.main()

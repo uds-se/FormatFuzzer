@@ -1,4 +1,7 @@
+#!/usr/bin/env python
+# encoding: utf-8
 
+import json
 import six
 import struct
 
@@ -13,7 +16,15 @@ def get_value(field):
 		return field._pfp__value
 	else:
 		return field
+
+def get_str(field):
+	if isinstance(field, Array):
+		return field._array_to_str()
+	else:
+		return get_value(field)
+
 PYVAL = get_value
+PYSTR = get_str
 
 class Field(object):
 	"""Core class for all fields used in the Pfp DOM.
@@ -26,9 +37,15 @@ class Field(object):
 	def __init__(self, stream=None):
 		super(Field, self).__init__()
 		self._pfp__name = None
+		self._pfp__frozen = False
 		
 		if stream is not None:
 			self._pfp__parse(stream)
+	
+	def _pfp__freeze(self):
+		"""Freeze the field so that it cannot be modified (const)
+		"""
+		self._pfp__frozen = True
 	
 	def _pfp__get_root_value(self, val):
 		"""helper function to fetch the root value of an object"""
@@ -45,6 +62,8 @@ class Field(object):
 		:returns: TODO
 
 		"""
+		if self._pfp__frozen:
+			raise errors.UnmodifiableConst()
 		self._pfp__value = self._pfp__get_root_value(new_val)
 	
 	def _pfp__build(self, output_stream=None):
@@ -147,6 +166,8 @@ class Struct(Field):
 		:value: An array of fields to initialize the struct with
 		:returns: None
 		"""
+		if self._pfp__frozen:
+			raise errors.UnmodifiableConst()
 		if len(value) != len(self._pfp__children):
 			raise errors.PfpError("struct initialization has wrong number of members")
 
@@ -160,9 +181,29 @@ class Struct(Field):
 		:child: A :class:`.Field` instance
 		:returns: None
 		"""
-		self._pfp__children.append(child)
-		child._pfp__name = name
-		self._pfp__children_map[name] = child
+		if name in self._pfp__children_map:
+			existing_child = self._pfp__children_map[name]
+			if isinstance(existing_child, Array):
+				# TODO
+				#if existing_child.field_cls != child.__class__
+				#	raise errors.PfpError("implicit arrays must be sequential!")
+				existing_child.append(child)
+			else:
+				if self._pfp__children[-1].__class__ != child.__class__:
+					raise errors.PfpError("implicit arrays must be sequential!")
+
+				cls = child._pfp__class if hasattr(child, "_pfp__class") else child.__class__
+				ary = Array(0, cls)
+				ary._pfp__name = name
+				ary.append(existing_child)
+				ary.append(child)
+				idx = self._pfp__children.index(existing_child)
+				self._pfp__children[idx] = ary
+				self._pfp__children_map[name] = ary
+		else:
+			self._pfp__children.append(child)
+			child._pfp__name = name
+			self._pfp__children_map[name] = child
 	
 	def _pfp__parse(self, stream):
 		"""Parse the incoming stream
@@ -323,6 +364,14 @@ class NumberBase(Field):
 
 	_pfp__value = 0			# default value
 
+	def __nonzero__(self):
+		"""Used for the not operator"""
+		return self._pfp__value != 0
+	
+	def __bool__(self):
+		"""Used for the not operator"""
+		return self._pfp__value != 0
+
 	def _pfp__parse(self, stream):
 		"""Parse the IO stream for this numeric field
 
@@ -469,12 +518,40 @@ class NumberBase(Field):
 	def __invert__(self):
 		return ~self._pfp__value
 	
+	def __neg__(self):
+		return -self._pfp__value
+	
 	def __getattr__(self, val):
 		if val.startswith("__") and attr.endswith("__"):
 			return getattr(self._pfp__value, val)
 		raise AttributeError()
 
 class IntBase(NumberBase):
+	signed = True
+
+	def _pfp__set_value(self, new_val):
+		"""Set the value, potentially converting an unsigned
+		value to a signed one (and visa versa)"""
+		if self._pfp__frozen:
+			raise errors.UnmodifiableConst()
+		if isinstance(new_val, IntBase):
+			# will automatically convert correctly between ints of
+			# different sizes, unsigned/signed, etc
+			raw = new_val._pfp__build()
+			while len(raw) < self.width:
+				if self.endian == BIG_ENDIAN:
+					raw += "\x00"
+				else:
+					raw = "\x00" + raw
+			while len(raw) > self.width:
+				if self.endian == BIG_ENDIAN:
+					raw = raw[1:]
+				else:
+					raw = raw[:-1]
+			self._pfp__parse(six.BytesIO(raw))
+		else:
+			self._pfp__value = new_val
+
 	def __repr__(self):
 		f = ":0{}x".format(self.width*2)
 		return ("{}({!r} [{" + f + "}])").format(
@@ -545,6 +622,36 @@ class Array(Field):
 
 		if stream is not None:
 			self._pfp__parse(stream)
+	
+	def append(self, item):
+		# TODO check for consistent type
+		self.items.append(item)
+		self.width = len(self.items)
+	
+	def _is_stringable(self):
+		# TODO WChar
+		return self.field_cls in [Char, UChar]
+	
+	def _array_to_str(self, max_len=-1):
+		if not self._is_stringable():
+			return None
+		res = ""
+		for item in self.items:
+			if max_len != -1 and len(res) >= max_len:
+				break
+			# TODO WChar
+			res += chr(PYVAL(item))
+		return res
+	
+	def __eq__(self, other):
+		if self._is_stringable() and other.__class__ in [String, WString]:
+			res = self._array_to_str()
+			return res == other
+		else:
+			raise Exception("TODO")
+	
+	def __ne__(self, other):
+		return not self.__eq__(other)
 
 	def _pfp__parse(self, stream):
 		# optimizations... should reuse existing fields??
@@ -572,6 +679,21 @@ class Array(Field):
 			self.items[idx] = value
 		else:
 			self.items[idx]._pfp__set_value(value)
+	
+	def __repr__(self):
+		other = ""
+		if self._is_stringable():
+			res = self._array_to_str(20)
+			other = " ({!r})".format(res)
+
+		return "{}[{}]{}".format(
+			self.field_cls.__name__ if type(self.field_cls) is type else self.field_cls._typedef_name,
+			PYVAL(self.width),
+			other
+		)
+	
+	def __len__(self):
+		return len(self.items)
 
 # http://www.sweetscape.com/010editor/manual/ArraysStrings.htm
 class String(Field):
@@ -583,6 +705,14 @@ class String(Field):
 	width = -1
 	read_size = 1
 	terminator = utils.binary("\x00")
+
+	def _pfp__set_value(self, new_val):
+		"""Set the value of the String, taking into account
+		escaping and such as well
+		"""
+		if not isinstance(new_val, Field):
+			new_val = json.loads('"' + new_val + '"')
+		super(String, self)._pfp__set_value(new_val)
 
 	def _pfp__parse(self, stream):
 		"""Read from the stream until the string is null-terminated

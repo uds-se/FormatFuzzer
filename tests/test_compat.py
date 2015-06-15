@@ -22,14 +22,14 @@ import utils
 
 class TestCompat(unittest.TestCase, utils.UtilsMixin):
 	def setUp(self):
-		pass
+		self._start_endian = pfp.fields.NumberBase.endian
 	
 	def tearDown(self):
-		pass
+		pfp.fields.NumberBase.endian = self._start_endian
 	
 	def test_big_endian(self):
 		# just something different so that we know it changed
-		pfp.fields.NumberBase.endian = "BLAH"
+		pfp.fields.NumberBase.endian = pfp.fields.LITTLE_ENDIAN
 		dom = self._test_parse_build(
 			"",
 			"""
@@ -40,7 +40,7 @@ class TestCompat(unittest.TestCase, utils.UtilsMixin):
 
 	def test_little_endian(self):
 		# just something different so that we know it changed
-		pfp.fields.NumberBase.endian = "BLAH"
+		pfp.fields.NumberBase.endian = pfp.fields.BIG_ENDIAN
 		dom = self._test_parse_build(
 			"",
 			"""

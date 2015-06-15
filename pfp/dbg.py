@@ -73,7 +73,10 @@ class PfpDbg(cmd.Cmd, object):
 		try:
 			res = self._interp.eval(args)
 			if res is not None:
-				print(res._pfp__show())
+				if hasattr(res, "_pfp__show"):
+					print(res._pfp__show())
+				else:
+					print(repr(res))
 		except errors.UnresolvedID as e:
 			print("ERROR: " + e.message)
 		except Exception as e:
@@ -96,7 +99,10 @@ class PfpDbg(cmd.Cmd, object):
 				print("ERROR: " + e.message)
 				return False
 
-		print(to_show._pfp__show())
+		if hasattr(to_show, "_pfp__show"):
+			print(to_show._pfp__show())
+		else:
+			print(repr(to_show))
 	def do_x(self, args):
 		pass
 	do_x = do_show

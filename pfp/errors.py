@@ -10,6 +10,7 @@ class PrematureEOF(PfpError): pass
 
 class InterpBreak(PfpError): pass
 class InterpContinue(PfpError): pass
+class UnmodifiableConst(PfpError): pass
 
 class CoordError(PfpError):
 	"""Base class for pfp exceptions"""
