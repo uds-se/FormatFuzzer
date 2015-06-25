@@ -212,5 +212,116 @@ class TestArrays(unittest.TestCase, utils.UtilsMixin):
 			stdout="61"
 		)
 
+class TestBitFields(unittest.TestCase, utils.UtilsMixin):
+	def setUp(self):
+		pass
+
+	def tearDown(self):
+		pass
+	
+	def test_bitfield_basic(self):
+		dom = self._test_parse_build(
+			"\xab",
+			"""
+				struct {
+					uchar test : 16;
+				} blah;
+			"""
+		)
+	
+	def test_bitfield_basic_big_endian(self):
+		b = lambda x: chr(int(x,2))
+
+		dom = self._test_parse_build(
+			b("10011011") + b("10011111") + b("10000001"),
+			"""
+				BigEndian();
+				struct {
+					uchar test : 4;
+					uchar test1 : 2;
+					uchar test2 : 2;
+					ushort test3 : 16;
+				} blah;
+			"""
+		)
+		self.assertEqual(dom.blah.test, int("1001",2))
+		self.assertEqual(dom.blah.test1, int("10", 2))
+		self.assertEqual(dom.blah.test2, int("11", 2))
+		self.assertEqual(dom.blah.test3, int("1001111110000001",2))
+	
+	def test_bitfield_basic_little_endian(self):
+		b = lambda x: chr(int(x,2))
+
+		dom = self._test_parse_build(
+			b("10011011") + b("10011111") + b("10000001"),
+			"""
+				LittleEndian();
+				struct {
+					uchar test : 4;
+					uchar test1 : 2;
+					uchar test2 : 2;
+					ushort test3 : 16;
+				} blah;
+			"""
+		)
+		self.assertEqual(dom.blah.test, int("1001", 2))
+		self.assertEqual(dom.blah.test1, int("10", 2))
+		self.assertEqual(dom.blah.test2, int("11", 2))
+		self.assertEqual(dom.blah.test3, int("1000000110011111",2))
+	
+	def test_bitfield_basic_padded_little_endian(self):
+		b = lambda x: chr(int(x,2))
+		
+		dom = self._test_parse_build(
+			b("11100000") + b("00000000") + b("10000000"),
+			"""
+				LittleEndian();
+				BitfieldEnablePadding();
+				struct {
+					uchar test : 3;
+					ushort big;
+				} blah;
+			""",
+			predefines=False
+		)
+		self.assertEqual(dom.blah.test, int("111", 2))
+		self.assertEqual(dom.blah.big, int("1000000000000000", 2))
+
+	def test_bitfield_basic_unpadded_little_endian(self):
+		b = lambda x: chr(int(x,2))
+		
+		dom = self._test_parse_build(
+			b("11110000") + b("00000000") + b("00000000"),
+			"""
+				LittleEndian();
+				BitfieldDisablePadding();
+				struct {
+					uchar test : 3;
+					ushort big;
+				} blah;
+			""",
+			predefines=False
+		)
+		self.assertEqual(dom.blah.test, int("111", 2))
+		self.assertEqual(dom.blah.big, int("10000000", 2))
+
+	def test_bitfield_basic_unpadded_big_endian(self):
+		b = lambda x: chr(int(x,2))
+		
+		dom = self._test_parse_build(
+			b("11110000") + b("00000000") + b("00000000"),
+			"""
+				BigEndian();
+				BitfieldDisablePadding();
+				struct {
+					uchar test : 3;
+					ushort big;
+				} blah;
+			""",
+			predefines=False
+		)
+		self.assertEqual(dom.blah.test, int("111", 2))
+		self.assertEqual(dom.blah.big, int("1000000000000000", 2))
+
 if __name__ == "__main__":
 	unittest.main()

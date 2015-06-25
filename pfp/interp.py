@@ -376,6 +376,7 @@ class PfpInterp(object):
 		self._break_type = self.BREAK_NONE
 		self._break_level = 0
 		self._no_debug = False
+		self._padded_bitfield = True
 
 		self._ctxt = None
 		self._scope = None
@@ -428,7 +429,7 @@ class PfpInterp(object):
 	# PUBLIC
 	# --------------------
 
-	def parse(self, stream, template):
+	def parse(self, stream, template, predefines=True):
 		"""Parse the data stream using the template (e.g. parse the 010 template
 		and interpret the template using the stream as the data source).
 
@@ -442,7 +443,7 @@ class PfpInterp(object):
 		self._stream = stream
 		self._template = template
 		self._template_lines = self._template.split("\n")
-		self._ast = self._parse_string(template)
+		self._ast = self._parse_string(template, predefines)
 		self._dlog("parsed template into ast")
 
 		res = self._run()
@@ -504,6 +505,35 @@ class PfpInterp(object):
 
 		lines = [(x, self._template_lines[x]) for x in six.moves.range(start, end, 1)]
 		return self._coord.line, lines
+	
+	def set_bitfield_padded(self, val):
+		"""Set if the bitfield input/output stream should be padded
+
+		:val: True/False
+		:returns: None
+		"""
+		self._padded_bitfield = val
+		self._stream.padded = val
+		self._ctxt._pfp__padded_bitfield = val
+	
+	def set_bitfield_right_left(self):
+		"""Set the bitfields to parse from left to right
+		"""
+		self._bitfield_left_right = False
+		# TODO
+	
+	def set_bitfield_left_right(self):
+		"""Set the bitfields to parse from left to right
+		"""
+		self._bitfield_left_right = True
+		# TODO
+	
+	def get_bitfield_padded(self):
+		"""Return if the bitfield input/output stream should be padded
+
+		:returns: True/False
+		"""
+		return self._padded_bitfield
 	
 	# --------------------
 	# PRIVATE
@@ -631,6 +661,7 @@ class PfpInterp(object):
 
 		"""
 		self._root = ctxt = fields.Dom("__root")
+		self._root._pfp__interp = self
 		self._dlog("handling file AST with {} children".format(len(node.children())))
 
 		for child in node.children():
@@ -650,6 +681,9 @@ class PfpInterp(object):
 		"""
 		self._dlog("handling decl")
 		field = self._handle_node(node.type, scope, ctxt, stream)
+		bitsize = None
+		if getattr(node, "bitsize", None) is not None:
+			bitsize = self._handle_node(node.bitsize, scope, ctxt, stream)
 
 		if getattr(node, "is_func_param", False):
 			# we want to keep this as a class and not instantiate it
@@ -659,6 +693,7 @@ class PfpInterp(object):
 		# locals and consts still get a field instance, but DON'T parse the
 		# stream!
 		elif "local" in node.quals or "const" in node.quals:
+			import pdb; pdb.set_trace()
 			field = field()
 			scope.add_local(node.name, field)
 
@@ -671,6 +706,8 @@ class PfpInterp(object):
 			if "const" in node.quals:
 				field._pfp__freeze()
 
+			field._pfp__interp = self
+
 		elif isinstance(field, functions.Function):
 			# eh, just add it as a local...
 			# maybe the whole local/vars thinking needs to change...
@@ -682,8 +719,13 @@ class PfpInterp(object):
 			# by this point, structs are already instantiated (they need to be
 			# in order to set the new context)
 			if not isinstance(field, fields.Field):
-				field = field(stream)
+				if issubclass(field, fields.NumberBase):
+					field = field(stream, bitsize=bitsize)
+				else:
+					field = field(stream)
+			field._pfp__interp = self
 			field_res = ctxt._pfp__add_child(node.name, field)
+			field_res._pfp__interp = self
 			scope.add_var(node.name, field_res)
 
 		return field

@@ -13,11 +13,11 @@ import pfp
 import pfp.utils
 
 class UtilsMixin(object):
-	def _test_parse_build(self, data, template, stdout=None, debug=False):
+	def _test_parse_build(self, data, template, stdout=None, debug=False, predefines=False):
 		if stdout is not None:
 			fake_stdout = sys.stdout = StringIO()
 
-		dom = pfp.parse(StringIO(data), template, debug=debug)
+		dom = pfp.parse(StringIO(data), template, debug=debug, predefines=predefines)
 
 		if stdout is not None:
 			sys.stdout = sys.__stdout__

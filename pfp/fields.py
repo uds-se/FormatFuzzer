@@ -2,11 +2,13 @@
 # encoding: utf-8
 
 import json
+import math
 import six
 import struct
 
 import pfp.errors as errors
 import pfp.utils as utils
+import pfp.bitwrap as bitwrap
 
 BIG_ENDIAN = ">"
 LITTLE_ENDIAN = "<"
@@ -33,6 +35,8 @@ class Field(object):
 	avoid conflicting names used in templates, since
 	struct fields will implement ``__getattr__`` and 
 	``__setattr__`` to directly access child fields"""
+
+	_pfp__interp = None
 
 	def __init__(self, stream=None):
 		super(Field, self).__init__()
@@ -182,36 +186,41 @@ class Struct(Field):
 		:returns: None
 		"""
 		if name in self._pfp__children_map:
-			existing_child = self._pfp__children_map[name]
-			if isinstance(existing_child, Array):
-				if existing_child.field_cls != child.__class__:
-					raise errors.PfpError("implicit arrays must be sequential!")
-				existing_child.append(child)
-				return existing_child
-			else:
-				if self._pfp__children[-1].__class__ != child.__class__:
-					raise errors.PfpError("implicit arrays must be sequential!")
-
-				cls = child._pfp__class if hasattr(child, "_pfp__class") else child.__class__
-				ary = Array(0, cls)
-				ary._pfp__name = name
-				ary.append(existing_child)
-				ary.append(child)
-
-				exist_idx = -1
-				for idx,child in enumerate(self._pfp__children):
-					if child is existing_child:
-						exist_idx = idx
-						break
-
-				self._pfp__children[exist_idx] = ary
-				self._pfp__children_map[name] = ary
-				return ary
+			return self._pfp__handle_implicit_array(name, child)
 		else:
 			self._pfp__children.append(child)
 			child._pfp__name = name
 			self._pfp__children_map[name] = child
 			return child
+	
+	def _pfp__handle_implicit_array(self, name, child):
+		"""Handle inserting implicit array elements
+		"""
+		existing_child = self._pfp__children_map[name]
+		if isinstance(existing_child, Array):
+			if existing_child.field_cls != child.__class__:
+				raise errors.PfpError("implicit arrays must be sequential!")
+			existing_child.append(child)
+			return existing_child
+		else:
+			if self._pfp__children[-1].__class__ != child.__class__:
+				raise errors.PfpError("implicit arrays must be sequential!")
+
+			cls = child._pfp__class if hasattr(child, "_pfp__class") else child.__class__
+			ary = Array(0, cls)
+			ary._pfp__name = name
+			ary.append(existing_child)
+			ary.append(child)
+
+			exist_idx = -1
+			for idx,child in enumerate(self._pfp__children):
+				if child is existing_child:
+					exist_idx = idx
+					break
+
+			self._pfp__children[exist_idx] = ary
+			self._pfp__children_map[name] = ary
+			return ary
 	
 	def _pfp__parse(self, stream):
 		"""Parse the incoming stream
@@ -238,8 +247,6 @@ class Struct(Field):
 		# iterate IN ORDER
 		for child in self._pfp__children:
 			child_res = child._pfp__build(stream)
-			if child_res is None:
-				import pdb; pdb.set_trace()
 			res += child_res
 
 		return res
@@ -310,10 +317,12 @@ class Union(Struct):
 		:child: A :class:`.Field` instance
 		:returns: None
 		"""
-		super(Union, self)._pfp__add_child(name, child)
+		res = super(Union, self)._pfp__add_child(name, child)
 		self._pfp__buff.seek(0, 0)
 		child._pfp__build(stream=self._pfp__buff)
 		self._pfp__buff.seek(0, 0)
+
+		return res
 	
 	def _pfp__parse(self, stream):
 		"""Parse the incoming stream
@@ -331,7 +340,7 @@ class Union(Struct):
 			stream.seek(child_res, -1)
 		self._pfp__size = max_res
 
-		self._pfp__buff = six.StringIO(stream.read(self._pfp__size))
+		self._pfp__buff = six.BytesIO(stream.read(self._pfp__size))
 		return max_res
 	
 	def _pfp__build(self, stream=None):
@@ -364,6 +373,19 @@ class Union(Struct):
 
 class Dom(Struct):
 	"""The result of an interpreted template"""
+	def _pfp__build(self, stream=None):
+		if stream is None:
+			io_stream = six.BytesIO()
+			tmp_stream = bitwrap.BitwrappedStream(io_stream)
+			tmp_stream.padded = self._pfp__interp.get_bitfield_padded()
+			super(Dom, self)._pfp__build(tmp_stream)
+
+			# flush out any unaligned bitfields, etc
+			tmp_stream.flush()
+			res = io_stream.getvalue()
+			return res
+		else:
+			return super(Dom, self)._pfp__build(stream)
 
 class NumberBase(Field):
 	"""The base field for all numeric fields"""
@@ -374,8 +396,15 @@ class NumberBase(Field):
 
 	width = 4 				# number of bytes
 	format = "i"			# default signed int
+	bitsize = None			# for IntBase
 
 	_pfp__value = 0			# default value
+	
+	def __init__(self, stream=None, bitsize=None):
+		"""Special init for the bitsize
+		"""
+		self.bitsize = get_value(bitsize)
+		super(NumberBase, self).__init__(stream)
 
 	def __nonzero__(self):
 		"""Used for the not operator"""
@@ -391,8 +420,19 @@ class NumberBase(Field):
 		:stream: An IO stream that can be read from
 		:returns: The number of bytes parsed
 		"""
-		raw_data = stream.read(self.width)
-		data = utils.binary(raw_data)
+		if self.bitsize is None:
+			raw_data = stream.read(self.width)
+			data = utils.binary(raw_data)
+
+		else:
+			bits = stream.read_bits(self.bitsize)
+			width_diff = self.width  - (len(bits)//8) - 1
+			bits_diff = 8 - (len(bits) % 8)
+			padding = [0] * (width_diff * 8 + bits_diff)
+
+			bits = padding + bits
+
+			data = bitwrap.bits_to_bytes(bits)
 
 		if len(data) < self.width:
 			raise errors.PrematureEOF()
@@ -416,11 +456,28 @@ class NumberBase(Field):
 			"{}{}".format(self.endian, self.format),
 			self._pfp__value
 		)
-		if stream is not None:
-			stream.write(data)
-			return len(data)
+		if self.bitsize is None:
+			if stream is not None:
+				stream.write(data)
+				return len(data)
+			else:
+				return data
 		else:
-			return data
+			num_bytes = int(math.ceil(self.bitsize / 8.0))
+			if self.endian == BIG_ENDIAN:
+				bit_data = data[:num_bytes]
+			else:
+				bit_data = data[-num_bytes:]
+
+			raw_bits = bitwrap.bytes_to_bits(bit_data)
+			bits = raw_bits[-self.bitsize:]
+
+			if stream is not None:
+				stream.write_bits(bits)
+				return len(bits) // 8
+			else:
+				# TODO this can't be right....
+				return bits
 	
 	def _dom_class(self, obj1, obj2):
 		"""Return the dominating numeric class between the two
@@ -537,7 +594,7 @@ class NumberBase(Field):
 	def __getattr__(self, val):
 		if val.startswith("__") and attr.endswith("__"):
 			return getattr(self._pfp__value, val)
-		raise AttributeError()
+		raise AttributeError(val)
 
 class IntBase(NumberBase):
 	signed = True

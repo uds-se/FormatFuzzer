@@ -32,7 +32,7 @@ class Function(object):
 
 		self._scope.push()
 
-		params = self._params.instantiate(self._scope, args)
+		params = self._params.instantiate(self._scope, args, interp)
 
 		ret_val = None
 		try:
@@ -77,7 +77,7 @@ class ParamListDef(object):
 		self._params = params
 		self._coords = coords
 	
-	def instantiate(self, scope, args):
+	def instantiate(self, scope, args, interp):
 		"""Create a ParamList instance for actual interpretation
 
 		:args: TODO
@@ -114,6 +114,7 @@ class ParamListDef(object):
 			else:
 				param._pfp__set_value(args[x])
 				scope.add_local(param._pfp__name, param)
+			param._pfp__interp = interp
 
 		return ParamList(param_instances)
 
