@@ -494,28 +494,40 @@ class NumberBase(Field):
 	
 	def __iadd__(self, other):
 		self._pfp__value += self._pfp__get_root_value(other)
+		return self
 	def __isub__(self, other):
 		self._pfp__value -= self._pfp__get_root_value(other)
+		return self
 	def __imul__(self, other):
 		self._pfp__value *= self._pfp__get_root_value(other)
+		return self
 	def __idiv__(self, other):
 		self._pfp__value /= self._pfp__get_root_value(other)
+		return self
 	def __iand__(self, other):
 		self._pfp__value &= self._pfp__get_root_value(other)
+		return self
 	def __ixor__(self, other):
 		self._pfp__value ^= self._pfp__get_root_value(other)
+		return self
 	def __ior__(self, other):
 		self._pfp__value |= self._pfp__get_root_value(other)
+		return self
 	def __ifloordiv__(self, other):
 		self._pfp__value //= self._pfp__get_root_value(other)
+		return self
 	def __imod__(self, other):
 		self._pfp__value %= self._pfp__get_root_value(other)
+		return self
 	def __ipow__(self, other):
 		self._pfp__value **= self._pfp__get_root_value(other)
+		return self
 	def __ilshift__(self, other):
 		self._pfp__value <<= self._pfp__get_root_value(other)
+		return self
 	def __irshift__(self, other):
 		self._pfp__value >>= self._pfp__get_root_value(other)
+		return self
 	
 	def __add__(self, other):
 		res = self.__class__()
@@ -586,10 +598,14 @@ class NumberBase(Field):
 		return res
 
 	def __invert__(self):
-		return ~self._pfp__value
+		res = self.__class__()
+		res._pfp__set_value(~self._pfp__value)
+		return res
 	
 	def __neg__(self):
-		return -self._pfp__value
+		res = self.__class__()
+		res._pfp__set_value(-self._pfp__value)
+		return res
 	
 	def __getattr__(self, val):
 		if val.startswith("__") and attr.endswith("__"):
@@ -625,10 +641,15 @@ class IntBase(NumberBase):
 	def __repr__(self):
 		f = ":0{}x".format(self.width*2)
 		return ("{}({!r} [{" + f + "}])").format(
-			self.__class__.__name__,
+			self._pfp__cls_name(),
 			self._pfp__value,
 			self._pfp__value
 		)
+	
+	def _pfp__cls_name(self):
+		"""
+		"""
+		return self.__class__.__name__
 	
 	def __truediv__(self, other):
 		"""dividing ints should not return a float (python 3
@@ -678,6 +699,59 @@ class Double(NumberBase):
 	width = 8
 	format = "d"
 
+class Enum(IntBase):
+	"""For teh enums"""
+
+	enum_vals = None
+	enum_cls = None
+	enum_name = None
+
+	def __init__(self, stream=None, enum_cls=None, enum_vals=None, bitsize=None):
+		"""Init the enum
+		"""
+		# discard the bitsize value
+		self.enum_name = None
+
+		if enum_vals is not None:
+			self.enum_vals = enum_vals
+
+		if enum_cls is not None:
+			self.enum_cls = enum_cls
+			self.endian = enum_cls.endian
+			self.width = enum_cls.width
+			self.format = enum_cls.format
+
+		super(Enum, self).__init__(stream)
+	
+	def _pfp__parse(self, stream):
+		"""Parse the IO stream for this enum
+
+		:stream: An IO stream that can be read from
+		:returns: The number of bytes parsed
+		"""
+		res = super(Enum, self)._pfp__parse(stream)
+
+		if self._pfp__value in self.enum_vals:
+			self.enum_name = self.enum_vals[self._pfp__value]
+		else:
+			self.enum_name = "?? UNK_ENUM ??"
+
+		return res
+	
+	def __repr__(self):
+		"""Add the enum name to the int representation
+		"""
+		res = super(Enum, self).__repr__()
+		res += "(" + self.enum_name + ")"
+		return res
+	
+	def _pfp__cls_name(self):
+		"""
+		"""
+		return "Enum<{}>".format(
+			self.enum_cls.__name__
+		)
+
 # --------------------------------
 
 class Array(Field):
@@ -686,6 +760,8 @@ class Array(Field):
 	def __init__(self, width, field_cls, stream=None):
 		""" Create an array field of size "width" from the stream
 		"""
+		super(Array, self).__init__(stream)
+
 		self.width = width
 		self.field_cls = field_cls
 		self.items = []
@@ -845,6 +921,7 @@ class String(Field):
 			self._pfp__value += other._pfp__value
 		else:
 			self._pfp__value += other
+		return self
 
 class WString(String):
 	width = -1

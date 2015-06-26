@@ -56,6 +56,16 @@ def StructUnionDef(typedef_name, interp, node):
 	})
 	return new_class
 
+def EnumDef(typedef_name, base_cls, enum_vals):
+	new_class = type(typedef_name, (fields.Enum,), {
+		"width"		: base_cls.width,
+		"endian"	: base_cls.endian,
+		"format"	: base_cls.format,
+		"enum_vals"	: enum_vals,
+		"enum_cls"	: base_cls
+	})
+	return new_class
+
 #class StructUnionDef(object):
 #
 #	"""A class used to instantiate structs/unions as
@@ -207,6 +217,11 @@ class Scope(object):
 		self._dlog("getting local '{}'".format(name))
 		return self._search("locals", name)
 	
+	def add_type_class(self, name, cls):
+		"""Store the class with the name
+		"""
+		self._curr_scope["types"][name] = cls
+	
 	def add_type_struct_or_union(self, name, interp, node):
 		"""Store the node with the name. When it is instantiated,
 		the node itself will be handled.
@@ -215,7 +230,7 @@ class Scope(object):
 		:node: the union/struct node
 		:interp: the 010 interpreter
 		"""
-		self._curr_scope["types"][name] = StructUnionDef(name, interp, node)
+		self.add_type_class(name, StructUnionDef(name, interp, node))
 	
 	def add_type(self, new_name, orig_names):
 		"""Record the typedefd name for orig_names. Resolve orig_names
@@ -417,6 +432,7 @@ class PfpInterp(object):
 			AST.Break:			self._handle_break,
 			AST.Continue:		self._handle_continue,
 			AST.ArrayRef:		self._handle_array_ref,
+			AST.Enum:			self._handle_enum,
 			StructDecls:		self._handle_struct_decls,
 			UnionDecls:			self._handle_union_decls,
 		}
@@ -693,8 +709,8 @@ class PfpInterp(object):
 		# locals and consts still get a field instance, but DON'T parse the
 		# stream!
 		elif "local" in node.quals or "const" in node.quals:
-			import pdb; pdb.set_trace()
-			field = field()
+			if not isinstance(field, fields.Field):
+				field = field()
 			scope.add_local(node.name, field)
 
 			# this should only be able to be done with locals, right?
@@ -715,7 +731,7 @@ class PfpInterp(object):
 			field.name = node.name
 			scope.add_local(node.name, field)
 
-		else:
+		elif node.name is not None:
 			# by this point, structs are already instantiated (they need to be
 			# in order to set the new context)
 			if not isinstance(field, fields.Field):
@@ -727,6 +743,17 @@ class PfpInterp(object):
 			field_res = ctxt._pfp__add_child(node.name, field)
 			field_res._pfp__interp = self
 			scope.add_var(node.name, field_res)
+
+		# enums will get here. If there is no name, then no
+		# field is being declared (but the enum values _will_
+		# get defined). E.g.:
+		# 	enum <uchar blah {
+		# 		BLAH1,
+		#		BLAH2,
+		#		BLAH3
+		# 	};
+		elif node.name is None:
+			pass
 
 		return field
 	
@@ -890,10 +917,14 @@ class PfpInterp(object):
 
 		"""
 		is_union_or_struct = (node.type.type.__class__ in [AST.Union, AST.Struct])
+		is_enum = (node.type.type.__class__ is AST.Enum)
 
 		if is_union_or_struct:
 			self._dlog("handling typedef struct/union '{}'".format(node.name))
 			scope.add_type_struct_or_union(node.name, self, node.type.type)
+		elif is_enum:
+			enum_cls = self._handle_node(node.type, scope, ctxt, stream)
+			scope.add_type_class(node.name, enum_cls)
 		else:
 			names = node.type.type.names
 
@@ -1212,6 +1243,44 @@ class PfpInterp(object):
 		ret_val = self._handle_node(node.expr, scope, ctxt, stream)
 		self._dlog("return value = {}".format(ret_val))
 		raise errors.InterpReturn(ret_val)
+	
+	def _handle_enum(self, node, scope, ctxt, stream):
+		"""Handle enum nodes
+
+		:node: TODO
+		:scope: TODO
+		:ctxt: TODO
+		:stream: TODO
+		:returns: TODO
+
+		"""
+		self._dlog("handling enum")
+		if node.type is None:
+			enum_cls = fields.Int
+		else:
+			enum_cls = self._handle_node(node.type, scope, ctxt, stream)
+
+		enum_vals = {}
+		curr_val = enum_cls()
+		curr_val._pfp__value = -1
+		for enumerator in node.values.enumerators:
+			if enumerator.value is not None:
+				curr_val = self._handle_node(enumerator.value, scope, ctxt, stream)
+			else:
+				curr_val = curr_val + 1
+			curr_val._pfp__freeze()
+			enum_vals[enumerator.name] = curr_val
+			enum_vals[fields.PYVAL(curr_val)] = enumerator.name
+			scope.add_local(enumerator.name, curr_val)
+
+		if node.name is not None:
+			enum_cls = EnumDef(node.name, enum_cls, enum_vals)
+			#scope.add_type_class(node.name, enum_cls)
+		else:
+			enum_cls = EnumDef("enum_" + enum_cls.__name__, enum_cls, enum_vals)
+			# don't add to scope if we don't have a name
+
+		return enum_cls
 	
 	def _handle_array_decl(self, node, scope, ctxt, stream):
 		"""Handle ArrayDecl nodes
