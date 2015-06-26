@@ -1461,7 +1461,11 @@ class PfpInterp(object):
 	def _mark_id_as_lazy(self, node):
 		curr = node
 		while curr is not None and curr.__class__ is not AST.ID:
-			curr = curr.type
+			if getattr(curr, "type", None) is not None:
+				curr = curr.type
+			else:
+				curr = None
+				break
 		if curr is not None:
 			curr.is_lazy = True
 

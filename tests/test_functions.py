@@ -107,8 +107,7 @@ class TestFunctions(unittest.TestCase, utils.UtilsMixin):
 				LAZY_TYPE_TYPE a;
 				lazy_type_checking_function(a);
 			""",
-			debug=True,
-			#stdout="blah.var1 = 10"
+			stdout="blah.var1 = 10"
 		)
 	
 if __name__ == "__main__":
