@@ -196,72 +196,7 @@ class TestBasic(unittest.TestCase, utils.UtilsMixin):
 				i >>= 10;
 			"""
 		)
-	
-	def test_function(self):
-		dom = self._test_parse_build(
-			"",
-			"""
-				void func(int a, int b) {
-					local int c = a + b;
-				}
 
-				func(10, 20);
-			"""
-		)
-	
-	def test_builtin(self):
-		dom = self._test_parse_build(
-			"",
-			"""
-				Printf("hello there");
-				Printf("%d", 10);
-			""",
-			stdout="hello there10"
-		)
-	
-	def test_custom_func(self):
-		dom = self._test_parse_build(
-			"",
-			"""
-				int add(int n1, int n2) {
-					return n1 + n2;
-				}
-
-				Printf("%d", add(5, 8));
-			""",
-			stdout="13"
-		)
-	
-	def test_custom_func2(self):
-		dom = self._test_parse_build(
-			"",
-			"""
-				string prepend(string orig) {
-					return "blah: " + orig;
-				}
-
-				Printf(prepend("hello"));
-			""",
-			stdout="blah: hello"
-		)
-	
-	def test_native_func(self):
-		func_called = False
-		def func(params, ctxt, scope, stream, coord):
-			func_called = True
-			return 555
-
-		interp = pfp.interp.PfpInterp()
-		interp.add_native(name="func", func=func, ret=pfp.fields.Int)
-
-		dom = self._test_parse_build(
-			"",
-			"""
-			Printf("%d", func());
-			""",
-			stdout="555"
-		)
-	
 	def test_struct(self):
 		dom = self._test_parse_build(
 			"abcddcba",

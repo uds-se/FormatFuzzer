@@ -105,6 +105,8 @@ class ParamListDef(object):
 				[x.__class__.__name__ for x in param_instances]
 			)
 
+		# TODO type checking on provided types
+
 		for x in six.moves.range(len(args)):
 			param = param_instances[x]
 			if param is BYREF:

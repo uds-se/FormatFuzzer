@@ -66,6 +66,25 @@ def EnumDef(typedef_name, base_cls, enum_vals):
 	})
 	return new_class
 
+def LazyField(lookup_name, scope):
+	"""Super non-standard stuff here. Dynamically changing the base
+	class using the scope and the lazy name when the class is
+	instantiated. This works as long as the original base class is
+	not directly inheriting from object (which we're not, since
+	our original base class is fields.Field).
+	"""
+	def __init__(self, stream=None):
+		base_cls = self._pfp__scope.get_id(self._pfp__lazy_name)
+		self.__class__.__bases__ = (base_cls,)
+		base_cls.__init__(self, stream)
+
+	new_class = type(lookup_name + "_lazy", (fields.Field,), {
+		"__init__"			: __init__,
+		"_pfp__scope"		: scope,
+		"_pfp__lazy_name"	: lookup_name
+	})
+	return new_class
+
 #class StructUnionDef(object):
 #
 #	"""A class used to instantiate structs/unions as
@@ -1087,8 +1106,12 @@ class PfpInterp(object):
 		self._dlog("handling id {}".format(node.name))
 		field = scope.get_id(node.name)
 
-		if field is None:
+		is_lazy = getattr(node, "is_lazy", False)
+
+		if field is None and not is_lazy:
 			raise errors.UnresolvedID(node.coord, node.name)
+		elif is_lazy:
+			return LazyField(node.name, scope)
 
 		return field
 	
@@ -1138,6 +1161,7 @@ class PfpInterp(object):
 		# [(<name>, <field_class>), ...]
 		params = []
 		for param in node.params:
+			self._mark_id_as_lazy(param)
 			param = self._handle_node(param, scope, ctxt, stream)
 			params.append(param)
 
@@ -1433,6 +1457,13 @@ class PfpInterp(object):
 	# -----------------------------
 	# UTILITY
 	# -----------------------------
+
+	def _mark_id_as_lazy(self, node):
+		curr = node
+		while curr is not None and curr.__class__ is not AST.ID:
+			curr = curr.type
+		if curr is not None:
+			curr.is_lazy = True
 
 	def _node_is_breakable(self, node):
 		breakable_classes = [
