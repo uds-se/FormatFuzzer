@@ -184,7 +184,7 @@ class TestControlFlow(unittest.TestCase, utils.UtilsMixin):
 
 	def test_switch(self):
 		dom = self._test_parse_build(
-			"",
+			"\x00\x00\x00\x01\x00\x00\x00\x02",
 			"""
 				local int a = 5;
 				switch(a) {
@@ -194,14 +194,15 @@ class TestControlFlow(unittest.TestCase, utils.UtilsMixin):
 						Printf("false");
 						break;
 					case 5:
-						Printf("true");
+						int case_5;
 					default:
-						Printf("false from default");
+						int case_default;
 						break;
 				};
 			""",
-			#stdout="true"
 		)
+		self.assertEqual(dom.case_5, 1)
+		self.assertEqual(dom.case_default, 2)
 
 if __name__ == "__main__":
 	unittest.main()

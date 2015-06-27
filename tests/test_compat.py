@@ -45,8 +45,8 @@ class TestCompat(unittest.TestCase, utils.UtilsMixin):
 		self.assertEqual(pfp.fields.NumberBase.endian, pfp.fields.LITTLE_ENDIAN)
 	
 	def test_file_size(self):
-		input_ = six.BytesIO("ABCDE")
-		output_ = six.BytesIO()
+		input_ = six.StringIO("ABCDE")
+		output_ = six.StringIO()
 		sys.stdout = output_
 		dom = pfp.parse(
 			input_,

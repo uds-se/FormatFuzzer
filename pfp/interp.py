@@ -1449,7 +1449,7 @@ class PfpInterp(object):
 		
 		default_idx = None
 		found_match = False
-		cases = filter(lambda x: x[1].__class__ in [AST.Case, AST.Default], node.stmt.children())
+		cases = list(filter(lambda x: x[1].__class__ in [AST.Case, AST.Default], node.stmt.children()))
 		for idx,info in enumerate(cases):
 			_,child = info
 			if child.__class__ == AST.Default:
