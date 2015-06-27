@@ -2,12 +2,7 @@
 # encoding: utf-8
 
 import os
-try:
-	from StringIO import StringIO
-
-# StringIO does not exist in python3
-except ImportError as e:
-	from io import StringIO
+import six
 import sys
 import unittest
 
@@ -48,6 +43,20 @@ class TestCompat(unittest.TestCase, utils.UtilsMixin):
 			"""
 		)
 		self.assertEqual(pfp.fields.NumberBase.endian, pfp.fields.LITTLE_ENDIAN)
+	
+	def test_file_size(self):
+		input_ = six.BytesIO("ABCDE")
+		output_ = six.BytesIO()
+		sys.stdout = output_
+		dom = pfp.parse(
+			input_,
+			"""
+			Printf("%d", FileSize());
+			""",
+		)
+		sys.stdout = sys.__stdout__
+
+		self.assertEqual(output_.getvalue(), "5")
 
 if __name__ == "__main__":
 	unittest.main()

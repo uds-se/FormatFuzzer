@@ -2,12 +2,6 @@
 # encoding: utf-8
 
 import os
-try:
-	from StringIO import StringIO
-
-# StringIO does not exist in python3
-except ImportError as e:
-	from io import StringIO
 import sys
 import unittest
 
@@ -150,6 +144,7 @@ class TestBasic(unittest.TestCase, utils.UtilsMixin):
 				k = i & j;
 				k = i | j;
 				k = i || j;
+				k = i && j;
 			"""
 		)
 

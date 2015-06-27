@@ -4,6 +4,7 @@
 Python format parser
 """
 
+import collections
 import copy
 import glob
 import logging
@@ -452,6 +453,7 @@ class PfpInterp(object):
 			AST.Continue:		self._handle_continue,
 			AST.ArrayRef:		self._handle_array_ref,
 			AST.Enum:			self._handle_enum,
+			AST.Switch:			self._handle_switch,
 			StructDecls:		self._handle_struct_decls,
 			UnionDecls:			self._handle_union_decls,
 		}
@@ -1047,7 +1049,8 @@ class PfpInterp(object):
 			">=": lambda x,y: x>=y,
 			"<=": lambda x,y: x<=y,
 			"==": lambda x,y: x == y,
-			"!=": lambda x,y: x != y
+			"!=": lambda x,y: x != y,
+			"&&": lambda x,y: x and y,
 		}
 
 		left_val = self._handle_node(node.left, scope, ctxt, stream)
@@ -1412,6 +1415,55 @@ class PfpInterp(object):
 					break
 				except errors.InterpContinue as e:
 					pass
+
+	def _flatten_list(self, l):
+		for el in l:
+			if isinstance(el, list) and not isinstance(el, AST.Node):
+				for sub in self._flatten_list(el):
+					yield sub
+			else:
+				yield el
+
+	def _handle_switch(self, node, scope, ctxt, stream):
+		"""Handle break node
+
+		:node: TODO
+		:scope: TODO
+		:ctxt: TODO
+		:stream: TODO
+		:returns: TODO
+
+		"""
+		def exec_case(idx, cases):
+			# keep executing cases until a break is found,
+			# or they've all been executed
+			for _,case in cases[idx:]:
+				stmts = self._flatten_list(case.stmts)
+				try:
+					for stmt in stmts:
+						self._handle_node(stmt, scope, ctxt, stream)
+				except errors.InterpBreak as e:
+					break
+
+		cond = self._handle_node(node.cond, scope, ctxt, stream)
+		
+		default_idx = None
+		found_match = False
+		cases = filter(lambda x: x[1].__class__ in [AST.Case, AST.Default], node.stmt.children())
+		for idx,info in enumerate(cases):
+			_,child = info
+			if child.__class__ == AST.Default:
+				default_idx = idx
+				continue
+			elif child.__class__ == AST.Case:
+				expr = self._handle_node(child.expr, scope, ctxt, stream)
+				if expr == cond:
+					found_match = True
+					exec_case(idx, cases)
+					break
+
+		if default_idx is not None and not found_match:
+			exec_case(default_idx, cases)
 
 	def _handle_break(self, node, scope, ctxt, stream):
 		"""Handle break node

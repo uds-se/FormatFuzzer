@@ -96,7 +96,9 @@ def FEof(params, ctxt, scope, stream, coord):
 #int64 FileSize()
 @native(name="FileSize", ret=pfp.fields.Int64)
 def FileSize(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+	if len(params) > 0:
+		raise errors.InvalidArguments(coord, "0 arguments", "{} args".format(len(params)))
+	return stream.size()
 
 #TFileList FindFiles( string dir, string filter )
 @native(name="FindFiles", ret=pfp.fields.Void)
@@ -167,70 +169,87 @@ def MakeDir(params, ctxt, scope, stream, coord):
 def OverwriteBytes(params, ctxt, scope, stream, coord):
 	raise NotImplementedError()
 
+def _read_data(params, stream, cls):
+	raw_stream = stream._stream
+	curr_pos = raw_stream.tell()
+
+	if len(params) == 0:
+		pos = raw_stream.tell()
+	elif len(params) == 1:
+		pos = PYVAL(params[0])
+	else:
+		raise errors.InvalidArguments(coord, "at most 1 arguments", "{} args".format(len(params)))
+
+	raw_stream.seek(pos, 0)
+	res = cls(stream=raw_stream)
+	raw_stream.seek(curr_pos, 0)
+
+	return res
+
 #char ReadByte( int64 pos=FTell() )
 @native(name="ReadByte", ret=pfp.fields.Char)
 def ReadByte(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+	return _read_data(params, stream, pfp.fields.Char)
 
 #double ReadDouble( int64 pos=FTell() )
 @native(name="ReadDouble", ret=pfp.fields.Double)
 def ReadDouble(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+	return _read_data(params, stream, pfp.fields.Double)
 
 #float ReadFloat( int64 pos=FTell() )
 @native(name="ReadFloat", ret=pfp.fields.Float)
 def ReadFloat(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+	return _read_data(params, stream, pfp.fields.Float)
 
 #hfloat ReadHFloat( int64 pos=FTell() )
 @native(name="ReadHFloat", ret=pfp.fields.Float)
 def ReadHFloat(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+	return _read_data(params, stream, pfp.fields.Float)
 
 #int ReadInt( int64 pos=FTell() )
 @native(name="ReadInt", ret=pfp.fields.Int)
 def ReadInt(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+	return _read_data(params, stream, pfp.fields.Int)
 
 #int64 ReadInt64( int64 pos=FTell() )
 @native(name="ReadInt64", ret=pfp.fields.Int64)
 def ReadInt64(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+	return _read_data(params, stream, pfp.fields.Int64)
 
 #int64 ReadQuad( int64 pos=FTell() )
 @native(name="ReadQuad", ret=pfp.fields.Int64)
 def ReadQuad(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+	return _read_data(params, stream, pfp.fields.Int64)
 
 #short ReadShort( int64 pos=FTell() )
 @native(name="ReadShort", ret=pfp.fields.Short)
 def ReadShort(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+	return _read_data(params, stream, pfp.fields.Short)
 
 #uchar ReadUByte( int64 pos=FTell() )
 @native(name="ReadUByte", ret=pfp.fields.UChar)
 def ReadUByte(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+	return _read_data(params, stream, pfp.fields.UChar)
 
 #uint ReadUInt( int64 pos=FTell() )
 @native(name="ReadUInt", ret=pfp.fields.UInt)
 def ReadUInt(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+	return _read_data(params, stream, pfp.fields.UInt)
 
 #uint64 ReadUInt64( int64 pos=FTell() )
 @native(name="ReadUInt64", ret=pfp.fields.UInt64)
 def ReadUInt64(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+	return _read_data(params, stream, pfp.fields.UInt64)
 
 #uint64 ReadUQuad( int64 pos=FTell() )
 @native(name="ReadUQuad", ret=pfp.fields.UInt64)
 def ReadUQuad(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+	return _read_data(params, stream, pfp.fields.UInt64)
 
 #ushort ReadUShort( int64 pos=FTell() )
 @native(name="ReadUShort", ret=pfp.fields.UShort)
 def ReadUShort(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+	return _read_data(params, stream, pfp.fields.UShort)
 
 #char[] ReadLine( int64 pos, int maxLen=-1, int includeLinefeeds=true )
 @native(name="ReadLine", ret=pfp.fields.String)

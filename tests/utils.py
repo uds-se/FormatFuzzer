@@ -1,23 +1,17 @@
 #!/usr/bin/env python
 # encoding: utf-8
 
+import six
 import sys
-try:
-	from StringIO import StringIO
-
-# StringIO does not exist in python3
-except ImportError as e:
-	from io import StringIO
-
 import pfp
 import pfp.utils
 
 class UtilsMixin(object):
 	def _test_parse_build(self, data, template, stdout=None, debug=False, predefines=False):
 		if stdout is not None:
-			fake_stdout = sys.stdout = StringIO()
+			fake_stdout = sys.stdout = six.BytesIO()
 
-		dom = pfp.parse(StringIO(data), template, debug=debug, predefines=predefines)
+		dom = pfp.parse(six.BytesIO(data), template, debug=debug, predefines=predefines)
 
 		if stdout is not None:
 			sys.stdout = sys.__stdout__

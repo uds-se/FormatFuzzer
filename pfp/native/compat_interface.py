@@ -24,27 +24,32 @@ import pfp.fields
 #    int moveWithCursor=false )
 @native(name="AddBookmark", ret=pfp.fields.Void)
 def AddBookmark(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+	# resolved: won't implement
+	pass
 
 #void ClearClipboard()
 @native(name="ClearClipboard", ret=pfp.fields.Void)
 def ClearClipboard(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+	# resolved: won't implement
+	pass
 
 #void CopyBytesToClipboard( uchar buffer[], int size, int charset=CHARSET_ANSI, int bigendian=false )
 @native(name="CopyBytesToClipboard", ret=pfp.fields.Void)
 def CopyBytesToClipboard(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+	# resolved: won't implement
+	pass
 
 #void CopyStringToClipboard( const char str[], int charset=CHARSET_ANSI )
 @native(name="CopyStringToClipboard", ret=pfp.fields.Void)
 def CopyStringToClipboard(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+	# resolved: won't implement
+	pass
 
 #void CopyToClipboard()
 @native(name="CopyToClipboard", ret=pfp.fields.Void)
 def CopyToClipboard(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+	# resolved: won't implement
+	pass
 
 #void CutToClipboard()
 @native(name="CutToClipboard", ret=pfp.fields.Void)
@@ -59,32 +64,38 @@ def DeleteFile(params, ctxt, scope, stream, coord):
 #void DisableUndo()
 @native(name="DisableUndo", ret=pfp.fields.Void)
 def DisableUndo(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+	# resolved: won't implement
+	pass
 
 #void DisplayFormatBinary()
 @native(name="DisplayFormatBinary", ret=pfp.fields.Void)
 def DisplayFormatBinary(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+	# resolved: won't implement
+	pass
 
 #void DisplayFormatDecimal()
 @native(name="DisplayFormatDecimal", ret=pfp.fields.Void)
 def DisplayFormatDecimal(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+	# resolved: won't implement
+	pass
 
 #void DisplayFormatHex()
 @native(name="DisplayFormatHex", ret=pfp.fields.Void)
 def DisplayFormatHex(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+	# resolved: won't implement
+	pass
 
 #void DisplayFormatOctal()
 @native(name="DisplayFormatOctal", ret=pfp.fields.Void)
 def DisplayFormatOctal(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+	# resolved: won't implement
+	pass
 
 #void EnableUndo()
 @native(name="EnableUndo", ret=pfp.fields.Void)
 def EnableUndo(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+	# resolved: won't implement
+	pass
 
 #int Exec( const char program[], const char arguments[], int wait, int &errorCode )
 @native(name="Exec", ret=pfp.fields.Int)
@@ -99,7 +110,8 @@ def Exit(params, ctxt, scope, stream, coord):
 #void ExpandAll()
 @native(name="ExpandAll", ret=pfp.fields.Void)
 def ExpandAll(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+	# resolved: won't implement
+	pass
 
 #void ExportCSV( const char filename[] )
 @native(name="ExportCSV", ret=pfp.fields.Void)
@@ -177,42 +189,50 @@ def GetArgW(params, ctxt, scope, stream, coord):
 #int GetBackColor()
 @native(name="GetBackColor", ret=pfp.fields.Int)
 def GetBackColor(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+	# resolved: won't implement
+	pass
 
 #int GetBookmarkArraySize( int index )
 @native(name="GetBookmarkArraySize", ret=pfp.fields.Int)
 def GetBookmarkArraySize(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+	# resolved: won't implement
+	pass
 
 #int GetBookmarkBackColor( int index )
 @native(name="GetBookmarkBackColor", ret=pfp.fields.Int)
 def GetBookmarkBackColor(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+	# resolved: won't implement
+	pass
 
 #int GetBookmarkForeColor( int index )
 @native(name="GetBookmarkForeColor", ret=pfp.fields.Int)
 def GetBookmarkForeColor(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+	# resolved: won't implement
+	pass
 
 #int GetBookmarkMoveWithCursor( int index )
 @native(name="GetBookmarkMoveWithCursor", ret=pfp.fields.Int)
 def GetBookmarkMoveWithCursor(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+	# resolved: won't implement
+	pass
 
 #string GetBookmarkName( int index )
 @native(name="GetBookmarkName", ret=pfp.fields.String)
 def GetBookmarkName(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+	# resolved: won't implement
+	pass
 
 #int64 GetBookmarkPos( int index )
 @native(name="GetBookmarkPos", ret=pfp.fields.Int64)
 def GetBookmarkPos(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+	# resolved: won't implement
+	pass
 
 #string GetBookmarkType( int index )
 @native(name="GetBookmarkType", ret=pfp.fields.String)
 def GetBookmarkType(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+	# resolved: won't implement
+	pass
 
 #int GetBytesPerLine()
 @native(name="GetBytesPerLine", ret=pfp.fields.Int)
@@ -222,17 +242,20 @@ def GetBytesPerLine(params, ctxt, scope, stream, coord):
 #int GetClipboardBytes( uchar buffer[], int maxBytes )
 @native(name="GetClipboardBytes", ret=pfp.fields.Int)
 def GetClipboardBytes(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+	# resolved: won't implement
+	pass
 
 #int GetClipboardIndex()
 @native(name="GetClipboardIndex", ret=pfp.fields.Int)
 def GetClipboardIndex(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+	# resolved: won't implement
+	pass
 
 #string GetClipboardString()
 @native(name="GetClipboardString", ret=pfp.fields.String)
 def GetClipboardString(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+	# resolved: won't implement
+	pass
 
 #string GetCurrentTime( char format[] = "hh:mm:ss" )
 @native(name="GetCurrentTime", ret=pfp.fields.String)
@@ -297,12 +320,14 @@ def GetFileNum(params, ctxt, scope, stream, coord):
 #int GetForeColor()
 @native(name="GetForeColor", ret=pfp.fields.Int)
 def GetForeColor(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+	# resolved: won't implement
+	pass
 
 #int GetMouseWheelScrollSpeed()
 @native(name="GetMouseWheelScrollSpeed", ret=pfp.fields.Int)
 def GetMouseWheelScrollSpeed(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+	# resolved: won't implement
+	pass
 
 #int GetNumArgs()
 @native(name="GetNumArgs", ret=pfp.fields.Int)
@@ -312,7 +337,8 @@ def GetNumArgs(params, ctxt, scope, stream, coord):
 #int GetNumBookmarks()
 @native(name="GetNumBookmarks", ret=pfp.fields.Int)
 def GetNumBookmarks(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+	# resolved: won't implement
+	pass
 
 #int GetReadOnly()
 @native(name="GetReadOnly", ret=pfp.fields.Int)
@@ -486,22 +512,26 @@ def MessageBox(params, ctxt, scope, stream, coord):
 #void OutputPaneClear()
 @native(name="OutputPaneClear", ret=pfp.fields.Void)
 def OutputPaneClear(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+	# resolved: won't implement
+	pass
 
 #int OutputPaneSave( const char filename[] )
 @native(name="OutputPaneSave", ret=pfp.fields.Int)
 def OutputPaneSave(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+	# resolved: won't implement
+	pass
 
 #void OutputPaneCopy()
 @native(name="OutputPaneCopy", ret=pfp.fields.Void)
 def OutputPaneCopy(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+	# resolved: won't implement
+	pass
 
 #void PasteFromClipboard()
 @native(name="PasteFromClipboard", ret=pfp.fields.Void)
 def PasteFromClipboard(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+	# resolved: won't implement
+	pass
 
 #int Printf( const char format[] [, argument, ... ] ) 
 @native(name="Printf", ret=pfp.fields.Int)
@@ -560,7 +590,8 @@ def ProcessLocalToHeapAddress(params, ctxt, scope, stream, coord):
 #void RemoveBookmark( int index )
 @native(name="RemoveBookmark", ret=pfp.fields.Void)
 def RemoveBookmark(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+	# resolved: won't implement
+	pass
 
 #int RenameFile( const char originalname[], const char newname[] )
 @native(name="RenameFile", ret=pfp.fields.Int)
@@ -585,22 +616,26 @@ def RunTemplate(params, ctxt, scope, stream, coord):
 #void SetBackColor( int color )
 @native(name="SetBackColor", ret=pfp.fields.Void)
 def SetBackColor(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+	# resolved: won't implement
+	pass
 
 #void SetColor( int forecolor, int backcolor )
 @native(name="SetColor", ret=pfp.fields.Void)
 def SetColor(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+	# resolved: won't implement
+	pass
 
 #void SetForeColor( int color )
 @native(name="SetForeColor", ret=pfp.fields.Void)
 def SetForeColor(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+	# resolved: won't implement
+	pass
 
 #int SetClipboardIndex( int index )
 @native(name="SetClipboardIndex", ret=pfp.fields.Int)
 def SetClipboardIndex(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+	# resolved: won't implement
+	pass
 
 #void SetCursorPos( int64 pos )
 @native(name="SetCursorPos", ret=pfp.fields.Void)
