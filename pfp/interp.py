@@ -67,6 +67,17 @@ def EnumDef(typedef_name, base_cls, enum_vals):
 	})
 	return new_class
 
+def ArrayDecl(item_cls, item_count):
+	width = fields.PYVAL(item_count)
+	def __init__(self, stream=None):
+		fields.Array.__init__(self, self.width, self.field_cls, stream)
+	new_class = type("Array_{}_{}".format(item_cls.__name__, width), (fields.Array,), {
+		"__init__"	: __init__,
+		"width"		: width,
+		"field_cls"	: item_cls,
+	})
+	return new_class
+
 def LazyField(lookup_name, scope):
 	"""Super non-standard stuff here. Dynamically changing the base
 	class using the scope and the lazy name when the class is
@@ -624,6 +635,8 @@ class PfpInterp(object):
 		except errors.InterpReturn as e:
 			# TODO handle exit/return codes (e.g. return -1)
 			pass
+		except errors.InterpExit as e:
+			pass
 
 		# final drop-in after everything has executed
 		if self._break_type != self.BREAK_NONE:
@@ -653,6 +666,9 @@ class PfpInterp(object):
 
 		if type(node) is tuple:
 			node = node[1]
+
+		if isinstance(node, dict):
+			import pdb; pdb.set_trace()
 
 		# need to check this so that debugger-eval'd statements
 		# don't mess with the current state
@@ -1326,9 +1342,10 @@ class PfpInterp(object):
 		# node.type
 		field_cls = self._handle_node(node.type, scope, ctxt, stream)
 		self._dlog("field class = {}".format(field_cls))
-		array = fields.Array(array_size, field_cls)
+		array = ArrayDecl(field_cls, array_size)
+		#array = fields.Array(array_size, field_cls)
 		array._pfp__name = node.type.declname
-		array._pfp__parse(stream)
+		#array._pfp__parse(stream)
 		return array
 	
 	def _handle_array_ref(self, node, scope, ctxt, stream):
@@ -1545,6 +1562,8 @@ class PfpInterp(object):
 			AST.ArrayDecl,
 			AST.Continue,
 			AST.Break,
+			AST.Switch,
+			AST.Case
 		]
 
 		return node.__class__ in breakable_classes

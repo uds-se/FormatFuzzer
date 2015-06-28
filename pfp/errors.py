@@ -10,6 +10,9 @@ class PrematureEOF(PfpError): pass
 
 class InterpBreak(PfpError): pass
 class InterpContinue(PfpError): pass
+class InterpExit(PfpError):
+	def __init__(self, error_code=0):
+		self.error_code = error_code
 class UnmodifiableConst(PfpError): pass
 
 class CoordError(PfpError):

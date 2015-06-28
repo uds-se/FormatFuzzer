@@ -760,7 +760,7 @@ class Array(Field):
 	def __init__(self, width, field_cls, stream=None):
 		""" Create an array field of size "width" from the stream
 		"""
-		super(Array, self).__init__(stream)
+		super(Array, self).__init__(stream=None)
 
 		self.width = width
 		self.field_cls = field_cls
@@ -768,6 +768,9 @@ class Array(Field):
 
 		if stream is not None:
 			self._pfp__parse(stream)
+		else:
+			for x in six.moves.range(self.width):
+				self.items.append(self.field_cls())
 	
 	def append(self, item):
 		# TODO check for consistent type
@@ -785,6 +788,11 @@ class Array(Field):
 		for item in self.items:
 			if max_len != -1 and len(res) >= max_len:
 				break
+			
+			# null-terminate string
+			if PYVAL(item) == 0:
+				break
+
 			# TODO WChar
 			res += chr(PYVAL(item))
 		return res
@@ -798,6 +806,16 @@ class Array(Field):
 	
 	def __ne__(self, other):
 		return not self.__eq__(other)
+	
+	def _pfp__set_value(self, value):
+		if value.__class__ not in [list, tuple]:
+			raise Exception("Error, invalid value for array")
+		if len(value) != PYVAL(self.width):
+			raise Exception("Array was declared as having {} items, not {} items".format(
+				PYVAL(self.width),
+				len(value)
+			))
+		self.items = value
 
 	def _pfp__parse(self, stream):
 		# optimizations... should reuse existing fields??

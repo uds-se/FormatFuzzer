@@ -7,6 +7,7 @@ compatability with 010 editor functions. Some of these functions
 are nops, some are fully implemented.
 """
 
+import six
 import sys
 
 from pfp.native import native
@@ -169,87 +170,88 @@ def MakeDir(params, ctxt, scope, stream, coord):
 def OverwriteBytes(params, ctxt, scope, stream, coord):
 	raise NotImplementedError()
 
-def _read_data(params, stream, cls):
-	raw_stream = stream._stream
-	curr_pos = raw_stream.tell()
+def _read_data(params, stream, cls, coord):
+	bits = stream._bits
+	curr_pos = stream.tell()
 
-	if len(params) == 0:
-		pos = raw_stream.tell()
-	elif len(params) == 1:
+	if len(params) == 1:
 		pos = PYVAL(params[0])
-	else:
+		stream.seek(pos, 0)
+	elif len(params) > 1:
 		raise errors.InvalidArguments(coord, "at most 1 arguments", "{} args".format(len(params)))
 
-	raw_stream.seek(pos, 0)
-	res = cls(stream=raw_stream)
-	raw_stream.seek(curr_pos, 0)
+	res = cls(stream=stream)
+
+	# reset the stream
+	stream.seek(curr_pos, 0)
+	stream._bits = bits
 
 	return res
 
 #char ReadByte( int64 pos=FTell() )
 @native(name="ReadByte", ret=pfp.fields.Char)
 def ReadByte(params, ctxt, scope, stream, coord):
-	return _read_data(params, stream, pfp.fields.Char)
+	return _read_data(params, stream, pfp.fields.Char, coord)
 
 #double ReadDouble( int64 pos=FTell() )
 @native(name="ReadDouble", ret=pfp.fields.Double)
 def ReadDouble(params, ctxt, scope, stream, coord):
-	return _read_data(params, stream, pfp.fields.Double)
+	return _read_data(params, stream, pfp.fields.Double, coord)
 
 #float ReadFloat( int64 pos=FTell() )
 @native(name="ReadFloat", ret=pfp.fields.Float)
 def ReadFloat(params, ctxt, scope, stream, coord):
-	return _read_data(params, stream, pfp.fields.Float)
+	return _read_data(params, stream, pfp.fields.Float, coord)
 
 #hfloat ReadHFloat( int64 pos=FTell() )
 @native(name="ReadHFloat", ret=pfp.fields.Float)
 def ReadHFloat(params, ctxt, scope, stream, coord):
-	return _read_data(params, stream, pfp.fields.Float)
+	return _read_data(params, stream, pfp.fields.Float, coord)
 
 #int ReadInt( int64 pos=FTell() )
 @native(name="ReadInt", ret=pfp.fields.Int)
 def ReadInt(params, ctxt, scope, stream, coord):
-	return _read_data(params, stream, pfp.fields.Int)
+	return _read_data(params, stream, pfp.fields.Int, coord)
 
 #int64 ReadInt64( int64 pos=FTell() )
 @native(name="ReadInt64", ret=pfp.fields.Int64)
 def ReadInt64(params, ctxt, scope, stream, coord):
-	return _read_data(params, stream, pfp.fields.Int64)
+	return _read_data(params, stream, pfp.fields.Int64, coord)
 
 #int64 ReadQuad( int64 pos=FTell() )
 @native(name="ReadQuad", ret=pfp.fields.Int64)
 def ReadQuad(params, ctxt, scope, stream, coord):
-	return _read_data(params, stream, pfp.fields.Int64)
+	return _read_data(params, stream, pfp.fields.Int64, coord)
 
 #short ReadShort( int64 pos=FTell() )
 @native(name="ReadShort", ret=pfp.fields.Short)
 def ReadShort(params, ctxt, scope, stream, coord):
-	return _read_data(params, stream, pfp.fields.Short)
+	return _read_data(params, stream, pfp.fields.Short, coord)
 
 #uchar ReadUByte( int64 pos=FTell() )
 @native(name="ReadUByte", ret=pfp.fields.UChar)
 def ReadUByte(params, ctxt, scope, stream, coord):
-	return _read_data(params, stream, pfp.fields.UChar)
+	return _read_data(params, stream, pfp.fields.UChar, coord)
 
 #uint ReadUInt( int64 pos=FTell() )
 @native(name="ReadUInt", ret=pfp.fields.UInt)
 def ReadUInt(params, ctxt, scope, stream, coord):
-	return _read_data(params, stream, pfp.fields.UInt)
+	return _read_data(params, stream, pfp.fields.UInt, coord)
 
 #uint64 ReadUInt64( int64 pos=FTell() )
 @native(name="ReadUInt64", ret=pfp.fields.UInt64)
 def ReadUInt64(params, ctxt, scope, stream, coord):
-	return _read_data(params, stream, pfp.fields.UInt64)
+	return _read_data(params, stream, pfp.fields.UInt64, coord)
 
 #uint64 ReadUQuad( int64 pos=FTell() )
 @native(name="ReadUQuad", ret=pfp.fields.UInt64)
 def ReadUQuad(params, ctxt, scope, stream, coord):
-	return _read_data(params, stream, pfp.fields.UInt64)
+	return _read_data(params, stream, pfp.fields.UInt64, coord)
 
 #ushort ReadUShort( int64 pos=FTell() )
 @native(name="ReadUShort", ret=pfp.fields.UShort)
 def ReadUShort(params, ctxt, scope, stream, coord):
-	return _read_data(params, stream, pfp.fields.UShort)
+	return _read_data(params, stream, pfp.fields.UShort, coord)
 
 #char[] ReadLine( int64 pos, int maxLen=-1, int includeLinefeeds=true )
 @native(name="ReadLine", ret=pfp.fields.String)
@@ -259,7 +261,28 @@ def ReadLine(params, ctxt, scope, stream, coord):
 #void ReadBytes( uchar buffer[], int64 pos, int n )
 @native(name="ReadBytes", ret=pfp.fields.Void)
 def ReadBytes(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+	if len(params) != 3:
+		raise errors.InvalidArguments(coord, "3 arguments (buffer, pos, n)", "{} args".format(len(params)))
+	if not isinstance(params[0], pfp.fields.Array):
+		raise errors.InvalidArguments(coord, "buffer must be an array", params[0].__class__.__name__)
+	if params[0].field_cls not in [pfp.fields.UChar, pfp.fields.Char]:
+		raise errors.InvalidArguments(coord, "buffer must be an array of uchar or char", params[0].field_cls.__name__)
+	
+	if not isinstance(params[1], pfp.fields.IntBase):
+		raise errors.InvalidArguments(coord, "pos must be an integer", params[1].__class__.__name__)
+
+	if not isinstance(params[2], pfp.fields.IntBase):
+		raise errors.InvalidArguments(coord, "n must be an integer", params[2].__class__.__name__)
+	
+	bits = stream._bits
+	curr_pos = stream.tell()
+
+	vals = [params[0].field_cls(stream) for x in six.moves.range(PYVAL(params[2]))]
+
+	stream.seek(curr_pos, 0)
+	stream._bits = bits
+
+	params[0]._pfp__set_value(vals)
 
 #char[] ReadString( int64 pos, int maxLen=-1 )
 @native(name="ReadString", ret=pfp.fields.String)

@@ -58,5 +58,39 @@ class TestCompat(unittest.TestCase, utils.UtilsMixin):
 
 		self.assertEqual(output_.getvalue(), "5")
 
+class TestCompatIO(unittest.TestCase, utils.UtilsMixin):
+	def setUp(self):
+		pass
+	
+	def tearDown(self):
+		pass
+	
+	def test_read_ushort(self):
+		dom = self._test_parse_build(
+			"\x80\x01",
+			"""
+				local ushort blah = ReadUShort();
+				Printf("%d|", blah);
+				Printf("%d", FTell());
+			""",
+			verify=False
+		)
+	
+	def test_read_bytes_uchar(self):
+		dom = self._test_parse_build(
+			"ab\x00\x01",
+			"""
+				local uchar data[2];
+				ReadBytes(data, FTell(), 2);
+				Printf(data);
+
+				uchar a;
+				uchar b;
+				Printf("%d%d", a, b);
+			""",
+			verify=False,
+			stdout="ab9798"
+		)
+
 if __name__ == "__main__":
 	unittest.main()

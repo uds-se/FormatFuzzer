@@ -110,5 +110,24 @@ class TestFunctions(unittest.TestCase, utils.UtilsMixin):
 			stdout="blah.var1 = 10"
 		)
 	
+	def test_function_string_return(self):
+		dom = self._test_parse_build(
+			"abcd\x00",
+			"""
+				string ReadStringN(int64 pos, int n) {
+					local uchar s[n];
+					ReadBytes(s, pos, n);
+					return s;
+				}
+				if(ReadStringN(FTell(), 5) == "abcd") {
+					Printf("true");
+				} else {
+					Printf("false");
+				}
+			""",
+			verify=False,
+			stdout="true"
+		)
+	
 if __name__ == "__main__":
 	unittest.main()

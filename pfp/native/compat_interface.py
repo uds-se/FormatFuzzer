@@ -11,6 +11,7 @@ import sys
 
 from pfp.native import native
 import pfp.fields
+import pfp.errors
 
 # http://www.sweetscape.com/010editor/manual/FuncInterface.htm
 
@@ -105,7 +106,10 @@ def Exec(params, ctxt, scope, stream, coord):
 #void Exit( int errorcode )
 @native(name="Exit", ret=pfp.fields.Void)
 def Exit(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+	if len(params) != 1:
+		raise errors.InvalidArguments(coord, "1 arguments", "{} args".format(len(params)))
+	error_code = PYVAL(params[0])
+	raise pfp.errors.InterpExit(error_code)
 
 #void ExpandAll()
 @native(name="ExpandAll", ret=pfp.fields.Void)
@@ -543,7 +547,7 @@ def Printf(params, ctxt, scope, stream, coord):
 
 	"""
 	if len(params) == 1:
-		sys.stdout.write(PYVAL(params[0]))
+		sys.stdout.write(PYSTR(params[0]))
 		return
 
 	to_print = PYSTR(params[0]) % tuple(PYSTR(x) for x in params[1:])
@@ -695,19 +699,19 @@ def Sleep(params, ctxt, scope, stream, coord):
 #void StatusMessage( const char format[] [, argument, ... ] )
 @native(name="StatusMessage", ret=pfp.fields.Void)
 def StatusMessage(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+	pass
 
 #void Terminate( int force=true )
 @native(name="Terminate", ret=pfp.fields.Void)
 def Terminate(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+	raise pfp.errors.InterpExit()
 
 #void Warning( const char format[] [, argument, ... ] )
 @native(name="Warning", ret=pfp.fields.Void)
 def Warning(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+	pass
 
 #void Assert( int value, const char msg[] = "" )
 @native(name="Assert", ret=pfp.fields.Void)
 def Assert(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+	pass

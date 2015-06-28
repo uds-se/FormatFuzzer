@@ -7,7 +7,7 @@ import pfp
 import pfp.utils
 
 class UtilsMixin(object):
-	def _test_parse_build(self, data, template, stdout=None, debug=False, predefines=False):
+	def _test_parse_build(self, data, template, stdout=None, debug=False, predefines=False, verify=True):
 		if stdout is not None:
 			fake_stdout = sys.stdout = six.StringIO()
 
@@ -18,6 +18,7 @@ class UtilsMixin(object):
 			output = fake_stdout.getvalue()
 			self.assertEqual(output, stdout)
 
-		self.assertEqual(dom._pfp__build(), pfp.utils.binary(data))
+		if verify:
+			self.assertEqual(dom._pfp__build(), pfp.utils.binary(data))
 
 		return dom

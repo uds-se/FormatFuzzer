@@ -2,11 +2,6 @@
 # encoding: utf-8
 
 import os
-try:
-	from StringIO import StringIO
-# StringIO does not exist in python3
-except ImportError as e:
-	from io import StringIO
 import struct
 import sys
 import unittest
