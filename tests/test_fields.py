@@ -230,12 +230,26 @@ class TestBitFields(unittest.TestCase, utils.UtilsMixin):
 		dom = self._test_parse_build(
 			"\xf0",
 			"""
+				LittleEndian();
 				struct {
 					if(1) {
 						int bitfield_1:4;
 						int bitfield_2:4;
 					}
 				} blah;
+			"""
+		)
+	
+	def test_bitfield_again(self):
+		dom = self._test_parse_build(
+			"\x00AB",
+			"""
+			struct QuanTable {
+				uchar Pq : 4;
+				uchar Tq : 4;
+				if (Pq == 0)
+					byte qTable[2];
+			} qtable;
 			"""
 		)
 

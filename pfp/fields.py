@@ -46,6 +46,15 @@ class Field(object):
 		if stream is not None:
 			self._pfp__parse(stream)
 	
+	def _pfp__width(self):
+		"""Return the width of the field (sizeof)
+		"""
+		raw_output = six.BytesIO()
+		output = bitwrap.BitwrappedStream(raw_output)
+		self._pfp__build(output)
+		output.flush()
+		return len(raw_output.getvalue())
+	
 	def _pfp__freeze(self):
 		"""Freeze the field so that it cannot be modified (const)
 		"""
@@ -385,6 +394,8 @@ class Dom(Struct):
 			res = io_stream.getvalue()
 			return res
 		else:
+			if not isinstance(stream, bitwrap.BitwrappedStream):
+				stream = bitwrap.BitwrappedStream(stream)
 			return super(Dom, self)._pfp__build(stream)
 
 class NumberBase(Field):
@@ -810,12 +821,23 @@ class Array(Field):
 	def _pfp__set_value(self, value):
 		if value.__class__ not in [list, tuple]:
 			raise Exception("Error, invalid value for array")
-		if len(value) != PYVAL(self.width):
-			raise Exception("Array was declared as having {} items, not {} items".format(
-				PYVAL(self.width),
-				len(value)
-			))
-		self.items = value
+
+		# this shouldn't be enforced
+		# e.g.
+		# local uchar[16] = {0};
+		# where the first item should be 0
+		#
+		#if len(value) != PYVAL(self.width):
+		#	raise Exception("Array was declared as having {} items, not {} items".format(
+		#		PYVAL(self.width),
+		#		len(value)
+		#	))
+
+		if len(value) > PYVAL(self.width):
+			raise Exception("This is not actual C, memory corruption is not allowed!")
+
+		for idx,item in enumerate(value):
+			self.items[idx] = item
 
 	def _pfp__parse(self, stream):
 		# optimizations... should reuse existing fields??

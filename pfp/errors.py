@@ -54,3 +54,8 @@ class UnsupportedUnaryOperator(CoordError):
 class UnsupportedBinaryOperator(CoordError):
 	"""docstring for UnsupportedUnaryOperator"""
 	msg = "Unsupported binary operator {!r}"
+
+class UnsupportedAssignmentOperator(CoordError):
+	"""docstring for UnsupportedAssignmentOperator"""
+	msg = "Unsupported assignment operator {!r}"
+

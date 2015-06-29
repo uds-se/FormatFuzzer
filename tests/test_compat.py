@@ -73,7 +73,8 @@ class TestCompatIO(unittest.TestCase, utils.UtilsMixin):
 				Printf("%d|", blah);
 				Printf("%d", FTell());
 			""",
-			verify=False
+			verify=False,
+			stdout="32769|0"
 		)
 	
 	def test_read_bytes_uchar(self):
@@ -90,6 +91,44 @@ class TestCompatIO(unittest.TestCase, utils.UtilsMixin):
 			""",
 			verify=False,
 			stdout="ab9798"
+		)
+
+class TestCompatString(unittest.TestCase, utils.UtilsMixin):
+	def setup(self):
+		pass
+	
+	def tearDown(self):
+		pass
+	
+	def test_memcpy1(self):
+		dom = self._test_parse_build(
+			"abcd",
+			"""
+			uchar bytes[4];
+			local uchar local_bytes[4];
+			Memcpy(local_bytes, bytes, 4);
+
+			Printf(local_bytes);
+			""",
+			stdout="abcd"
+		)
+	
+	def test_memcpy2(self):
+		dom = self._test_parse_build(
+			"abcd",
+			"""
+			uchar bytes[4];
+			local uchar local_bytes[4];
+			Memcpy(local_bytes, bytes, 4);
+
+			local uint i;
+			for(i = 0; i < 4; i++) {
+				local_bytes[3 - i] = local_bytes[i];
+			}
+			Printf(local_bytes);
+			Printf(bytes);
+			""",
+			stdout="abbaabcd"
 		)
 
 if __name__ == "__main__":

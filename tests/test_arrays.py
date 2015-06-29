@@ -123,6 +123,16 @@ class TestArrays(unittest.TestCase, utils.UtilsMixin):
 				Printf("%s", blah);
 			""",
 		)
+	
+	def test_struct_array_decl(self):
+		dom = self._test_parse_build(
+			"abcd",
+			"""
+				struct {
+					uchar blah;
+				} structs[4];
+			""",
+		)
 
 if __name__ == "__main__":
 	unittest.main()

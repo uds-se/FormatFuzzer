@@ -667,8 +667,15 @@ class PfpInterp(object):
 		if type(node) is tuple:
 			node = node[1]
 
-		if isinstance(node, dict):
-			import pdb; pdb.set_trace()
+		# TODO probably a better way to do this...
+		# this occurs with if-statements that have a single statement
+		# instead of a compound statement (no curly braces)
+		elif type(node) is list and len(list(filter(lambda x: isinstance(x, AST.Node), node))) == len(node):
+			node = AST.Compound(
+				block_items=node,
+				coord=node[0].coord
+			)
+			return self._handle_node(node, scope, ctxt, stream)
 
 		# need to check this so that debugger-eval'd statements
 		# don't mess with the current state
@@ -908,11 +915,14 @@ class PfpInterp(object):
 
 		"""
 		self._dlog("handling struct")
-		struct = fields.Struct()
 
-		self._handle_node(StructDecls(node.decls, node.coord), scope, struct, stream)
+		struct_cls = StructUnionDef("struct", self, node)
+		return struct_cls
+		#struct = fields.Struct()
 
-		return struct
+		#self._handle_node(StructDecls(node.decls, node.coord), scope, struct, stream)
+
+		#return struct
 	
 	def _handle_struct_decls(self, node, scope, ctxt, stream):
 		self._dlog("handling struct decls")
@@ -1093,7 +1103,8 @@ class PfpInterp(object):
 			"p--": lambda x,v: x.__isub__(1),
 			"~":   lambda x,v: ~x,
 			"!":   lambda x,v: not x,
-			"-":   lambda x,v: -x
+			"-":   lambda x,v: -x,
+			"sizeof":	lambda x,v: (fields.UInt64()+x._pfp__width())
 		}
 
 		if node.op not in switch:
@@ -1144,12 +1155,45 @@ class PfpInterp(object):
 		:returns: TODO
 
 		"""
+		def add_op(x,y): x += y
+		def sub_op(x,y): x -= y
+		def div_op(x,y): x /= y
+		def mod_op(x,y): x %= y
+		def mul_op(x,y): x *= y
+		def xor_op(x,y): x ^= y
+		def and_op(x,y): x &= y
+		def or_op(x,y): x |= y
+		def lshift_op(x,y): x <<= y
+		def rshift_op(x,y): x >>= y
+		def assign_op(x,y): x._pfp__set_value(y)
+
+		switch = {
+			"+="	: add_op,
+			"-="	: sub_op,
+			"/="	: div_op,
+			"%="	: mod_op,
+			"*="	: mul_op,
+			"^="	: xor_op,
+			"&="	: and_op,
+			"|="	: or_op,
+			"<<="	: lshift_op,
+			">>="	: rshift_op,
+			"="		: assign_op
+		}
+
 		self._dlog("handling assignment")
 		field = self._handle_node(node.lvalue, scope, ctxt, stream)
 		self._dlog("field = {}".format(field))
 		value = self._handle_node(node.rvalue, scope, ctxt, stream)
-		self._dlog("value = {}".format(value))
-		field._pfp__set_value(value)
+
+		if node.op is None:
+			self._dlog("value = {}".format(value))
+			field._pfp__set_value(value)
+		else:
+			self._dlog("value {}= {}".format(node.op, value))
+			if node.op not in switch:
+				raise errors.UnsupportedAssignmentOperator(node.coord, node.op)
+			switch[node.op](field, value)
 	
 	def _handle_func_def(self, node, scope, ctxt, stream):
 		"""Handle FuncDef nodes

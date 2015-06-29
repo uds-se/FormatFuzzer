@@ -160,6 +160,29 @@ class TestBasic(unittest.TestCase, utils.UtilsMixin):
 			"""
 		)
 	
+	def test_unary_sizeof_basic(self):
+		dom = self._test_parse_build(
+			"abcd",
+			"""
+				int some_int;
+				Printf("%d", sizeof(some_int));
+			""",
+			stdout="4"
+		)
+	
+	def test_unary_sizeof_struct(self):
+		dom = self._test_parse_build(
+			"abcde",
+			"""
+				struct {
+					int a;
+					char b;
+				} blah;
+				Printf("%d", sizeof(blah));
+			""",
+			stdout="5"
+		)
+	
 	def test_comparisons(self):
 		dom = self._test_parse_build(
 			"",

@@ -7,6 +7,7 @@ compatability with 010 editor functions. Some of these functions
 are nops, some are fully implemented.
 """
 
+import six
 import sys
 
 from pfp.native import native
@@ -107,7 +108,45 @@ def Memcmp(params, ctxt, scope, stream, coord):
 #void Memcpy( uchar dest[], const uchar src[], int n, int destOffset=0, int srcOffset=0 )
 @native(name="Memcpy", ret=pfp.fields.Void)
 def Memcpy(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+	if len(params) < 3:
+		raise errors.InvalidArguments(coord, "{} args".format(len(params)), "at least 3 args")
+	if len(params) > 5:
+		raise errors.InvalidArguments(coord, "{} args".format(len(params)), "at most 5 args")
+	
+	dest = params[0]
+	src = params[1]
+	n = PYVAL(params[2])
+
+	if len(params) > 3:
+		dest_offset = PYVAL(params[3])
+	else:
+		dest_offset = 0
+	
+	if len(params) > 4:
+		src_offset = PYVAL(params[4])
+	else:
+		src_offset = 0
+	
+	if not isinstance(dest, pfp.fields.Array):
+		raise errors.InvalidArguments(coord,
+			dest.__class__.__name__,
+			"an array"
+		)
+	
+	if not isinstance(src, pfp.fields.Array):
+		raise errors.InvalidArguments(coord,
+			src.__class__.__name__,
+			"an array"
+		)
+	
+	count = 0
+	while n > 0:
+		val = dest.field_cls()
+		val._pfp__set_value(src[src_offset + count]._pfp__value)
+		# TODO clone it
+		dest[dest_offset + count] = val
+		count += 1
+		n -= 1
 
 #void Memset( uchar s[], int c, int n )
 @native(name="Memset", ret=pfp.fields.Void)
