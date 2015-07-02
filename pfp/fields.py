@@ -9,6 +9,7 @@ import struct
 import pfp.errors as errors
 import pfp.utils as utils
 import pfp.bitwrap as bitwrap
+import pfp.functions as functions
 
 BIG_ENDIAN = ">"
 LITTLE_ENDIAN = "<"
@@ -42,9 +43,42 @@ class Field(object):
 		super(Field, self).__init__()
 		self._pfp__name = None
 		self._pfp__frozen = False
+
+		# watchers to update when something changes
+		self._pfp__watchers = []
+		self._pfp__parent = None
 		
 		if stream is not None:
 			self._pfp__parse(stream)
+	
+	def _pfp__watch(self, watcher):
+		"""Add the watcher to the list of fields that
+		are watching this field
+		"""
+		self._pfp__watchers.append(watcher)
+	
+	def _pfp__set_watch(self, watch_field, update_func, *func_call_info):
+		"""Subscribe to update events on ``watch_field``, using
+		``update_func`` to update self's value when ``watch_field``
+		changes"""
+		watch_field._pfp__watch(self)
+		self._pfp__update_func = update_func
+		self._pfp__update_func_call_info = func_call_info
+	
+	def _pfp__handle_updated(self, watched_field):
+		"""Handle the watched field that was updated
+		"""
+		new_val = self._pfp__update_func.call(
+			[watched_field],
+			*self._pfp__update_func_call_info
+		)
+		self._pfp__set_value(new_val)
+	
+	def _pfp__notify_update(self, child=None):
+		for watcher in self._pfp__watchers:
+			watcher._pfp__handle_updated(self)
+		if self._pfp__parent is not None:
+			self._pfp__parent._pfp__notify_update(self)
 	
 	def _pfp__width(self):
 		"""Return the width of the field (sizeof)
@@ -78,6 +112,13 @@ class Field(object):
 		if self._pfp__frozen:
 			raise errors.UnmodifiableConst()
 		self._pfp__value = self._pfp__get_root_value(new_val)
+		self._pfp__notify_parent()
+	
+	def _pfp__notify_parent(self):
+		for watcher in self._pfp__watchers:
+			watcher._pfp__handle_updated(self)
+		if self._pfp__parent is not None:
+			self._pfp__parent._pfp__notify_update(self)
 	
 	def _pfp__build(self, output_stream=None):
 		"""Pack this field into a string. If output_stream is specified,
@@ -197,6 +238,7 @@ class Struct(Field):
 		if name in self._pfp__children_map:
 			return self._pfp__handle_implicit_array(name, child)
 		else:
+			child._pfp__parent = self
 			self._pfp__children.append(child)
 			child._pfp__name = name
 			self._pfp__children_map[name] = child
@@ -217,6 +259,7 @@ class Struct(Field):
 
 			cls = child._pfp__class if hasattr(child, "_pfp__class") else child.__class__
 			ary = Array(0, cls)
+			ary._pfp__parent = self
 			ary._pfp__name = name
 			ary.append(existing_child)
 			ary.append(child)
@@ -278,9 +321,10 @@ class Struct(Field):
 		children_map = super(Struct, self).__getattribute__("_pfp__children_map")
 		if name in children_map:
 			if not isinstance(value, Field):
-				children_map[name]._pfp__value = value
+				children_map[name]._pfp__set_value(value)
 			else:
 				children_map[name] = value
+				self._pfp__notify_parent()
 			return children_map[name]
 		else:
 			# default getattr instead
@@ -636,18 +680,14 @@ class IntBase(NumberBase):
 			# different sizes, unsigned/signed, etc
 			raw = new_val._pfp__build()
 			while len(raw) < self.width:
-				if self.endian == BIG_ENDIAN:
-					raw += "\x00"
-				else:
-					raw = "\x00" + raw
+				raw = b"\x00" + raw
 			while len(raw) > self.width:
-				if self.endian == BIG_ENDIAN:
-					raw = raw[1:]
-				else:
-					raw = raw[:-1]
+				raw = raw[1:]
 			self._pfp__parse(six.BytesIO(raw))
 		else:
 			self._pfp__value = new_val
+
+		self._pfp__notify_parent()
 
 	def __repr__(self):
 		f = ":0{}x".format(self.width*2)
@@ -785,6 +825,7 @@ class Array(Field):
 	
 	def append(self, item):
 		# TODO check for consistent type
+		item._pfp__parent = self
 		self.items.append(item)
 		self.width = len(self.items)
 	
@@ -838,6 +879,8 @@ class Array(Field):
 
 		for idx,item in enumerate(value):
 			self.items[idx] = item
+
+		self._pfp__notify_parent()
 
 	def _pfp__parse(self, stream):
 		# optimizations... should reuse existing fields??

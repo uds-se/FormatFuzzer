@@ -799,7 +799,53 @@ class PfpInterp(object):
 		elif node.name is None:
 			pass
 
+		if node.metadata is not None:
+			self._handle_metadata(field, node, scope, ctxt, stream)
+
 		return field
+	
+	def _handle_metadata(self, field, node, scope, ctxt, stream):
+		"""Handle metadata for the node
+		"""
+		self._dlog("handling node metadata {}".format(node.metadata.keyvals))
+
+		keyvals = node.metadata.keyvals
+
+		if "watch" in node.metadata.keyvals or "update" in keyvals:
+			return self._handle_watch_metadata(field, node, scope, ctxt, stream)
+
+		if "packtype" in node.metadata.keyvals or "packer" in keyvals:
+			return self._handle_packed_metadata(field, node, scope, ctxt, stream)
+
+		#char blah[60] <pack=Zip, unpack=Unzip, packtype=DataType>;
+		#char blah[60] <packer=Zip, packtype=DataType>;
+		#int checksum <watch=field1,field2,field3, update=Crc32>;
+	
+	def _handle_watch_metadata(self, field, node, scope, ctxt, stream):
+		"""Handle watch vars for fields
+		"""
+		keyvals = node.metadata.keyvals
+		if "watch" not in keyvals:
+			raise errors.PfpError("Packed fields require a packer function set")
+		if "update" not in keyvals:
+			raise errors.PfpError("Packed fields require a packer function set")
+
+		watch_field_name = keyvals["watch"]
+		update_func_name = keyvals["update"]
+
+		watch_field = scope.get_id(watch_field_name)
+		update_func = scope.get_id(update_func_name)
+
+		field._pfp__set_watch(watch_field, update_func, ctxt, scope, stream, self, self._coord)
+	
+	def _handle_packed_metadata(self, node, scope, ctxt, stream):
+		"""Handle packed metadata
+		"""
+		keyvals = node.metadata.keyvals
+		if "packer" not in keyvals:
+			raise errors.PfpError("Packed fields require a packer function set")
+		if "packtype" not in keyvals:
+			raise errors.PfpError("Packed fields require a packtype to be set")
 	
 	def _handle_byref_decl(self, node, scope, ctxt, stream):
 		"""TODO: Docstring for _handle_byref_decl.
