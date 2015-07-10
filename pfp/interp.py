@@ -603,7 +603,7 @@ class PfpInterp(object):
 				except:
 					pass
 
-		res = py010parser.parse_string(string, parser=self._parser)
+		res = py010parser.parse_string(string, parser=self._parser, cpp_path=self._cpp_path, cpp_args=self._cpp_args)
 		res.ext = exts + res.ext
 
 		return res
