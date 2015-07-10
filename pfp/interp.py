@@ -410,7 +410,7 @@ class PfpInterp(object):
 			setattr(mod, "PYVAL", fields.get_value)
 			setattr(mod, "PYSTR", fields.get_str)
 
-	def __init__(self, debug=False, parser=None, int3=True):
+	def __init__(self, debug=False, parser=None, int3=True, cpp_path="cpp", cpp_args=""):
 		"""
 		"""
 		self.__class__.define_natives()
@@ -425,6 +425,10 @@ class PfpInterp(object):
 		self._padded_bitfield = True
 		# whether or not debugging is allowed (ie Int3())
 		self._int3 = int3
+		
+		# for stripping comments and such
+		self._cpp_path = cpp_path
+		self._cpp_args = cpp_args
 
 		self._ctxt = None
 		self._scope = None
@@ -594,7 +598,7 @@ class PfpInterp(object):
 		if predefines:
 			for predefine in self._predefines:
 				try:
-					ast = py010parser.parse_string(predefine, parser=self._parser)
+					ast = py010parser.parse_string(predefine, parser=self._parser, cpp_path=self._cpp_path, cpp_args=self._cpp_args)
 					exts += ast.ext
 				except:
 					pass
