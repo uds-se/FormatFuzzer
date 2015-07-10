@@ -44,18 +44,24 @@ class Field(object):
 		self._pfp__name = None
 		self._pfp__frozen = False
 
+		self._pfp__offset = -1
+
 		# watchers to update when something changes
 		self._pfp__watchers = []
 		self._pfp__parent = None
+		self._pfp__no_notify = False
 		
 		if stream is not None:
-			self._pfp__parse(stream)
+			self._pfp__parse(stream, save_offset=True)
 	
 	def _pfp__watch(self, watcher):
 		"""Add the watcher to the list of fields that
 		are watching this field
 		"""
-		self._pfp__watchers.append(watcher)
+		if self._pfp__parent is not None and isinstance(self._pfp__parent, Union):
+			self._pfp__parent._pfp__watch(watcher)
+		else:
+			self._pfp__watchers.append(watcher)
 	
 	def _pfp__set_watch(self, watch_field, update_func, *func_call_info):
 		"""Subscribe to update events on ``watch_field``, using
@@ -65,14 +71,23 @@ class Field(object):
 		self._pfp__update_func = update_func
 		self._pfp__update_func_call_info = func_call_info
 	
+	def _pfp__offset(self):
+		"""Get the offset of the field into the stream
+		"""
+		if self._pfp__parent is not None:
+			self._pfp__parent
+	
 	def _pfp__handle_updated(self, watched_field):
 		"""Handle the watched field that was updated
 		"""
-		new_val = self._pfp__update_func.call(
-			[watched_field],
+		self._pfp__no_notify = True
+
+		self._pfp__update_func.call(
+			[self, watched_field],
 			*self._pfp__update_func_call_info
 		)
-		self._pfp__set_value(new_val)
+
+		self._pfp__no_notify = False
 	
 	def _pfp__notify_update(self, child=None):
 		for watcher in self._pfp__watchers:
@@ -115,25 +130,30 @@ class Field(object):
 		self._pfp__notify_parent()
 	
 	def _pfp__notify_parent(self):
+		if self._pfp__no_notify:
+			return
+
 		for watcher in self._pfp__watchers:
 			watcher._pfp__handle_updated(self)
 		if self._pfp__parent is not None:
 			self._pfp__parent._pfp__notify_update(self)
 	
-	def _pfp__build(self, output_stream=None):
+	def _pfp__build(self, output_stream=None, save_offset=False):
 		"""Pack this field into a string. If output_stream is specified,
 		write the output into the output stream
 
 		:output_stream: Optional output stream to write the results to
+		:save_offset: If true, the current offset into the stream will be saved in the field
 		:returns: Resulting string if ``output_stream`` is not specified. Else the number of bytes writtern.
 
 		"""
 		raise NotImplemented("Inheriting classes must implement the _pfp__build function")
 	
-	def _pfp__parse(self, stream):
+	def _pfp__parse(self, stream, save_offset=False):
 		"""Parse this field from the ``stream``
 
 		:stream: An IO stream that can be read from
+		:save_offset: Save the offset into the stream
 		:returns: None
 		"""
 		raise NotImplemented("Inheriting classes must implement the _pfp__parse function")
@@ -193,7 +213,7 @@ class Field(object):
 	def __repr__(self):
 		return "{}({!r})".format(self.__class__.__name__, self._pfp__value)
 	
-	def _pfp__show(self, level=0):
+	def _pfp__show(self, level=0, include_offset=False):
 		return repr(self)
 
 class Void(Field):
@@ -212,6 +232,9 @@ class Struct(Field):
 		super(Struct, self).__setattr__("_pfp__children_map", {})
 
 		super(Struct, self).__init__()
+
+		if stream is not None:
+			self._pfp__offset = stream.tell()
 	
 	def _pfp__set_value(self, value):
 		"""Initialize the struct. Value should be an array of
@@ -228,7 +251,7 @@ class Struct(Field):
 		for x in six.moves.range(len(self._pfp__children)):
 			self._pfp__children[x]._pfp__set_value(value[x])
 	
-	def _pfp__add_child(self, name, child):
+	def _pfp__add_child(self, name, child, stream=None):
 		"""Add a child to the Struct field
 
 		:name: The name of the child
@@ -249,16 +272,22 @@ class Struct(Field):
 		"""
 		existing_child = self._pfp__children_map[name]
 		if isinstance(existing_child, Array):
-			if existing_child.field_cls != child.__class__:
-				raise errors.PfpError("implicit arrays must be sequential!")
+			# I don't think we should check this
+			#
+			#if existing_child.field_cls != child.__class__:
+			#	raise errors.PfpError("implicit arrays must be sequential!")
 			existing_child.append(child)
 			return existing_child
 		else:
-			if self._pfp__children[-1].__class__ != child.__class__:
-				raise errors.PfpError("implicit arrays must be sequential!")
+			# I don't think we should check this
+			#
+			#if self._pfp__children[-1].__class__ != child.__class__:
+			#	raise errors.PfpError("implicit arrays must be sequential!")
 
 			cls = child._pfp__class if hasattr(child, "_pfp__class") else child.__class__
 			ary = Array(0, cls)
+			# since the array starts with the first item
+			ary._pfp__offset = existing_child._pfp__offset
 			ary._pfp__parent = self
 			ary._pfp__name = name
 			ary.append(existing_child)
@@ -274,31 +303,37 @@ class Struct(Field):
 			self._pfp__children_map[name] = ary
 			return ary
 	
-	def _pfp__parse(self, stream):
+	def _pfp__parse(self, stream, save_offset=False):
 		"""Parse the incoming stream
 
 		:stream: Input stream to be parsed
 		:returns: Number of bytes parsed
 
 		"""
+		if save_offset:
+			self._pfp__offset = stream.tell()
+
 		res = 0
 		for child in self._pfp__children:
-			res += child._pfp__parse(stream)
+			res += child._pfp__parse(stream, save_offset)
 		return res
 	
-	def _pfp__build(self, stream=None):
+	def _pfp__build(self, stream=None, save_offset=False):
 		"""Build the field and write the result into the stream
 
 		:stream: An IO stream that can be written to
 		:returns: None
 
 		"""
+		if save_offset and stream is not None:
+			self._pfp__offset = stream.tell()
+
 		# returns either num bytes written or total data
 		res = utils.binary("") if stream is None else 0
 
 		# iterate IN ORDER
 		for child in self._pfp__children:
-			child_res = child._pfp__build(stream)
+			child_res = child._pfp__build(stream, save_offset)
 			res += child_res
 
 		return res
@@ -333,18 +368,20 @@ class Struct(Field):
 	def __repr__(self):
 		return object.__repr__(self)
 	
-	def _pfp__show(self, level=0):
+	def _pfp__show(self, level=0, include_offset=False):
 		"""Show the contents of the struct
 		"""
 		res = []
-		res.append("{} {{".format(
+		res.append("{}{} {{".format(
+			"{:04x} ".format(self._pfp__offset) if include_offset else "",
 			self._pfp__show_name
 		))
 		for child in self._pfp__children:
-			res.append("{}{:10s} = {}".format(
+			res.append("{}{}{:10s} = {}".format(
 				"    "*(level+1),
+				"{:04x} ".format(child._pfp__offset) if include_offset else "",
 				child._pfp__name,
-				child._pfp__show(level+1)
+				child._pfp__show(level+1, include_offset)
 			))
 		res.append("{}}}".format("    "*level))
 		return "\n".join(res)
@@ -363,7 +400,7 @@ class Union(Struct):
 		super(Union, self).__init__(name)
 		self._pfp__buff = six.BytesIO()
 
-	def _pfp__add_child(self, name, child):
+	def _pfp__add_child(self, name, child, stream=None):
 		"""Add a child to the Union field
 
 		:name: The name of the child
@@ -373,19 +410,35 @@ class Union(Struct):
 		res = super(Union, self)._pfp__add_child(name, child)
 		self._pfp__buff.seek(0, 0)
 		child._pfp__build(stream=self._pfp__buff)
+		size = len(self._pfp__buff.getvalue())
 		self._pfp__buff.seek(0, 0)
+
+		if stream is not None:
+			curr_pos = stream.tell()
+			stream.seek(curr_pos-size, 0)
 
 		return res
 	
-	def _pfp__parse(self, stream):
+	def _rebuild_internal_buff(self):
+		"""rebuild the internal buffer for the union
+		"""
+		self._pfp__buff = six.BytesIO()
+		for child in self._pfp__children:
+			child._pfp__build(self._pfp__buff, save_offset=True)
+			self._pfp__buff.seek(0, 0)
+	
+	def _pfp__parse(self, stream, save_offset=False):
 		"""Parse the incoming stream
 
 		:stream: Input stream to be parsed
 		:returns: Number of bytes parsed
 		"""
+		if save_offset:
+			self._pfp__offset = stream.tell()
+
 		max_res = 0
 		for child in self._pfp__children:
-			child_res = child._pfp__parse(stream)
+			child_res = child._pfp__parse(stream, save_offset)
 			if child_res > max_res:
 				max_res = child_res
 
@@ -396,18 +449,30 @@ class Union(Struct):
 		self._pfp__buff = six.BytesIO(stream.read(self._pfp__size))
 		return max_res
 	
-	def _pfp__build(self, stream=None):
+	def _pfp__build(self, stream=None, save_offset=False):
 		"""Build the union and write the result into the stream.
 
 		:stream: None
 		:returns: None
 		"""
-		val = self._pfp__buff.getvalue()
-		if stream is None:
-			return val
+		max_size = -1
+		if stream is not None:
+			for child in self._pfp__children:
+				curr_pos = stream.tell()
+				child._pfp__build(stream, save_offset)
+				size = stream.tell() - curr_pos
+				stream.seek(-size, 1)
+
+				if size > max_size:
+					max_size = size
+
+			stream.seek(max_size, 1)
+
+			return max_size
 		else:
-			stream.write(self._pfp__buff.getvalue())
-			return len(val)
+			self._rebuild_internal_buff()
+			val = self._pfp__buff.getvalue()
+			return val
 	
 	def __setattr__(self, name, value):
 		"""Custom __setattr__ to keep track of the order things
@@ -426,12 +491,12 @@ class Union(Struct):
 
 class Dom(Struct):
 	"""The result of an interpreted template"""
-	def _pfp__build(self, stream=None):
+	def _pfp__build(self, stream=None, save_offset=False):
 		if stream is None:
 			io_stream = six.BytesIO()
 			tmp_stream = bitwrap.BitwrappedStream(io_stream)
 			tmp_stream.padded = self._pfp__interp.get_bitfield_padded()
-			super(Dom, self)._pfp__build(tmp_stream)
+			super(Dom, self)._pfp__build(tmp_stream, save_offset=save_offset)
 
 			# flush out any unaligned bitfields, etc
 			tmp_stream.flush()
@@ -440,7 +505,7 @@ class Dom(Struct):
 		else:
 			if not isinstance(stream, bitwrap.BitwrappedStream):
 				stream = bitwrap.BitwrappedStream(stream)
-			return super(Dom, self)._pfp__build(stream)
+			return super(Dom, self)._pfp__build(stream, save_offset=save_offset)
 
 class NumberBase(Field):
 	"""The base field for all numeric fields"""
@@ -469,12 +534,15 @@ class NumberBase(Field):
 		"""Used for the not operator"""
 		return self._pfp__value != 0
 
-	def _pfp__parse(self, stream):
+	def _pfp__parse(self, stream, save_offset=False):
 		"""Parse the IO stream for this numeric field
 
 		:stream: An IO stream that can be read from
 		:returns: The number of bytes parsed
 		"""
+		if save_offset:
+			self._pfp__offset = stream.tell()
+
 		if self.bitsize is None:
 			raw_data = stream.read(self.width)
 			data = utils.binary(raw_data)
@@ -500,13 +568,16 @@ class NumberBase(Field):
 
 		return self.width
 	
-	def _pfp__build(self, stream=None):
+	def _pfp__build(self, stream=None, save_offset=False):
 		"""Build the field and write the result into the stream
 
 		:stream: An IO stream that can be written to
 		:returns: None
 
 		"""
+		if stream is not None and save_offset:
+			self._pfp__offset = stream.tell()
+
 		data = struct.pack(
 			"{}{}".format(self.endian, self.format),
 			self._pfp__value
@@ -691,10 +762,11 @@ class IntBase(NumberBase):
 
 	def __repr__(self):
 		f = ":0{}x".format(self.width*2)
-		return ("{}({!r} [{" + f + "}])").format(
+		return ("{}({!r} [{" + f + "}]){}").format(
 			self._pfp__cls_name(),
 			self._pfp__value,
-			self._pfp__value
+			self._pfp__value,
+			":{}".format(self.bitsize) if self.bitsize is not None else ""
 		)
 	
 	def _pfp__cls_name(self):
@@ -774,13 +846,13 @@ class Enum(IntBase):
 
 		super(Enum, self).__init__(stream)
 	
-	def _pfp__parse(self, stream):
+	def _pfp__parse(self, stream, save_offset=False):
 		"""Parse the IO stream for this enum
 
 		:stream: An IO stream that can be read from
 		:returns: The number of bytes parsed
 		"""
-		res = super(Enum, self)._pfp__parse(stream)
+		res = super(Enum, self)._pfp__parse(stream, save_offset)
 
 		if self._pfp__value in self.enum_vals:
 			self.enum_name = self.enum_vals[self._pfp__value]
@@ -818,7 +890,7 @@ class Array(Field):
 		self.items = []
 
 		if stream is not None:
-			self._pfp__parse(stream)
+			self._pfp__parse(stream, save_offset=True)
 		else:
 			for x in six.moves.range(self.width):
 				self.items.append(self.field_cls())
@@ -850,7 +922,7 @@ class Array(Field):
 		return res
 	
 	def __eq__(self, other):
-		if self._is_stringable() and other.__class__ in [String, WString]:
+		if self._is_stringable() and other.__class__ in [String, WString, str]:
 			res = self._array_to_str()
 			return res == other
 		else:
@@ -882,7 +954,10 @@ class Array(Field):
 
 		self._pfp__notify_parent()
 
-	def _pfp__parse(self, stream):
+	def _pfp__parse(self, stream, save_offset=False):
+		if save_offset:
+			self._pfp__offset = stream.tell()
+
 		# optimizations... should reuse existing fields??
 		self.items = []
 		for x in six.moves.range(PYVAL(self.width)):
@@ -891,13 +966,16 @@ class Array(Field):
 				self._pfp__name,
 				x
 			)
-			field._pfp__parse(stream)
+			field._pfp__parse(stream, save_offset)
 			self.items.append(field)
 	
-	def _pfp__build(self, stream=None):
+	def _pfp__build(self, stream=None, save_offset=False):
+		if stream is not None and save_offset:
+			self._pfp__offset = stream.tell()
+
 		res = 0 if stream is not None else utils.binary("")
 		for item in self.items:
-			res += item._pfp__build(stream=stream)
+			res += item._pfp__build(stream=stream, save_offset=save_offset)
 		return res
 	
 	def __getitem__(self, idx):
@@ -921,6 +999,23 @@ class Array(Field):
 			other
 		)
 	
+	def _pfp__show(self, level=0, include_offset=False):
+		if self._is_stringable():
+			return self.__repr__()
+
+		res = [self.__repr__()]
+		for idx,item in enumerate(self.items):
+			item_res = "{}{}{}[{}] = {}".format(
+				"    " * (level+1),
+				"{:04x} ".format(item._pfp__offset) if include_offset else "",
+				self._pfp__name,
+				idx,
+				item._pfp__show(level+2, include_offset)
+			)
+			res.append(item_res)
+
+		return "\n".join(res)
+	
 	def __len__(self):
 		return len(self.items)
 
@@ -943,13 +1038,16 @@ class String(Field):
 			new_val = json.loads('"' + new_val + '"')
 		super(String, self)._pfp__set_value(new_val)
 
-	def _pfp__parse(self, stream):
+	def _pfp__parse(self, stream, save_offset=False):
 		"""Read from the stream until the string is null-terminated
 
 		:stream: The input stream
 		:returns: None
 
 		"""
+		if save_offset:
+			self._pfp__offset = stream.tell()
+
 		res = utils.binary("")
 		while True:
 			byte = utils.binary(stream.read(self.read_size))
@@ -962,13 +1060,16 @@ class String(Field):
 			res += byte
 		self._pfp__value = res
 	
-	def _pfp__build(self, stream=None):
+	def _pfp__build(self, stream=None, save_offset=False):
 		"""Build the String field
 
 		:stream: TODO
 		:returns: TODO
 
 		"""
+		if stream is not None and save_offset:
+			self._pfp__offset = stream.tell()
+
 		data = self._pfp__value + utils.binary("\x00")
 		if stream is None:
 			return data
@@ -1011,11 +1112,14 @@ class WString(String):
 	read_size = 2
 	terminator = utils.binary("\x00\x00")
 
-	def _pfp__parse(self, stream):
-		String._pfp__parse(self, stream)
+	def _pfp__parse(self, stream, save_offset=False):
+		String._pfp__parse(self, stream, save_offset)
 		self._pfp__value = utils.binary(self._pfp__value.decode("utf-16le"))
 	
-	def _pfp__build(self, stream=None):
+	def _pfp__build(self, stream=None, save_offset=False):
+		if stream is not None and save_offset:
+			self._pfp__offset = stream.tell()
+
 		val = self._pfp__value.decode("ISO-8859-1").encode("utf-16le") + b"\x00\x00"
 		if stream is None:
 			return val

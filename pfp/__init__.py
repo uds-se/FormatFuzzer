@@ -10,7 +10,7 @@ from pfp.bitwrap import BitwrappedStream
 
 PARSER = py010parser.c_parser.CParser()
 
-def parse(data=None, template=None, data_file=None, template_file=None, interp=None, debug=False, predefines=True):
+def parse(data=None, template=None, data_file=None, template_file=None, interp=None, debug=False, predefines=True, int3=True):
 	"""Parse the data stream using the supplied template. The data stream
 	WILL NOT be automatically closed.
 
@@ -46,7 +46,7 @@ def parse(data=None, template=None, data_file=None, template_file=None, interp=N
 	# the user may specify their own instance of PfpInterp to be
 	# used
 	if interp is None:
-		interp = pfp.interp.PfpInterp(debug=debug, parser=PARSER)
+		interp = pfp.interp.PfpInterp(debug=debug, parser=PARSER, int3=int3)
 	
 	# so we can consume single bits at a time
 	data = BitwrappedStream(data)

@@ -410,7 +410,7 @@ class PfpInterp(object):
 			setattr(mod, "PYVAL", fields.get_value)
 			setattr(mod, "PYSTR", fields.get_str)
 
-	def __init__(self, debug=False, parser=None):
+	def __init__(self, debug=False, parser=None, int3=True):
 		"""
 		"""
 		self.__class__.define_natives()
@@ -423,6 +423,8 @@ class PfpInterp(object):
 		self._break_level = 0
 		self._no_debug = False
 		self._padded_bitfield = True
+		# whether or not debugging is allowed (ie Int3())
+		self._int3 = int3
 
 		self._ctxt = None
 		self._scope = None
@@ -720,7 +722,8 @@ class PfpInterp(object):
 		:returns: TODO
 
 		"""
-		self._root = ctxt = fields.Dom("__root")
+		self._root = ctxt = fields.Dom(stream)
+		self._root._pfp__name = "__root"
 		self._root._pfp__interp = self
 		self._dlog("handling file AST with {} children".format(len(node.children())))
 
@@ -784,7 +787,7 @@ class PfpInterp(object):
 				else:
 					field = field(stream)
 			field._pfp__interp = self
-			field_res = ctxt._pfp__add_child(node.name, field)
+			field_res = ctxt._pfp__add_child(node.name, field, stream)
 			field_res._pfp__interp = self
 			scope.add_var(node.name, field_res)
 
@@ -833,7 +836,7 @@ class PfpInterp(object):
 		watch_field_name = keyvals["watch"]
 		update_func_name = keyvals["update"]
 
-		watch_field = scope.get_id(watch_field_name)
+		watch_field = self.eval(watch_field_name)
 		update_func = scope.get_id(update_func_name)
 
 		field._pfp__set_watch(watch_field, update_func, ctxt, scope, stream, self, self._coord)
@@ -921,16 +924,11 @@ class PfpInterp(object):
 		try:
 			max_pos = 0
 			for decl in node.decls:
-				start_pos = stream.tell()
-				# new context! (union)
 				self._handle_node(decl, scope, ctxt, stream)
-				end_pos = stream.tell()
-				if end_pos > max_pos:
-					max_pos = end_pos
-				stream.seek(start_pos, 0)
-			stream.seek(max_pos, 0)
 
 		finally:
+			# the union will have reset the stream
+			stream.seek(stream.tell()+ctxt._pfp__width(), 0)
 			scope.pop()
 	
 	def _handle_init_list(self, node, scope, ctxt, stream):
@@ -1176,7 +1174,7 @@ class PfpInterp(object):
 		"""
 		if node.name == "__root":
 			return self._root
-		if node.name == "__this":
+		if node.name == "__this" or node.name == "this":
 			return ctxt
 
 		self._dlog("handling id {}".format(node.name))
@@ -1629,6 +1627,9 @@ class PfpInterp(object):
 			curr.is_lazy = True
 
 	def _node_is_breakable(self, node):
+		if not self._int3:
+			return False
+
 		breakable_classes = [
 			AST.FileAST,
 			AST.Decl,

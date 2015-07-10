@@ -10,5 +10,6 @@ def int3(params, ctxt, scope, stream, coord, interp):
 	if interp._no_debug:
 		return
 
-	interp.debugger = PfpDbg(interp)
-	interp.debugger.cmdloop()
+	if interp._int3:
+		interp.debugger = PfpDbg(interp)
+		interp.debugger.cmdloop()

@@ -215,52 +215,6 @@ class TestBasic(unittest.TestCase, utils.UtilsMixin):
 			"""
 		)
 
-	def test_struct(self):
-		dom = self._test_parse_build(
-			"abcddcba",
-			"""
-				typedef struct {
-					int some_int;
-				} blah;
-
-				blah some_struct;
-				blah some_struct2;
-			""",
-		)
-	
-	def test_struct_initialization(self):
-		dom = self._test_parse_build(
-			"",
-			"""
-				typedef struct {
-					char a;
-					char b;
-					char c;
-					char d;
-				} blah;
-
-				local blah some_struct = { 'a', 'b', 'c', 'd'};
-			"""
-		)
-	
-	def test_union(self):
-		dom = self._test_parse_build(
-			"abcd",
-			"""
-				typedef union {
-					int some_int;
-					struct {
-						char a;
-						char b;
-						char c;
-						char d;
-					} some_chars;
-				} blah;
-
-				blah some_union;
-			"""
-		)
-
 class TestByRef(unittest.TestCase, utils.UtilsMixin):
 	def setUp(self):
 		pass

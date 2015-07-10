@@ -178,7 +178,10 @@ class BitwrappedStream(object):
 
 		:returns: int for the position in the stream
 		"""
-		return self._stream.tell()
+		res = self._stream.tell()
+		if len(self._bits) > 0:
+			res -= 1
+		return res
 	
 	def seek(self, pos, seek_type):
 		"""Seed to the specified position in the stream with seek_type.
