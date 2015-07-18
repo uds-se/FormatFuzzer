@@ -1,7 +1,9 @@
 import six
 
+import pfp.bitwrap as bitwrap
 import pfp.errors as errors
 import pfp.utils as utils
+import pfp.fields
 
 class Function(object):
 	"""A class to maintain function state and arguments"""
@@ -21,7 +23,9 @@ class Function(object):
 		self._scope = scope.clone()
 		self._params = params
 	
-	def call(self, args, ctxt, scope, stream, interp, coord):
+	def call(self, args, ctxt, scope, stream, interp, coord, no_cast=False):
+		# the no_cast arg does nothing for interpreted functions
+
 		if self.body is None:
 			raise errors.InvalidState(coord)
 
@@ -60,13 +64,21 @@ class NativeFunction(object):
 		self.ret = ret
 		self.send_interp = send_interp
 	
-	def call(self, args, ctxt, scope, stream, interp, coord):
+	def call(self, args, ctxt, scope, stream, interp, coord, no_cast=False):
 		if self.send_interp:
 			res = self.func(args, ctxt, scope, stream, coord, interp)
 		else:
 			res = self.func(args, ctxt, scope, stream, coord)
-		res_field = self.ret()
-		res_field._pfp__set_value(res)
+
+		if no_cast:
+			res_field = res
+		elif res.__class__ in [str, unicode, bytes] and self.ret == pfp.fields.Array:
+			tmp_stream = bitwrap.BitwrappedStream(six.BytesIO(res))
+			res_field = pfp.fields.Array(len(res), pfp.fields.Char, tmp_stream)
+		else:
+			res_field = self.ret()
+			res_field._pfp__set_value(res)
+
 		return res_field
 
 class ParamListDef(object):
