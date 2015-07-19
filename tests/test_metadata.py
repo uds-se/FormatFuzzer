@@ -19,7 +19,7 @@ import utils
 
 class TestMetadata(unittest.TestCase, utils.UtilsMixin):
 	def setUp(self):
-		pass
+		pfp.fields.NumberBase.endian = pfp.fields.BIG_ENDIAN
 	
 	def tearDown(self):
 		pass
