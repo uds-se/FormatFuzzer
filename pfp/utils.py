@@ -1,7 +1,16 @@
 #!/usr/bin/env python
 # encoding: utf-8
 
+import six
 import sys
+	
+def is_str(s):
+	for type_ in six.string_types:
+		if isinstance(s, type_):
+			return True
+	if isinstance(s, bytes):
+		return True
+	return False
 
 # Useful for very coarse version differentiation.
 PY3 = sys.version_info[0] == 3

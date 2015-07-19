@@ -14,6 +14,16 @@ import pfp.functions as functions
 BIG_ENDIAN = ">"
 LITTLE_ENDIAN = "<"
 
+def true():
+	res = Int()
+	res._pfp__value = 1
+	return res
+
+def false():
+	res = Int()
+	res._pfp__value = 0
+	return res
+
 def get_value(field):
 	if isinstance(field, Field):
 		return field._pfp__value
@@ -39,7 +49,7 @@ class Field(object):
 
 	_pfp__interp = None
 
-	def __init__(self, stream=None):
+	def __init__(self, stream=None, metadata_info=None):
 		super(Field, self).__init__()
 		self._pfp__name = None
 		self._pfp__frozen = False
@@ -50,6 +60,27 @@ class Field(object):
 		self._pfp__watchers = []
 		self._pfp__parent = None
 		self._pfp__no_notify = False
+
+		self._pfp__packer = None
+		self._pfp__unpack = None
+		self._pfp__pack = None
+		self._pfp__pack_type = None
+		self._pfp__no_unpack = False
+		self._pfp__parsed_packed = None
+		self._ = None
+
+		if isinstance(metadata_info, list):
+			for metadata in metadata_info:
+				if metadata["type"] == "watch":
+					self._pfp__set_watch(
+						metadata["watch_field"],
+						metadata["update_func"],
+						*metadata["func_call_info"]
+					)
+
+				elif metadata["type"] == "packed":
+					del metadata["type"]
+					self._pfp__set_packer(**metadata)
 		
 		if stream is not None:
 			self._pfp__parse(stream, save_offset=True)
@@ -71,6 +102,106 @@ class Field(object):
 		self._pfp__update_func = update_func
 		self._pfp__update_func_call_info = func_call_info
 	
+	def _pfp__set_packer(self, pack_type, packer=None, pack=None, unpack=None, func_call_info=None):
+		"""Set the packer/pack/unpack functions for this field, as
+		well as the pack type.
+
+		:pack_type: The data type of the packed data
+		:packer: A function that can handle packing and unpacking. First
+				 arg is true/false (to pack or unpack). Second arg is the stream.
+				 Must return an array of chars.
+		:pack: A function that packs data. It must accept an array of chars and return an
+				array of chars that is a packed form of the input.
+		:unpack: A function that unpacks data. It must accept an array of chars and
+				return an array of chars
+		"""
+		self._pfp__pack_type = pack_type
+		self._pfp__unpack = unpack
+		self._pfp__pack = pack
+		self._pfp__packer = packer
+		self._pfp__pack_func_call_info = func_call_info
+	
+	def _pfp__pack_data(self):
+		"""Pack the nested field
+		"""
+		if self._pfp__pack_type is None:
+			return
+
+		tmp_stream = six.BytesIO()
+		self._._pfp__build(bitwrap.BitwrappedStream(tmp_stream))
+		raw_data = tmp_stream.getvalue()
+
+		unpack_func = self._pfp__packer
+		unpack_args = []
+		if self._pfp__packer is not None:
+			unpack_func = self._pfp__packer
+			unpack_args = [true(), raw_data]
+		elif self._pfp__pack is not None:
+			unpack_func = self._pfp__pack
+			unpack_args = [raw_data]
+
+		# does not need to be converted to a char array
+		if not isinstance(unpack_func, functions.NativeFunction):
+			io_stream = bitwrap.BitwrappedStream(six.BytesIO(raw_data))
+			unpack_args[-1] = Array(len(raw_data), Char, io_stream)
+
+		res = unpack_func.call(unpack_args, *self._pfp__pack_func_call_info, no_cast=True)
+		if isinstance(res, Array):
+			res = res._pfp__build()
+
+		io_stream = six.BytesIO(res)
+		tmp_stream = bitwrap.BitwrappedStream(io_stream)
+
+		self._pfp__no_unpack = True
+		self._pfp__parse(tmp_stream)
+		self._pfp__no_unpack = False
+	
+	def _pfp__can_unpack(self):
+		"""Return if this field has a packer/pack/unpack methods
+		set as well as a pack type
+		"""
+		return self._pfp__pack_type is not None
+	
+	def _pfp__unpack_data(self, raw_data):
+		"""Means that the field has already been parsed normally,
+		and that it now needs to be unpacked.
+
+		:raw_data: A string of the data that the field consumed while parsing
+		"""
+		if self._pfp__pack_type is None:
+			return
+		if self._pfp__no_unpack:
+			return
+
+		unpack_func = self._pfp__packer
+		unpack_args = []
+		if self._pfp__packer is not None:
+			unpack_func = self._pfp__packer
+			unpack_args = [false(), raw_data]
+
+		elif self._pfp__unpack is not None:
+			unpack_func = self._pfp__unpack
+			unpack_args = [raw_data]
+
+		# does not need to be converted to a char array
+		if not isinstance(unpack_func, functions.NativeFunction):
+			io_stream = bitwrap.BitwrappedStream(six.BytesIO(raw_data))
+			unpack_args[-1] = Array(len(raw_data), Char, io_stream)
+
+		res = unpack_func.call(unpack_args, *self._pfp__pack_func_call_info, no_cast=True)
+		if isinstance(res, Array):
+			res = res._pfp__build()
+
+		io_stream = six.BytesIO(res)
+		tmp_stream = bitwrap.BitwrappedStream(io_stream)
+
+		# TODO
+		#tmp_stream.padded = self._pfp__interp.get_bitfield_padded()
+
+		self._ = self._pfp__parsed_packed = self._pfp__pack_type(tmp_stream)
+
+		self._._pfp__watch(self)
+
 	def _pfp__offset(self):
 		"""Get the offset of the field into the stream
 		"""
@@ -82,10 +213,19 @@ class Field(object):
 		"""
 		self._pfp__no_notify = True
 
-		self._pfp__update_func.call(
-			[self, watched_field],
-			*self._pfp__update_func_call_info
-		)
+		# nested data has been changed, so rebuild the
+		# nested data to update the field
+		# TODO a global setting to determine this behavior?
+		# could slow things down a bit for large nested structures
+
+		# notice the use of _is_ here - 'is' != '='
+		if watched_field is self._:
+			self._pfp__pack_data()
+		else:
+			self._pfp__update_func.call(
+				[self, watched_field],
+				*self._pfp__update_func_call_info
+			)
 
 		self._pfp__no_notify = False
 	
@@ -157,6 +297,19 @@ class Field(object):
 		:returns: None
 		"""
 		raise NotImplemented("Inheriting classes must implement the _pfp__parse function")
+	
+	def _pfp__maybe_unpack(self):
+		"""Should be called after initial parsing to unpack any
+		nested data types
+		"""
+		if self._pfp__pack_type is None or (self._pfp__pack is not None and self._pfp__packer is not None):
+			return
+		pass
+	
+	def _pfp__pack(self):
+		"""Should be called after initial parsing
+		"""
+		pass
 
 	def __cmp__(self, other):
 		"""Compare the Field to something else, either another
@@ -225,13 +378,13 @@ class Struct(Field):
 
 	_pfp__show_name = "struct"
 
-	def __init__(self, stream=None):
+	def __init__(self, stream=None, metadata_info=None):
 		# ordered list of children
 		super(Struct, self).__setattr__("_pfp__children", [])
 		# for quick child access
 		super(Struct, self).__setattr__("_pfp__children_map", {})
 
-		super(Struct, self).__init__()
+		super(Struct, self).__init__(metadata_info=metadata_info)
 
 		if stream is not None:
 			self._pfp__offset = stream.tell()
@@ -394,10 +547,10 @@ class Union(Struct):
 	_pfp__size = 0
 	_pfp__show_name = "union"
 
-	def __init__(self, name=None):
+	def __init__(self, stream=None, metadata_info=None):
 		"""Init the union and its buff stream
 		"""
-		super(Union, self).__init__(name)
+		super(Union, self).__init__(metadata_info=metadata_info)
 		self._pfp__buff = six.BytesIO()
 
 	def _pfp__add_child(self, name, child, stream=None):
@@ -520,11 +673,11 @@ class NumberBase(Field):
 
 	_pfp__value = 0			# default value
 	
-	def __init__(self, stream=None, bitsize=None):
+	def __init__(self, stream=None, bitsize=None, metadata_info=None):
 		"""Special init for the bitsize
 		"""
 		self.bitsize = get_value(bitsize)
-		super(NumberBase, self).__init__(stream)
+		super(NumberBase, self).__init__(stream, metadata_info=metadata_info)
 
 	def __nonzero__(self):
 		"""Used for the not operator"""
@@ -829,7 +982,7 @@ class Enum(IntBase):
 	enum_cls = None
 	enum_name = None
 
-	def __init__(self, stream=None, enum_cls=None, enum_vals=None, bitsize=None):
+	def __init__(self, stream=None, enum_cls=None, enum_vals=None, bitsize=None, metadata_info=None):
 		"""Init the enum
 		"""
 		# discard the bitsize value
@@ -844,7 +997,7 @@ class Enum(IntBase):
 			self.width = enum_cls.width
 			self.format = enum_cls.format
 
-		super(Enum, self).__init__(stream)
+		super(Enum, self).__init__(stream, metadata_info=metadata_info)
 	
 	def _pfp__parse(self, stream, save_offset=False):
 		"""Parse the IO stream for this enum
@@ -880,10 +1033,10 @@ class Enum(IntBase):
 class Array(Field):
 	width = -1
 
-	def __init__(self, width, field_cls, stream=None):
+	def __init__(self, width, field_cls, stream=None, metadata_info=None):
 		""" Create an array field of size "width" from the stream
 		"""
-		super(Array, self).__init__(stream=None)
+		super(Array, self).__init__(stream=None, metadata_info=metadata_info)
 
 		self.width = width
 		self.field_cls = field_cls
@@ -955,8 +1108,9 @@ class Array(Field):
 		self._pfp__notify_parent()
 
 	def _pfp__parse(self, stream, save_offset=False):
+		start_offset = stream.tell()
 		if save_offset:
-			self._pfp__offset = stream.tell()
+			self._pfp__offset = start_offset
 
 		# optimizations... should reuse existing fields??
 		self.items = []
@@ -968,6 +1122,16 @@ class Array(Field):
 			)
 			field._pfp__parse(stream, save_offset)
 			self.items.append(field)
+
+		if self._pfp__can_unpack():
+			curr_offset = stream.tell()
+			stream.seek(start_offset, 0)
+			data = stream.read(curr_offset - start_offset)
+
+			# this shouldn't be necessary....
+			# stream.seek(curr_offset, 0)
+
+			self._pfp__unpack_data(data)
 	
 	def _pfp__build(self, stream=None, save_offset=False):
 		if stream is not None and save_offset:

@@ -117,7 +117,7 @@ class TestMetadata(unittest.TestCase, utils.UtilsMixin):
 				struct {
 					char a;
 					char b;
-					char c<watch=__this,update=PlusTwo>;
+					char c<watch=this,update=PlusTwo>;
 				} main_struct;
 			"""
 		)
@@ -180,6 +180,66 @@ class TestMetadata(unittest.TestCase, utils.UtilsMixin):
 		dom.chunks[1].data.type_b.hello = 0xff01
 
 		self.assertEqual(dom.chunks[1].crc, 0x1b441fc4)
+	
+	def test_metadata_packer(self):
+		dom = self._test_parse_build(
+			"yoyoyo\x00\x10x\x9cc```d```\x02\x00\x00\x0f\x00\x04",
+			"""
+				typedef struct {
+					int a;
+					int b;
+				} PACKED_DATA;
+
+				struct {
+					string type;
+					uchar length;
+					char data[length] <packtype=PACKED_DATA, packer=GZipper>;
+				} main_struct;
+			""",
+		)
+
+		self.assertEqual(dom.main_struct.data._.a, 1)
+		self.assertEqual(dom.main_struct.data._.b, 2)
+
+		dom.main_struct.data._.a = 5
+
+		self.assertEqual(dom.main_struct.data._pfp__build(), b"x\x9cc```e```\x02\x00\x00#\x00\x08")
+	
+	#def test_metadata_packer_interpd(self):
+		#dom = self._test_parse_build(
+			#"\x08AaAbAcAd",
+			#r"""
+				#string CustomPacker(int pack, string data) {
+					#Int3();
+					#local string res = "";
+					#local int size = sizeof(data);
+#
+					#if(pack) {
+						#for(local int i = 0; i < size; i++) {
+							#res += "A" + data[i];
+						#}
+					#} else {
+						#for(local int i = 0; i < size; i += 2) {
+							#res += data[i];
+						#}
+					#}
+#
+					#return res;
+				#}
+#
+				#typedef struct {
+					#char a;
+					#char b;
+					#char c;
+					#char d;
+				#} PACKED_DATA;
+#
+				#struct {
+					#uchar length;
+					#char data[length] <packtype=PACKED_DATA, packer=CustomPacker>;
+				#} main_struct;
+			#""",
+		#)
 
 if __name__ == "__main__":
 	unittest.main()

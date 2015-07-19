@@ -41,8 +41,8 @@ def StructUnionDef(typedef_name, interp, node):
 		cls = fields.Union
 		decls = UnionDecls(node.decls, node.coord)
 
-	def __init__(self, stream=None):
-		cls.__init__(self, stream)
+	def __init__(self, stream=None, metadata_info=None):
+		cls.__init__(self, stream, metadata_info=metadata_info)
 
 		self._pfp__interp._handle_node(
 			decls,
@@ -69,8 +69,8 @@ def EnumDef(typedef_name, base_cls, enum_vals):
 
 def ArrayDecl(item_cls, item_count):
 	width = fields.PYVAL(item_count)
-	def __init__(self, stream=None):
-		fields.Array.__init__(self, self.width, self.field_cls, stream)
+	def __init__(self, stream=None, metadata_info=None):
+		fields.Array.__init__(self, self.width, self.field_cls, stream, metadata_info=metadata_info)
 	new_class = type("Array_{}_{}".format(item_cls.__name__, width), (fields.Array,), {
 		"__init__"	: __init__,
 		"width"		: width,
@@ -747,6 +747,11 @@ class PfpInterp(object):
 
 		"""
 		self._dlog("handling decl")
+
+		metadata_info = []
+		if node.metadata is not None:
+			metadata_info = self._handle_metadata(node, scope, ctxt, stream)
+
 		field = self._handle_node(node.type, scope, ctxt, stream)
 		bitsize = None
 		if getattr(node, "bitsize", None) is not None:
@@ -787,9 +792,10 @@ class PfpInterp(object):
 			# in order to set the new context)
 			if not isinstance(field, fields.Field):
 				if issubclass(field, fields.NumberBase):
-					field = field(stream, bitsize=bitsize)
+					field = field(stream, bitsize=bitsize, metadata_info=metadata_info)
 				else:
-					field = field(stream)
+					field = field(stream, metadata_info=metadata_info)
+
 			field._pfp__interp = self
 			field_res = ctxt._pfp__add_child(node.name, field, stream)
 			field_res._pfp__interp = self
@@ -806,29 +812,34 @@ class PfpInterp(object):
 		elif node.name is None:
 			pass
 
-		if node.metadata is not None:
-			self._handle_metadata(field, node, scope, ctxt, stream)
-
 		return field
 	
-	def _handle_metadata(self, field, node, scope, ctxt, stream):
+	def _handle_metadata(self, node, scope, ctxt, stream):
 		"""Handle metadata for the node
 		"""
 		self._dlog("handling node metadata {}".format(node.metadata.keyvals))
 
 		keyvals = node.metadata.keyvals
 
+		metadata_info = []
+
 		if "watch" in node.metadata.keyvals or "update" in keyvals:
-			return self._handle_watch_metadata(field, node, scope, ctxt, stream)
+			metadata_info.append(
+				self._handle_watch_metadata(node, scope, ctxt, stream)
+			)
 
 		if "packtype" in node.metadata.keyvals or "packer" in keyvals:
-			return self._handle_packed_metadata(field, node, scope, ctxt, stream)
+			metadata_info.append(
+				self._handle_packed_metadata(node, scope, ctxt, stream)
+			)
+
+		return metadata_info
 
 		#char blah[60] <pack=Zip, unpack=Unzip, packtype=DataType>;
 		#char blah[60] <packer=Zip, packtype=DataType>;
 		#int checksum <watch=field1,field2,field3, update=Crc32>;
 	
-	def _handle_watch_metadata(self, field, node, scope, ctxt, stream):
+	def _handle_watch_metadata(self, node, scope, ctxt, stream):
 		"""Handle watch vars for fields
 		"""
 		keyvals = node.metadata.keyvals
@@ -843,16 +854,40 @@ class PfpInterp(object):
 		watch_field = self.eval(watch_field_name)
 		update_func = scope.get_id(update_func_name)
 
-		field._pfp__set_watch(watch_field, update_func, ctxt, scope, stream, self, self._coord)
+		return {
+			"type": "watch",
+			"watch_field": watch_field,
+			"update_func": update_func,
+			"func_call_info": (ctxt, scope, stream, self, self._coord)
+		}
 	
 	def _handle_packed_metadata(self, node, scope, ctxt, stream):
 		"""Handle packed metadata
 		"""
 		keyvals = node.metadata.keyvals
-		if "packer" not in keyvals:
-			raise errors.PfpError("Packed fields require a packer function set")
+		if "packer" not in keyvals and ("pack" not in keyvals or "unpack" not in keyvals):
+			raise errors.PfpError("Packed fields require a packer function to be set or pack and unpack functions to be set")
 		if "packtype" not in keyvals:
 			raise errors.PfpError("Packed fields require a packtype to be set")
+
+		args_ = {}
+		if "packer" in keyvals:
+			packer_func_name = keyvals["packer"]
+			packer_func = scope.get_id(packer_func_name)
+			args_["packer"] = packer_func
+		elif "pack" in keyvals and "unpack" in keyvals:
+			pack_func = scope.get_id(keyvals["pack"])
+			unpack_func = scope.get_id(keyvals["unpack"])
+			args_["pack"] = pack_func
+			args_["unpack"] = unpack_func
+
+		packtype_cls_name = keyvals["packtype"]
+		packtype_cls = scope.get_type(packtype_cls_name)
+		args_["pack_type"] = packtype_cls
+
+		args_["type"] = "packed"
+		args_["func_call_info"] = (ctxt, scope, stream, self, self._coord)
+		return args_
 	
 	def _handle_byref_decl(self, node, scope, ctxt, stream):
 		"""TODO: Docstring for _handle_byref_decl.
