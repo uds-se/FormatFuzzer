@@ -14,6 +14,16 @@ import pfp.functions as functions
 BIG_ENDIAN = ">"
 LITTLE_ENDIAN = "<"
 
+def true():
+	res = Int()
+	res._pfp__value = 1
+	return res
+
+def false():
+	res = Int()
+	res._pfp__value = 0
+	return res
+
 def get_value(field):
 	if isinstance(field, Field):
 		return field._pfp__value
@@ -55,6 +65,7 @@ class Field(object):
 		self._pfp__unpack = None
 		self._pfp__pack = None
 		self._pfp__pack_type = None
+		self._pfp__no_unpack = False
 		self._pfp__parsed_packed = None
 		self._ = None
 
@@ -62,8 +73,8 @@ class Field(object):
 			for metadata in metadata_info:
 				if metadata["type"] == "watch":
 					self._pfp__set_watch(
-						watch_field		= metadata["watch_field"],
-						update_func		= metadata["update_func"],
+						metadata["watch_field"],
+						metadata["update_func"],
 						*metadata["func_call_info"]
 					)
 
@@ -110,6 +121,41 @@ class Field(object):
 		self._pfp__packer = packer
 		self._pfp__pack_func_call_info = func_call_info
 	
+	def _pfp__pack_data(self):
+		"""Pack the nested field
+		"""
+		if self._pfp__pack_type is None:
+			return
+
+		tmp_stream = six.BytesIO()
+		self._._pfp__build(bitwrap.BitwrappedStream(tmp_stream))
+		raw_data = tmp_stream.getvalue()
+
+		unpack_func = self._pfp__packer
+		unpack_args = []
+		if self._pfp__packer is not None:
+			unpack_func = self._pfp__packer
+			unpack_args = [true(), raw_data]
+		elif self._pfp__pack is not None:
+			unpack_func = self._pfp__pack
+			unpack_args = [raw_data]
+
+		# does not need to be converted to a char array
+		if not isinstance(unpack_func, functions.NativeFunction):
+			io_stream = bitwrap.BitwrappedStream(six.BytesIO(raw_data))
+			unpack_args[-1] = Array(len(raw_data), Char, io_stream)
+
+		res = unpack_func.call(unpack_args, *self._pfp__pack_func_call_info, no_cast=True)
+		if isinstance(res, Array):
+			res = res._pfp__build()
+
+		io_stream = six.BytesIO(res)
+		tmp_stream = bitwrap.BitwrappedStream(io_stream)
+
+		self._pfp__no_unpack = True
+		self._pfp__parse(tmp_stream)
+		self._pfp__no_unpack = False
+	
 	def _pfp__can_unpack(self):
 		"""Return if this field has a packer/pack/unpack methods
 		set as well as a pack type
@@ -124,14 +170,14 @@ class Field(object):
 		"""
 		if self._pfp__pack_type is None:
 			return
-
-		import pdb; pdb.set_trace()
+		if self._pfp__no_unpack:
+			return
 
 		unpack_func = self._pfp__packer
 		unpack_args = []
 		if self._pfp__packer is not None:
 			unpack_func = self._pfp__packer
-			unpack_args = [False, raw_data]
+			unpack_args = [false(), raw_data]
 
 		elif self._pfp__unpack is not None:
 			unpack_func = self._pfp__unpack
@@ -146,7 +192,6 @@ class Field(object):
 		if isinstance(res, Array):
 			res = res._pfp__build()
 
-		import pdb; pdb.set_trace()
 		io_stream = six.BytesIO(res)
 		tmp_stream = bitwrap.BitwrappedStream(io_stream)
 
@@ -154,6 +199,8 @@ class Field(object):
 		#tmp_stream.padded = self._pfp__interp.get_bitfield_padded()
 
 		self._ = self._pfp__parsed_packed = self._pfp__pack_type(tmp_stream)
+
+		self._._pfp__watch(self)
 
 	def _pfp__offset(self):
 		"""Get the offset of the field into the stream
@@ -166,10 +213,19 @@ class Field(object):
 		"""
 		self._pfp__no_notify = True
 
-		self._pfp__update_func.call(
-			[self, watched_field],
-			*self._pfp__update_func_call_info
-		)
+		# nested data has been changed, so rebuild the
+		# nested data to update the field
+		# TODO a global setting to determine this behavior?
+		# could slow things down a bit for large nested structures
+
+		# notice the use of _is_ here - 'is' != '='
+		if watched_field is self._:
+			self._pfp__pack_data()
+		else:
+			self._pfp__update_func.call(
+				[self, watched_field],
+				*self._pfp__update_func_call_info
+			)
 
 		self._pfp__no_notify = False
 	
@@ -491,7 +547,7 @@ class Union(Struct):
 	_pfp__size = 0
 	_pfp__show_name = "union"
 
-	def __init__(self, metadata_info=None):
+	def __init__(self, stream=None, metadata_info=None):
 		"""Init the union and its buff stream
 		"""
 		super(Union, self).__init__(metadata_info=metadata_info)
@@ -1052,7 +1108,6 @@ class Array(Field):
 		self._pfp__notify_parent()
 
 	def _pfp__parse(self, stream, save_offset=False):
-		import pdb; pdb.set_trace()
 		start_offset = stream.tell()
 		if save_offset:
 			self._pfp__offset = start_offset
@@ -1069,7 +1124,6 @@ class Array(Field):
 			self.items.append(field)
 
 		if self._pfp__can_unpack():
-			import pdb; pdb.set_trace()
 			curr_offset = stream.tell()
 			stream.seek(start_offset, 0)
 			data = stream.read(curr_offset - start_offset)

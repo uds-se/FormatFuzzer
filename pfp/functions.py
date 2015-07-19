@@ -72,7 +72,7 @@ class NativeFunction(object):
 
 		if no_cast:
 			res_field = res
-		elif res.__class__ in [str, unicode, bytes] and self.ret == pfp.fields.Array:
+		elif utils.is_str(res) and self.ret == pfp.fields.Array:
 			tmp_stream = bitwrap.BitwrappedStream(six.BytesIO(res))
 			res_field = pfp.fields.Array(len(res), pfp.fields.Char, tmp_stream)
 		else:

@@ -20,8 +20,6 @@ def gzipper(params, ctxt, scope, stream, coord):
 	if len(params) <= 1:
 		raise errors.InvalidArguments(coord, "{} args".format(len(params)), "at least two arguments")
 
-	import pdb; pdb.set_trace()
-	
 	# to gzip it (pack it)
 	if params[0]:
 		return gzip_compress(params[1:], ctxt, scope, stream, coord)

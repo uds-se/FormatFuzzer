@@ -877,7 +877,6 @@ class PfpInterp(object):
 			args_["pack"] = pack_func
 			args_["unpack"] = unpack_func
 
-		import pdb; pdb.set_trace()
 		packtype_cls_name = keyvals["packtype"]
 		packtype_cls = scope.get_type(packtype_cls_name)
 		args_["pack_type"] = packtype_cls
