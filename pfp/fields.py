@@ -32,9 +32,13 @@ def get_value(field):
 
 def get_str(field):
 	if isinstance(field, Array):
-		return field._array_to_str()
+		res = field._array_to_str()
+	elif isinstance(field, Char):
+		res = chr(PYVAL(field))
 	else:
-		return get_value(field)
+		res = get_value(field)
+	
+	return utils.string(res)
 
 PYVAL = get_value
 PYSTR = get_str
@@ -68,6 +72,8 @@ class Field(object):
 		self._pfp__no_unpack = False
 		self._pfp__parsed_packed = None
 		self._ = None
+
+		self._pfp__array_idx = None
 
 		if isinstance(metadata_info, list):
 			for metadata in metadata_info:
@@ -218,7 +224,8 @@ class Field(object):
 		# TODO a global setting to determine this behavior?
 		# could slow things down a bit for large nested structures
 
-		# notice the use of _is_ here - 'is' != '='
+		# notice the use of _is_ here - 'is' != '=='. '==' uses
+		# the __eq__ operator, while is compares id(object) results
 		if watched_field is self._:
 			self._pfp__pack_data()
 		else:
@@ -1041,6 +1048,7 @@ class Array(Field):
 		self.width = width
 		self.field_cls = field_cls
 		self.items = []
+		self.raw_data = None
 
 		if stream is not None:
 			self._pfp__parse(stream, save_offset=True)
@@ -1061,6 +1069,10 @@ class Array(Field):
 	def _array_to_str(self, max_len=-1):
 		if not self._is_stringable():
 			return None
+
+		if self.raw_data is not None:
+			return PYSTR(self.raw_data)
+
 		res = ""
 		for item in self.items:
 			if max_len != -1 and len(res) >= max_len:
@@ -1112,44 +1124,97 @@ class Array(Field):
 		if save_offset:
 			self._pfp__offset = start_offset
 
-		# optimizations... should reuse existing fields??
-		self.items = []
-		for x in six.moves.range(PYVAL(self.width)):
-			field = self.field_cls()
-			field._pfp__name = "{}[{}]".format(
-				self._pfp__name,
-				x
-			)
-			field._pfp__parse(stream, save_offset)
-			self.items.append(field)
+		# will always be known widths for these field types
+		if issubclass(self.field_cls, NumberBase):
+			length = self.field_cls.width * PYVAL(self.width)
+			self.raw_data = stream.read(length)
 
-		if self._pfp__can_unpack():
-			curr_offset = stream.tell()
-			stream.seek(start_offset, 0)
-			data = stream.read(curr_offset - start_offset)
+			if self._pfp__can_unpack():
+				self._pfp__unpack_data(self.raw_data)
 
-			# this shouldn't be necessary....
-			# stream.seek(curr_offset, 0)
+		else:
+			# optimizations... should reuse existing fields??
+			self.items = []
+			for x in six.moves.range(PYVAL(self.width)):
+				field = self.field_cls()
+				field._pfp__name = "{}[{}]".format(
+					self._pfp__name,
+					x
+				)
+				field._pfp__parse(stream, save_offset)
+				self.items.append(field)
 
-			self._pfp__unpack_data(data)
+			if self._pfp__can_unpack():
+				curr_offset = stream.tell()
+				stream.seek(start_offset, 0)
+				data = stream.read(curr_offset - start_offset)
+
+				# this shouldn't be necessary....
+				# stream.seek(curr_offset, 0)
+
+				self._pfp__unpack_data(data)
 	
 	def _pfp__build(self, stream=None, save_offset=False):
 		if stream is not None and save_offset:
 			self._pfp__offset = stream.tell()
 
-		res = 0 if stream is not None else utils.binary("")
-		for item in self.items:
-			res += item._pfp__build(stream=stream, save_offset=save_offset)
+		if self.raw_data is None:
+			res = 0 if stream is not None else utils.binary("")
+			for item in self.items:
+				res += item._pfp__build(stream=stream, save_offset=save_offset)
+		else:
+			if stream is None:
+				return self.raw_data
+			else:
+				stream.write(self.raw_data)
+				return len(self.raw_data)
 		return res
 	
+	def _pfp__handle_updated(self, watched_field):
+		if self.raw_data is not None and \
+				watched_field._pfp__name is not None and \
+				watched_field._pfp__name.startswith(self._pfp__name) and \
+				watched_field._pfp__array_idx is not None:
+			data = watched_field._pfp__build()
+			offset = watched_field.width * watched_field._pfp__array_idx
+			self.raw_data = self.raw_data[0:offset] + data + self.raw_data[offset + len(data):]
+		else:
+			super(Array, self)._pfp__handle_updated(watched_field)
+	
 	def __getitem__(self, idx):
-		return self.items[idx]
+		if self.raw_data is None:
+			return self.items[idx]
+		else:
+			if self.width < 0 or idx+1 > self.width:
+				raise IndexError(idx)
+			width = self.field_cls.width
+			offset = width * idx
+			data = self.raw_data[offset:offset+width]
+
+			stream = bitwrap.BitwrappedStream(six.BytesIO(data))
+			res = self.field_cls(stream)
+			res._pfp__watch(self)
+			res._pfp__parent = self
+			res._pfp__array_idx = idx
+			res._pfp__name = "{}[{}]".format(
+				self._pfp__name, idx
+			)
+			return res
 	
 	def __setitem__(self, idx, value):
 		if isinstance(value, Field):
-			self.items[idx] = value
+			if self.raw_data is None:
+				self.items[idx] = value
+			else:
+				if self.width < 0 or idx+1 > self.width:
+					raise IndexError(idx)
+				data = value._pfp__build()
+				offset = self.field_cls.width * idx
+				self.raw_data = self.raw_data[0:offset] + data + self.raw_data[offset+self.field_cls.width:]
 		else:
-			self.items[idx]._pfp__set_value(value)
+			self[idx]._pfp__set_value(value)
+
+		self._pfp__notify_update(self)
 	
 	def __repr__(self):
 		other = ""
@@ -1254,7 +1319,7 @@ class String(Field):
 		if isinstance(other, String):
 			res = self._pfp__value + other._pfp__value
 		else:
-			res = self._pfp__value + other
+			res = self._pfp__value + PYSTR(other)
 		res_field._pfp__set_value(res)
 		return res_field
 	
@@ -1268,7 +1333,7 @@ class String(Field):
 		if isinstance(other, String):
 			self._pfp__value += other._pfp__value
 		else:
-			self._pfp__value += other
+			self._pfp__value += PYSTR(other)
 		return self
 
 class WString(String):

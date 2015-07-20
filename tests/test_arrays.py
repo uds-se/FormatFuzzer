@@ -67,6 +67,7 @@ class TestArrays(unittest.TestCase, utils.UtilsMixin):
 					Printf("true");
 				}
 			""",
+			stdout="true"
 		)
 
 	def test_implicit_array_basic(self):
@@ -122,6 +123,7 @@ class TestArrays(unittest.TestCase, utils.UtilsMixin):
 				local uchar blah[2] = { 'a', 'b' };
 				Printf("%s", blah);
 			""",
+			stdout="ab"
 		)
 	
 	def test_struct_array_decl(self):
@@ -133,6 +135,64 @@ class TestArrays(unittest.TestCase, utils.UtilsMixin):
 				} structs[4];
 			""",
 		)
+	
+	def test_struct_raw_data_optmization1(self):
+		dom = self._test_parse_build(
+			"abcd",
+			"""
+				struct {
+					uchar blah;
+				} structs[4];
+			""",
+		)
+		self.assertEqual(dom.structs.raw_data, None)
+	
+	def test_struct_raw_data_optmization2(self):
+		dom = self._test_parse_build(
+			"abcd",
+			"""
+				uchar chars[4];
+			""",
+		)
+		self.assertNotEqual(dom.chars.raw_data, None)
+		self.assertEqual(dom.chars.raw_data, b"abcd")
+		self.assertEqual(dom.chars._array_to_str(), "abcd")
+		self.assertEqual(dom.chars[0], ord("a"))
+		self.assertEqual(dom.chars[1], ord("b"))
+		self.assertEqual(dom.chars[2], ord("c"))
+		self.assertEqual(dom.chars[3], ord("d"))
+
+		dom.chars[0] = ord("A")
+		self.assertEqual(dom.chars.raw_data, b"Abcd")
+		self.assertEqual(dom.chars._array_to_str(), "Abcd")
+		self.assertEqual(dom.chars[0], ord("A"))
+		self.assertEqual(dom.chars[1], ord("b"))
+		self.assertEqual(dom.chars[2], ord("c"))
+		self.assertEqual(dom.chars[3], ord("d"))
+
+		dom.chars[1] = ord("B")
+		self.assertEqual(dom.chars.raw_data, b"ABcd")
+		self.assertEqual(dom.chars._array_to_str(), "ABcd")
+		self.assertEqual(dom.chars[0], ord("A"))
+		self.assertEqual(dom.chars[1], ord("B"))
+		self.assertEqual(dom.chars[2], ord("c"))
+		self.assertEqual(dom.chars[3], ord("d"))
+
+		dom.chars[2] = ord("C")
+		self.assertEqual(dom.chars.raw_data, b"ABCd")
+		self.assertEqual(dom.chars._array_to_str(), "ABCd")
+		self.assertEqual(dom.chars[0], ord("A"))
+		self.assertEqual(dom.chars[1], ord("B"))
+		self.assertEqual(dom.chars[2], ord("C"))
+		self.assertEqual(dom.chars[3], ord("d"))
+
+		dom.chars[3] = ord("D")
+		self.assertEqual(dom.chars.raw_data, b"ABCD")
+		self.assertEqual(dom.chars._array_to_str(), "ABCD")
+		self.assertEqual(dom.chars[0], ord("A"))
+		self.assertEqual(dom.chars[1], ord("B"))
+		self.assertEqual(dom.chars[2], ord("C"))
+		self.assertEqual(dom.chars[3], ord("D"))
 
 if __name__ == "__main__":
 	unittest.main()

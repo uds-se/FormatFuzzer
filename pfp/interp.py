@@ -471,6 +471,9 @@ class PfpInterp(object):
 			AST.ArrayRef:		self._handle_array_ref,
 			AST.Enum:			self._handle_enum,
 			AST.Switch:			self._handle_switch,
+			AST.Cast:			self._handle_cast,
+			AST.Typename:		self._handle_typename,
+
 			StructDecls:		self._handle_struct_decls,
 			UnionDecls:			self._handle_union_decls,
 		}
@@ -735,6 +738,37 @@ class PfpInterp(object):
 			self._handle_node(child, scope, ctxt, stream)
 
 		return ctxt
+	
+	def _handle_cast(self, node, scope, ctxt, stream):
+		"""Handle cast nodes
+
+		:node: TODO
+		:scope: TODO
+		:ctxt: TODO
+		:stream: TODO
+		:returns: TODO
+
+		"""
+		self._dlog("handling cast")
+		to_type = self._handle_node(node.to_type, scope, ctxt, stream)
+		val_to_cast = self._handle_node(node.expr, scope, ctxt, stream)
+
+		res = to_type()
+		res._pfp__set_value(val_to_cast)
+		return res
+	
+	def _handle_typename(self, node, scope, ctxt, stream):
+		"""TODO: Docstring for _handle_typename
+
+		:node: TODO
+		:scope: TODO
+		:ctxt: TODO
+		:stream: TODO
+		:returns: TODO
+
+		"""
+		self._dlog("handling typename")
+		return self._handle_node(node.type, scope, ctxt, stream)
 	
 	def _handle_decl(self, node, scope, ctxt, stream):
 		"""TODO: Docstring for _handle_decl.
