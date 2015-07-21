@@ -649,13 +649,16 @@ class PfpInterp(object):
 		except errors.InterpExit as e:
 			pass
 		except Exception as e:
-			traceback.print_exc()
+			exc_type, exc_obj, traceback = sys.exc_info()
 			more_info = "\nException at {}:{}".format(
 				self._orig_filename,
 				self._coord.line
 			)
-			sys.stderr.write(more_info + "\n\n")
-			raise Exception("Error interpreting template")
+			six.reraise(
+				exc_type,
+				exc_type(exc_obj.args[0] + more_info if len(exc_obj.args) > 0 else more_info),
+				traceback
+			)
 
 		# final drop-in after everything has executed
 		if self._break_type != self.BREAK_NONE:
