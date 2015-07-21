@@ -30,7 +30,8 @@ class TestArrays(unittest.TestCase, utils.UtilsMixin):
 				local int a = 0x61;
 				local uchar b = (char)a;
 				Printf(b);
-			"""
+			""",
+			stdout="a"
 		)
 
 if __name__ == "__main__":

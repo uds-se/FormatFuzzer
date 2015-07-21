@@ -36,7 +36,9 @@ def parse(data=None, template=None, data_file=None, template_file=None, interp=N
 	if template is not None and template_file is not None:
 		raise Exception("Only one template may be specified!")
 	
+	orig_filename = "string"
 	if template_file is not None:
+		orig_filename = template_file
 		try:
 			with open(os.path.expanduser(template_file), "r") as f:
 				template = f.read()
@@ -51,7 +53,7 @@ def parse(data=None, template=None, data_file=None, template_file=None, interp=N
 	# so we can consume single bits at a time
 	data = BitwrappedStream(data)
 
-	dom = interp.parse(data, template, predefines=predefines)
+	dom = interp.parse(data, template, predefines=predefines, orig_filename=orig_filename)
 
 	# close the data stream if a data_file was specified
 	if data_file is not None:

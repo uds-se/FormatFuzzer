@@ -8,10 +8,11 @@ import collections
 import copy
 import glob
 import logging
+import os
 import re
 import six
 import sys
-import os
+import traceback
 
 import py010parser
 import py010parser.c_parser
@@ -486,7 +487,7 @@ class PfpInterp(object):
 	# PUBLIC
 	# --------------------
 
-	def parse(self, stream, template, predefines=True):
+	def parse(self, stream, template, predefines=True, orig_filename=None):
 		"""Parse the data stream using the template (e.g. parse the 010 template
 		and interpret the template using the stream as the data source).
 
@@ -497,6 +498,7 @@ class PfpInterp(object):
 		"""
 		self._dlog("parsing")
 
+		self._orig_filename = orig_filename
 		self._stream = stream
 		self._template = template
 		self._template_lines = self._template.split("\n")
@@ -646,6 +648,14 @@ class PfpInterp(object):
 			pass
 		except errors.InterpExit as e:
 			pass
+		except Exception as e:
+			traceback.print_exc()
+			more_info = "\nException at {}:{}".format(
+				self._orig_filename,
+				self._coord.line
+			)
+			sys.stderr.write(more_info + "\n\n")
+			raise Exception("Error interpreting template")
 
 		# final drop-in after everything has executed
 		if self._break_type != self.BREAK_NONE:
@@ -1202,7 +1212,17 @@ class PfpInterp(object):
 		if node.op not in switch:
 			raise errors.UnsupportedBinaryOperator(node.coord, node.op)
 
-		return switch[node.op](left_val, right_val)
+		res = switch[node.op](left_val, right_val)
+
+		if type(res) is bool:
+			new_res = fields.Int()
+			if res:
+				new_res._pfp__set_value(1)
+			else:
+				new_res._pfp__set_value(0)
+			res = new_res
+
+		return res
 	
 	def _handle_unary_op(self, node, scope, ctxt, stream):
 		"""TODO: Docstring for _handle_unary_op.
@@ -1231,7 +1251,10 @@ class PfpInterp(object):
 		res = switch[node.op](field, 1)
 		if res in [True, False]:
 			new_res = field.__class__()
-			new_res._pfp__set_value(1 if res == True else 0)
+			try:
+				new_res._pfp__set_value(1 if res == True else 0)
+			except:
+				import pdb; pdb.set_trace()
 			res = new_res
 		return res
 	

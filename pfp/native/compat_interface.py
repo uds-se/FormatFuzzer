@@ -550,7 +550,14 @@ def Printf(params, ctxt, scope, stream, coord):
 		sys.stdout.write(PYSTR(params[0]))
 		return
 
-	to_print = PYSTR(params[0]) % tuple(PYSTR(x) for x in params[1:])
+	parts = []
+	for part in params[1:]:
+		if isinstance(part, pfp.fields.Array) or isinstance(part, pfp.fields.String):
+			parts.append(PYSTR(part))
+		else:
+			parts.append(PYVAL(part))
+
+	to_print = PYSTR(params[0]) % tuple(parts)
 	res = len(to_print)
 	sys.stdout.write(to_print)
 	sys.stdout.flush()

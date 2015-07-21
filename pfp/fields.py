@@ -1306,6 +1306,26 @@ class String(Field):
 			stream.write(data)
 			return len(data)
 	
+	def __getitem__(self, idx):
+		if idx < 0 or idx+1 > len(self._pfp__value):
+			raise IndexError(idx)
+		
+		val = self._pfp__value[idx:idx+1]
+		stream = six.BytesIO(val)
+		res = Char(stream)
+		return res
+	
+	def __setitem__(self, idx, val):
+		if idx < 0 or idx+1 > len(self._pfp__value):
+			raise IndexError(idx)
+		
+		if isinstance(val, Field):
+			val = val._pfp__build()[-1:]
+		elif isinstance(val, int):
+			val = utils.binary(chr(val))
+
+		self._pfp__value = self._pfp__value[0:idx] + val + self._pfp__value[idx+1:]
+	
 	def __add__(self, other):
 		"""Add two strings together. If other is not a String instance,
 		a fields.String instance will still be returned
