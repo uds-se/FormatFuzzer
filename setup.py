@@ -25,7 +25,8 @@ setup(
     platforms='Cross Platform',
 	install_requires = [
 		"py010parser",
-		"six"
+		"six",
+		"intervaltree"
 	],
     classifiers = [
         'Programming Language :: Python :: 2',

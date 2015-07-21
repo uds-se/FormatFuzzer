@@ -112,9 +112,22 @@ def FPrintf(params, ctxt, scope, stream, coord):
 	raise NotImplementedError()
 
 #int FSeek( int64 pos )
-@native(name="FSeek", ret=pfp.fields.Int)
-def FSeek(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+@native(name="FSeek", ret=pfp.fields.Int, send_interp=True)
+def FSeek(params, ctxt, scope, stream, coord, interp):
+	"""Returns 0 if successful or -1 if the address is out of range
+	"""
+	if len(params) != 1:
+		raise errors.InvalidArguments(coord, "{} args".format(len(params)), "FSeek accepts only one argument")
+	
+	pos = PYVAL(pos)
+	curr_pos = stream.tell()
+
+	fsize = stream.size()
+	if pos+1 > fsize or pos < 0:
+		return -1
+
+	stream.seek(pos)
+	interp.handle_unconsumed_bytes(stream)
 
 #int FSkip( int64 offset )
 @native(name="FSkip", ret=pfp.fields.Int)
