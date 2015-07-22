@@ -119,20 +119,32 @@ def FSeek(params, ctxt, scope, stream, coord, interp):
 	if len(params) != 1:
 		raise errors.InvalidArguments(coord, "{} args".format(len(params)), "FSeek accepts only one argument")
 	
-	pos = PYVAL(pos)
+	pos = PYVAL(params[0])
 	curr_pos = stream.tell()
 
 	fsize = stream.size()
 	if pos+1 > fsize or pos < 0:
 		return -1
 
+	import pdb; pdb.set_trace()
+
+	pre_ranges = stream.unconsumed_ranges()
 	stream.seek(pos)
+	post_ranges = stream.unconsumed_ranges()
+
 	interp.handle_unconsumed_bytes(stream)
 
 #int FSkip( int64 offset )
 @native(name="FSkip", ret=pfp.fields.Int)
 def FSkip(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+	"""Returns 0 if successful or -1 if the address is out of range
+	"""
+	if len(params) != 1:
+		raise errors.InvalidArguments(coord, "{} args".format(len(params)), "FTell accepts only one argument")
+
+	skip_amt = PYVAL(params[0])
+	pos = FTell()
+	return FSeek(pos + skip_amt)
 
 #int64 FTell()
 @native(name="FTell", ret=pfp.fields.Int64)

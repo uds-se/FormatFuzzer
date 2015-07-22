@@ -193,7 +193,7 @@ class BitwrappedStream(object):
 			res -= 1
 		return res
 	
-	def seek(self, pos, seek_type):
+	def seek(self, pos, seek_type=0):
 		"""Seek to the specified position in the stream with seek_type.
 		Unflushed bits will be discarded in the case of a seek.
 
@@ -222,17 +222,26 @@ class BitwrappedStream(object):
 		return size
 	
 	def unconsumed_ranges(self):
-		"""Return a list of unconsumed ranges
+		"""Return an IntervalTree of unconsumed ranges, of the format
+		(start, end] with the end value not being included
 		"""
-		res = []
+		res = IntervalTree()
 
 		prev = None
-		# this is always in reverse order for some reason
-		for rng in self.range_set:
+
+		# normal iteration is not in a predictable order
+		ranges = sorted([x for x in self.range_set], lambda _,x: x.begin)
+
+		for rng in ranges:
 			if prev is None:
 				prev = rng
 				continue
-			res.append(Interval(rng.end+1, prev.start-1))
+			res.add(Interval(prev.end, rng.begin))
+			prev = rng
+		
+		# means we've seeked past the end
+		if len(self.range_set[self.tell()]) != 1:
+			res.add(Interval(prev.end, self.tell()))
 
 		return res
 	
@@ -244,7 +253,7 @@ class BitwrappedStream(object):
 		"""Update the ``self.consumed_ranges`` array with which
 		byte ranges have been consecutively consumed.
 		"""
-		self.range_set.add(Interval(start_pos, end_pos))
+		self.range_set.add(Interval(start_pos, end_pos+1))
 		self.range_set.merge_overlaps()
 	
 	def _flush_bits_to_stream(self):

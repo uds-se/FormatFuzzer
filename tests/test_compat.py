@@ -92,6 +92,18 @@ class TestCompatIO(unittest.TestCase, utils.UtilsMixin):
 			verify=False,
 			stdout="ab9798"
 		)
+	
+	def test_seek(self):
+		dom = self._test_parse_build(
+			"\x01\x02ABCD\x03\x04",
+			"""
+				uchar a;
+				uchar b;
+				FSeek(FTell() + 4);
+				uchar c;
+				uchar d;
+			""",
+		)
 
 class TestCompatString(unittest.TestCase, utils.UtilsMixin):
 	def setup(self):
