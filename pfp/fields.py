@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # encoding: utf-8
 
+from intervaltree import IntervalTree,Interval
 import json
 import math
 import six
@@ -411,14 +412,14 @@ class Struct(Field):
 		for x in six.moves.range(len(self._pfp__children)):
 			self._pfp__children[x]._pfp__set_value(value[x])
 	
-	def _pfp__add_child(self, name, child, stream=None):
+	def _pfp__add_child(self, name, child, stream=None, overwrite=False):
 		"""Add a child to the Struct field
 
 		:name: The name of the child
 		:child: A :class:`.Field` instance
 		:returns: None
 		"""
-		if name in self._pfp__children_map:
+		if not overwrite and name in self._pfp__children_map:
 			return self._pfp__handle_implicit_array(name, child)
 		else:
 			child._pfp__parent = self
@@ -1025,7 +1026,7 @@ class Enum(IntBase):
 		"""Add the enum name to the int representation
 		"""
 		res = super(Enum, self).__repr__()
-		res += "(" + self.enum_name + ")"
+		res += "({})".format(self.enum_name)
 		return res
 	
 	def _pfp__cls_name(self):
@@ -1071,7 +1072,9 @@ class Array(Field):
 			return None
 
 		if self.raw_data is not None:
-			return PYSTR(self.raw_data)
+			if max_len != -1:
+				return PYSTR(self.raw_data)[:max_len]
+			return self.raw_data
 
 		res = ""
 		for item in self.items:
@@ -1136,12 +1139,12 @@ class Array(Field):
 			# optimizations... should reuse existing fields??
 			self.items = []
 			for x in six.moves.range(PYVAL(self.width)):
-				field = self.field_cls()
+				field = self.field_cls(stream)
 				field._pfp__name = "{}[{}]".format(
 					self._pfp__name,
 					x
 				)
-				field._pfp__parse(stream, save_offset)
+				#field._pfp__parse(stream, save_offset)
 				self.items.append(field)
 
 			if self._pfp__can_unpack():
@@ -1264,7 +1267,7 @@ class String(Field):
 		escaping and such as well
 		"""
 		if not isinstance(new_val, Field):
-			new_val = json.loads('"' + new_val + '"')
+			new_val = utils.string_escape(new_val)
 		super(String, self)._pfp__set_value(new_val)
 
 	def _pfp__parse(self, stream, save_offset=False):

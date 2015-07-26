@@ -13,6 +13,7 @@ import sys
 from pfp.native import native
 import pfp.fields
 import pfp.errors as errors
+import pfp.bitwrap as bitwrap
 
 # http://www.sweetscape.com/010editor/manual/FuncIO.htm
 
@@ -112,8 +113,8 @@ def FPrintf(params, ctxt, scope, stream, coord):
 	raise NotImplementedError()
 
 #int FSeek( int64 pos )
-@native(name="FSeek", ret=pfp.fields.Int, send_interp=True)
-def FSeek(params, ctxt, scope, stream, coord, interp):
+@native(name="FSeek", ret=pfp.fields.Int)
+def FSeek(params, ctxt, scope, stream, coord):
 	"""Returns 0 if successful or -1 if the address is out of range
 	"""
 	if len(params) != 1:
@@ -123,16 +124,33 @@ def FSeek(params, ctxt, scope, stream, coord, interp):
 	curr_pos = stream.tell()
 
 	fsize = stream.size()
-	if pos+1 > fsize or pos < 0:
+	if pos > fsize or pos < 0:
 		return -1
 
-	import pdb; pdb.set_trace()
+	diff = pos - curr_pos
+	if diff < 0:
+		stream.seek(pos)
+		return 0
 
-	pre_ranges = stream.unconsumed_ranges()
-	stream.seek(pos)
-	post_ranges = stream.unconsumed_ranges()
+	data = stream.read(diff)
 
-	interp.handle_unconsumed_bytes(stream)
+	skipped_number = 0
+	for child in ctxt._pfp__children:
+		if child._pfp__name.startswith("_skipped"):
+			skipped_number += 1
+	skipped_name = "_skipped_{}".format(skipped_number)
+
+	if len(ctxt._pfp__children) > 0 and ctxt._pfp__children[-1]._pfp__name.startswith("_skipped"):
+		data = ctxt._pfp__children[-1].raw_data + data
+		skipped_name = ctxt._pfp__children[-1]._pfp__name
+		ctxt._pfp__children = ctxt._pfp__children[:-1]
+
+	tmp_stream = bitwrap.BitwrappedStream(six.BytesIO(data))
+	new_field = pfp.fields.Array(len(data), pfp.fields.Char, tmp_stream)
+	ctxt._pfp__add_child(skipped_name, new_field, stream, overwrite=True)
+	scope.add_var(skipped_name, new_field)
+
+	return 0
 
 #int FSkip( int64 offset )
 @native(name="FSkip", ret=pfp.fields.Int)
@@ -140,11 +158,11 @@ def FSkip(params, ctxt, scope, stream, coord):
 	"""Returns 0 if successful or -1 if the address is out of range
 	"""
 	if len(params) != 1:
-		raise errors.InvalidArguments(coord, "{} args".format(len(params)), "FTell accepts only one argument")
+		raise errors.InvalidArguments(coord, "{} args".format(len(params)), "FSkip accepts only one argument")
 
 	skip_amt = PYVAL(params[0])
-	pos = FTell()
-	return FSeek(pos + skip_amt)
+	pos = stream.tell()
+	return FSeek([pos + skip_amt], ctxt, scope, stream, coord)
 
 #int64 FTell()
 @native(name="FTell", ret=pfp.fields.Int64)

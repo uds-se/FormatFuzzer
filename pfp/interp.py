@@ -1046,13 +1046,15 @@ class PfpInterp(object):
 		"""
 		self._dlog("handling struct")
 
-		struct_cls = StructUnionDef("struct", self, node)
-		return struct_cls
-		#struct = fields.Struct()
+		# it's actually being defined
+		if node.decls is not None:
+			struct_cls = StructUnionDef("struct", self, node)
+			return struct_cls
 
-		#self._handle_node(StructDecls(node.decls, node.coord), scope, struct, stream)
-
-		#return struct
+		# it's declaring a struct field. E.g.
+		#    struct IFD subDir;
+		else:
+			return scope.get_type(node.name)
 	
 	def _handle_struct_decls(self, node, scope, ctxt, stream):
 		self._dlog("handling struct decls")
@@ -1065,6 +1067,8 @@ class PfpInterp(object):
 				# new context! (struct)
 				self._handle_node(decl, scope, ctxt, stream)
 
+		# so that even if return statements/other exceptions
+		# happen, we'll still pop scope
 		finally:
 			# need to pop the scope!
 			scope.pop()
@@ -1254,10 +1258,7 @@ class PfpInterp(object):
 		res = switch[node.op](field, 1)
 		if res in [True, False]:
 			new_res = field.__class__()
-			try:
-				new_res._pfp__set_value(1 if res == True else 0)
-			except:
-				import pdb; pdb.set_trace()
+			new_res._pfp__set_value(1 if res == True else 0)
 			res = new_res
 		return res
 	
