@@ -1092,7 +1092,7 @@ class Array(Field):
 	def __eq__(self, other):
 		if self._is_stringable() and other.__class__ in [String, WString, str]:
 			res = self._array_to_str()
-			return res == other
+			return utils.binary(res) == utils.binary(PYSTR(other))
 		else:
 			raise Exception("TODO")
 	

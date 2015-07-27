@@ -230,7 +230,7 @@ class BitwrappedStream(object):
 		prev = None
 
 		# normal iteration is not in a predictable order
-		ranges = sorted([x for x in self.range_set], lambda _,x: x.begin)
+		ranges = sorted([x for x in self.range_set], key=lambda x: x.begin)
 
 		for rng in ranges:
 			if prev is None:

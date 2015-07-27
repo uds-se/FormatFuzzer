@@ -105,7 +105,7 @@ class TestBitwrap(unittest.TestCase):
 		self.assertEqual(stream.getvalue(), pfp.utils.binary(chr(int("11010000", 2)) + "hello"))
 	
 	def test_unconsumed_ranges1(self):
-		stream = six.BytesIO("A" * 100)
+		stream = six.BytesIO(pfp.utils.binary("A" * 100))
 		bitwrapped = BitwrappedStream(stream)
 
 		bitwrapped.read(10)
@@ -129,7 +129,7 @@ class TestBitwrap(unittest.TestCase):
 		self.assertEqual(len(uranges[40]), 0)
 
 	def test_unconsumed_ranges2(self):
-		stream = six.BytesIO("A" * 100)
+		stream = six.BytesIO(pfp.utils.binary("A" * 100))
 		bitwrapped = BitwrappedStream(stream)
 
 		bitwrapped.read(10)
@@ -148,7 +148,7 @@ class TestBitwrap(unittest.TestCase):
 		self.assertEqual(len(uranges[20]), 0)
 
 	def test_unconsumed_ranges3(self):
-		stream = six.BytesIO("A" * 100)
+		stream = six.BytesIO(pfp.utils.binary("A" * 100))
 		bitwrapped = BitwrappedStream(stream)
 
 		bitwrapped.read(10)
