@@ -474,6 +474,7 @@ class PfpInterp(object):
 			AST.Switch:			self._handle_switch,
 			AST.Cast:			self._handle_cast,
 			AST.Typename:		self._handle_typename,
+			AST.EmptyStatement: self._handle_empty_statement,
 
 			StructDecls:		self._handle_struct_decls,
 			UnionDecls:			self._handle_union_decls,
@@ -654,9 +655,10 @@ class PfpInterp(object):
 				self._orig_filename,
 				self._coord.line
 			)
+			import pdb; pdb.set_trace()
 			six.reraise(
-				exc_type,
-				exc_type(exc_obj.args[0] + more_info if len(exc_obj.args) > 0 else more_info),
+				errors.PfpError,
+				errors.PfpError(exc_obj.__class__.__name__ + ": " + exc_obj.args[0] + more_info if len(exc_obj.args) > 0 else more_info),
 				traceback
 			)
 
@@ -751,6 +753,18 @@ class PfpInterp(object):
 			self._handle_node(child, scope, ctxt, stream)
 
 		return ctxt
+	
+	def _handle_empty_statement(self, node, scope, ctxt, stream):
+		"""Handle empty statements
+
+		:node: TODO
+		:scope: TODO
+		:ctxt: TODO
+		:stream: TODO
+		:returns: TODO
+
+		"""
+		self._dlog("handling empty statement")
 	
 	def _handle_cast(self, node, scope, ctxt, stream):
 		"""Handle cast nodes

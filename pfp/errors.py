@@ -17,7 +17,7 @@ class UnmodifiableConst(PfpError): pass
 
 class CoordError(PfpError):
 	"""Base class for pfp exceptions"""
-	def __init__(self, coord, *args):
+	def __init__(self, coord=None, *args):
 		super(CoordError, self).__init__((self.msg + " at {}").format(*(args + (coord,))))
 
 class InterpReturn(CoordError):
