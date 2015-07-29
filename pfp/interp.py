@@ -655,7 +655,6 @@ class PfpInterp(object):
 				self._orig_filename,
 				self._coord.line
 			)
-			import pdb; pdb.set_trace()
 			six.reraise(
 				errors.PfpError,
 				errors.PfpError(exc_obj.__class__.__name__ + ": " + exc_obj.args[0] + more_info if len(exc_obj.args) > 0 else more_info),

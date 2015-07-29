@@ -51,7 +51,7 @@ class TestStrings(unittest.TestCase, utils.UtilsMixin):
 		self.assertEqual(dom.greetings.goodbye, pfp.utils.binary("good byte"))
 	
 	def test_unterminated_string(self):
-		with self.assertRaises(pfp.errors.PrematureEOF):
+		with self.assertRaises(pfp.errors.PfpError):
 			dom = self._test_parse_build(
 				"unterminated string",
 				"""
