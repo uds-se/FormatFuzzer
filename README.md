@@ -5,3 +5,19 @@
 # pfp
 
 `pfp` is a python-based interpreter for 010 template scripts.
+
+See the main documentation on [Read the Docs](http://pfp.readthedocs.org/en/latest/)
+
+## Tl;DR
+
+You don't feel like going to read the docs? This should get you
+started parsing something using 010 templates:
+
+```python
+import pfp
+
+dom = pfp.parse(
+	data_file="~/Desktop/image.png",
+	template_file="~/Desktop/PNGTemplate.bt"
+)
+```
