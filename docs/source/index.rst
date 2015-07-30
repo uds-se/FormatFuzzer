@@ -12,11 +12,18 @@ Pfp (python format parser) is a python interpreter for
 Pfp uses `py010parser <https://github.com/d0c-s4vage/py010parser>`_ to
 parse 010 templates into an AST, which is then interpreted by
 pfp. Pfp then returns a DOM object which can be used to access
-individual fields of the defined data structure: ::
+individual fields of the defined data structure.
+
+A simple example of parsing a PNG image: ::
 
     import pfp
 
-    png = pfp.parse(data_file="image.png", template_file="png_template.bt")
+    dom = pfp.parse(data_file="image.png", template_file="png_template.bt")
+
+    for chunk in dom.png.chunk:
+        if chunk.name == "tEXt":
+            print("Found the comment:")
+            print(chunk.data.comment)
 
 Contents:
 
