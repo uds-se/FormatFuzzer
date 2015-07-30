@@ -1254,7 +1254,11 @@ class Array(Field):
 	
 	def _pfp__show(self, level=0, include_offset=False):
 		if self._is_stringable():
-			return self.__repr__()
+			res = self.__repr__()
+			if self._ is not None:
+				packed_show = self._._pfp__show(level=level+1, include_offset=False)
+				res += "\n" + ("    "*(level+1)) + "_ = " + packed_show
+			return res
 
 		res = [self.__repr__()]
 		for idx,item in enumerate(self.items):
