@@ -42,8 +42,8 @@ def StructUnionDef(typedef_name, interp, node):
 		cls = fields.Union
 		decls = UnionDecls(node.decls, node.coord)
 
-	def __init__(self, stream=None, metadata_info=None):
-		cls.__init__(self, stream, metadata_info=metadata_info)
+	def __init__(self, stream=None, metadata_processor=None):
+		cls.__init__(self, stream, metadata_processor=metadata_processor)
 
 		self._pfp__interp._handle_node(
 			decls,
@@ -70,8 +70,8 @@ def EnumDef(typedef_name, base_cls, enum_vals):
 
 def ArrayDecl(item_cls, item_count):
 	width = fields.PYVAL(item_count)
-	def __init__(self, stream=None, metadata_info=None):
-		fields.Array.__init__(self, self.width, self.field_cls, stream, metadata_info=metadata_info)
+	def __init__(self, stream=None, metadata_processor=None):
+		fields.Array.__init__(self, self.width, self.field_cls, stream, metadata_processor=metadata_processor)
 	new_class = type("Array_{}_{}".format(item_cls.__name__, width), (fields.Array,), {
 		"__init__"	: __init__,
 		"width"		: width,
@@ -751,6 +751,8 @@ class PfpInterp(object):
 		for child in node.children():
 			self._handle_node(child, scope, ctxt, stream)
 
+		ctxt._pfp__process_fields_metadata()
+
 		return ctxt
 	
 	def _handle_empty_statement(self, node, scope, ctxt, stream):
@@ -808,9 +810,13 @@ class PfpInterp(object):
 		"""
 		self._dlog("handling decl")
 
-		metadata_info = []
+		metadata_processor = None
 		if node.metadata is not None:
-			metadata_info = self._handle_metadata(node, scope, ctxt, stream)
+			#metadata_info = self._handle_metadata(node, scope, ctxt, stream)
+			def process_metadata():
+				metadata_info = self._handle_metadata(node, scope, ctxt, stream)
+				return metadata_info
+			metadata_processor = process_metadata
 
 		field = self._handle_node(node.type, scope, ctxt, stream)
 		bitsize = None
@@ -852,9 +858,9 @@ class PfpInterp(object):
 			# in order to set the new context)
 			if not isinstance(field, fields.Field):
 				if issubclass(field, fields.NumberBase):
-					field = field(stream, bitsize=bitsize, metadata_info=metadata_info)
+					field = field(stream, bitsize=bitsize, metadata_processor=metadata_processor)
 				else:
-					field = field(stream, metadata_info=metadata_info)
+					field = field(stream, metadata_processor=metadata_processor)
 
 			field._pfp__interp = self
 			field_res = ctxt._pfp__add_child(node.name, field, stream)
@@ -911,12 +917,12 @@ class PfpInterp(object):
 		watch_field_name = keyvals["watch"]
 		update_func_name = keyvals["update"]
 
-		watch_field = self.eval(watch_field_name)
+		watch_fields = list(map(lambda x: self.eval(x.strip()), watch_field_name.split(";")))
 		update_func = scope.get_id(update_func_name)
 
 		return {
 			"type": "watch",
-			"watch_field": watch_field,
+			"watch_fields": watch_fields,
 			"update_func": update_func,
 			"func_call_info": (ctxt, scope, stream, self, self._coord)
 		}
@@ -1079,6 +1085,8 @@ class PfpInterp(object):
 			for decl in node.decls:
 				# new context! (struct)
 				self._handle_node(decl, scope, ctxt, stream)
+
+			ctxt._pfp__process_fields_metadata()
 
 		# so that even if return statements/other exceptions
 		# happen, we'll still pop scope
@@ -1537,7 +1545,12 @@ class PfpInterp(object):
 
 		"""
 		self._dlog("handling array declaration '{}'".format(node.type.declname))
-		array_size = self._handle_node(node.dim, scope, ctxt, stream)
+
+		if node.dim is None:
+			# will be used
+			array_size = None
+		else:
+			array_size = self._handle_node(node.dim, scope, ctxt, stream)
 		self._dlog("array size = {}".format(array_size))
 		# TODO node.dim_quals
 		# node.type

@@ -54,7 +54,7 @@ class Field(object):
 
 	_pfp__interp = None
 
-	def __init__(self, stream=None, metadata_info=None):
+	def __init__(self, stream=None, metadata_processor=None):
 		super(Field, self).__init__()
 		self._pfp__name = None
 		self._pfp__frozen = False
@@ -64,6 +64,7 @@ class Field(object):
 		# watchers to update when something changes
 		self._pfp__watchers = []
 		self._pfp__parent = None
+		self._pfp__watch_fields = []
 		self._pfp__no_notify = False
 
 		self._pfp__packer = None
@@ -72,15 +73,27 @@ class Field(object):
 		self._pfp__pack_type = None
 		self._pfp__no_unpack = False
 		self._pfp__parsed_packed = None
+		self._pfp__metadata_processor = metadata_processor
 		self._ = None
 
 		self._pfp__array_idx = None
+		
+		if stream is not None:
+			self._pfp__parse(stream, save_offset=True)
+	
+	def _pfp__process_metadata(self):
+		"""Process the metadata once the entire struct has been
+		declared.
+		"""
+		if self._pfp__metadata_processor is None:
+			return
 
+		metadata_info = self._pfp__metadata_processor()
 		if isinstance(metadata_info, list):
 			for metadata in metadata_info:
 				if metadata["type"] == "watch":
 					self._pfp__set_watch(
-						metadata["watch_field"],
+						metadata["watch_fields"],
 						metadata["update_func"],
 						*metadata["func_call_info"]
 					)
@@ -88,9 +101,8 @@ class Field(object):
 				elif metadata["type"] == "packed":
 					del metadata["type"]
 					self._pfp__set_packer(**metadata)
-		
-		if stream is not None:
-			self._pfp__parse(stream, save_offset=True)
+					if self._pfp__can_unpack():
+						self._pfp__unpack_data(self.raw_data)
 	
 	def _pfp__watch(self, watcher):
 		"""Add the watcher to the list of fields that
@@ -101,11 +113,14 @@ class Field(object):
 		else:
 			self._pfp__watchers.append(watcher)
 	
-	def _pfp__set_watch(self, watch_field, update_func, *func_call_info):
-		"""Subscribe to update events on ``watch_field``, using
+	def _pfp__set_watch(self, watch_fields, update_func, *func_call_info):
+		"""Subscribe to update events on each field in ``watch_fields``, using
 		``update_func`` to update self's value when ``watch_field``
 		changes"""
-		watch_field._pfp__watch(self)
+		self._pfp__watch_fields = watch_fields
+
+		for watch_field in watch_fields:
+			watch_field._pfp__watch(self)
 		self._pfp__update_func = update_func
 		self._pfp__update_func_call_info = func_call_info
 	
@@ -231,7 +246,7 @@ class Field(object):
 			self._pfp__pack_data()
 		else:
 			self._pfp__update_func.call(
-				[self, watched_field],
+				[self] + self._pfp__watch_fields,
 				*self._pfp__update_func_call_info
 			)
 
@@ -386,16 +401,22 @@ class Struct(Field):
 
 	_pfp__show_name = "struct"
 
-	def __init__(self, stream=None, metadata_info=None):
+	def __init__(self, stream=None, metadata_processor=None):
 		# ordered list of children
 		super(Struct, self).__setattr__("_pfp__children", [])
 		# for quick child access
 		super(Struct, self).__setattr__("_pfp__children_map", {})
 
-		super(Struct, self).__init__(metadata_info=metadata_info)
+		super(Struct, self).__init__(metadata_processor=metadata_processor)
 
 		if stream is not None:
 			self._pfp__offset = stream.tell()
+	
+	def _pfp__process_fields_metadata(self):
+		"""Tell each child to process its metadata
+		"""
+		for child in self._pfp__children:
+			child._pfp__process_metadata()
 	
 	def _pfp__set_value(self, value):
 		"""Initialize the struct. Value should be an array of
@@ -555,10 +576,10 @@ class Union(Struct):
 	_pfp__size = 0
 	_pfp__show_name = "union"
 
-	def __init__(self, stream=None, metadata_info=None):
+	def __init__(self, stream=None, metadata_processor=None):
 		"""Init the union and its buff stream
 		"""
-		super(Union, self).__init__(metadata_info=metadata_info)
+		super(Union, self).__init__(metadata_processor=metadata_processor)
 		self._pfp__buff = six.BytesIO()
 
 	def _pfp__add_child(self, name, child, stream=None):
@@ -681,11 +702,11 @@ class NumberBase(Field):
 
 	_pfp__value = 0			# default value
 	
-	def __init__(self, stream=None, bitsize=None, metadata_info=None):
+	def __init__(self, stream=None, bitsize=None, metadata_processor=None):
 		"""Special init for the bitsize
 		"""
 		self.bitsize = get_value(bitsize)
-		super(NumberBase, self).__init__(stream, metadata_info=metadata_info)
+		super(NumberBase, self).__init__(stream, metadata_processor=metadata_processor)
 
 	def __nonzero__(self):
 		"""Used for the not operator"""
@@ -990,7 +1011,7 @@ class Enum(IntBase):
 	enum_cls = None
 	enum_name = None
 
-	def __init__(self, stream=None, enum_cls=None, enum_vals=None, bitsize=None, metadata_info=None):
+	def __init__(self, stream=None, enum_cls=None, enum_vals=None, bitsize=None, metadata_processor=None):
 		"""Init the enum
 		"""
 		# discard the bitsize value
@@ -1005,7 +1026,7 @@ class Enum(IntBase):
 			self.width = enum_cls.width
 			self.format = enum_cls.format
 
-		super(Enum, self).__init__(stream, metadata_info=metadata_info)
+		super(Enum, self).__init__(stream, metadata_processor=metadata_processor)
 	
 	def _pfp__parse(self, stream, save_offset=False):
 		"""Parse the IO stream for this enum
@@ -1041,10 +1062,10 @@ class Enum(IntBase):
 class Array(Field):
 	width = -1
 
-	def __init__(self, width, field_cls, stream=None, metadata_info=None):
+	def __init__(self, width, field_cls, stream=None, metadata_processor=None):
 		""" Create an array field of size "width" from the stream
 		"""
-		super(Array, self).__init__(stream=None, metadata_info=metadata_info)
+		super(Array, self).__init__(stream=None, metadata_processor=metadata_processor)
 
 		self.width = width
 		self.field_cls = field_cls
