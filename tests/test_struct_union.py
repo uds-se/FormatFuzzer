@@ -34,6 +34,26 @@ class TestStructUnion(unittest.TestCase, utils.UtilsMixin):
 			""",
 		)
 	
+	def test_struct_decl_with_struct_keyword(self):
+		dom = self._test_parse_build(
+			"ABCD",
+			"""
+				typedef struct {
+					char a;
+					char b;
+					char c;
+					char d;
+				} BLAH;
+
+				struct BLAH decldStruct;
+			"""
+		)
+
+		self.assertEqual(dom.decldStruct.a, ord("A"))
+		self.assertEqual(dom.decldStruct.b, ord("B"))
+		self.assertEqual(dom.decldStruct.c, ord("C"))
+		self.assertEqual(dom.decldStruct.d, ord("D"))
+	
 	def test_struct_initialization(self):
 		dom = self._test_parse_build(
 			"",

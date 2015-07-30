@@ -8,10 +8,11 @@ import collections
 import copy
 import glob
 import logging
+import os
 import re
 import six
 import sys
-import os
+import traceback
 
 import py010parser
 import py010parser.c_parser
@@ -471,6 +472,10 @@ class PfpInterp(object):
 			AST.ArrayRef:		self._handle_array_ref,
 			AST.Enum:			self._handle_enum,
 			AST.Switch:			self._handle_switch,
+			AST.Cast:			self._handle_cast,
+			AST.Typename:		self._handle_typename,
+			AST.EmptyStatement: self._handle_empty_statement,
+
 			StructDecls:		self._handle_struct_decls,
 			UnionDecls:			self._handle_union_decls,
 		}
@@ -483,7 +488,7 @@ class PfpInterp(object):
 	# PUBLIC
 	# --------------------
 
-	def parse(self, stream, template, predefines=True):
+	def parse(self, stream, template, predefines=True, orig_filename=None):
 		"""Parse the data stream using the template (e.g. parse the 010 template
 		and interpret the template using the stream as the data source).
 
@@ -494,6 +499,7 @@ class PfpInterp(object):
 		"""
 		self._dlog("parsing")
 
+		self._orig_filename = orig_filename
 		self._stream = stream
 		self._template = template
 		self._template_lines = self._template.split("\n")
@@ -643,6 +649,17 @@ class PfpInterp(object):
 			pass
 		except errors.InterpExit as e:
 			pass
+		except Exception as e:
+			exc_type, exc_obj, traceback = sys.exc_info()
+			more_info = "\nException at {}:{}".format(
+				self._orig_filename,
+				self._coord.line
+			)
+			six.reraise(
+				errors.PfpError,
+				errors.PfpError(exc_obj.__class__.__name__ + ": " + exc_obj.args[0] + more_info if len(exc_obj.args) > 0 else more_info),
+				traceback
+			)
 
 		# final drop-in after everything has executed
 		if self._break_type != self.BREAK_NONE:
@@ -735,6 +752,49 @@ class PfpInterp(object):
 			self._handle_node(child, scope, ctxt, stream)
 
 		return ctxt
+	
+	def _handle_empty_statement(self, node, scope, ctxt, stream):
+		"""Handle empty statements
+
+		:node: TODO
+		:scope: TODO
+		:ctxt: TODO
+		:stream: TODO
+		:returns: TODO
+
+		"""
+		self._dlog("handling empty statement")
+	
+	def _handle_cast(self, node, scope, ctxt, stream):
+		"""Handle cast nodes
+
+		:node: TODO
+		:scope: TODO
+		:ctxt: TODO
+		:stream: TODO
+		:returns: TODO
+
+		"""
+		self._dlog("handling cast")
+		to_type = self._handle_node(node.to_type, scope, ctxt, stream)
+		val_to_cast = self._handle_node(node.expr, scope, ctxt, stream)
+
+		res = to_type()
+		res._pfp__set_value(val_to_cast)
+		return res
+	
+	def _handle_typename(self, node, scope, ctxt, stream):
+		"""TODO: Docstring for _handle_typename
+
+		:node: TODO
+		:scope: TODO
+		:ctxt: TODO
+		:stream: TODO
+		:returns: TODO
+
+		"""
+		self._dlog("handling typename")
+		return self._handle_node(node.type, scope, ctxt, stream)
 	
 	def _handle_decl(self, node, scope, ctxt, stream):
 		"""TODO: Docstring for _handle_decl.
@@ -999,13 +1059,15 @@ class PfpInterp(object):
 		"""
 		self._dlog("handling struct")
 
-		struct_cls = StructUnionDef("struct", self, node)
-		return struct_cls
-		#struct = fields.Struct()
+		# it's actually being defined
+		if node.decls is not None:
+			struct_cls = StructUnionDef("struct", self, node)
+			return struct_cls
 
-		#self._handle_node(StructDecls(node.decls, node.coord), scope, struct, stream)
-
-		#return struct
+		# it's declaring a struct field. E.g.
+		#    struct IFD subDir;
+		else:
+			return scope.get_type(node.name)
 	
 	def _handle_struct_decls(self, node, scope, ctxt, stream):
 		self._dlog("handling struct decls")
@@ -1018,6 +1080,8 @@ class PfpInterp(object):
 				# new context! (struct)
 				self._handle_node(decl, scope, ctxt, stream)
 
+		# so that even if return statements/other exceptions
+		# happen, we'll still pop scope
 		finally:
 			# need to pop the scope!
 			scope.pop()
@@ -1168,7 +1232,17 @@ class PfpInterp(object):
 		if node.op not in switch:
 			raise errors.UnsupportedBinaryOperator(node.coord, node.op)
 
-		return switch[node.op](left_val, right_val)
+		res = switch[node.op](left_val, right_val)
+
+		if type(res) is bool:
+			new_res = fields.Int()
+			if res:
+				new_res._pfp__set_value(1)
+			else:
+				new_res._pfp__set_value(0)
+			res = new_res
+
+		return res
 	
 	def _handle_unary_op(self, node, scope, ctxt, stream):
 		"""TODO: Docstring for _handle_unary_op.

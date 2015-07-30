@@ -2,10 +2,12 @@
 # encoding: utf-8
 
 import cmd
+import collections
 import os
 import sys
 
 import pfp.errors as errors
+import pfp.utils as utils
 
 class PfpDbg(cmd.Cmd, object):
 	"""The pfp debugger cmd.Cmd class"""
@@ -40,6 +42,37 @@ class PfpDbg(cmd.Cmd, object):
 			return funcs[0](arg)
 		elif len(funcs) == 0:
 			return self.do_eval(line)
+	
+	def do_peek(self, args):
+		"""Peek at the next 16 bytes in the stream
+		"""
+		s = self._interp._stream
+		# make a copy of it
+		pos = s.tell()
+		saved_bits = collections.deque(s._bits)
+		data = s.read(0x10)
+		s.seek(pos, 0)
+		s._bits = saved_bits
+
+		parts = ["{:02x}".format(ord(data[x:x+1])) for x in range(len(data))]
+		if len(parts) != 0x10:
+			parts += ["  "] * (0x10 - len(parts))
+		hex_line = " ".join(parts)
+
+		res = utils.binary("")
+		for x in range(len(data)):
+			char = data[x:x+1]
+			val = ord(char)
+			if 0x20 <= val <= 0x7e:
+				res += char
+			else:
+				res += utils.binary(".")
+		
+		if len(res) < 0x10:
+			res += utils.binary(" " * (0x10 - len(res)))
+
+		res = "{} {}".format(hex_line, utils.string(res))
+		print(res)
 	
 	def do_next(self, args):
 		"""Step over the next statement

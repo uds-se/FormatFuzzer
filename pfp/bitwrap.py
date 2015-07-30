@@ -2,6 +2,7 @@
 # encoding: utf-8
 
 import collections
+from intervaltree import IntervalTree,Interval
 import os
 import six
 import sys
@@ -68,6 +69,8 @@ class BitwrappedStream(object):
 
 		# packed left-to-right
 		self.direction = BIT_DIR_LEFT_RIGHT
+
+		self.range_set = IntervalTree()
 	
 	def is_eof(self):
 		"""Return if the stream has reached EOF or not
@@ -108,14 +111,21 @@ class BitwrappedStream(object):
 		:num: number of bytes to read
 		:returns: the read bytes, or empty string if EOF has been reached
 		"""
+		start_pos = self.tell()
+
 		if self.padded:
 			# we toss out any uneven bytes
 			self._bits.clear()
-			return utils.binary(self._stream.read(num))
+			res = utils.binary(self._stream.read(num))
 		else:
 			bits = self.read_bits(num * 8)
 			res = bits_to_bytes(bits)
-			return utils.binary(res)
+			res = utils.binary(res)
+
+		end_pos = self.tell()
+		self._update_consumed_ranges(start_pos, end_pos)
+
+		return res
 	
 	def read_bits(self, num):
 		"""Read ``num`` number of bits from the stream
@@ -183,9 +193,13 @@ class BitwrappedStream(object):
 			res -= 1
 		return res
 	
-	def seek(self, pos, seek_type):
-		"""Seed to the specified position in the stream with seek_type.
+	def seek(self, pos, seek_type=0):
+		"""Seek to the specified position in the stream with seek_type.
 		Unflushed bits will be discarded in the case of a seek.
+
+		The stream will also keep track of which bytes have and have
+		not been consumed so that the dom will capture all of the
+		bytes in the stream.
 
 		:pos: offset
 		:seek_type: direction
@@ -207,9 +221,40 @@ class BitwrappedStream(object):
 
 		return size
 	
+	def unconsumed_ranges(self):
+		"""Return an IntervalTree of unconsumed ranges, of the format
+		(start, end] with the end value not being included
+		"""
+		res = IntervalTree()
+
+		prev = None
+
+		# normal iteration is not in a predictable order
+		ranges = sorted([x for x in self.range_set], key=lambda x: x.begin)
+
+		for rng in ranges:
+			if prev is None:
+				prev = rng
+				continue
+			res.add(Interval(prev.end, rng.begin))
+			prev = rng
+		
+		# means we've seeked past the end
+		if len(self.range_set[self.tell()]) != 1:
+			res.add(Interval(prev.end, self.tell()))
+
+		return res
+	
 	# -----------------------------
 	# PRIVATE FUNCTIONS
 	# -----------------------------
+
+	def _update_consumed_ranges(self, start_pos, end_pos):
+		"""Update the ``self.consumed_ranges`` array with which
+		byte ranges have been consecutively consumed.
+		"""
+		self.range_set.add(Interval(start_pos, end_pos+1))
+		self.range_set.merge_overlaps()
 	
 	def _flush_bits_to_stream(self):
 		"""Flush the bits to the stream. This is used when

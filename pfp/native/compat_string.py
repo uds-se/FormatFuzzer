@@ -288,7 +288,21 @@ def Strstr(params, ctxt, scope, stream, coord):
 #char[] SubStr( const char str[], int start, int count=-1 )
 @native(name="SubStr", ret=pfp.fields.String)
 def SubStr(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+	if len(params) < 2:
+		raise errors.InvalidArguments(coord, "2 arguments", "{} args".format(len(params)))
+	
+	string = PYSTR(params[0])
+	start = PYVAL(params[1])
+	count = -1
+	if len(params) > 2:
+		count = PYVAL(params[2])
+	if count < 0:
+		count = -1
+	
+	if count == -1:
+		return string[start:]
+	else:
+		return string[start:start+count]
 
 #string TimeTToString( time_t t, char format[] = "MM/dd/yyyy hh:mm:ss" )
 @native(name="TimeTToString", ret=pfp.fields.String)

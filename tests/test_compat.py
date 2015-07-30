@@ -92,6 +92,108 @@ class TestCompatIO(unittest.TestCase, utils.UtilsMixin):
 			verify=False,
 			stdout="ab9798"
 		)
+	
+	def test_seek1(self):
+		dom = self._test_parse_build(
+			"\x01\x02ABCD\x03\x04",
+			"""
+				uchar a;
+				uchar b;
+				FSeek(FTell() + 4);
+				uchar c;
+				uchar d;
+			""",
+		)
+
+		self.assertEqual(dom.a, 1)
+		self.assertEqual(dom.b, 2)
+		self.assertEqual(dom._skipped_0, "ABCD")
+		self.assertEqual(dom.c, 3)
+		self.assertEqual(dom.d, 4)
+	
+	def test_seek2(self):
+		dom = self._test_parse_build(
+			"\x01\x02ABCD\x03EF\x04",
+			"""
+				uchar a;
+				uchar b;
+				FSeek(FTell() + 2);
+				FSeek(FTell() + 2);
+				uchar c;
+				FSeek(FTell() + 2);
+				uchar d;
+			""",
+		)
+
+		self.assertEqual(dom.a, 1)
+		self.assertEqual(dom.b, 2)
+		# should be merged into one _skipped array
+		self.assertEqual(dom._skipped_0, "ABCD")
+		self.assertEqual(dom.c, 3)
+		self.assertEqual(dom._skipped_1, "EF")
+		self.assertEqual(dom.d, 4)
+	
+	def test_seek3(self):
+		dom = self._test_parse_build(
+			"ABCD",
+			"""
+				Printf("%d", FSeek(FTell() + 4));
+				Printf("%d", FSeek(FTell() + 2));
+			""",
+			verify=False,
+			stdout="0-1"
+		)
+	
+	def test_skip1(self):
+		dom = self._test_parse_build(
+			"\x01\x02ABCD\x03\x04",
+			"""
+				uchar a;
+				uchar b;
+				FSkip(4);
+				uchar c;
+				uchar d;
+			""",
+		)
+
+		self.assertEqual(dom.a, 1)
+		self.assertEqual(dom.b, 2)
+		self.assertEqual(dom._skipped_0, "ABCD")
+		self.assertEqual(dom.c, 3)
+		self.assertEqual(dom.d, 4)
+	
+	def test_seek2(self):
+		dom = self._test_parse_build(
+			"\x01\x02ABCD\x03EF\x04",
+			"""
+				uchar a;
+				uchar b;
+				FSkip(2);
+				FSkip(2);
+				uchar c;
+				FSkip(2);
+				uchar d;
+			""",
+		)
+
+		self.assertEqual(dom.a, 1)
+		self.assertEqual(dom.b, 2)
+		# should be merged into one _skipped array
+		self.assertEqual(dom._skipped_0, "ABCD")
+		self.assertEqual(dom.c, 3)
+		self.assertEqual(dom._skipped_1, "EF")
+		self.assertEqual(dom.d, 4)
+	
+	def test_skip3(self):
+		dom = self._test_parse_build(
+			"ABCD",
+			"""
+				Printf("%d", FSkip(4));
+				Printf("%d", FSkip(2));
+			""",
+			verify=False,
+			stdout="0-1"
+		)
 
 class TestCompatString(unittest.TestCase, utils.UtilsMixin):
 	def setup(self):
