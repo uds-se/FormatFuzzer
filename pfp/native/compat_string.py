@@ -181,7 +181,23 @@ def RegExSearchW(params, ctxt, scope, stream, coord):
 #int SPrintf( char buffer[], const char format[] [, argument, ... ] )
 @native(name="SPrintf", ret=pfp.fields.Int)
 def SPrintf(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+	if len(params) < 2:
+		raise errors.InvalidArguments(coord, "{} args".format(len(params)), "at least 2 args")
+
+	if len(params) == 2:
+		params[0]._pfp__set_value(PYSTR(params[1]))
+		return len(PYSTR(params[1]))
+
+	parts = []
+	for part in params[2:]:
+		if isinstance(part, pfp.fields.Array) or isinstance(part, pfp.fields.String):
+			parts.append(PYSTR(part))
+		else:
+			parts.append(PYVAL(part))
+
+	new_value = PYSTR(params[1]) % tuple(parts)
+	params[0]._pfp__set_value(new_value)
+	return len(new_value)
 
 #int SScanf( char str[], char format[], ... )
 @native(name="SScanf", ret=pfp.fields.Int)

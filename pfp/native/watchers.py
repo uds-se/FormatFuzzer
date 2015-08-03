@@ -26,13 +26,14 @@ def watch_length(params, ctxt, scope, stream, coord):
 	to_update._pfp__set_value(total_size)
 
 @native(name="WatchCrc32", ret=pfp.fields.Void)
-def watch_length(params, ctxt, scope, stream, coord):
+def watch_crc(params, ctxt, scope, stream, coord):
 	"""Watch the crc32 of each of the params
 	"""
 	if len(params) <= 1:
 		raise errors.InvalidArguments(coord, "{} args".format(len(params)), "at least two arguments")
 	
 	to_update = params[0]
+	import pdb; pdb.set_trace()
 
 	total_data = utils.binary("")
 	for param in params[1:]:

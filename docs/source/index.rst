@@ -14,22 +14,57 @@ parse 010 templates into an AST, which is then interpreted by
 pfp. Pfp then returns a DOM object which can be used to access
 individual fields of the defined data structure.
 
-A simple example of parsing a PNG image: ::
+Please read the :ref:`getting_started` section for a better introduction.
+
+A simple example of extracting the comments out of a PNG image using
+the png template found below: ::
 
     import pfp
 
     dom = pfp.parse(data_file="image.png", template_file="png_template.bt")
 
-    for chunk in dom.png.chunk:
-        if chunk.name == "tEXt":
-            print("Found the comment:")
-            print(chunk.data.comment)
+    for chunk in png.chunks:
+        if chunk.cname == "tEXt":
+            print("Comment before: {}".format(chunk.data.tEXt.comment))
+            chunk.data.tEXt.comment = "NEW COMMENT"
+            print("Comment after: {}".format(chunk.data.tEXt.comment))
+
+A simple png template is below. Notice how declaring variables parses
+data from the input stream: ::
+
+    typedef struct {
+        // null-terminated
+        string label;
+
+        char comment[length - sizeof(label)];
+    } TEXT;
+
+    typedef struct {
+        uint length<watch=data, update=WatchLength>;
+        char cname[4];
+
+        union {
+            char raw[length];
+
+            if(cname == "tEXt") {
+                TEXT tEXt;
+            }
+        } data;
+        uint crc<watch=cname;data, update=WatchCrc32>;
+    } CHUNK;
+
+    uint64 magic;
+
+    while(!FEof()) {
+        CHUNK chunks;
+    }
 
 Contents:
 
 .. toctree::
    :maxdepth: 2
 
+   getting_started
    metadata
    fields
 

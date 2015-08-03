@@ -548,7 +548,7 @@ def Printf(params, ctxt, scope, stream, coord):
 	"""
 	if len(params) == 1:
 		sys.stdout.write(PYSTR(params[0]))
-		return
+		return len(PYSTR(params[0]))
 
 	parts = []
 	for part in params[1:]:
