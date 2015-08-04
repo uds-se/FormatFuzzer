@@ -580,6 +580,9 @@ class Union(Struct):
 		"""Init the union and its buff stream
 		"""
 		super(Union, self).__init__(metadata_processor=metadata_processor)
+
+		if stream is not None:
+			self._pfp__offset = stream.tell()
 		self._pfp__buff = six.BytesIO()
 
 	def _pfp__add_child(self, name, child, stream=None):
@@ -946,6 +949,7 @@ class IntBase(NumberBase):
 		value to a signed one (and visa versa)"""
 		if self._pfp__frozen:
 			raise errors.UnmodifiableConst()
+
 		if isinstance(new_val, IntBase):
 			# will automatically convert correctly between ints of
 			# different sizes, unsigned/signed, etc
@@ -956,6 +960,22 @@ class IntBase(NumberBase):
 				raw = raw[1:]
 			self._pfp__parse(six.BytesIO(raw))
 		else:
+			mask = 1 << (8*self.width)
+
+			if self.signed:
+				max_val = (mask//2)-1
+				min_val = -(mask//2)
+			else:
+				max_val = mask-1
+				min_val = 0
+			
+			if new_val < min_val:
+				new_val += -(min_val)
+				new_val &= (mask-1)
+				new_val -= -(min_val)
+			elif new_val > max_val:
+				new_val &= (mask-1)
+
 			self._pfp__value = new_val
 
 		self._pfp__notify_parent()
@@ -986,6 +1006,7 @@ class Char(IntBase):
 
 class UChar(Char):
 	format = "B"
+	signed = False
 
 class Short(IntBase):
 	width = 2
@@ -993,12 +1014,13 @@ class Short(IntBase):
 
 class UShort(Short):
 	format = "H"
+	signed = False
 
 class WChar(Short):
 	pass
 
 class WUChar(UShort):
-	pass
+	signed = False
 
 class Int(IntBase):
 	width = 4
@@ -1006,6 +1028,7 @@ class Int(IntBase):
 
 class UInt(Int):
 	format = "I"
+	signed = False
 
 class Int64(IntBase):
 	width = 8
@@ -1013,6 +1036,7 @@ class Int64(IntBase):
 
 class UInt64(Int64):
 	format = "Q"
+	signed = False
 
 class Float(NumberBase):
 	width = 4
@@ -1140,7 +1164,7 @@ class Array(Field):
 	
 	def _pfp__set_value(self, value):
 		is_string_type = False
-		for string_type in six.string_types:
+		for string_type in list(six.string_types) + [bytes]:
 			if isinstance(value, string_type):
 				is_string_type = True
 				break

@@ -1017,6 +1017,9 @@ class PfpInterp(object):
 		"""
 		self._dlog("handling union")
 		union = fields.Union()
+		
+		# TODO maybe evaluate this again
+		union._pfp__offset = stream.tell()
 
 		self._handle_node(UnionDecls(node.decls, node.coord), scope, union, stream)
 

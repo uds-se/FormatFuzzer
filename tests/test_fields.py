@@ -70,6 +70,16 @@ class TestNumericFields(unittest.TestCase, utils.UtilsMixin):
 	def test_int64(self):
 		field = UInt64()
 		self._do_endian_tests(field, "Q")
+	
+	def test_const_int64(self):
+		dom = self._test_parse_build(
+			"",
+			"""
+				const uint64 PNGMAGIC = 0x89504E470D0A1A0AL;
+				Printf("%d", PNGMAGIC);
+			""",
+			stdout="9894494448401390090"
+		)
 
 class TestStrings(unittest.TestCase, utils.UtilsMixin):
 	def setUp(self):

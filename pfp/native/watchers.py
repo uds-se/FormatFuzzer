@@ -33,7 +33,6 @@ def watch_crc(params, ctxt, scope, stream, coord):
 		raise errors.InvalidArguments(coord, "{} args".format(len(params)), "at least two arguments")
 	
 	to_update = params[0]
-	import pdb; pdb.set_trace()
 
 	total_data = utils.binary("")
 	for param in params[1:]:

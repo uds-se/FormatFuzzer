@@ -138,7 +138,7 @@ class TestMetadata(unittest.TestCase, utils.UtilsMixin):
 			params[0]._pfp__set_value(val)
 
 		interp = pfp.interp.PfpInterp()
-		interp.add_native(name="Crc32", func=crc32, ret=pfp.fields.UInt)
+		interp.add_native(name="Crc32", func=crc32, ret=pfp.fields.Void)
 
 		dom = self._test_parse_build(
 			"TYPA\x41\x410000TYPB\x42\x420000",
@@ -179,7 +179,8 @@ class TestMetadata(unittest.TestCase, utils.UtilsMixin):
 
 		dom.chunks[1].data.type_b.hello = 0xff01
 
-		self.assertEqual(dom.chunks[1].crc, 0x1b441fc4)
+		self.assertEqual(dom.chunks[1].crc, 0xa5fadf1b)
+		
 	
 	def test_metadata_packer(self):
 		dom = self._test_parse_build(

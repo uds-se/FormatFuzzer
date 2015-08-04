@@ -112,6 +112,42 @@ class TestStructUnion(unittest.TestCase, utils.UtilsMixin):
 		self.assertEqual(dom.test.onion.chars.b, ord("b"))
 		self.assertEqual(dom.test.onion.chars.c, ord("c"))
 		self.assertEqual(dom.test.onion.chars.d, ord("d"))
+	
+	def test_union_offset1(self):
+		dom = self._test_parse_build(
+			"abcd",
+			"""
+				struct {
+					char a;
+					char b;
+					union {
+						char c;
+						uchar uc;
+					} union_test;
+					char d;
+				} test;
+			"""
+		)
+		self.assertEqual(dom.test.union_test._pfp__offset, 2)
+	
+	def test_union_offset2(self):
+		dom = self._test_parse_build(
+			"abcd",
+			"""
+				typedef union {
+					char c;
+					uchar uc;
+				} CHAR_UNION;
+
+				struct {
+					char a;
+					char b;
+					CHAR_UNION union_test;
+					char d;
+				} test;
+			"""
+		)
+		self.assertEqual(dom.test.union_test._pfp__offset, 2)
 
 if __name__ == "__main__":
 	unittest.main()
