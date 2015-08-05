@@ -1,3 +1,4 @@
+.. _metadata:
 Metadata in PFP
 ===================
 

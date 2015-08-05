@@ -244,7 +244,7 @@ class Field(object):
 		# the __eq__ operator, while is compares id(object) results
 		if watched_field is self._:
 			self._pfp__pack_data()
-		else:
+		elif self._pfp__update_func is not None:
 			self._pfp__update_func.call(
 				[self] + self._pfp__watch_fields,
 				*self._pfp__update_func_call_info
@@ -580,6 +580,9 @@ class Union(Struct):
 		"""Init the union and its buff stream
 		"""
 		super(Union, self).__init__(metadata_processor=metadata_processor)
+
+		if stream is not None:
+			self._pfp__offset = stream.tell()
 		self._pfp__buff = six.BytesIO()
 
 	def _pfp__add_child(self, name, child, stream=None):
@@ -587,7 +590,7 @@ class Union(Struct):
 
 		:name: The name of the child
 		:child: A :class:`.Field` instance
-		:returns: None
+		:returns: The resulting field
 		"""
 		res = super(Union, self)._pfp__add_child(name, child)
 		self._pfp__buff.seek(0, 0)
@@ -601,13 +604,27 @@ class Union(Struct):
 
 		return res
 	
-	def _rebuild_internal_buff(self):
-		"""rebuild the internal buffer for the union
+	def _pfp__notify_update(self, child=None):
+		"""Handle a child with an updated value
 		"""
-		self._pfp__buff = six.BytesIO()
-		for child in self._pfp__children:
-			child._pfp__build(self._pfp__buff, save_offset=True)
-			self._pfp__buff.seek(0, 0)
+		if getattr(self, "_pfp__union_update_other_children", True):
+			self._pfp__union_update_other_children = False
+
+			new_data = child._pfp__build()
+			new_stream =  bitwrap.BitwrappedStream(six.BytesIO(new_data))
+			for other_child in self._pfp__children:
+				if other_child is child:
+					continue
+
+				if isinstance(other_child, Array) and other_child._is_stringable():
+					other_child._pfp__set_value(new_data)
+				else:
+					other_child._pfp__parse(new_stream)
+				new_stream.seek(0)
+
+			self._pfp__no_update_other_children = True
+		
+		super(Union, self)._pfp__notify_update(child=child)
 	
 	def _pfp__parse(self, stream, save_offset=False):
 		"""Parse the incoming stream
@@ -638,23 +655,27 @@ class Union(Struct):
 		:returns: None
 		"""
 		max_size = -1
-		if stream is not None:
-			for child in self._pfp__children:
-				curr_pos = stream.tell()
-				child._pfp__build(stream, save_offset)
-				size = stream.tell() - curr_pos
-				stream.seek(-size, 1)
-
-				if size > max_size:
-					max_size = size
-
-			stream.seek(max_size, 1)
-
-			return max_size
+		if stream is None:
+			core_stream = six.BytesIO()
+			new_stream = bitwrap.BitwrappedStream(core_stream)
 		else:
-			self._rebuild_internal_buff()
-			val = self._pfp__buff.getvalue()
-			return val
+			new_stream = stream
+
+		for child in self._pfp__children:
+			curr_pos = new_stream.tell()
+			child._pfp__build(new_stream, save_offset)
+			size = new_stream.tell() - curr_pos
+			new_stream.seek(-size, 1)
+
+			if size > max_size:
+				max_size = size
+
+		new_stream.seek(max_size, 1)
+
+		if stream is None:
+			return core_stream.getvalue()
+		else:
+			return max_size
 	
 	def __setattr__(self, name, value):
 		"""Custom __setattr__ to keep track of the order things
@@ -928,6 +949,7 @@ class IntBase(NumberBase):
 		value to a signed one (and visa versa)"""
 		if self._pfp__frozen:
 			raise errors.UnmodifiableConst()
+
 		if isinstance(new_val, IntBase):
 			# will automatically convert correctly between ints of
 			# different sizes, unsigned/signed, etc
@@ -938,6 +960,22 @@ class IntBase(NumberBase):
 				raw = raw[1:]
 			self._pfp__parse(six.BytesIO(raw))
 		else:
+			mask = 1 << (8*self.width)
+
+			if self.signed:
+				max_val = (mask//2)-1
+				min_val = -(mask//2)
+			else:
+				max_val = mask-1
+				min_val = 0
+			
+			if new_val < min_val:
+				new_val += -(min_val)
+				new_val &= (mask-1)
+				new_val -= -(min_val)
+			elif new_val > max_val:
+				new_val &= (mask-1)
+
 			self._pfp__value = new_val
 
 		self._pfp__notify_parent()
@@ -968,6 +1006,7 @@ class Char(IntBase):
 
 class UChar(Char):
 	format = "B"
+	signed = False
 
 class Short(IntBase):
 	width = 2
@@ -975,12 +1014,13 @@ class Short(IntBase):
 
 class UShort(Short):
 	format = "H"
+	signed = False
 
 class WChar(Short):
 	pass
 
 class WUChar(UShort):
-	pass
+	signed = False
 
 class Int(IntBase):
 	width = 4
@@ -988,6 +1028,7 @@ class Int(IntBase):
 
 class UInt(Int):
 	format = "I"
+	signed = False
 
 class Int64(IntBase):
 	width = 8
@@ -995,6 +1036,7 @@ class Int64(IntBase):
 
 class UInt64(Int64):
 	format = "Q"
+	signed = False
 
 class Float(NumberBase):
 	width = 4
@@ -1121,6 +1163,18 @@ class Array(Field):
 		return not self.__eq__(other)
 	
 	def _pfp__set_value(self, value):
+		is_string_type = False
+		for string_type in list(six.string_types) + [bytes]:
+			if isinstance(value, string_type):
+				is_string_type = True
+				break
+		
+		if is_string_type and self._is_stringable():
+			self.raw_data = value
+			self.width = len(value)
+			self._pfp__notify_parent()
+			return
+
 		if value.__class__ not in [list, tuple]:
 			raise Exception("Error, invalid value for array")
 
@@ -1286,6 +1340,11 @@ class String(Field):
 	width = -1
 	read_size = 1
 	terminator = utils.binary("\x00")
+
+	def __init__(self, stream=None, metadata_processor=None):
+		self._pfp__value = ""
+
+		super(String, self).__init__(stream=stream, metadata_processor=metadata_processor)
 
 	def _pfp__set_value(self, new_val):
 		"""Set the value of the String, taking into account

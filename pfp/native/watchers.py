@@ -26,7 +26,7 @@ def watch_length(params, ctxt, scope, stream, coord):
 	to_update._pfp__set_value(total_size)
 
 @native(name="WatchCrc32", ret=pfp.fields.Void)
-def watch_length(params, ctxt, scope, stream, coord):
+def watch_crc(params, ctxt, scope, stream, coord):
 	"""Watch the crc32 of each of the params
 	"""
 	if len(params) <= 1:
