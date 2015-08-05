@@ -7,30 +7,25 @@ PFP - Python Format Parser
 ===============================
 
 Pfp (python format parser) is a python interpreter for
-`010 Editor <http://www.sweetscape.com/010editor/>`_.
+`010 Editor template scripts <http://www.sweetscape.com/010editor/manual/IntroTempScripts.htm>`_.
 
 Pfp uses `py010parser <https://github.com/d0c-s4vage/py010parser>`_ to
 parse 010 templates into an AST, which is then interpreted by
 pfp. Pfp then returns a DOM object which can be used to access
 individual fields of the defined data structure.
 
-Please read the :ref:`getting_started` section for a better introduction.
+Please read the :doc:`getting_started` section for a better introduction.
 
-A simple example of extracting the comments out of a PNG image using
-the png template found below: ::
+TL;DR
+^^^^^
 
-    import pfp
+You lazy bum. RTFM!
 
-    dom = pfp.parse(data_file="image.png", template_file="png_template.bt")
+Below is a simple PNG template that will parse the PNG image into chunks.
+The ``tEXt`` chunk of the PNG image will also specifically be parsed:
 
-    for chunk in png.chunks:
-        if chunk.cname == "tEXt":
-            print("Comment before: {}".format(chunk.data.tEXt.comment))
-            chunk.data.tEXt.comment = "NEW COMMENT"
-            print("Comment after: {}".format(chunk.data.tEXt.comment))
-
-A simple png template is below. Notice how declaring variables parses
-data from the input stream: ::
+.. highlight:: c
+::
 
     typedef struct {
         // null-terminated
@@ -59,6 +54,19 @@ data from the input stream: ::
         CHUNK chunks;
     }
 
+The python code below will use the template above to parse a PNG image,
+find the ``tEXt`` chunk, and change the comment: ::
+    import pfp
+
+    dom = pfp.parse(data_file="image.png", template_file="png_template.bt")
+
+    for chunk in png.chunks:
+        if chunk.cname == "tEXt":
+            print("Comment before: {}".format(chunk.data.tEXt.comment))
+            chunk.data.tEXt.comment = "NEW COMMENT"
+            print("Comment after: {}".format(chunk.data.tEXt.comment))
+
+
 Contents:
 
 .. toctree::
@@ -67,6 +75,7 @@ Contents:
    getting_started
    metadata
    fields
+   bitstream
 
 .. automodule:: pfp
    :members:

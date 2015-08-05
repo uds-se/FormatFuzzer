@@ -1,4 +1,4 @@
-
+.. _getting_started:
 Getting Started
 ===============
 
@@ -23,11 +23,15 @@ variables. Each time a variable is declared, that much data is read
 from the input stream and stored in the variable.
 
 Variables are also allowed that do not cause data to be read from
-the input stream. Prefixing a declaration with `const` or `local`
+the input stream. Prefixing a declaration with ``const`` or ``local``
 will create a temporary variable that can be used in the script.
 
 An example template script that parses TLV (type-length-value)
-structures out of the input stream: ::
+structures out of the input stream is shown below:
+
+.. highlight:: c
+
+::
 
     local int count = 0;
     const uint64 MAGIC = 0xaabbccddeeff0011;
@@ -48,9 +52,11 @@ structures out of the input stream: ::
         } tlv;
     }
 
+.. highlight:: python
+
 Note that a return statement in the main body of the script will
 cause the template to stop being executed. Also note that declaring
-multiple variables of the same name (in this case, `tlv`) will cause
+multiple variables of the same name (in this case, ``tlv``) will cause
 that variable to be made into an array of the variable's type.
 
 More about the 010 template script syntax can be read about
@@ -59,7 +65,7 @@ More about the 010 template script syntax can be read about
 Parsing Data
 ^^^^^^^^^^^^
 
-010 template scripts are interpreted from python using the `pfp.parse`
+010 template scripts are interpreted from python using the ``pfp.parse``
 function, as shown below: ::
 
     import pfp
@@ -90,7 +96,7 @@ function, as shown below: ::
         data_file       = "path/to/tlv.bin"
     )
 
-The `pfp.parse` function returns a dom of the parsed data. Individual
+The ``pfp.parse`` function returns a dom of the parsed data. Individual
 fields may be accessed using standard dot-notation: ::
 
     for tlv in parsed_tlv.tlvs:
@@ -99,4 +105,55 @@ fields may be accessed using standard dot-notation: ::
 Manipulating Data
 ^^^^^^^^^^^^^^^^^
 
+Parsed data contained within the dom can be manipulated and then
+rebuilt: ::
 
+    for tlv in parsed_tlv.tlvs:
+        if tlv.type == "SOMETYPE":
+            tlv.value = "a new value"
+
+    new_data = parsed_tlv._pfp__build()
+
+Metadata
+^^^^^^^^
+
+010 template sytax supports adding "special attributes" (called
+metadata in pfp). 010 editor's special attributes are largely
+centered around how fields are displayed in the GUI; for this
+reason, pfp currently ignores 010 editor's special attributes.
+
+However, pfp also introduces new special attributes to help
+manage relationships between fields, such as lengths, checksums,
+and compressed data.
+
+The template below has updated the TLV-parsing template from
+above to add metadata to the length field:
+
+.. highlight:: c
+::
+
+    local int count = 0;
+    const uint64 MAGIC = 0xaabbccddeeff0011;
+
+    uint64 magic;
+
+    if(magic != MAGIC) {
+        Printf("Magic value is not valid, bailing");
+        return 1;
+    }
+
+    while(!FEof()) {
+        Printf("Parsing the %d-th TLV structure", ++count);
+        struct {
+            string type;
+            int length<watch=value, update=WatchLength>;
+            char value[length];
+        } tlvs;
+    }
+.. highlight:: python
+
+With the metadata, if the ``value`` field of a tlv were changed,
+the ``length`` field would be automatically updated to the
+new length of the ``value`` field.
+
+See :doc:`metadata` for detailed information.

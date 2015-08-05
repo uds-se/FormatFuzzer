@@ -19,6 +19,11 @@ def parse(data=None, template=None, data_file=None, template_file=None, interp=N
 	:data_file: path to the data to be used as the input stream
 	:template_file: template file path
 	:interp: the interpretor to be used (a default one will be created if ``None``)
+	:debug: if debug information should be printed while interpreting the template (false)
+	:predefines: if built-in type information should be inserted (true)
+	:int3: if debugger breaks are allowed while interpreting the template (true)
+	:cpp_path: the path to the ``cpp`` binary, used to strip comments ("cpp")
+	:cpp_args: the args to the ``cpp`` binary to strip comments. Defaults to "", but "-xc++" might be useful on macs.
 	:returns: pfp DOM
 	"""
 	if data is None and data_file is None:
