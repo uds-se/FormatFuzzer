@@ -12,7 +12,14 @@ import pfp.utils as utils
 
 @native(name="WatchLength", ret=pfp.fields.Void)
 def watch_length(params, ctxt, scope, stream, coord):
-	"""Watch the total length of each of the params
+	"""WatchLength - Watch the total length of each of the params.
+	
+	Example:
+		The code below uses the ``WatchLength`` update function to update
+		the ``length`` field to the length of the ``data`` field ::
+
+			int length<watch=data, update=WatchLength>;
+			char data[length];
 	"""
 	if len(params) <= 1:
 		raise errors.InvalidArguments(coord, "{} args".format(len(params)), "at least two arguments")
@@ -27,7 +34,15 @@ def watch_length(params, ctxt, scope, stream, coord):
 
 @native(name="WatchCrc32", ret=pfp.fields.Void)
 def watch_crc(params, ctxt, scope, stream, coord):
-	"""Watch the crc32 of each of the params
+	"""WatchCrc32 - Watch the total crc32 of the params.
+	
+	Example:
+		The code below uses the ``WatchCrc32`` update function to update
+		the ``crc`` field to the crc of the ``length`` and ``data`` fields ::
+
+			char length;
+			char data[length];
+			int crc<watch=length;data, update=WatchCrc32>;
 	"""
 	if len(params) <= 1:
 		raise errors.InvalidArguments(coord, "{} args".format(len(params)), "at least two arguments")

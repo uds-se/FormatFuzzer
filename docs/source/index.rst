@@ -75,6 +75,9 @@ Contents:
    getting_started
    metadata
    fields
+   debugger
+   interpreter
+   functions
    bitstream
 
 .. automodule:: pfp

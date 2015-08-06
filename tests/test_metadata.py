@@ -194,7 +194,7 @@ class TestMetadata(unittest.TestCase, utils.UtilsMixin):
 				struct {
 					string type;
 					uchar length;
-					char data[length] <packtype=PACKED_DATA, packer=GZipper>;
+					char data[length] <packtype=PACKED_DATA, packer=PackerGZip>;
 				} main_struct;
 			""",
 		)

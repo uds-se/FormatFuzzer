@@ -274,7 +274,7 @@ man_pages = [
 #  dir menu entry, description, category)
 texinfo_documents = [
   (master_doc, 'PFP', u'PFP Documentation',
-   author, 'PFP', 'One line description of project.',
+   author, 'PFP', 'Python Format Parser, an 010 template interpreter',
    'Miscellaneous'),
 ]
 
