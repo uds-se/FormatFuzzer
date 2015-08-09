@@ -453,7 +453,7 @@ class Struct(Field):
 		for x in six.moves.range(len(self._pfp__children)):
 			self._pfp__children[x]._pfp__set_value(value[x])
 	
-	def _pfp__add_child(self, name, child, overwrite=False):
+	def _pfp__add_child(self, name, child, stream=None, overwrite=False):
 		"""Add a child to the Struct field. If multiple consecutive fields are
 		added with the same name, an implicit array will be created to store
 		all fields of that name.
@@ -461,6 +461,7 @@ class Struct(Field):
 		:param str name: The name of the child
 		:param pfp.fields.Field child: The field to add
 		:param bool overwrite: Overwrite existing fields (False)
+		:param pfp.bitwrap.BitwrappedStream stream: unused, but her for compatability with Union._pfp__add_child
 		:returns: The resulting field added
 		"""
 		if not overwrite and name in self._pfp__children_map:
