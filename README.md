@@ -8,6 +8,12 @@
 
 See the main documentation on [Read the Docs](http://pfp.readthedocs.org/en/latest/)
 
+## Installation
+
+Install pfp with
+
+	pip install pfp
+
 ## Tl;DR
 
 You don't feel like going to read the docs? This should get you
