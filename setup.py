@@ -4,10 +4,6 @@
 import os, sys
 from setuptools import setup
 
-with open("requirements.txt", "r") as f:
-	data = f.read()
-requires = f.split("\n")
-
 setup(
     # metadata
     name='pfp',
