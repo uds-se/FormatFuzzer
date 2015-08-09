@@ -23,8 +23,8 @@ setup(
     author_email='d0c.s4vage@gmail.com',
     url='https://github.com/d0c-s4vage/pfp',
     platforms='Cross Platform',
-	download_url="https://github.com/d0c-s4vage/pfp/tarball/v0.1.2",
-	install_requires = open("requirements.txt","r").read().split("\n"),
+	download_url="https://github.com/d0c-s4vage/pfp/tarball/v0.1.3",
+	install_requires = open(os.path.join(os.path.dirname(__file__), "requirements.txt")).read().split("\n"),
     classifiers = [
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 3',],
