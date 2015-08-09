@@ -57,7 +57,10 @@ methods to handle AST node types are found in the ``_node_switch`` dict: ::
 	}
 
 Interpreter Reference Documentation
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. automodule:: pfp.interp
+   :members:
 
 .. automodule:: pfp.interp
    :members:

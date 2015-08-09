@@ -4,6 +4,10 @@
 import os, sys
 from setuptools import setup
 
+with open("requirements.txt", "r") as f:
+	data = f.read()
+requires = f.split("\n")
+
 setup(
     # metadata
     name='pfp',
@@ -23,11 +27,8 @@ setup(
     author_email='d0c.s4vage@gmail.com',
     url='https://github.com/d0c-s4vage/pfp',
     platforms='Cross Platform',
-	install_requires = [
-		"py010parser",
-		"six",
-		"intervaltree"
-	],
+	download_url="https://github.com/d0c-s4vage/pfp/tarball/v0.1",
+	install_requires = open("requirements.txt","r").read().split("\n"),
     classifiers = [
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 3',],
