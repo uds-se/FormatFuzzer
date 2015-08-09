@@ -117,7 +117,12 @@ rebuilt: ::
 Printing Structures
 ^^^^^^^^^^^^^^^^^^^
 
-Pfp 
+The method :any:`pfp.fields.Field._pfp__show` will print data information
+about the field. If called on a field that contains child fields, those
+fields will also be printed: ::
+
+    dom = pfp.parse(...)
+    print(dom._pfp__show(include_offset=True))
 
 Metadata
 ^^^^^^^^
@@ -162,3 +167,39 @@ the ``length`` field would be automatically updated to the
 new length of the ``value`` field.
 
 See :doc:`metadata` for detailed information.
+
+Debugger
+^^^^^^^^
+
+Pfp comes with a built-in debugger, which can be dropped into
+by calling the :any:`Int3() <pfp.native.dbg.int3>` function in a
+template. ::
+
+         23 //   length (4 bytes), chunk_type (4 bytes), data (length bytes), crc (4 bytes)
+         24 //   CRC Does NOT include the length bytes.
+         25 //--------------------------------------
+         26 
+    -->  27 Int3();
+         28 
+         29 BigEndian();                  // PNG files are in Network Byte order
+         30 
+         31 const uint64 PNGMAGIC = 0x89504E470D0A1A0AL;
+    pfp> peek
+    89 50 4e 47 0d 0a 1a 0a 00 00 00 0d 49 48 44 52 .PNG........IHDR
+    pfp> help
+
+    Documented commands (type help <topic>):
+    ========================================
+    EOF  continue  eval  help  list  next  peek  quit  s  show  step  x
+
+    pfp> n
+         25 //--------------------------------------
+         26 
+         27 Int3();
+         28 
+    -->  29 BigEndian();                  // PNG files are in Network Byte order
+         30 
+         31 const uint64 PNGMAGIC = 0x89504E470D0A1A0AL;
+         32 
+         33 // Chunk Type
+    pfp>

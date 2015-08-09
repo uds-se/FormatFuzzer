@@ -54,6 +54,18 @@ class Field(object):
 
 	_pfp__interp = None
 
+	_pfp__name = None
+	"""The name of the Field"""
+
+	_pfp__parent = None
+	"""The parent of the field"""
+
+	_pfp__watchers = []
+	"""All fields that are watching this field"""
+
+	_pfp__watch_fields = []
+	"""All fields that this field is watching"""
+
 	def __init__(self, stream=None, metadata_processor=None):
 		super(Field, self).__init__()
 		self._pfp__name = None
@@ -390,6 +402,11 @@ class Field(object):
 		return "{}({!r})".format(self.__class__.__name__, self._pfp__value)
 	
 	def _pfp__show(self, level=0, include_offset=False):
+		"""Return a representation of this field
+
+		:param int level: The indent level of the output
+		:param bool include_offset: Include the parsed offsets of this field
+		"""
 		return repr(self)
 
 class Void(Field):
@@ -400,6 +417,9 @@ class Struct(Field):
 	"""The struct field"""
 
 	_pfp__show_name = "struct"
+
+	_pfp__children = []
+	"""All children of the struct, in order added"""
 
 	def __init__(self, stream=None, metadata_processor=None):
 		# ordered list of children
@@ -433,12 +453,15 @@ class Struct(Field):
 		for x in six.moves.range(len(self._pfp__children)):
 			self._pfp__children[x]._pfp__set_value(value[x])
 	
-	def _pfp__add_child(self, name, child, stream=None, overwrite=False):
-		"""Add a child to the Struct field
+	def _pfp__add_child(self, name, child, overwrite=False):
+		"""Add a child to the Struct field. If multiple consecutive fields are
+		added with the same name, an implicit array will be created to store
+		all fields of that name.
 
-		:name: The name of the child
-		:child: A :class:`.Field` instance
-		:returns: None
+		:param str name: The name of the child
+		:param pfp.fields.Field child: The field to add
+		:param bool overwrite: Overwrite existing fields (False)
+		:returns: The resulting field added
 		"""
 		if not overwrite and name in self._pfp__children_map:
 			return self._pfp__handle_implicit_array(name, child)
@@ -942,6 +965,8 @@ class NumberBase(Field):
 		raise AttributeError(val)
 
 class IntBase(NumberBase):
+	"""The base class for all integers"""
+
 	signed = True
 
 	def _pfp__set_value(self, new_val):
@@ -1001,53 +1026,77 @@ class IntBase(NumberBase):
 		return self // other
 
 class Char(IntBase):
+	"""A field representing a signed char"""
+
 	width = 1
 	format = "b"
 
 class UChar(Char):
+	"""A field representing an unsigned char"""
+
 	format = "B"
 	signed = False
 
 class Short(IntBase):
+	"""A field representing a signed short"""
+
 	width = 2
 	format = "h"
 
 class UShort(Short):
+	"""A field representing an unsigned short"""
+
 	format = "H"
 	signed = False
 
 class WChar(Short):
+	"""A field representing a signed wchar (aka short)"""
+
 	pass
 
 class WUChar(UShort):
+	"""A field representing an unsigned wuchar (aka ushort)"""
+
 	signed = False
 
 class Int(IntBase):
+	"""A field representing a signed int"""
+
 	width = 4
 	format = "i"
 
 class UInt(Int):
+	"""A field representing an unsigned int"""
+
 	format = "I"
 	signed = False
 
 class Int64(IntBase):
+	"""A field representing a signed int64"""
+
 	width = 8
 	format = "q"
 
 class UInt64(Int64):
+	"""A field representing an unsigned int64"""
+
 	format = "Q"
 	signed = False
 
 class Float(NumberBase):
+	"""A field representing a float"""
+
 	width = 4
 	format = "f"
 
 class Double(NumberBase):
+	"""A field representing a double"""
+
 	width = 8
 	format = "d"
 
 class Enum(IntBase):
-	"""For teh enums"""
+	"""The enum field class"""
 
 	enum_vals = None
 	enum_cls = None
@@ -1102,7 +1151,17 @@ class Enum(IntBase):
 # --------------------------------
 
 class Array(Field):
+	"""The array field"""
+
 	width = -1
+	"""The number of items of the array. ``len(array_field)`` also works"""
+
+	raw_data = None
+	"""The raw data of the array. Note that this will only be
+	set if the array's items are a core type (E.g. Int, Char, etc)"""
+
+	field_cls = None
+	"""The class for items in the array"""
 
 	def __init__(self, width, field_cls, stream=None, metadata_processor=None):
 		""" Create an array field of size "width" from the stream

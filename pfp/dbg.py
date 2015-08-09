@@ -44,7 +44,14 @@ class PfpDbg(cmd.Cmd, object):
 			return self.do_eval(line)
 	
 	def do_peek(self, args):
-		"""Peek at the next 16 bytes in the stream
+		"""Peek at the next 16 bytes in the stream::
+
+		Example:
+
+			The peek command will display the next 16 hex bytes in the input
+			stream::
+				pfp> peek
+				89 50 4e 47 0d 0a 1a 0a 00 00 00 0d 49 48 44 52 .PNG........IHDR
 		"""
 		s = self._interp._stream
 		# make a copy of it
@@ -82,7 +89,7 @@ class PfpDbg(cmd.Cmd, object):
 		return True
 	
 	def do_step(self, args):
-		"""Step into the next statement
+		"""Step INTO the next statement
 		"""
 		self._do_print_from_last_cmd = True
 		self._interp.step_into()
@@ -101,7 +108,10 @@ class PfpDbg(cmd.Cmd, object):
 		return True
 	
 	def do_eval(self, args):
-		"""Eval the user-supplied statement
+		"""Eval the user-supplied statement. Note that you can do anything with
+		this command that you can do in a template.
+
+		The resulting value of your statement will be displayed.
 		"""
 		try:
 			res = self._interp.eval(args)
@@ -120,7 +130,7 @@ class PfpDbg(cmd.Cmd, object):
 	
 	def do_show(self, args):
 		"""Show the current structure of __root (no args),
-		or show the result of the expression.
+		or show the result of the expression (something that can be eval'd).
 		"""
 		args = args.strip()
 
