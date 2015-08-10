@@ -1276,10 +1276,16 @@ class Array(Field):
 	
 	def _pfp__set_value(self, value):
 		is_string_type = False
-		for string_type in list(six.string_types) + [bytes]:
-			if isinstance(value, string_type):
-				is_string_type = True
-				break
+
+		if isinstance(value, String):
+			is_string_type = True
+			value = value._pfp__build()
+
+		else:
+			for string_type in list(six.string_types) + [bytes]:
+				if isinstance(value, string_type):
+					is_string_type = True
+					break
 		
 		if is_string_type and self._is_stringable():
 			self.raw_data = value
@@ -1463,7 +1469,7 @@ class String(Field):
 		escaping and such as well
 		"""
 		if not isinstance(new_val, Field):
-			new_val = utils.string_escape(new_val)
+			new_val = utils.binary(utils.string_escape(new_val))
 		super(String, self)._pfp__set_value(new_val)
 
 	def _pfp__parse(self, stream, save_offset=False):

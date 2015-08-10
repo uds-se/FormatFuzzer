@@ -275,6 +275,58 @@ class TestCompatString(unittest.TestCase, utils.UtilsMixin):
 			stdout="abbaabcd"
 		)
 	
+	def test_strchr1(self):
+		dom = self._test_parse_build(
+			"",
+			"""
+			local char b[30] = "hellogoodbyte";
+			Printf("%d", Strchr(b, 'g'));
+			""",
+			stdout="5"
+		)
+	
+	def test_strchr2(self):
+		dom = self._test_parse_build(
+			"",
+			"""
+			local char b[30] = "hellogoodbyte";
+			Printf("%d", Strchr(b, 'X'));
+			""",
+			stdout="-1"
+		)
+	
+	def test_strcpy(self):
+		dom = self._test_parse_build(
+			"",
+			"""
+			local char a[0];
+			Printf("%s", a);
+
+			local char b[30] = "hellogoodbyte";
+			Printf("%s", b);
+
+			Strcpy(a, b);
+			Printf("%s", a);
+			""",
+			stdout="hellogoodbyte\x00hellogoodbyte\x00"
+		)
+	
+	def test_strncpy(self):
+		dom = self._test_parse_build(
+			"",
+			"""
+			local char a[0];
+			Printf("%s", a);
+
+			local char b[30] = "hellogoodbyte";
+			Printf("%s", b);
+
+			Strncpy(a, b, 5);
+			Printf("%s", a);
+			""",
+			stdout="hellogoodbyte\x00hello"
+		)
+	
 	def test_strcmp1(self):
 		dom = self._test_parse_build(
 			"",
@@ -293,6 +345,28 @@ class TestCompatString(unittest.TestCase, utils.UtilsMixin):
 			local string a = "hello";
 			local string b = "hello";
 			Printf("%d", Strcmp(a, b));
+			""",
+			stdout="0"
+		)
+
+	def test_stricmp1(self):
+		dom = self._test_parse_build(
+			"",
+			"""
+			local string a = "helLotherE";
+			local string b = "hEllogoOdbyte";
+			Printf("%d", Stricmp(a, b));
+			""",
+			stdout="1"
+		)
+	
+	def test_stricmp2(self):
+		dom = self._test_parse_build(
+			"",
+			"""
+			local string a = "hElLo";
+			local string b = "HeLlo";
+			Printf("%d", Stricmp(a, b));
 			""",
 			stdout="0"
 		)
@@ -317,6 +391,49 @@ class TestCompatString(unittest.TestCase, utils.UtilsMixin):
 			Printf("%d", Strncmp(a, b, 6));
 			""",
 			stdout="1"
+		)
+	
+	
+	def test_strnicmp1(self):
+		dom = self._test_parse_build(
+			"",
+			"""
+			local string a = "hElLothere";
+			local string b = "HeLlOgoodbyte";
+			Printf("%d", Strnicmp(a, b, 5));
+			""",
+			stdout="0"
+		)
+	
+	def test_strnicmp2(self):
+		dom = self._test_parse_build(
+			"",
+			"""
+			local string a = "hElLOthere";
+			local string b = "helLogoOdbyte";
+			Printf("%d", Strnicmp(a, b, 6));
+			""",
+			stdout="1"
+		)
+	
+	def test_strstr1(self):
+		dom = self._test_parse_build(
+			"",
+			"""
+			local string a = "hellothere";
+			Printf("%d", Strstr(a, "llo"));
+			""",
+			stdout="2"
+		)
+	
+	def test_strstr2(self):
+		dom = self._test_parse_build(
+			"",
+			"""
+			local string a = "hellothere";
+			Printf("%d", Strstr(a, "lloZ"));
+			""",
+			stdout="-1"
 		)
 
 if __name__ == "__main__":
