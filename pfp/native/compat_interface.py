@@ -9,7 +9,7 @@ are nops, some are fully implemented.
 
 import sys
 
-from pfp.native import native
+from pfp.native import native, predefine
 import pfp.fields
 import pfp.errors
 
@@ -624,6 +624,33 @@ def RequiresVersion(params, ctxt, scope, stream, coord):
 def RunTemplate(params, ctxt, scope, stream, coord):
 	raise NotImplementedError()
 
+predefine("""
+const int cBlack = 0x000000;
+const int cRed = 0x0000ff;
+const int cDkRed = 0x000080;
+const int cLtRed = 0x8080ff;
+const int cGreen = 0x00ff00;
+const int cDkGreen = 0x008000;
+const int cLtGreen = 0x80ff80;
+const int cBlue = 0xff0000;
+const int cDkBlue = 0x800000;
+const int cLtBlue = 0xff8080;
+const int cPurple = 0xff00ff;
+const int cDkPurple = 0x800080;
+const int cLtPurple = 0xffe0ff;
+const int cAqua = 0xffff00;
+const int cDkAqua = 0x808000;
+const int cLtAqua = 0xffffe0;
+const int cYellow = 0x00ffff;
+const int cDkYellow = 0x008080;
+const int cLtYellow = 0x80ffff;
+const int cDkGray = 0x404040;
+const int cGray = 0x808080;
+const int cSilver = 0xc0c0c0;
+const int cLtGray = 0xe0e0e0;
+const int cWhite = 0xffffff;
+const int cNone = 0xffffffff;
+""")
 #void SetBackColor( int color )
 @native(name="SetBackColor", ret=pfp.fields.Void)
 def SetBackColor(params, ctxt, scope, stream, coord):

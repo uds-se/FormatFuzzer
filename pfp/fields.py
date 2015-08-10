@@ -4,6 +4,7 @@
 from intervaltree import IntervalTree,Interval
 import json
 import math
+import re
 import six
 import struct
 
@@ -421,11 +422,17 @@ class Struct(Field):
 	_pfp__children = []
 	"""All children of the struct, in order added"""
 
+	_pfp__name_collisions = {}
+	"""Counters for any naming collisions"""
+
 	def __init__(self, stream=None, metadata_processor=None):
 		# ordered list of children
 		super(Struct, self).__setattr__("_pfp__children", [])
 		# for quick child access
 		super(Struct, self).__setattr__("_pfp__children_map", {})
+
+		# reinit it here just for this instance...
+		self._pfp__name_collisions = {}
 
 		super(Struct, self).__init__(metadata_processor=metadata_processor)
 
@@ -464,7 +471,9 @@ class Struct(Field):
 		:param pfp.bitwrap.BitwrappedStream stream: unused, but her for compatability with Union._pfp__add_child
 		:returns: The resulting field added
 		"""
-		if not overwrite and name in self._pfp__children_map:
+		if not overwrite and self._pfp__is_non_consecutive_duplicate(name, child):
+			return self._pfp__handle_non_consecutive_duplicate(name, child)
+		elif not overwrite and name in self._pfp__children_map:
 			return self._pfp__handle_implicit_array(name, child)
 		else:
 			child._pfp__parent = self
@@ -472,6 +481,54 @@ class Struct(Field):
 			child._pfp__name = name
 			self._pfp__children_map[name] = child
 			return child
+	
+	def _pfp__handle_non_consecutive_duplicate(self, name, child, insert=True):
+		"""This new child, and potentially one already existing child, need to
+		have a numeric suffix appended to their name.
+		
+		An entry will be made for this name in ``self._pfp__name_collisions`` to keep
+		track of the next available suffix number"""
+		if name in self._pfp__children_map:
+			previous_child = self._pfp__children_map[name]
+
+			# DO NOT cause __eq__ to be called, we want to test actual objects, not comparison
+			# operators
+			if previous_child is not child:
+				self._pfp__handle_non_consecutive_duplicate(name, previous_child, insert=False)
+				del self._pfp__children_map[name]
+		
+		next_suffix = self._pfp__name_collisions.setdefault(name, 0)
+		new_name = "{}_{}".format(name, next_suffix)
+		child._pfp__name = new_name
+		self._pfp__name_collisions[name] = next_suffix + 1
+		self._pfp__children_map[new_name] = child
+		self._pfp__parent = self
+
+		if insert:
+			self._pfp__children.append(child)
+
+		return child
+	
+	def _pfp__is_non_consecutive_duplicate(self, name, child):
+		"""Return True/False if the child is a non-consecutive duplicately named
+		field. Consecutive duplicately-named fields are stored in an implicit array,
+		non-consecutive duplicately named fields have a numeric suffix appended to their name"""
+
+		if len(self._pfp__children) == 0:
+			return False
+		 
+		# it should be an implicit array
+		if self._pfp__children[-1]._pfp__name == name:
+			return False
+
+		# if it's elsewhere in the children name map OR a collision sequence has already been
+		# started for this name, it should have a numeric suffix
+		# appended
+		elif name in self._pfp__children_map or name in self._pfp__name_collisions:
+			return True
+
+		# else, no collision
+		return False
 	
 	def _pfp__handle_implicit_array(self, name, child):
 		"""Handle inserting implicit array elements
@@ -485,11 +542,6 @@ class Struct(Field):
 			existing_child.append(child)
 			return existing_child
 		else:
-			# I don't think we should check this
-			#
-			#if self._pfp__children[-1].__class__ != child.__class__:
-			#	raise errors.PfpError("implicit arrays must be sequential!")
-
 			cls = child._pfp__class if hasattr(child, "_pfp__class") else child.__class__
 			ary = Array(0, cls)
 			# since the array starts with the first item

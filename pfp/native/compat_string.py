@@ -13,6 +13,12 @@ import sys
 from pfp.native import native
 import pfp.fields
 
+def _cmp(a, b):
+	if six.PY3:
+		return (a > b) - (a < b)
+	else:
+		return cmp(a, b)
+
 # http://www.sweetscape.com/010editor/manual/FuncString.htm
 
 #double Atof( const char s[] )
@@ -217,7 +223,12 @@ def Strchr(params, ctxt, scope, stream, coord):
 #int Strcmp( const char s1[], const char s2[] )
 @native(name="Strcmp", ret=pfp.fields.Int)
 def Strcmp(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+	if len(params) != 2:
+		raise errors.InvalidArguments(coord, "{} args".format(len(params)), "2 arguments")
+	str1 = PYSTR(params[0])
+	str2 = PYSTR(params[1])
+	
+	return _cmp(str1, str2)
 
 #void Strcpy( char dest[], const char src[] )
 @native(name="Strcpy", ret=pfp.fields.Void)
@@ -284,7 +295,13 @@ def Strlen(params, ctxt, scope, stream, coord):
 #int Strncmp( const char s1[], const char s2[], int n )
 @native(name="Strncmp", ret=pfp.fields.Int)
 def Strncmp(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+	if len(params) != 3:
+		raise errors.InvalidArguments(coord, "{} args".format(len(params)), "3 arguments")
+	max_chars = PYVAL(params[2])
+	str1 = PYSTR(params[0])[:max_chars]
+	str2 = PYSTR(params[1])[:max_chars]
+
+	return _cmp(str1, str2)
 
 #void Strncpy( char dest[], const char src[], int n )
 @native(name="Strncpy", ret=pfp.fields.Void)

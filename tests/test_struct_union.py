@@ -148,6 +148,22 @@ class TestStructUnion(unittest.TestCase, utils.UtilsMixin):
 			"""
 		)
 		self.assertEqual(dom.test.union_test._pfp__offset, 2)
+	
+	def test_auto_increment_field_names(self):
+		# when a field is declared multiple times with the same name, but
+		# not consecutively, the fields should get a sequential number assigned
+		# to them and NOT be stored in an implicit array
+		dom = self._test_parse_build(
+			"abc012",
+			"""
+				while(!FEof()) {
+					char header;
+					short val;
+				}
+			"""
+		)
+
+		self.assertTrue(hasattr(dom, "header_1"))
 
 if __name__ == "__main__":
 	unittest.main()
