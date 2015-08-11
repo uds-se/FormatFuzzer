@@ -904,7 +904,7 @@ class NumberBase(Field):
 
 	# can be set on individual fields, for all numbers (NumberBase.endian = ...),
 	# or specific number classes (Int.endian = ...)
-	endian = BIG_ENDIAN		# default endianness is BIG_ENDIAN
+	endian = LITTLE_ENDIAN	# default endianness is LITTLE_ENDIAN apparently..?? wtf
 
 	width = 4 				# number of bytes
 	format = "i"			# default signed int
