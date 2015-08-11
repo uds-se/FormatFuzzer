@@ -45,6 +45,119 @@ def get_str(field):
 PYVAL = get_value
 PYSTR = get_str
 
+class BitfieldRW(object):
+	"""Handles reading and writing the total bits for the bitfield
+	data type from the input stream, and correctly applying
+	endian and bit direction settings.
+	"""
+
+	def __init__(self, interp, cls):
+		"""Set the interpreter and stream for BitFieldReader
+
+		:param pfp.interp.PfpInterp interp: The interpreter being used
+		:param pfp.bitwrap.BitwrappedStream stream: The bitwrapped stream
+		:param pfp.fields.Field cls: The class (a subclass of :any:`pfp.fields.Field`) - used to determine total size of bitfield (if padded).
+		"""
+		self.interp = interp
+		self.cls = cls
+		self.max_bits = self.cls.width * 8
+		self.reserved_bits = 0
+
+		# only used with padding is enabled
+		self._cls_bits = None
+
+		# used to write to the stream
+		self._write_bits = []
+	
+	def reserve_bits(self, num_bits):
+		"""Used to "reserve" ``num_bits`` amount of bits in order to keep track
+		of consecutive bitfields (or are the called bitfield groups?).
+
+		E.g. ::
+
+			struct {
+				char a:8, b:8;
+				char c:4, d:4, e:8;
+			}
+
+		:param int num_bits: The number of bits to claim
+		:returns: If room existed for the reservation
+		"""
+		num_bits = PYVAL(num_bits)
+		if num_bits + self.reserved_bits > self.max_bits:
+			return False
+
+		self.reserved_bits += num_bits
+		return True
+	
+	def read_bits(self, stream, num_bits):
+		"""Return ``num_bits`` bits, taking into account endianness and 
+		left-right bit directions
+		"""
+		padded = self.interp.get_bitfield_padded()
+		left_right = self.interp.get_bitfield_left_right()
+
+		# TODO this needs to be something more like this
+		# endian = self.interp.get_endian()
+		endian = NumberBase.endian
+
+		if self._cls_bits is None and padded:
+			raw_bits = stream.read_bits(self.cls.width*8)
+			self._cls_bits = self._endian_transform(raw_bits, endian)
+
+		if self._cls_bits is not None:
+			if num_bits > len(self._cls_bits):
+				raise errors.PfpError("BitfieldRW reached invalid state")
+
+			if left_right:
+				res = self._cls_bits[:num_bits]
+				self._cls_bits = self._cls_bits[num_bits:]
+			else:
+				res = self._cls_bits[-num_bits:]
+				self._cls_bits = self._cls_bits[:-num_bits]
+
+			return res
+
+		else:
+			return stream.read_bits(num_bits)
+	
+	def write_bits(self, stream, raw_bits):
+		"""Write the bits. Once the size of the written bits is equal
+		to the number of the reserved bits, flush it to the stream
+		"""
+		padded = self.interp.get_bitfield_padded()
+		left_right = self.interp.get_bitfield_left_right()
+
+		# TODO this needs to be something more like this
+		# endian = self.interp.get_endian()
+		endian = NumberBase.endian
+
+		if padded:
+			if left_right:
+				self._write_bits += raw_bits
+			else:
+				self._write_bits = raw_bits + self._write_bits
+
+			if len(self._write_bits) == self.reserved_bits:
+				bits = self._endian_transform(self._write_bits, endian)
+				stream.write_bits(bits)
+
+		else:
+			stream.write_bits(raw_bits)
+	
+	def _endian_transform(self, bits, endian):
+		res = []
+
+		# perform endianness transformation
+		for x in six.moves.range(self.cls.width):
+			if endian == BIG_ENDIAN:
+				curr_byte_idx = x
+			else:
+				curr_byte_idx = (self.cls.width - x - 1)
+			res += bits[curr_byte_idx*8:(curr_byte_idx+1)*8]
+
+		return res
+
 class Field(object):
 	"""Core class for all fields used in the Pfp DOM.
 	
@@ -230,8 +343,7 @@ class Field(object):
 		io_stream = six.BytesIO(res)
 		tmp_stream = bitwrap.BitwrappedStream(io_stream)
 
-		# TODO
-		#tmp_stream.padded = self._pfp__interp.get_bitfield_padded()
+		tmp_stream.padded = self._pfp__interp.get_bitfield_padded()
 
 		self._ = self._pfp__parsed_packed = self._pfp__pack_type(tmp_stream)
 
@@ -800,10 +912,12 @@ class NumberBase(Field):
 
 	_pfp__value = 0			# default value
 	
-	def __init__(self, stream=None, bitsize=None, metadata_processor=None):
+	def __init__(self, stream=None, bitsize=None, metadata_processor=None, bitfield_rw=None):
 		"""Special init for the bitsize
 		"""
 		self.bitsize = get_value(bitsize)
+		self.bitfield_rw = bitfield_rw
+
 		super(NumberBase, self).__init__(stream, metadata_processor=metadata_processor)
 
 	def __nonzero__(self):
@@ -828,14 +942,18 @@ class NumberBase(Field):
 			data = utils.binary(raw_data)
 
 		else:
-			bits = stream.read_bits(self.bitsize)
+			bits = self.bitfield_rw.read_bits(stream, self.bitsize)
 			width_diff = self.width  - (len(bits)//8) - 1
 			bits_diff = 8 - (len(bits) % 8)
+
 			padding = [0] * (width_diff * 8 + bits_diff)
 
 			bits = padding + bits
 
 			data = bitwrap.bits_to_bytes(bits)
+			if self.endian == LITTLE_ENDIAN:
+				# reverse the data
+				data = data[::-1]
 
 		if len(data) < self.width:
 			raise errors.PrematureEOF()
@@ -858,28 +976,30 @@ class NumberBase(Field):
 		if stream is not None and save_offset:
 			self._pfp__offset = stream.tell()
 
-		data = struct.pack(
-			"{}{}".format(self.endian, self.format),
-			self._pfp__value
-		)
 		if self.bitsize is None:
+			data = struct.pack(
+				"{}{}".format(self.endian, self.format),
+				self._pfp__value
+			)
 			if stream is not None:
 				stream.write(data)
 				return len(data)
 			else:
 				return data
 		else:
+			data = struct.pack(
+				"{}{}".format(BIG_ENDIAN, self.format),
+				self._pfp__value
+			)
+
 			num_bytes = int(math.ceil(self.bitsize / 8.0))
-			if self.endian == BIG_ENDIAN:
-				bit_data = data[:num_bytes]
-			else:
-				bit_data = data[-num_bytes:]
+			bit_data = data[-num_bytes:]
 
 			raw_bits = bitwrap.bytes_to_bits(bit_data)
 			bits = raw_bits[-self.bitsize:]
 
 			if stream is not None:
-				stream.write_bits(bits)
+				self.bitfield_rw.write_bits(stream, bits)
 				return len(bits) // 8
 			else:
 				# TODO this can't be right....
@@ -1156,10 +1276,10 @@ class Enum(IntBase):
 	enum_cls = None
 	enum_name = None
 
-	def __init__(self, stream=None, enum_cls=None, enum_vals=None, bitsize=None, metadata_processor=None):
+	def __init__(self, stream=None, enum_cls=None, enum_vals=None, bitsize=None, metadata_processor=None, bitfield_rw=None):
 		"""Init the enum
 		"""
-		# discard the bitsize value
+		# discard the bitsize value and bitfield_rw value
 		self.enum_name = None
 
 		if enum_vals is not None:

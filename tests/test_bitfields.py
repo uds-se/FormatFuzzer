@@ -32,29 +32,42 @@ class TestBitfields(unittest.TestCase, utils.UtilsMixin):
 			"\xab",
 			"""
 				struct {
-					uchar test:16;
+					uchar test:8;
 				} blah;
 			"""
 		)
 	
-	def test_bitfield_enable_padding(self):
-		return
+	def test_bitfield_enable_padding_left_right(self):
 		dom = self._test_parse_build(
 			"\x3f\x03",
 			"""
 				LittleEndian();
 				BitfieldEnablePadding();
+				BitfieldLeftToRight();
 				struct {
-					Int3();
 					ushort test1: 10;
 					ushort test2: 6;
 				} blah;
 			""",
-			verify=False
 		)
-		print(dom._pfp__show())
-		import pdb; pdb.set_trace()
-		dom._pfp__build()
+		self.assertEqual(dom.blah.test1, 0xc)
+		self.assertEqual(dom.blah.test2, 0x3f)
+	
+	def test_bitfield_enable_padding_right_left(self):
+		dom = self._test_parse_build(
+			"\x3f\x03",
+			"""
+				LittleEndian();
+				BitfieldEnablePadding();
+				BitfieldRightToLeft();
+				struct {
+					ushort test1: 10;
+					ushort test2: 6;
+				} blah;
+			""",
+		)
+		self.assertEqual(dom.blah.test1, 0x33f)
+		self.assertEqual(dom.blah.test2, 0x0)
 	
 	def test_bitfield_basic_big_endian(self):
 		b = lambda x: chr(int(x,2))
