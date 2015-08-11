@@ -58,6 +58,48 @@ class TestCompat(unittest.TestCase, utils.UtilsMixin):
 
 		self.assertEqual(output_.getvalue(), "5")
 
+class TestCompatInterface(unittest.TestCase, utils.UtilsMixin):
+	def setUp(self):
+		pass
+	
+	def tearDown(self):
+		pass
+	
+	def test_color_constants(self):
+		# shouldn't error
+		dom = self._test_parse_build(
+			"",
+			"""
+			local int color;
+			color = cBlack;
+			color = cRed;
+			color = cDkRed;
+			color = cLtRed;
+			color = cGreen;
+			color = cDkGreen;
+			color = cLtGreen;
+			color = cBlue;
+			color = cDkBlue;
+			color = cLtBlue;
+			color = cPurple;
+			color = cDkPurple;
+			color = cLtPurple;
+			color = cAqua;
+			color = cDkAqua;
+			color = cLtAqua;
+			color = cYellow;
+			color = cDkYellow;
+			color = cLtYellow;
+			color = cDkGray;
+			color = cGray;
+			color = cSilver;
+			color = cLtGray;
+			color = cWhite;
+			color = cNone;
+			""",
+			predefines=True
+		)
+
 class TestCompatIO(unittest.TestCase, utils.UtilsMixin):
 	def setUp(self):
 		pass
@@ -107,7 +149,7 @@ class TestCompatIO(unittest.TestCase, utils.UtilsMixin):
 
 		self.assertEqual(dom.a, 1)
 		self.assertEqual(dom.b, 2)
-		self.assertEqual(dom._skipped_0, "ABCD")
+		self.assertEqual(dom._skipped, "ABCD")
 		self.assertEqual(dom.c, 3)
 		self.assertEqual(dom.d, 4)
 	
@@ -158,7 +200,7 @@ class TestCompatIO(unittest.TestCase, utils.UtilsMixin):
 
 		self.assertEqual(dom.a, 1)
 		self.assertEqual(dom.b, 2)
-		self.assertEqual(dom._skipped_0, "ABCD")
+		self.assertEqual(dom._skipped, "ABCD")
 		self.assertEqual(dom.c, 3)
 		self.assertEqual(dom.d, 4)
 	
@@ -179,9 +221,9 @@ class TestCompatIO(unittest.TestCase, utils.UtilsMixin):
 		self.assertEqual(dom.a, 1)
 		self.assertEqual(dom.b, 2)
 		# should be merged into one _skipped array
-		self.assertEqual(dom._skipped_0, "ABCD")
+		self.assertEqual(dom._skipped_1, "ABCD")
 		self.assertEqual(dom.c, 3)
-		self.assertEqual(dom._skipped_1, "EF")
+		self.assertEqual(dom._skipped_2, "EF")
 		self.assertEqual(dom.d, 4)
 	
 	def test_skip3(self):
@@ -231,6 +273,167 @@ class TestCompatString(unittest.TestCase, utils.UtilsMixin):
 			Printf(bytes);
 			""",
 			stdout="abbaabcd"
+		)
+	
+	def test_strchr1(self):
+		dom = self._test_parse_build(
+			"",
+			"""
+			local char b[30] = "hellogoodbyte";
+			Printf("%d", Strchr(b, 'g'));
+			""",
+			stdout="5"
+		)
+	
+	def test_strchr2(self):
+		dom = self._test_parse_build(
+			"",
+			"""
+			local char b[30] = "hellogoodbyte";
+			Printf("%d", Strchr(b, 'X'));
+			""",
+			stdout="-1"
+		)
+	
+	def test_strcpy(self):
+		dom = self._test_parse_build(
+			"",
+			"""
+			local char a[0];
+			Printf("%s", a);
+
+			local char b[30] = "hellogoodbyte";
+			Printf("%s", b);
+
+			Strcpy(a, b);
+			Printf("%s", a);
+			""",
+			stdout="hellogoodbyte\x00hellogoodbyte\x00"
+		)
+	
+	def test_strncpy(self):
+		dom = self._test_parse_build(
+			"",
+			"""
+			local char a[0];
+			Printf("%s", a);
+
+			local char b[30] = "hellogoodbyte";
+			Printf("%s", b);
+
+			Strncpy(a, b, 5);
+			Printf("%s", a);
+			""",
+			stdout="hellogoodbyte\x00hello"
+		)
+	
+	def test_strcmp1(self):
+		dom = self._test_parse_build(
+			"",
+			"""
+			local string a = "hellothere";
+			local string b = "hellogoodbyte";
+			Printf("%d", Strcmp(a, b));
+			""",
+			stdout="1"
+		)
+	
+	def test_strcmp2(self):
+		dom = self._test_parse_build(
+			"",
+			"""
+			local string a = "hello";
+			local string b = "hello";
+			Printf("%d", Strcmp(a, b));
+			""",
+			stdout="0"
+		)
+
+	def test_stricmp1(self):
+		dom = self._test_parse_build(
+			"",
+			"""
+			local string a = "helLotherE";
+			local string b = "hEllogoOdbyte";
+			Printf("%d", Stricmp(a, b));
+			""",
+			stdout="1"
+		)
+	
+	def test_stricmp2(self):
+		dom = self._test_parse_build(
+			"",
+			"""
+			local string a = "hElLo";
+			local string b = "HeLlo";
+			Printf("%d", Stricmp(a, b));
+			""",
+			stdout="0"
+		)
+	
+	def test_strncmp1(self):
+		dom = self._test_parse_build(
+			"",
+			"""
+			local string a = "hellothere";
+			local string b = "hellogoodbyte";
+			Printf("%d", Strncmp(a, b, 5));
+			""",
+			stdout="0"
+		)
+	
+	def test_strncmp2(self):
+		dom = self._test_parse_build(
+			"",
+			"""
+			local string a = "hellothere";
+			local string b = "hellogoodbyte";
+			Printf("%d", Strncmp(a, b, 6));
+			""",
+			stdout="1"
+		)
+	
+	
+	def test_strnicmp1(self):
+		dom = self._test_parse_build(
+			"",
+			"""
+			local string a = "hElLothere";
+			local string b = "HeLlOgoodbyte";
+			Printf("%d", Strnicmp(a, b, 5));
+			""",
+			stdout="0"
+		)
+	
+	def test_strnicmp2(self):
+		dom = self._test_parse_build(
+			"",
+			"""
+			local string a = "hElLOthere";
+			local string b = "helLogoOdbyte";
+			Printf("%d", Strnicmp(a, b, 6));
+			""",
+			stdout="1"
+		)
+	
+	def test_strstr1(self):
+		dom = self._test_parse_build(
+			"",
+			"""
+			local string a = "hellothere";
+			Printf("%d", Strstr(a, "llo"));
+			""",
+			stdout="2"
+		)
+	
+	def test_strstr2(self):
+		dom = self._test_parse_build(
+			"",
+			"""
+			local string a = "hellothere";
+			Printf("%d", Strstr(a, "lloZ"));
+			""",
+			stdout="-1"
 		)
 
 if __name__ == "__main__":

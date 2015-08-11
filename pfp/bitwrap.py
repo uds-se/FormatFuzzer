@@ -3,14 +3,12 @@
 
 import collections
 from intervaltree import IntervalTree,Interval
+import math
 import os
 import six
 import sys
 
 import pfp.utils as utils
-
-BIT_DIR_LEFT_RIGHT = 1
-BIT_DIR_RIGHT_LEFT = -1
 
 class EOFError(Exception): pass
 
@@ -66,9 +64,6 @@ class BitwrappedStream(object):
 		# otherwise the entire stream will be treated as
 		# a bit stream with no padding
 		self.padded = True
-
-		# packed left-to-right
-		self.direction = BIT_DIR_LEFT_RIGHT
 
 		self.range_set = IntervalTree()
 	
@@ -135,7 +130,7 @@ class BitwrappedStream(object):
 		"""
 		if num > len(self._bits):
 			needed = num - len(self._bits)
-			num_bytes = (needed // 8) + 1
+			num_bytes = int(math.ceil(needed / 8.0))
 			read_bytes = self._stream.read(num_bytes)
 
 			for bit in bytes_to_bits(read_bytes):

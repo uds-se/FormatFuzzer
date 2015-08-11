@@ -136,6 +136,21 @@ class TestArrays(unittest.TestCase, utils.UtilsMixin):
 			""",
 		)
 	
+	def test_typedefd_array(self):
+		dom = self._test_parse_build(
+			"abcd",
+			"""
+				typedef uchar BLAH[2];
+
+				BLAH blah1;
+				BLAH blah2;
+			""",
+			predefines=False
+		)
+
+		self.assertEqual(PYSTR(dom.blah1), "ab")
+		self.assertEqual(PYSTR(dom.blah2), "cd")
+	
 	def test_struct_raw_data_optmization1(self):
 		dom = self._test_parse_build(
 			"abcd",

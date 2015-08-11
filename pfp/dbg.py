@@ -6,6 +6,7 @@ import collections
 import os
 import sys
 
+import pfp.fields as fields
 import pfp.errors as errors
 import pfp.utils as utils
 
@@ -22,14 +23,26 @@ class PfpDbg(cmd.Cmd, object):
 		super(PfpDbg, self).__init__()
 
 		self._interp = interp
+
 		self._do_print_from_last_cmd = False
+	
+	def _update_prompt(self):
+		if fields.NumberBase.endian == fields.BIG_ENDIAN:
+			self.prompt = "BE pfp> "
+		else:
+			self.prompt = "LE pfp> "
 	
 	def update(self, ctxt, scope):
 		self._ctxt = ctxt
 		self._scope = scope
 	
 	def preloop(self):
+		self._update_prompt()
 		self.print_lines()
+	
+	def postcmd(self, stop, line):
+		self._update_prompt()
+		return stop
 	
 	def default(self, line):
 		cmd, arg, line = self.parseline(line)
@@ -79,6 +92,9 @@ class PfpDbg(cmd.Cmd, object):
 			res += utils.binary(" " * (0x10 - len(res)))
 
 		res = "{} {}".format(hex_line, utils.string(res))
+		if len(saved_bits) > 0:
+			reverse_bits = reversed(list(saved_bits))
+			print("bits: {}".format(" ".join(str(x) for x in reverse_bits)))
 		print(res)
 	
 	def do_next(self, args):

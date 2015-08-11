@@ -4,6 +4,7 @@
 from intervaltree import IntervalTree,Interval
 import json
 import math
+import re
 import six
 import struct
 
@@ -43,6 +44,119 @@ def get_str(field):
 
 PYVAL = get_value
 PYSTR = get_str
+
+class BitfieldRW(object):
+	"""Handles reading and writing the total bits for the bitfield
+	data type from the input stream, and correctly applying
+	endian and bit direction settings.
+	"""
+
+	def __init__(self, interp, cls):
+		"""Set the interpreter and stream for BitFieldReader
+
+		:param pfp.interp.PfpInterp interp: The interpreter being used
+		:param pfp.bitwrap.BitwrappedStream stream: The bitwrapped stream
+		:param pfp.fields.Field cls: The class (a subclass of :any:`pfp.fields.Field`) - used to determine total size of bitfield (if padded).
+		"""
+		self.interp = interp
+		self.cls = cls
+		self.max_bits = self.cls.width * 8
+		self.reserved_bits = 0
+
+		# only used with padding is enabled
+		self._cls_bits = None
+
+		# used to write to the stream
+		self._write_bits = []
+	
+	def reserve_bits(self, num_bits):
+		"""Used to "reserve" ``num_bits`` amount of bits in order to keep track
+		of consecutive bitfields (or are the called bitfield groups?).
+
+		E.g. ::
+
+			struct {
+				char a:8, b:8;
+				char c:4, d:4, e:8;
+			}
+
+		:param int num_bits: The number of bits to claim
+		:returns: If room existed for the reservation
+		"""
+		num_bits = PYVAL(num_bits)
+		if num_bits + self.reserved_bits > self.max_bits:
+			return False
+
+		self.reserved_bits += num_bits
+		return True
+	
+	def read_bits(self, stream, num_bits):
+		"""Return ``num_bits`` bits, taking into account endianness and 
+		left-right bit directions
+		"""
+		padded = self.interp.get_bitfield_padded()
+		left_right = self.interp.get_bitfield_left_right()
+
+		# TODO this needs to be something more like this
+		# endian = self.interp.get_endian()
+		endian = NumberBase.endian
+
+		if self._cls_bits is None and padded:
+			raw_bits = stream.read_bits(self.cls.width*8)
+			self._cls_bits = self._endian_transform(raw_bits, endian)
+
+		if self._cls_bits is not None:
+			if num_bits > len(self._cls_bits):
+				raise errors.PfpError("BitfieldRW reached invalid state")
+
+			if left_right:
+				res = self._cls_bits[:num_bits]
+				self._cls_bits = self._cls_bits[num_bits:]
+			else:
+				res = self._cls_bits[-num_bits:]
+				self._cls_bits = self._cls_bits[:-num_bits]
+
+			return res
+
+		else:
+			return stream.read_bits(num_bits)
+	
+	def write_bits(self, stream, raw_bits):
+		"""Write the bits. Once the size of the written bits is equal
+		to the number of the reserved bits, flush it to the stream
+		"""
+		padded = self.interp.get_bitfield_padded()
+		left_right = self.interp.get_bitfield_left_right()
+
+		# TODO this needs to be something more like this
+		# endian = self.interp.get_endian()
+		endian = NumberBase.endian
+
+		if padded:
+			if left_right:
+				self._write_bits += raw_bits
+			else:
+				self._write_bits = raw_bits + self._write_bits
+
+			if len(self._write_bits) == self.reserved_bits:
+				bits = self._endian_transform(self._write_bits, endian)
+				stream.write_bits(bits)
+
+		else:
+			stream.write_bits(raw_bits)
+	
+	def _endian_transform(self, bits, endian):
+		res = []
+
+		# perform endianness transformation
+		for x in six.moves.range(self.cls.width):
+			if endian == BIG_ENDIAN:
+				curr_byte_idx = x
+			else:
+				curr_byte_idx = (self.cls.width - x - 1)
+			res += bits[curr_byte_idx*8:(curr_byte_idx+1)*8]
+
+		return res
 
 class Field(object):
 	"""Core class for all fields used in the Pfp DOM.
@@ -229,8 +343,7 @@ class Field(object):
 		io_stream = six.BytesIO(res)
 		tmp_stream = bitwrap.BitwrappedStream(io_stream)
 
-		# TODO
-		#tmp_stream.padded = self._pfp__interp.get_bitfield_padded()
+		tmp_stream.padded = self._pfp__interp.get_bitfield_padded()
 
 		self._ = self._pfp__parsed_packed = self._pfp__pack_type(tmp_stream)
 
@@ -421,11 +534,17 @@ class Struct(Field):
 	_pfp__children = []
 	"""All children of the struct, in order added"""
 
+	_pfp__name_collisions = {}
+	"""Counters for any naming collisions"""
+
 	def __init__(self, stream=None, metadata_processor=None):
 		# ordered list of children
 		super(Struct, self).__setattr__("_pfp__children", [])
 		# for quick child access
 		super(Struct, self).__setattr__("_pfp__children_map", {})
+
+		# reinit it here just for this instance...
+		self._pfp__name_collisions = {}
 
 		super(Struct, self).__init__(metadata_processor=metadata_processor)
 
@@ -464,7 +583,9 @@ class Struct(Field):
 		:param pfp.bitwrap.BitwrappedStream stream: unused, but her for compatability with Union._pfp__add_child
 		:returns: The resulting field added
 		"""
-		if not overwrite and name in self._pfp__children_map:
+		if not overwrite and self._pfp__is_non_consecutive_duplicate(name, child):
+			return self._pfp__handle_non_consecutive_duplicate(name, child)
+		elif not overwrite and name in self._pfp__children_map:
 			return self._pfp__handle_implicit_array(name, child)
 		else:
 			child._pfp__parent = self
@@ -472,6 +593,54 @@ class Struct(Field):
 			child._pfp__name = name
 			self._pfp__children_map[name] = child
 			return child
+	
+	def _pfp__handle_non_consecutive_duplicate(self, name, child, insert=True):
+		"""This new child, and potentially one already existing child, need to
+		have a numeric suffix appended to their name.
+		
+		An entry will be made for this name in ``self._pfp__name_collisions`` to keep
+		track of the next available suffix number"""
+		if name in self._pfp__children_map:
+			previous_child = self._pfp__children_map[name]
+
+			# DO NOT cause __eq__ to be called, we want to test actual objects, not comparison
+			# operators
+			if previous_child is not child:
+				self._pfp__handle_non_consecutive_duplicate(name, previous_child, insert=False)
+				del self._pfp__children_map[name]
+		
+		next_suffix = self._pfp__name_collisions.setdefault(name, 0)
+		new_name = "{}_{}".format(name, next_suffix)
+		child._pfp__name = new_name
+		self._pfp__name_collisions[name] = next_suffix + 1
+		self._pfp__children_map[new_name] = child
+		self._pfp__parent = self
+
+		if insert:
+			self._pfp__children.append(child)
+
+		return child
+	
+	def _pfp__is_non_consecutive_duplicate(self, name, child):
+		"""Return True/False if the child is a non-consecutive duplicately named
+		field. Consecutive duplicately-named fields are stored in an implicit array,
+		non-consecutive duplicately named fields have a numeric suffix appended to their name"""
+
+		if len(self._pfp__children) == 0:
+			return False
+		 
+		# it should be an implicit array
+		if self._pfp__children[-1]._pfp__name == name:
+			return False
+
+		# if it's elsewhere in the children name map OR a collision sequence has already been
+		# started for this name, it should have a numeric suffix
+		# appended
+		elif name in self._pfp__children_map or name in self._pfp__name_collisions:
+			return True
+
+		# else, no collision
+		return False
 	
 	def _pfp__handle_implicit_array(self, name, child):
 		"""Handle inserting implicit array elements
@@ -485,17 +654,13 @@ class Struct(Field):
 			existing_child.append(child)
 			return existing_child
 		else:
-			# I don't think we should check this
-			#
-			#if self._pfp__children[-1].__class__ != child.__class__:
-			#	raise errors.PfpError("implicit arrays must be sequential!")
-
 			cls = child._pfp__class if hasattr(child, "_pfp__class") else child.__class__
 			ary = Array(0, cls)
 			# since the array starts with the first item
 			ary._pfp__offset = existing_child._pfp__offset
 			ary._pfp__parent = self
 			ary._pfp__name = name
+			ary.implicit = True
 			ary.append(existing_child)
 			ary.append(child)
 
@@ -739,7 +904,7 @@ class NumberBase(Field):
 
 	# can be set on individual fields, for all numbers (NumberBase.endian = ...),
 	# or specific number classes (Int.endian = ...)
-	endian = BIG_ENDIAN		# default endianness is BIG_ENDIAN
+	endian = LITTLE_ENDIAN	# default endianness is LITTLE_ENDIAN apparently..?? wtf
 
 	width = 4 				# number of bytes
 	format = "i"			# default signed int
@@ -747,10 +912,12 @@ class NumberBase(Field):
 
 	_pfp__value = 0			# default value
 	
-	def __init__(self, stream=None, bitsize=None, metadata_processor=None):
+	def __init__(self, stream=None, bitsize=None, metadata_processor=None, bitfield_rw=None):
 		"""Special init for the bitsize
 		"""
 		self.bitsize = get_value(bitsize)
+		self.bitfield_rw = bitfield_rw
+
 		super(NumberBase, self).__init__(stream, metadata_processor=metadata_processor)
 
 	def __nonzero__(self):
@@ -775,14 +942,18 @@ class NumberBase(Field):
 			data = utils.binary(raw_data)
 
 		else:
-			bits = stream.read_bits(self.bitsize)
+			bits = self.bitfield_rw.read_bits(stream, self.bitsize)
 			width_diff = self.width  - (len(bits)//8) - 1
 			bits_diff = 8 - (len(bits) % 8)
+
 			padding = [0] * (width_diff * 8 + bits_diff)
 
 			bits = padding + bits
 
 			data = bitwrap.bits_to_bytes(bits)
+			if self.endian == LITTLE_ENDIAN:
+				# reverse the data
+				data = data[::-1]
 
 		if len(data) < self.width:
 			raise errors.PrematureEOF()
@@ -805,28 +976,30 @@ class NumberBase(Field):
 		if stream is not None and save_offset:
 			self._pfp__offset = stream.tell()
 
-		data = struct.pack(
-			"{}{}".format(self.endian, self.format),
-			self._pfp__value
-		)
 		if self.bitsize is None:
+			data = struct.pack(
+				"{}{}".format(self.endian, self.format),
+				self._pfp__value
+			)
 			if stream is not None:
 				stream.write(data)
 				return len(data)
 			else:
 				return data
 		else:
+			data = struct.pack(
+				"{}{}".format(BIG_ENDIAN, self.format),
+				self._pfp__value
+			)
+
 			num_bytes = int(math.ceil(self.bitsize / 8.0))
-			if self.endian == BIG_ENDIAN:
-				bit_data = data[:num_bytes]
-			else:
-				bit_data = data[-num_bytes:]
+			bit_data = data[-num_bytes:]
 
 			raw_bits = bitwrap.bytes_to_bits(bit_data)
 			bits = raw_bits[-self.bitsize:]
 
 			if stream is not None:
-				stream.write_bits(bits)
+				self.bitfield_rw.write_bits(stream, bits)
 				return len(bits) // 8
 			else:
 				# TODO this can't be right....
@@ -1103,10 +1276,10 @@ class Enum(IntBase):
 	enum_cls = None
 	enum_name = None
 
-	def __init__(self, stream=None, enum_cls=None, enum_vals=None, bitsize=None, metadata_processor=None):
+	def __init__(self, stream=None, enum_cls=None, enum_vals=None, bitsize=None, metadata_processor=None, bitfield_rw=None):
 		"""Init the enum
 		"""
-		# discard the bitsize value
+		# discard the bitsize value and bitfield_rw value
 		self.enum_name = None
 
 		if enum_vals is not None:
@@ -1164,6 +1337,9 @@ class Array(Field):
 	field_cls = None
 	"""The class for items in the array"""
 
+	implicit = False
+	"""If the array is an implicit array or not"""
+
 	def __init__(self, width, field_cls, stream=None, metadata_processor=None):
 		""" Create an array field of size "width" from the stream
 		"""
@@ -1173,6 +1349,7 @@ class Array(Field):
 		self.field_cls = field_cls
 		self.items = []
 		self.raw_data = None
+		self.implicit = False
 
 		if stream is not None:
 			self._pfp__parse(stream, save_offset=True)
@@ -1224,10 +1401,16 @@ class Array(Field):
 	
 	def _pfp__set_value(self, value):
 		is_string_type = False
-		for string_type in list(six.string_types) + [bytes]:
-			if isinstance(value, string_type):
-				is_string_type = True
-				break
+
+		if isinstance(value, String):
+			is_string_type = True
+			value = value._pfp__build()
+
+		else:
+			for string_type in list(six.string_types) + [bytes]:
+				if isinstance(value, string_type):
+					is_string_type = True
+					break
 		
 		if is_string_type and self._is_stringable():
 			self.raw_data = value
@@ -1411,7 +1594,7 @@ class String(Field):
 		escaping and such as well
 		"""
 		if not isinstance(new_val, Field):
-			new_val = utils.string_escape(new_val)
+			new_val = utils.binary(utils.string_escape(new_val))
 		super(String, self)._pfp__set_value(new_val)
 
 	def _pfp__parse(self, stream, save_offset=False):

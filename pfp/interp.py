@@ -457,6 +457,8 @@ class PfpInterp(object):
 		self._break_level = 0
 		self._no_debug = False
 		self._padded_bitfield = True
+		# TODO does this default change based on the endianness?
+		self._bitfield_left_right = True
 		# whether or not debugging is allowed (ie Int3())
 		self._int3 = int3
 		
@@ -508,6 +510,7 @@ class PfpInterp(object):
 			AST.Cast:			self._handle_cast,
 			AST.Typename:		self._handle_typename,
 			AST.EmptyStatement: self._handle_empty_statement,
+			AST.DoWhile:		self._handle_do_while,
 
 			StructDecls:		self._handle_struct_decls,
 			UnionDecls:			self._handle_union_decls,
@@ -627,6 +630,13 @@ class PfpInterp(object):
 		:returns: True/False
 		"""
 		return self._padded_bitfield
+	
+	def get_bitfield_left_right(self):
+		"""Return if the bits should be interpreted from left to right.
+
+		.. note:: This should be applied AFTER taking into account endianness.
+		"""
+		return self._bitfield_left_right
 	
 	# --------------------
 	# PRIVATE
@@ -853,8 +863,26 @@ class PfpInterp(object):
 
 		field = self._handle_node(node.type, scope, ctxt, stream)
 		bitsize = None
+		bitfield_rw = None
 		if getattr(node, "bitsize", None) is not None:
 			bitsize = self._handle_node(node.bitsize, scope, ctxt, stream)
+			has_prev = len(ctxt._pfp__children) > 0
+
+			bitfield_rw = None
+			if has_prev:
+				prev = ctxt._pfp__children[-1]
+				# if it was a bitfield as well
+				# TODO I don't think this will handle multiple bitfield groups in a row.
+				# E.g.
+				# 	char a: 8, b:8;
+				#	char c: 8, d:8;
+				if prev.__class__ == field and prev.bitsize is not None and prev.bitfield_rw.reserve_bits(bitsize):
+					bitfield_rw = prev.bitfield_rw
+
+			# either because there was no previous bitfield, or the previous was full
+			if bitfield_rw is None:
+				bitfield_rw = fields.BitfieldRW(self, field)
+				bitfield_rw.reserve_bits(bitsize)
 
 		if getattr(node, "is_func_param", False):
 			# we want to keep this as a class and not instantiate it
@@ -891,7 +919,7 @@ class PfpInterp(object):
 			# in order to set the new context)
 			if not isinstance(field, fields.Field):
 				if issubclass(field, fields.NumberBase):
-					field = field(stream, bitsize=bitsize, metadata_processor=metadata_processor)
+					field = field(stream, bitsize=bitsize, metadata_processor=metadata_processor, bitfield_rw=bitfield_rw)
 				else:
 					field = field(stream, metadata_processor=metadata_processor)
 
@@ -1034,7 +1062,25 @@ class PfpInterp(object):
 		# name
 		# field
 		struct = self._handle_node(node.name, scope, ctxt, stream)
-		sub_field = getattr(struct, node.field.name)
+
+		try:
+			sub_field = getattr(struct, node.field.name)
+		except AttributeError as e:
+			# should be able to access implicit array items by index OR
+			# access the last one's members directly without index
+			#
+			# E.g.:
+			# 
+			# local int total_length = 0;
+			# while(!FEof()) {
+			# 	HEADER header;
+			#   total_length += header.length;
+			# }
+			if isinstance(struct, fields.Array) and struct.implicit:
+				last_item = struct[-1]
+				sub_field = getattr(last_item, node.field.name)
+			else:
+				raise
 
 		return sub_field
 	
@@ -1163,6 +1209,10 @@ class PfpInterp(object):
 		elif is_enum:
 			enum_cls = self._handle_node(node.type, scope, ctxt, stream)
 			scope.add_type_class(node.name, enum_cls)
+		elif isinstance(node.type, AST.ArrayDecl):
+			# this does not parse data, just creates the ArrayDecl class
+			array_cls = self._handle_node(node.type, scope, ctxt, stream)
+			scope.add_type_class(node.name, array_cls)
 		else:
 			names = node.type.type.names
 
@@ -1268,6 +1318,8 @@ class PfpInterp(object):
 			"==": lambda x,y: x == y,
 			"!=": lambda x,y: x != y,
 			"&&": lambda x,y: x and y,
+			">>": lambda x,y: x >> y,
+			"<<": lambda x,y: x << y,
 		}
 
 		left_val = self._handle_node(node.left, scope, ctxt, stream)
@@ -1682,6 +1734,29 @@ class PfpInterp(object):
 					break
 				except errors.InterpContinue as e:
 					pass
+
+	def _handle_do_while(self, node, scope, ctxt, stream):
+		"""Handle break node
+
+		:node: TODO
+		:scope: TODO
+		:ctxt: TODO
+		:stream: TODO
+		:returns: TODO
+
+		"""
+		self._dlog("handling do while")
+
+		while True:
+			if node.stmt is not None:
+				try:
+					self._handle_node(node.stmt, scope, ctxt, stream)
+				except errors.InterpBreak as e:
+					break
+				except errors.InterpContinue as e:
+					pass
+			if node.cond is not None and not self._handle_node(node.cond, scope, ctxt, stream):
+				break
 
 	def _flatten_list(self, l):
 		for el in l:

@@ -134,11 +134,9 @@ def FSeek(params, ctxt, scope, stream, coord):
 
 	data = stream.read(diff)
 
-	skipped_number = 0
-	for child in ctxt._pfp__children:
-		if child._pfp__name.startswith("_skipped"):
-			skipped_number += 1
-	skipped_name = "_skipped_{}".format(skipped_number)
+	# let the ctxt automatically append numbers, as needed, unless the previous
+	# child was also a skipped field
+	skipped_name = "_skipped"
 
 	if len(ctxt._pfp__children) > 0 and ctxt._pfp__children[-1]._pfp__name.startswith("_skipped"):
 		data = ctxt._pfp__children[-1].raw_data + data
@@ -147,7 +145,7 @@ def FSeek(params, ctxt, scope, stream, coord):
 
 	tmp_stream = bitwrap.BitwrappedStream(six.BytesIO(data))
 	new_field = pfp.fields.Array(len(data), pfp.fields.Char, tmp_stream)
-	ctxt._pfp__add_child(skipped_name, new_field, stream, overwrite=True)
+	ctxt._pfp__add_child(skipped_name, new_field, stream)
 	scope.add_var(skipped_name, new_field)
 
 	return 0

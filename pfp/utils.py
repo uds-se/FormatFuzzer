@@ -19,7 +19,7 @@ if PY3:
 	from queue import Queue
 
 	def string_escape(s):
-		return bytes(s, "utf-8").decode("unicode_escape")
+		return bytes(string(s), "utf-8").decode("unicode_escape")
 
 	def binary(s):
 		if type(s) is bytes:
@@ -34,7 +34,7 @@ else:
 	from Queue import Queue
 
 	def string_escape(s):
-		return s.decode("string_escape")
+		return string(s).decode("string_escape")
 
 	def binary(s):
 		return s

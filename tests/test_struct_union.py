@@ -148,6 +148,67 @@ class TestStructUnion(unittest.TestCase, utils.UtilsMixin):
 			"""
 		)
 		self.assertEqual(dom.test.union_test._pfp__offset, 2)
+	
+	def test_auto_increment_field_names(self):
+		# when a field is declared multiple times with the same name, but
+		# not consecutively, the fields should get a sequential number assigned
+		# to them and NOT be stored in an implicit array
+		dom = self._test_parse_build(
+			"a\x00\x010\x00\x02",
+			"""
+				while(!FEof()) {
+					char header;
+					short val;
+				}
+			"""
+		)
+
+		self.assertEqual(dom.header_0, ord("a"))
+		self.assertEqual(dom.val_0, 1)
+
+		self.assertEqual(dom.header_1, ord("0"))
+		self.assertEqual(dom.val_1, 2)
+	
+	def test_auto_increment_but_still_reference_last_decl_normal(self):
+		# this is an interesting behavior of 010 scripts. When a field
+		# is repeatedly declared, 010 scripts do not append a suffix to
+		# the field names. However, since our goal is manipulation and being
+		# able to access these fields individually, we do add a suffix.
+		# the problem is that the script still needs to be able to access
+		# the last declared field by the original name and not the
+		# suffixed one.
+		dom = self._test_parse_build(
+			"\x01a\x01b\x01c",
+			"""
+				while(!FEof()) {
+					char length;
+					char str[length];
+					Printf("%s|", str);
+				}
+			""",
+			stdout="a|b|c|"
+		)
+
+	def test_implicit_array_dot_notation_for_last(self):
+		# I BELIEVE scripts are able to access implicit array items
+		# by index OR directly access the last one without an index
+		dom = self._test_parse_build(
+			"\x01a\x01b\x01c",
+			"""
+				typedef struct {
+					uchar length;
+					char str[length];
+				} STR;
+
+				local int total_length = 0;
+				while(!FEof()) {
+					STR str;
+					total_length += str.length;
+				}
+				Printf("%d", total_length);
+			""",
+			stdout="3"
+		)
 
 if __name__ == "__main__":
 	unittest.main()
