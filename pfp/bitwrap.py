@@ -12,6 +12,9 @@ import pfp.utils as utils
 BIT_DIR_LEFT_RIGHT = 1
 BIT_DIR_RIGHT_LEFT = -1
 
+BIG_ENDIAN = ">"
+LITTLE_ENDIAN = "<"
+
 class EOFError(Exception): pass
 
 def bits_to_bytes(bits):
@@ -67,8 +70,7 @@ class BitwrappedStream(object):
 		# a bit stream with no padding
 		self.padded = True
 
-		# packed left-to-right
-		self.direction = BIT_DIR_LEFT_RIGHT
+		self.endian = BIG_ENDIAN
 
 		self.range_set = IntervalTree()
 	

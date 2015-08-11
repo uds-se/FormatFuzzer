@@ -9,6 +9,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import pfp
 import pfp.fields
+from pfp.fields import PYVAL,PYSTR
 import pfp.interp
 import pfp.utils
 
@@ -181,6 +182,21 @@ class TestControlFlow(unittest.TestCase, utils.UtilsMixin):
 			""",
 			stdout="aaa"
 		)
+	
+	def test_do_while(self):
+		dom = self._test_parse_build(
+			"abcd\x00",
+			"""
+				do {
+					string str;
+				} while(0);
+			""",
+		)
+		self.assertEqual(dom.str, b"abcd")
+		self.assertEqual(dom.str[0], ord("a"))
+		self.assertEqual(dom.str[1], ord("b"))
+		self.assertEqual(dom.str[2], ord("c"))
+		self.assertEqual(dom.str[3], ord("d"))
 
 	def test_switch(self):
 		dom = self._test_parse_build(

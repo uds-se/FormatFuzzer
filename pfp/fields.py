@@ -548,6 +548,7 @@ class Struct(Field):
 			ary._pfp__offset = existing_child._pfp__offset
 			ary._pfp__parent = self
 			ary._pfp__name = name
+			ary.implicit = True
 			ary.append(existing_child)
 			ary.append(child)
 
@@ -1216,6 +1217,9 @@ class Array(Field):
 	field_cls = None
 	"""The class for items in the array"""
 
+	implicit = False
+	"""If the array is an implicit array or not"""
+
 	def __init__(self, width, field_cls, stream=None, metadata_processor=None):
 		""" Create an array field of size "width" from the stream
 		"""
@@ -1225,6 +1229,7 @@ class Array(Field):
 		self.field_cls = field_cls
 		self.items = []
 		self.raw_data = None
+		self.implicit = False
 
 		if stream is not None:
 			self._pfp__parse(stream, save_offset=True)
