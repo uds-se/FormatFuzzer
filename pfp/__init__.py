@@ -10,7 +10,7 @@ from pfp.bitwrap import BitwrappedStream
 
 PARSER = py010parser.c_parser.CParser()
 
-def parse(data=None, template=None, data_file=None, template_file=None, interp=None, debug=False, predefines=True, int3=True, cpp_path="cpp", cpp_args=""):
+def parse(data=None, template=None, data_file=None, template_file=None, interp=None, debug=False, predefines=True, int3=True, cpp_path="cpp", cpp_args="-xc++"):
 	"""Parse the data stream using the supplied template. The data stream
 	WILL NOT be automatically closed.
 

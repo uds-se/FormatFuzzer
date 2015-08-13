@@ -29,6 +29,21 @@ class TestBasic(unittest.TestCase, utils.UtilsMixin):
 			"""
 		)
 
+	def test_basic_parse_with_comments(self):
+		dom = self._test_parse_build(
+			"\x00\x01\x02\x03",
+			"""
+				// This should be removed
+				struct DATA {
+					/* so should this */
+					char a; // yo yoyo
+					char b;
+					char c;
+					char d;
+				} data; /*haha*/
+			"""
+		)
+
 	def test_basic_parse(self):
 		dom = self._test_parse_build(
 			"\x00\x01\x02\x03",

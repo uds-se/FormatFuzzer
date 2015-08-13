@@ -444,7 +444,7 @@ class PfpInterp(object):
 			setattr(mod, "PYVAL", fields.get_value)
 			setattr(mod, "PYSTR", fields.get_str)
 
-	def __init__(self, debug=False, parser=None, int3=True, cpp_path="cpp", cpp_args=""):
+	def __init__(self, debug=False, parser=None, int3=True, cpp_path="cpp", cpp_args="-xc++"):
 		"""
 		"""
 		self.__class__.define_natives()
