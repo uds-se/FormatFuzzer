@@ -42,9 +42,18 @@ def StructUnionDef(typedef_name, interp, node):
 		cls = fields.Union
 		decls = UnionDecls(node.decls, node.coord)
 
-	def __init__(self, stream=None, metadata_processor=None):
+	# this is so that we can have all nested structs added to
+	# the root DOM, even if there's an error in parsing the data.
+	# If we didn't do this, any errors parsing the data would cause
+	# the new struct to not be added to its parent, and the user would
+	# not be able to see how far the script got
+	def __init__(self, stream=None, metadata_processor=None, do_init=True):
 		cls.__init__(self, stream, metadata_processor=metadata_processor)
 
+		if do_init:
+			self._pfp__init(stream)
+
+	def _pfp__init(self, stream):
 		self._pfp__interp._handle_node(
 			decls,
 			ctxt=self,
@@ -53,8 +62,9 @@ def StructUnionDef(typedef_name, interp, node):
 
 	new_class = type(typedef_name, (cls,), {
 		"__init__":		__init__,
+		"_pfp__init":	_pfp__init,
 		"_pfp__node":	node,
-		"_pfp__interp":	interp
+		"_pfp__interp":	interp,
 	})
 	return new_class
 
@@ -137,11 +147,14 @@ class DebugLogger(object):
 		if self._active:
 			self._log.setLevel(logging.DEBUG)
 	
-	def debug(self, prefix, msg, indent_change=0):
+	def debug(self, prefix, msg, indent_change=0, filename=None, coord=None):
 		if not self._active:
 			return
 
 		self._indent += indent_change
+		if coord is not None and filename:
+			prefix += ":{}:{}".format(filename, coord.line)
+
 		self._log.debug("\n".join(prefix + ": " + "  "*self._indent + line for line in msg.split("\n")))
 	
 	def inc(self):
@@ -468,6 +481,8 @@ class PfpInterp(object):
 
 		self._ctxt = None
 		self._scope = None
+		self._coord = None
+		self._orig_filename = None
 		
 		if parser is None:
 			parser = py010parser.c_parser.CParser()
@@ -518,18 +533,19 @@ class PfpInterp(object):
 	
 	def _dlog(self, msg, indent_increase=0):
 		"""log the message to the log"""
-		self._log.debug("interp", msg, indent_increase)
+		self._log.debug("interp", msg, indent_increase, filename=self._orig_filename, coord=self._coord)
 	
 	# --------------------
 	# PUBLIC
 	# --------------------
 
-	def parse(self, stream, template, predefines=True, orig_filename=None):
+	def parse(self, stream, template, predefines=True, orig_filename=None, keep_successful=False):
 		"""Parse the data stream using the template (e.g. parse the 010 template
 		and interpret the template using the stream as the data source).
 
 		:stream: The input data stream
 		:template: The template to parse the stream with
+		:keep_successful: Return whatever was successfully parsed before an error. ``_pfp__error`` will contain the exception (if one was raised)
 		:returns: Pfp Dom
 
 		"""
@@ -542,7 +558,7 @@ class PfpInterp(object):
 		self._ast = self._parse_string(template, predefines)
 		self._dlog("parsed template into ast")
 
-		res = self._run()
+		res = self._run(keep_successful)
 		return res
 	
 	def step_over(self):
@@ -657,7 +673,7 @@ class PfpInterp(object):
 
 		return res
 	
-	def _run(self):
+	def _run(self, keep_successfull):
 		"""Interpret the parsed 010 AST
 		:returns: PfpDom
 
@@ -693,16 +709,22 @@ class PfpInterp(object):
 		except errors.InterpExit as e:
 			pass
 		except Exception as e:
-			exc_type, exc_obj, traceback = sys.exc_info()
-			more_info = "\nException at {}:{}".format(
-				self._orig_filename,
-				self._coord.line
-			)
-			six.reraise(
-				errors.PfpError,
-				errors.PfpError(exc_obj.__class__.__name__ + ": " + exc_obj.args[0] + more_info if len(exc_obj.args) > 0 else more_info),
-				traceback
-			)
+			if keep_successfull:
+				# return the root and set _pfp__error
+				res = self._root
+				res._pfp__error = e
+
+			else:
+				exc_type, exc_obj, traceback = sys.exc_info()
+				more_info = "\nException at {}:{}".format(
+					self._orig_filename,
+					self._coord.line
+				)
+				six.reraise(
+					errors.PfpError,
+					errors.PfpError(exc_obj.__class__.__name__ + ": " + exc_obj.args[0] + more_info if len(exc_obj.args) > 0 else more_info),
+					traceback
+				)
 
 		# final drop-in after everything has executed
 		if self._break_type != self.BREAK_NONE:
@@ -876,13 +898,14 @@ class PfpInterp(object):
 				# E.g.
 				# 	char a: 8, b:8;
 				#	char c: 8, d:8;
-				if prev.__class__ == field and prev.bitsize is not None and prev.bitfield_rw.reserve_bits(bitsize):
+				if ((self._padded_bitfield and prev.__class__ == field) or not self._padded_bitfield) \
+						and prev.bitsize is not None and prev.bitfield_rw.reserve_bits(bitsize, stream):
 					bitfield_rw = prev.bitfield_rw
 
 			# either because there was no previous bitfield, or the previous was full
 			if bitfield_rw is None:
 				bitfield_rw = fields.BitfieldRW(self, field)
-				bitfield_rw.reserve_bits(bitsize)
+				bitfield_rw.reserve_bits(bitsize, stream)
 
 		if getattr(node, "is_func_param", False):
 			# we want to keep this as a class and not instantiate it
@@ -915,18 +938,55 @@ class PfpInterp(object):
 			scope.add_local(node.name, field)
 
 		elif node.name is not None:
+			added_child = False
+
+	
 			# by this point, structs are already instantiated (they need to be
 			# in order to set the new context)
 			if not isinstance(field, fields.Field):
 				if issubclass(field, fields.NumberBase):
-					field = field(stream, bitsize=bitsize, metadata_processor=metadata_processor, bitfield_rw=bitfield_rw)
+					field = field(
+						stream,
+						bitsize=bitsize,
+						metadata_processor=metadata_processor,
+						bitfield_rw=bitfield_rw,
+						bitfield_padded=self._padded_bitfield,
+						bitfield_left_right=self._bitfield_left_right
+					)
+
+				# TODO
+				# for now if there's a struct inside of a union that is being
+				# parsed when there's an error, the user will lose information
+				# about how far the parsing got. Here we are explicitly checking for
+				# adding structs and unions to a parent union.
+				elif (issubclass(field, fields.Struct) or issubclass(field, fields.Union)) \
+						and not isinstance(ctxt, fields.Union) \
+						and hasattr(field, "_pfp__init"):
+
+					# this is so that we can have all nested structs added to
+					# the root DOM, even if there's an error in parsing the data.
+					# If we didn't do this, any errors parsing the data would cause
+					# the new struct to not be added to its parent, and the user would
+					# not be able to see how far the script got
+					field = field(stream, metadata_processor=metadata_processor, do_init=False)
+					field._pfp__interp = self
+					field_res = ctxt._pfp__add_child(node.name, field, stream)
+					scope.add_var(node.name, field_res)
+					field_res._pfp__interp = self
+					field._pfp__init(stream)
+					added_child = True
 				else:
 					field = field(stream, metadata_processor=metadata_processor)
 
-			field._pfp__interp = self
-			field_res = ctxt._pfp__add_child(node.name, field, stream)
-			field_res._pfp__interp = self
-			scope.add_var(node.name, field_res)
+			if not added_child:
+				field._pfp__interp = self
+				field_res = ctxt._pfp__add_child(node.name, field, stream)
+				field_res._pfp__interp = self
+				scope.add_var(node.name, field_res)
+
+				# this shouldn't be used elsewhere, but should still be explicit with
+				# this flag
+				added_child = True
 
 		# enums will get here. If there is no name, then no
 		# field is being declared (but the enum values _will_
@@ -1095,14 +1155,9 @@ class PfpInterp(object):
 
 		"""
 		self._dlog("handling union")
-		union = fields.Union()
-		
-		# TODO maybe evaluate this again
-		union._pfp__offset = stream.tell()
 
-		self._handle_node(UnionDecls(node.decls, node.coord), scope, union, stream)
-
-		return union
+		union_cls = StructUnionDef("union", self, node)
+		return union_cls
 	
 	def _handle_union_decls(self, node, scope, ctxt, stream):
 		self._dlog("handling union decls")
@@ -1779,21 +1834,54 @@ class PfpInterp(object):
 		def exec_case(idx, cases):
 			# keep executing cases until a break is found,
 			# or they've all been executed
-			for _,case in cases[idx:]:
-				stmts = self._flatten_list(case.stmts)
+			for case in cases[idx:]:
+				stmts = case.stmts
 				try:
 					for stmt in stmts:
 						self._handle_node(stmt, scope, ctxt, stream)
 				except errors.InterpBreak as e:
 					break
 
+		def get_stmts(stmts, res=None):
+			if res is None:
+				res = []
+
+			stmts = self._flatten_list(stmts)
+			for stmt in stmts:
+				if isinstance(stmt, tuple):
+					stmt = stmt[1]
+
+				res.append(stmt)
+
+				if stmt.__class__ in [AST.Case, AST.Default]:
+					get_stmts(stmt.stmts, res)
+
+			return res
+
+		def get_cases(nodes, acc=None):
+			cases = []
+
+			stmts = get_stmts(nodes)
+			for stmt in stmts:
+				if stmt.__class__ in [AST.Case, AST.Default]:
+					cases.append(stmt)
+					stmt.stmts = []
+				else:
+					cases[-1].stmts.append(stmt)
+
+			return cases
+
 		cond = self._handle_node(node.cond, scope, ctxt, stream)
-		
+	
 		default_idx = None
 		found_match = False
-		cases = list(filter(lambda x: x[1].__class__ in [AST.Case, AST.Default], node.stmt.children()))
-		for idx,info in enumerate(cases):
-			_,child = info
+
+		cases = getattr(node, "pfp_cases", None)
+		if cases is None:
+			cases = get_cases(node.stmt.children())
+			node.pfp_cases = cases
+
+		for idx,child in enumerate(cases):
 			if child.__class__ == AST.Default:
 				default_idx = idx
 				continue

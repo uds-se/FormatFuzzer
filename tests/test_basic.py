@@ -164,6 +164,20 @@ class TestBasic(unittest.TestCase, utils.UtilsMixin):
 				k = i >> j;
 			"""
 		)
+	
+	def test_add(self):
+		dom = self._test_parse_build(
+			"ab",
+			"""
+				char a;
+				char b;
+				local int i;
+				local int j = 3;
+				i = FTell() + j;
+				Printf("%d", i);
+			""",
+			stdout="5"
+		)
 
 	def test_unary_arithmetic(self):
 		dom = self._test_parse_build(
