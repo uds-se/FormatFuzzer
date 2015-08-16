@@ -189,6 +189,33 @@ class TestBitfields(unittest.TestCase, utils.UtilsMixin):
 			} qtable;
 			"""
 		)
+	
+	def test_bitfield_no_padding(self):
+		dom = self._test_parse_build(
+			"\x78\x00\x05\x5f\x00\x00\x0f\xa0\x00\x00\x0c",
+			"""
+			LittleEndian();
+			typedef struct {
+				ubyte Nbits         : 5;
+				BitfieldDisablePadding();
+				int Xmin            : Nbits;
+				int Xmax            : Nbits;
+				int Ymin            : Nbits;
+				int Ymax            : Nbits;
+				BitfieldEnablePadding();
+			} RECT;
+			RECT rect;
+
+			// should snap back to padded mode
+			short test;
+			""",
+		)
+		self.assertEqual(dom.rect.Nbits, 15)
+		self.assertEqual(dom.rect.Xmin, 0)
+		self.assertEqual(dom.rect.Xmax, 11000)
+		self.assertEqual(dom.rect.Ymin, 0)
+		self.assertEqual(dom.rect.Ymax, 8000)
+		self.assertEqual(dom.test, 0x0c00)
 
 if __name__ == "__main__":
 	unittest.main()

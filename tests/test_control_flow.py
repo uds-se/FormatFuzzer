@@ -219,6 +219,86 @@ class TestControlFlow(unittest.TestCase, utils.UtilsMixin):
 		)
 		self.assertEqual(dom.case_5, 1)
 		self.assertEqual(dom.case_default, 2)
+	
+	def test_fall_through_no_case_body(self):
+		dom = self._test_parse_build(
+			"\x00\x01\x00\x02\x00\x03",
+			"""
+			BigEndian();
+			local int a = 1;
+			switch(a) {
+				case 0:
+				case 1:
+				case 2:
+					ushort a;
+					ushort b;
+					ushort c;
+					break;
+				case 3:
+				case 4:
+				case 5:
+				default:
+					uchar a;
+					uchar b;
+					uchar c;
+					break;
+			};
+			"""
+		)
+		self.assertEqual(dom.a, 1)
+		self.assertEqual(dom.b, 2)
+		self.assertEqual(dom.c, 3)
+
+	def test_fall_through_no_case_body2(self):
+		dom = self._test_parse_build(
+			"",
+			"""
+			BigEndian();
+			local int a = 3;
+			switch(a) {
+				case 0:
+				case 1:
+					break;
+				case 3:
+				case 4:
+					break;
+				case 5:
+					uchar a;
+					uchar b;
+					uchar c;
+					break;
+				default:
+					break;
+			};
+			"""
+		)
+
+	def test_fall_through_no_case_body3(self):
+		dom = self._test_parse_build(
+			"AAABBBCCCDDD",
+			"""
+			BigEndian();
+			local int a = 3;
+			while(!FEof()) {
+				switch(a) {
+					case 0:
+					case 1:
+						break;
+					case 3:
+					case 4:
+						uchar a;
+						break;
+					case 5:
+						uchar a;
+						uchar b;
+						uchar c;
+						break;
+					default:
+						break;
+				};
+			}
+			"""
+		)
 
 if __name__ == "__main__":
 	unittest.main()

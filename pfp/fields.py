@@ -69,7 +69,7 @@ class BitfieldRW(object):
 		# used to write to the stream
 		self._write_bits = []
 	
-	def reserve_bits(self, num_bits):
+	def reserve_bits(self, num_bits, stream):
 		"""Used to "reserve" ``num_bits`` amount of bits in order to keep track
 		of consecutive bitfields (or are the called bitfield groups?).
 
@@ -81,28 +81,40 @@ class BitfieldRW(object):
 			}
 
 		:param int num_bits: The number of bits to claim
+		:param pfp.bitwrap.BitwrappedStream stream: The stream to reserve bits on
 		:returns: If room existed for the reservation
 		"""
+		padded = self.interp.get_bitfield_padded()
 		num_bits = PYVAL(num_bits)
-		if num_bits + self.reserved_bits > self.max_bits:
-			return False
+
+		if padded:
+			num_bits = PYVAL(num_bits)
+			if num_bits + self.reserved_bits > self.max_bits:
+				return False
+
+		# if unpadded, always allow it
+		if not padded:
+			if self._cls_bits is None:
+				self._cls_bits = []
+
+			# reserve bits will only be called just prior to reading the bits,
+			# so check to see if we have enough bits in self._cls_bits, else
+			# read what's missing
+			diff = len(self._cls_bits) - num_bits
+			if diff < 0:
+				self._cls_bits += stream.read_bits(-diff)
 
 		self.reserved_bits += num_bits
 		return True
 	
-	def read_bits(self, stream, num_bits):
+	def read_bits(self, stream, num_bits, padded, left_right, endian):
 		"""Return ``num_bits`` bits, taking into account endianness and 
 		left-right bit directions
 		"""
-		padded = self.interp.get_bitfield_padded()
-		left_right = self.interp.get_bitfield_left_right()
-
-		# TODO this needs to be something more like this
-		# endian = self.interp.get_endian()
-		endian = NumberBase.endian
-
 		if self._cls_bits is None and padded:
 			raw_bits = stream.read_bits(self.cls.width*8)
+			#if len(raw_bits) != self.cls.width*8:
+			#	import pdb; pdb.set_trace()
 			self._cls_bits = self._endian_transform(raw_bits, endian)
 
 		if self._cls_bits is not None:
@@ -121,17 +133,10 @@ class BitfieldRW(object):
 		else:
 			return stream.read_bits(num_bits)
 	
-	def write_bits(self, stream, raw_bits):
+	def write_bits(self, stream, raw_bits, padded, left_right, endian):
 		"""Write the bits. Once the size of the written bits is equal
 		to the number of the reserved bits, flush it to the stream
 		"""
-		padded = self.interp.get_bitfield_padded()
-		left_right = self.interp.get_bitfield_left_right()
-
-		# TODO this needs to be something more like this
-		# endian = self.interp.get_endian()
-		endian = NumberBase.endian
-
 		if padded:
 			if left_right:
 				self._write_bits += raw_bits
@@ -141,8 +146,16 @@ class BitfieldRW(object):
 			if len(self._write_bits) == self.reserved_bits:
 				bits = self._endian_transform(self._write_bits, endian)
 				stream.write_bits(bits)
+				self._write_bits = []
 
 		else:
+			# if an unpadded field ended up using the same BitfieldRW and
+			# as a previous padded field, there will be unwritten bits left in
+			# self._write_bits. These need to be flushed out as well
+			if len(self._write_bits) > 0:
+				stream.write_bits(self._write_bits)
+				self._write_bits = []
+
 			stream.write_bits(raw_bits)
 	
 	def _endian_transform(self, bits, endian):
@@ -882,6 +895,14 @@ class Union(Struct):
 		return res
 
 class Dom(Struct):
+	"""The main container struct for a template"""
+
+	def __init__(self, *args, **kwargs):
+		super(self.__class__, self).__init__(*args, **kwargs)
+
+		# see keep_successful notes on pfp.parse and pfp.interp.PfpInterp.parse
+		self._pfp__error = None
+
 	"""The result of an interpreted template"""
 	def _pfp__build(self, stream=None, save_offset=False):
 		if stream is None:
@@ -912,11 +933,15 @@ class NumberBase(Field):
 
 	_pfp__value = 0			# default value
 	
-	def __init__(self, stream=None, bitsize=None, metadata_processor=None, bitfield_rw=None):
+	def __init__(self, stream=None, bitsize=None, metadata_processor=None, bitfield_rw=None, bitfield_padded=False, bitfield_left_right=False):
 		"""Special init for the bitsize
 		"""
 		self.bitsize = get_value(bitsize)
 		self.bitfield_rw = bitfield_rw
+		
+		# fields need to remember if they were parsed with padded bits or not
+		self.bitfield_padded = bitfield_padded
+		self.bitfield_left_right = bitfield_left_right
 
 		super(NumberBase, self).__init__(stream, metadata_processor=metadata_processor)
 
@@ -942,7 +967,7 @@ class NumberBase(Field):
 			data = utils.binary(raw_data)
 
 		else:
-			bits = self.bitfield_rw.read_bits(stream, self.bitsize)
+			bits = self.bitfield_rw.read_bits(stream, self.bitsize, self.bitfield_padded, self.bitfield_left_right, self.endian)
 			width_diff = self.width  - (len(bits)//8) - 1
 			bits_diff = 8 - (len(bits) % 8)
 
@@ -999,7 +1024,7 @@ class NumberBase(Field):
 			bits = raw_bits[-self.bitsize:]
 
 			if stream is not None:
-				self.bitfield_rw.write_bits(stream, bits)
+				self.bitfield_rw.write_bits(stream, bits, self.bitfield_padded, self.bitfield_left_right, self.endian)
 				return len(bits) // 8
 			else:
 				# TODO this can't be right....
@@ -1154,9 +1179,17 @@ class IntBase(NumberBase):
 			# different sizes, unsigned/signed, etc
 			raw = new_val._pfp__build()
 			while len(raw) < self.width:
-				raw = b"\x00" + raw
+				if self.endian == BIG_ENDIAN:
+					raw = b"\x00" + raw
+				else:
+					raw += b"\x00"
+
 			while len(raw) > self.width:
-				raw = raw[1:]
+				if self.endian == BIG_ENDIAN:
+					raw = raw[1:]
+				else:
+					raw = raw[:-1]
+
 			self._pfp__parse(six.BytesIO(raw))
 		else:
 			mask = 1 << (8*self.width)
@@ -1276,7 +1309,7 @@ class Enum(IntBase):
 	enum_cls = None
 	enum_name = None
 
-	def __init__(self, stream=None, enum_cls=None, enum_vals=None, bitsize=None, metadata_processor=None, bitfield_rw=None):
+	def __init__(self, stream=None, enum_cls=None, enum_vals=None, bitsize=None, metadata_processor=None, bitfield_rw=None, bitfield_padded=False, bitfield_left_right=False):
 		"""Init the enum
 		"""
 		# discard the bitsize value and bitfield_rw value
