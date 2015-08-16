@@ -273,5 +273,32 @@ class TestControlFlow(unittest.TestCase, utils.UtilsMixin):
 			"""
 		)
 
+	def test_fall_through_no_case_body3(self):
+		dom = self._test_parse_build(
+			"AAABBBCCCDDD",
+			"""
+			BigEndian();
+			local int a = 3;
+			while(!FEof()) {
+				switch(a) {
+					case 0:
+					case 1:
+						break;
+					case 3:
+					case 4:
+						uchar a;
+						break;
+					case 5:
+						uchar a;
+						uchar b;
+						uchar c;
+						break;
+					default:
+						break;
+				};
+			}
+			"""
+		)
+
 if __name__ == "__main__":
 	unittest.main()
