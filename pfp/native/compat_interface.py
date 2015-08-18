@@ -307,9 +307,9 @@ def GetFileInterface(params, ctxt, scope, stream, coord):
 	raise NotImplementedError()
 
 #char[] GetFileName()
-@native(name="GetFileName", ret=pfp.fields.String)
-def GetFileName(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+@native(name="GetFileName", ret=pfp.fields.String, send_interp=True)
+def GetFileName(params, ctxt, scope, stream, coord, interp):
+	return interp.get_filename()
 
 #wchar_t[] GetFileNameW()
 @native(name="GetFileNameW", ret=pfp.fields.WString)

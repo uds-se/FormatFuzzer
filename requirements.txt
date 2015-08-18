@@ -1,3 +1,3 @@
-py010parser
+py010parser>=0.1.3
 six
 intervaltree

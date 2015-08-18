@@ -436,5 +436,24 @@ class TestCompatString(unittest.TestCase, utils.UtilsMixin):
 			stdout="-1"
 		)
 
+class TestCompatTools(unittest.TestCase, utils.UtilsMixin):
+	def setUp(self):
+		pass
+	
+	def tearDown(self):
+		pass
+	
+	def test_find_all(self):
+		# waiting on issue #3 to be implemented
+		return
+		dom = self._test_parse_build(
+			"abcd HELLO THERE HELLO blah HELLO blkajsdf",
+			"""
+				TFindResults results = FindAll("HELLO");
+			""",
+			verify=False,
+			predefines=True
+		)
+
 if __name__ == "__main__":
 	unittest.main()

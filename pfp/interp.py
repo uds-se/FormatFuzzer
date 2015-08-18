@@ -654,6 +654,14 @@ class PfpInterp(object):
 		"""
 		return self._bitfield_left_right
 	
+	def get_filename(self):
+		"""Return the filename of the data that is currently being
+		parsed
+
+		:returns: The name of the data file being parsed.
+		"""
+		return self._orig_filename
+	
 	# --------------------
 	# PRIVATE
 	# --------------------
@@ -661,14 +669,29 @@ class PfpInterp(object):
 	def _parse_string(self, string, predefines=True):
 		exts = []
 		if predefines:
-			for predefine in self._predefines:
+			for idx,predefine in enumerate(self._predefines):
 				try:
-					ast = py010parser.parse_string(predefine, parser=self._parser, cpp_path=self._cpp_path, cpp_args=self._cpp_args)
+					ast = py010parser.parse_string(
+						predefine,
+						parser=self._parser,
+						cpp_path=self._cpp_path,
+						cpp_args=self._cpp_args,
+						# clear out the scopes for the first one
+						# that we run
+						keep_scopes=(idx != 0),
+					)
 					exts += ast.ext
 				except:
 					pass
 
-		res = py010parser.parse_string(string, parser=self._parser, cpp_path=self._cpp_path, cpp_args=self._cpp_args)
+		res = py010parser.parse_string(
+			string,
+			parser=self._parser,
+			cpp_path=self._cpp_path,
+			cpp_args=self._cpp_args,
+			# only keep the scopes if we ran the predefines
+			keep_scopes=predefines
+		)
 		res.ext = exts + res.ext
 
 		return res
@@ -1324,11 +1347,11 @@ class PfpInterp(object):
 			"double": (float, fields.Double),
 
 			# cut out the quotes
-			"char": (lambda x: ord(x[1:-1]), fields.Char),
+			"char": (lambda x: ord(utils.string_escape(x[1:-1])), fields.Char),
 
 			# TODO should this be unicode?? will probably bite me later...
 			# cut out the quotes
-			"string": (lambda x: str(x[1:-1]), fields.String)
+			"string": (lambda x: str(utils.string_escape(x[1:-1])), fields.String)
 		}
 
 		if node.type in switch:

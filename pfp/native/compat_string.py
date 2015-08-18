@@ -25,12 +25,16 @@ def _cmp(a, b):
 #double Atof( const char s[] )
 @native(name="Atof", ret=pfp.fields.Double)
 def Atof(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+	if len(params) < 1:
+		raise errors.InvalidArguments(coord, "{} args".format(len(params)), "one arg")
+	return float(PYSTR(params[0]))
 
 #int Atoi( const char s[] )
 @native(name="Atoi", ret=pfp.fields.Int)
 def Atoi(params, ctxt, scope, stream, coord):
-	raise NotImplementedError()
+	if len(params) < 1:
+		raise errors.InvalidArguments(coord, "{} args".format(len(params)), "one arg")
+	return int(PYSTR(params[0]))
 
 #int64 BinaryStrToInt( const char s[] )
 @native(name="BinaryStrToInt", ret=pfp.fields.Int64)

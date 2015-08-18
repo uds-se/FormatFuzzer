@@ -83,6 +83,16 @@ class TestStrings(unittest.TestCase, utils.UtilsMixin):
 		self.assertEqual(dom.alpha[1], ord("b"))
 		self.assertEqual(dom.alpha[2], ord("C"))
 		self.assertEqual(dom.alpha[3], ord("d"))
+	
+	def test_string_declaration_with_chars(self):
+		dom = self._test_parse_build(
+			"",
+			r"""
+				local string RarSignature = "Rar!" + '\x1A' + '\x07';
+				Printf("%s", RarSignature);
+			""",
+			stdout="Rar!\x1a\x07"
+		)
 
 if __name__ == "__main__":
 	unittest.main()

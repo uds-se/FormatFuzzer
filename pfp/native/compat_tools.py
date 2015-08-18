@@ -8,9 +8,11 @@ are nops, some are fully implemented.
 """
 
 import binascii
+import re
 import sys
 
 from pfp.native import native, predefine
+import pfp.errors as errors
 import pfp.fields
 
 # http://www.sweetscape.com/010editor/manual/FuncTools.htm
@@ -404,6 +406,25 @@ def ExportFile(params, ctxt, scope, stream, coord):
 	"""
 	raise NotImplementedError()
 
+FINDMETHOD_NORMAL = 0
+FINDMETHOD_WILDCARDS = 1
+FINDMETHOD_REGEX = 2
+predefine("""
+const int FINDMETHOD_NORMAL		= 0; // a normal search
+const int FINDMETHOD_WILDCARDS	= 1; // when searching for strings use wildcards '*' or '?'
+const int FINDMETHOD_REGEX		= 2; // when searching for strings use Regular Expressions
+
+/*
+This structure contains a count variable indicating the number of matches,
+and a start array holding an array of starting positions, plus a size array
+which holds an array of target lengths
+*/
+typedef struct {
+	unsigned int count;
+	unsigned int start[];
+	unsigned int size[];
+} TFindResults;
+""")
 #TFindResults FindAll( 
 #    <datatype> data, 
 #    int matchcase=true, 
@@ -414,7 +435,7 @@ def ExportFile(params, ctxt, scope, stream, coord):
 #    int64 start=0, 
 #    int64 size=0, 
 #    int wildcardMatchLength=24 )
-@native(name="FindAll", ret=pfp.fields.Void)
+@native(name="FindAll", ret="TFindResults")
 def FindAll(params, ctxt, scope, stream, coord):
 	"""
 	This function converts the argument data into a set of hex bytes
@@ -436,7 +457,96 @@ def FindAll(params, ctxt, scope, stream, coord):
 
 	The return value is a TFindResults structure. This structure contains a count variable indicating the number of matches, and a start array holding an array of starting positions, plus a size array which holds an array of target lengths. For example, use the following code to find all occurrences of the ASCII string "Test" in a file:
 	"""
-	raise NotImplementedError()
+	raise NotImplementedError("FindAll is not yet implemented, waiting on issue #3 to be implemented")
+
+	if len(params) == 0:
+		raise errors.InvalidArguments(coord, "at least 1 argument", "{} args".format(len(params)))
+
+	if (isinstance(params[0], pfp.fields.Array) and params[0].is_stringable()) \
+			or isinstance(params[0], pfp.fields.String):
+		data = PYSTR(params[0]) # should correctly do null termination
+	else:
+		data = params[0]._pfp__build();
+	
+	if len(params) > 1:
+		match_case = not not PYVAL(params[1])
+	else:
+		match_case = True
+	
+	if len(params) > 2:
+		wholeword = not not PYVAL(params[2])
+	else:
+		wholeword = False
+	
+	if len(params) > 3:
+		method = PYVAL(params[3])
+	else:
+		method = FINDMETHOD_NORMAL
+	
+	if len(params) > 4:
+		tolerance = PYVAL(params[4])
+		if tolerance != 0.0:
+			raise NotImplementedError("tolerance in FindAll is not fully implemented")
+	else:
+		tolerance = 0.0
+	
+	if len(params) > 5:
+		direction = PYVAL(params[5])
+	else:
+		direction = 1
+	
+	if len(params) > 6:
+		start = PYVAL(params[6])
+	else:
+		start = 0
+	
+	if len(params) > 7:
+		size = PYVAL(params[7])
+	else:
+		size = 0
+	
+	if len(params) > 8:
+		wildcard_match_length = PYVAL(params[8])
+	else:
+		wildcard_match_length = 24
+	
+	regex = re.escape(data)
+
+	if method == FINDMETHOD_WILDCARDS:
+		# * wildcard
+		regex = regex.replace(r"\*", ".{:" + str(wildcard_match_length) + "}")
+		# ? wildcard
+		regex = regex.replace(r"\?", ".")
+	if method == FINDMETHOD_REGEX:
+		regex = data
+	
+	if wholeword:
+		regex = "\\b" + regex + "\\b"
+	
+	stream_bits = stream._bits
+	stream_pos = stream.tell()
+
+	stream.seek(start)
+	if size == 0:
+		search_data = stream.read(stream.size())
+	else:
+		search_data = stream.read(size)
+	
+	stream.seek(stream_pos)
+	stream._bits = stream_bits
+
+	flags = 0
+	if not match_case:
+		flags |= re.IGNORECASE
+
+	matches = re.finditer(regex, search_data, flags)
+
+	res = interp.get_type("TFindResult")()
+	res.count = len(matches)
+	res.start = [1,2,3]
+	res.size = [3,3,3]
+
+	return res
 
 #int64 FindFirst( 
 #    <datatype> data, 
