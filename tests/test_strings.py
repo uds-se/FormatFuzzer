@@ -23,7 +23,19 @@ class TestStrings(unittest.TestCase, utils.UtilsMixin):
 	
 	def tearDown(self):
 		pass
-	
+
+	def test_unicode_const(self):
+		dom = self._test_parse_build(
+			"\n",
+			"""
+                        char newline;
+                        if(newline == \'\\n\') {
+                           Warning("Found newline!");
+                        }
+                        """
+                        )
+		self.assertEqual(dom.newline, ord('\n'))
+
 	def test_basic_string(self):
 		dom = self._test_parse_build(
 			"hello there\x00good byte\x00",
