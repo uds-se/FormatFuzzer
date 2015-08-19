@@ -45,8 +45,9 @@ class TestStructUnion(unittest.TestCase, utils.UtilsMixin):
 
 				blah test(2, 3);
 			""",
-			debug=True
 		)
+		self.assertEqual(dom.test.chars1, "aa")
+		self.assertEqual(dom.test.chars2, "bbb")
 	
 	def test_struct_decl_with_struct_keyword(self):
 		dom = self._test_parse_build(
