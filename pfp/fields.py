@@ -113,8 +113,6 @@ class BitfieldRW(object):
 		"""
 		if self._cls_bits is None and padded:
 			raw_bits = stream.read_bits(self.cls.width*8)
-			#if len(raw_bits) != self.cls.width*8:
-			#	import pdb; pdb.set_trace()
 			self._cls_bits = self._endian_transform(raw_bits, endian)
 
 		if self._cls_bits is not None:
@@ -818,7 +816,7 @@ class Union(Struct):
 				if other_child is child:
 					continue
 
-				if isinstance(other_child, Array) and other_child._is_stringable():
+				if isinstance(other_child, Array) and other_child.is_stringable():
 					other_child._pfp__set_value(new_data)
 				else:
 					other_child._pfp__parse(new_stream)
@@ -1396,12 +1394,12 @@ class Array(Field):
 		self.items.append(item)
 		self.width = len(self.items)
 	
-	def _is_stringable(self):
+	def is_stringable(self):
 		# TODO WChar
 		return self.field_cls in [Char, UChar]
 	
 	def _array_to_str(self, max_len=-1):
-		if not self._is_stringable():
+		if not self.is_stringable():
 			return None
 
 		if self.raw_data is not None:
@@ -1423,7 +1421,7 @@ class Array(Field):
 		return res
 	
 	def __eq__(self, other):
-		if self._is_stringable() and other.__class__ in [String, WString, str]:
+		if self.is_stringable() and other.__class__ in [String, WString, str]:
 			res = self._array_to_str()
 			return utils.binary(res) == utils.binary(PYSTR(other))
 		else:
@@ -1445,7 +1443,7 @@ class Array(Field):
 					is_string_type = True
 					break
 		
-		if is_string_type and self._is_stringable():
+		if is_string_type and self.is_stringable():
 			self.raw_data = value
 			self.width = len(value)
 			self._pfp__notify_parent()
@@ -1572,7 +1570,7 @@ class Array(Field):
 	
 	def __repr__(self):
 		other = ""
-		if self._is_stringable():
+		if self.is_stringable():
 			res = self._array_to_str(20)
 			other = " ({!r})".format(res)
 
@@ -1583,7 +1581,7 @@ class Array(Field):
 		)
 	
 	def _pfp__show(self, level=0, include_offset=False):
-		if self._is_stringable():
+		if self.is_stringable():
 			res = self.__repr__()
 			if self._ is not None:
 				packed_show = self._._pfp__show(level=level+1, include_offset=False)
@@ -1702,7 +1700,7 @@ class String(Field):
 		if isinstance(other, String):
 			res = self._pfp__value + other._pfp__value
 		else:
-			res = self._pfp__value + PYSTR(other)
+			res = self._pfp__value + utils.binary(PYSTR(other))
 		res_field._pfp__set_value(res)
 		return res_field
 	
