@@ -1324,7 +1324,7 @@ class PfpInterp(object):
 			"double": (float, fields.Double),
 
 			# cut out the quotes
-			"char": (lambda x: ord(x[1:-1].decode('unicode_escape')), fields.Char),
+			"char": (lambda x: ord(utils.string_escape(x[1:-1])), fields.Char),
 
 			# TODO should this be unicode?? will probably bite me later...
 			# cut out the quotes
