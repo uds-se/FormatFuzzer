@@ -278,9 +278,9 @@ class TestControlFlow(unittest.TestCase, utils.UtilsMixin):
 			"AAABBBCCCDDD",
 			"""
 			BigEndian();
-			local int a = 3;
+			local int val = 3;
 			while(!FEof()) {
-				switch(a) {
+				switch(val) {
 					case 0:
 					case 1:
 						break;
