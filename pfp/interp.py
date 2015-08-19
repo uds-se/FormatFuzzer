@@ -34,6 +34,27 @@ class Decls(object):
 class UnionDecls(Decls): pass
 class StructDecls(Decls): pass
 
+def StructDeclWithParams(scope, struct_cls, struct_args):
+	def _pfp__init(self, stream):
+		params = self._pfp__interp._handle_node(
+			self._pfp__node.args,
+			scope,
+			self,
+			None
+		)
+		import pdb; pdb.set_trace()
+		param_list = params.instantiate(scope, struct_args, self._pfp__interp)
+
+		for arg in struct_args:
+			pass
+
+		super(self.__class__, self)._pfp__init()
+		
+	new_class = type(struct_cls.__name__ + "_", (struct_cls,), {
+		"_pfp__init":	_pfp__init,
+	})
+	return new_class
+
 def StructUnionDef(typedef_name, interp, node):
 	if isinstance(node, AST.Struct):
 		cls = fields.Struct
@@ -490,45 +511,46 @@ class PfpInterp(object):
 		self._parser = parser
 
 		self._node_switch = {
-			AST.FileAST:		self._handle_file_ast,
-			AST.Decl:			self._handle_decl,
-			AST.TypeDecl:		self._handle_type_decl,
-			AST.ByRefDecl:		self._handle_byref_decl,
-			AST.Struct:			self._handle_struct,
-			AST.Union:			self._handle_union,
-			AST.StructRef:		self._handle_struct_ref,
-			AST.IdentifierType:	self._handle_identifier_type,
-			AST.Typedef:		self._handle_typedef,
-			AST.Constant:		self._handle_constant,
-			AST.BinaryOp:		self._handle_binary_op,
-			AST.Assignment:		self._handle_assignment,
-			AST.ID:				self._handle_id,
-			AST.UnaryOp:		self._handle_unary_op,
-			AST.FuncDef:		self._handle_func_def,
-			AST.FuncCall:		self._handle_func_call,
-			AST.FuncDecl:		self._handle_func_decl,
-			AST.ParamList:		self._handle_param_list,
-			AST.ExprList:		self._handle_expr_list,
-			AST.Compound:		self._handle_compound,
-			AST.Return:			self._handle_return,
-			AST.ArrayDecl:		self._handle_array_decl,
-			AST.InitList:		self._handle_init_list,
-			AST.If:				self._handle_if,
-			AST.For:			self._handle_for,
-			AST.While:			self._handle_while,
-			AST.DeclList:		self._handle_decl_list,
-			AST.Break:			self._handle_break,
-			AST.Continue:		self._handle_continue,
-			AST.ArrayRef:		self._handle_array_ref,
-			AST.Enum:			self._handle_enum,
-			AST.Switch:			self._handle_switch,
-			AST.Cast:			self._handle_cast,
-			AST.Typename:		self._handle_typename,
-			AST.EmptyStatement: self._handle_empty_statement,
-			AST.DoWhile:		self._handle_do_while,
+			AST.FileAST:			self._handle_file_ast,
+			AST.Decl:				self._handle_decl,
+			AST.TypeDecl:			self._handle_type_decl,
+			AST.ByRefDecl:			self._handle_byref_decl,
+			AST.Struct:				self._handle_struct,
+			AST.Union:				self._handle_union,
+			AST.StructRef:			self._handle_struct_ref,
+			AST.IdentifierType:		self._handle_identifier_type,
+			AST.Typedef:			self._handle_typedef,
+			AST.Constant:			self._handle_constant,
+			AST.BinaryOp:			self._handle_binary_op,
+			AST.Assignment:			self._handle_assignment,
+			AST.ID:					self._handle_id,
+			AST.UnaryOp:			self._handle_unary_op,
+			AST.FuncDef:			self._handle_func_def,
+			AST.FuncCall:			self._handle_func_call,
+			AST.FuncDecl:			self._handle_func_decl,
+			AST.ParamList:			self._handle_param_list,
+			AST.ExprList:			self._handle_expr_list,
+			AST.Compound:			self._handle_compound,
+			AST.Return:				self._handle_return,
+			AST.ArrayDecl:			self._handle_array_decl,
+			AST.InitList:			self._handle_init_list,
+			AST.If:					self._handle_if,
+			AST.For:				self._handle_for,
+			AST.While:				self._handle_while,
+			AST.DeclList:			self._handle_decl_list,
+			AST.Break:				self._handle_break,
+			AST.Continue:			self._handle_continue,
+			AST.ArrayRef:			self._handle_array_ref,
+			AST.Enum:				self._handle_enum,
+			AST.Switch:				self._handle_switch,
+			AST.Cast:				self._handle_cast,
+			AST.Typename:			self._handle_typename,
+			AST.EmptyStatement: 	self._handle_empty_statement,
+			AST.DoWhile:			self._handle_do_while,
+			AST.StructCallTypeDecl:	self._handle_struct_call_type_decl,
 
-			StructDecls:		self._handle_struct_decls,
-			UnionDecls:			self._handle_union_decls,
+			StructDecls:			self._handle_struct_decls,
+			UnionDecls:				self._handle_union_decls,
 		}
 	
 	def _dlog(self, msg, indent_increase=0):
@@ -1213,6 +1235,24 @@ class PfpInterp(object):
 			res.append(init_field)
 		return res
 	
+	def _handle_struct_call_type_decl(self, node, scope, ctxt, stream):
+		"""TODO: Docstring for _handle_struct_call_type_decl.
+
+		:node: TODO
+		:scope: TODO
+		:ctxt: TODO
+		:stream: TODO
+		:returns: TODO
+
+		"""
+		self._dlog("handling struct with parameters")
+
+		struct_cls = self._handle_node(node.type, scope, ctxt, stream)
+		struct_args = self._handle_node(node.args, scope, ctxt, stream)
+
+		res = StructDeclWithParams(scope, struct_cls, struct_args)
+		return res
+	
 	def _handle_struct(self, node, scope, ctxt, stream):
 		"""TODO: Docstring for _handle_struct.
 
@@ -1224,6 +1264,11 @@ class PfpInterp(object):
 
 		"""
 		self._dlog("handling struct")
+		import pdb; pdb.set_trace()
+
+		if node.args is not None:
+			for param in node.args.params:
+				param.is_func_param = True
 
 		# it's actually being defined
 		if node.decls is not None:
@@ -1550,6 +1595,7 @@ class PfpInterp(object):
 		:returns: TODO
 
 		"""
+		import pdb; pdb.set_trace()
 		self._dlog("handling param list")
 		# params should be a list of tuples:
 		# [(<name>, <field_class>), ...]

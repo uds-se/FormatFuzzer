@@ -34,6 +34,20 @@ class TestStructUnion(unittest.TestCase, utils.UtilsMixin):
 			""",
 		)
 	
+	def test_struct_with_parameters(self):
+		dom = self._test_parse_build(
+			"aabbb",
+			"""
+				typedef struct (int a, int b) {
+					char chars1[a];
+					char chars2[b];
+				} blah;
+
+				blah test(2, 3);
+			""",
+			debug=True
+		)
+	
 	def test_struct_decl_with_struct_keyword(self):
 		dom = self._test_parse_build(
 			"ABCD",
