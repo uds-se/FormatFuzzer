@@ -95,6 +95,33 @@ class TestBasic(unittest.TestCase, utils.UtilsMixin):
 			"""
 		)
 	
+	def test_local_field_precedence1(self):
+		dom = self._test_parse_build(
+			"\x01",
+			"""
+				local int size = 0;
+				struct {
+					uchar size;
+					Printf("%d", size);
+				} test;
+			""",
+			stdout="1"
+		)
+
+	def test_local_field_precedence2(self):
+		dom = self._test_parse_build(
+			"\x01",
+			"""
+				uchar size;
+
+				struct {
+					local int size = 0;
+					Printf("%d", size);
+				} test;
+			""",
+			stdout="0"
+		)
+	
 	def test_local_assignment_int(self):
 		dom = self._test_parse_build(
 			"",

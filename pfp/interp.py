@@ -34,6 +34,25 @@ class Decls(object):
 class UnionDecls(Decls): pass
 class StructDecls(Decls): pass
 
+def StructDeclWithParams(scope, struct_cls, struct_args):
+	def _pfp__init(self, stream):
+		for param in self._pfp__node.args.params:
+			param.is_func_param = True
+
+		params = self._pfp__interp._handle_node(
+			self._pfp__node.args,
+			scope,
+			self,
+			None
+		)
+		param_list = params.instantiate(scope, struct_args, self._pfp__interp)
+		super(self.__class__, self)._pfp__init(stream)
+		
+	new_class = type(struct_cls.__name__ + "_", (struct_cls,), {
+		"_pfp__init":	_pfp__init,
+	})
+	return new_class
+
 def StructUnionDef(typedef_name, interp, node):
 	if isinstance(node, AST.Struct):
 		cls = fields.Struct
@@ -185,7 +204,6 @@ class Scope(object):
 		"""
 		self._curr_scope = {
 			"types": {},
-			"locals": {},
 			"vars": {}
 		}
 		self._dlog("pushing new scope, scope level = {}".format(self.level()))
@@ -252,7 +270,7 @@ class Scope(object):
 		self._dlog("adding local '{}'".format(field_name))
 		field._pfp__name = field_name
 		# TODO do we allow clobbering of locals???
-		self._curr_scope["locals"][field_name] = field
+		self._curr_scope["vars"][field_name] = field
 	
 	def get_local(self, name):
 		"""Get the local field (search for it) from the scope stack
@@ -260,7 +278,7 @@ class Scope(object):
 		:name: The name of the local field
 		"""
 		self._dlog("getting local '{}'".format(name))
-		return self._search("locals", name)
+		return self._search("vars", name)
 	
 	def add_type_class(self, name, cls):
 		"""Store the class with the name
@@ -315,10 +333,6 @@ class Scope(object):
 
 		"""
 		self._dlog("getting id '{}'".format(name))
-		local = self._search("locals", name)
-		if local is not None:
-			return local
-
 		var = self._search("vars", name)
 		return var
 	
@@ -490,45 +504,46 @@ class PfpInterp(object):
 		self._parser = parser
 
 		self._node_switch = {
-			AST.FileAST:		self._handle_file_ast,
-			AST.Decl:			self._handle_decl,
-			AST.TypeDecl:		self._handle_type_decl,
-			AST.ByRefDecl:		self._handle_byref_decl,
-			AST.Struct:			self._handle_struct,
-			AST.Union:			self._handle_union,
-			AST.StructRef:		self._handle_struct_ref,
-			AST.IdentifierType:	self._handle_identifier_type,
-			AST.Typedef:		self._handle_typedef,
-			AST.Constant:		self._handle_constant,
-			AST.BinaryOp:		self._handle_binary_op,
-			AST.Assignment:		self._handle_assignment,
-			AST.ID:				self._handle_id,
-			AST.UnaryOp:		self._handle_unary_op,
-			AST.FuncDef:		self._handle_func_def,
-			AST.FuncCall:		self._handle_func_call,
-			AST.FuncDecl:		self._handle_func_decl,
-			AST.ParamList:		self._handle_param_list,
-			AST.ExprList:		self._handle_expr_list,
-			AST.Compound:		self._handle_compound,
-			AST.Return:			self._handle_return,
-			AST.ArrayDecl:		self._handle_array_decl,
-			AST.InitList:		self._handle_init_list,
-			AST.If:				self._handle_if,
-			AST.For:			self._handle_for,
-			AST.While:			self._handle_while,
-			AST.DeclList:		self._handle_decl_list,
-			AST.Break:			self._handle_break,
-			AST.Continue:		self._handle_continue,
-			AST.ArrayRef:		self._handle_array_ref,
-			AST.Enum:			self._handle_enum,
-			AST.Switch:			self._handle_switch,
-			AST.Cast:			self._handle_cast,
-			AST.Typename:		self._handle_typename,
-			AST.EmptyStatement: self._handle_empty_statement,
-			AST.DoWhile:		self._handle_do_while,
+			AST.FileAST:			self._handle_file_ast,
+			AST.Decl:				self._handle_decl,
+			AST.TypeDecl:			self._handle_type_decl,
+			AST.ByRefDecl:			self._handle_byref_decl,
+			AST.Struct:				self._handle_struct,
+			AST.Union:				self._handle_union,
+			AST.StructRef:			self._handle_struct_ref,
+			AST.IdentifierType:		self._handle_identifier_type,
+			AST.Typedef:			self._handle_typedef,
+			AST.Constant:			self._handle_constant,
+			AST.BinaryOp:			self._handle_binary_op,
+			AST.Assignment:			self._handle_assignment,
+			AST.ID:					self._handle_id,
+			AST.UnaryOp:			self._handle_unary_op,
+			AST.FuncDef:			self._handle_func_def,
+			AST.FuncCall:			self._handle_func_call,
+			AST.FuncDecl:			self._handle_func_decl,
+			AST.ParamList:			self._handle_param_list,
+			AST.ExprList:			self._handle_expr_list,
+			AST.Compound:			self._handle_compound,
+			AST.Return:				self._handle_return,
+			AST.ArrayDecl:			self._handle_array_decl,
+			AST.InitList:			self._handle_init_list,
+			AST.If:					self._handle_if,
+			AST.For:				self._handle_for,
+			AST.While:				self._handle_while,
+			AST.DeclList:			self._handle_decl_list,
+			AST.Break:				self._handle_break,
+			AST.Continue:			self._handle_continue,
+			AST.ArrayRef:			self._handle_array_ref,
+			AST.Enum:				self._handle_enum,
+			AST.Switch:				self._handle_switch,
+			AST.Cast:				self._handle_cast,
+			AST.Typename:			self._handle_typename,
+			AST.EmptyStatement: 	self._handle_empty_statement,
+			AST.DoWhile:			self._handle_do_while,
+			AST.StructCallTypeDecl:	self._handle_struct_call_type_decl,
 
-			StructDecls:		self._handle_struct_decls,
-			UnionDecls:			self._handle_union_decls,
+			StructDecls:			self._handle_struct_decls,
+			UnionDecls:				self._handle_union_decls,
 		}
 	
 	def _dlog(self, msg, indent_increase=0):
@@ -886,6 +901,20 @@ class PfpInterp(object):
 		self._dlog("handling typename")
 		return self._handle_node(node.type, scope, ctxt, stream)
 	
+	def _get_node_name(self, node):
+		"""Get the name of the node - check for node.name and
+		node.type.declname. Not sure why the second one occurs
+		exactly - it happens with declaring a new struct field
+		with parameters"""
+		res = getattr(node, "name", None)
+		if res is None:
+			return res
+
+		if isinstance(res, AST.TypeDecl):
+			return res.declname
+		
+		return res
+	
 	def _handle_decl(self, node, scope, ctxt, stream):
 		"""TODO: Docstring for _handle_decl.
 
@@ -906,6 +935,7 @@ class PfpInterp(object):
 				return metadata_info
 			metadata_processor = process_metadata
 
+		field_name = self._get_node_name(node)
 		field = self._handle_node(node.type, scope, ctxt, stream)
 		bitsize = None
 		bitfield_rw = None
@@ -933,14 +963,14 @@ class PfpInterp(object):
 		if getattr(node, "is_func_param", False):
 			# we want to keep this as a class and not instantiate it
 			# instantiation will be done in functions.ParamListDef.instantiate
-			field = (node.name, field)
+			field = (field_name, field)
 		
 		# locals and consts still get a field instance, but DON'T parse the
 		# stream!
 		elif "local" in node.quals or "const" in node.quals:
 			if not isinstance(field, fields.Field):
 				field = field()
-			scope.add_local(node.name, field)
+			scope.add_local(field_name, field)
 
 			# this should only be able to be done with locals, right?
 			# if not, move it to the bottom of the function
@@ -957,10 +987,10 @@ class PfpInterp(object):
 			# eh, just add it as a local...
 			# maybe the whole local/vars thinking needs to change...
 			# and we should only have ONE map TODO
-			field.name = node.name
-			scope.add_local(node.name, field)
+			field.name = field_name
+			scope.add_local(field_name, field)
 
-		elif node.name is not None:
+		elif field_name is not None:
 			added_child = False
 
 	
@@ -993,8 +1023,8 @@ class PfpInterp(object):
 					# not be able to see how far the script got
 					field = field(stream, metadata_processor=metadata_processor, do_init=False)
 					field._pfp__interp = self
-					field_res = ctxt._pfp__add_child(node.name, field, stream)
-					scope.add_var(node.name, field_res)
+					field_res = ctxt._pfp__add_child(field_name, field, stream)
+					scope.add_var(field_name, field_res)
 					field_res._pfp__interp = self
 					field._pfp__init(stream)
 					added_child = True
@@ -1003,9 +1033,9 @@ class PfpInterp(object):
 
 			if not added_child:
 				field._pfp__interp = self
-				field_res = ctxt._pfp__add_child(node.name, field, stream)
+				field_res = ctxt._pfp__add_child(field_name, field, stream)
 				field_res._pfp__interp = self
-				scope.add_var(node.name, field_res)
+				scope.add_var(field_name, field_res)
 
 				# this shouldn't be used elsewhere, but should still be explicit with
 				# this flag
@@ -1019,7 +1049,7 @@ class PfpInterp(object):
 		#		BLAH2,
 		#		BLAH3
 		# 	};
-		elif node.name is None:
+		elif field_name is None:
 			pass
 
 		return field
@@ -1213,6 +1243,24 @@ class PfpInterp(object):
 			res.append(init_field)
 		return res
 	
+	def _handle_struct_call_type_decl(self, node, scope, ctxt, stream):
+		"""TODO: Docstring for _handle_struct_call_type_decl.
+
+		:node: TODO
+		:scope: TODO
+		:ctxt: TODO
+		:stream: TODO
+		:returns: TODO
+
+		"""
+		self._dlog("handling struct with parameters")
+
+		struct_cls = self._handle_node(node.type, scope, ctxt, stream)
+		struct_args = self._handle_node(node.args, scope, ctxt, stream)
+
+		res = StructDeclWithParams(scope, struct_cls, struct_args)
+		return res
+	
 	def _handle_struct(self, node, scope, ctxt, stream):
 		"""TODO: Docstring for _handle_struct.
 
@@ -1224,6 +1272,10 @@ class PfpInterp(object):
 
 		"""
 		self._dlog("handling struct")
+
+		if node.args is not None:
+			for param in node.args.params:
+				param.is_func_param = True
 
 		# it's actually being defined
 		if node.decls is not None:
