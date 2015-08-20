@@ -900,6 +900,15 @@ class Dom(Struct):
 
 		# see keep_successful notes on pfp.parse and pfp.interp.PfpInterp.parse
 		self._pfp__error = None
+		self._pfp__types = None
+	
+	def __getattr__(self, attr_name):
+		"""Custom getattr for Dom class so types can also be
+		accessed"""
+		if self._pfp__types is not None and hasattr(self._pfp__types, attr_name):
+			return getattr(self._pfp__types, attr_name)
+		else:
+			return super(self.__class__, self).__getattr__(attr_name)
 
 	"""The result of an interpreted template"""
 	def _pfp__build(self, stream=None, save_offset=False):

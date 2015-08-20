@@ -18,8 +18,9 @@ import py010parser
 import py010parser.c_parser
 from py010parser import c_ast as AST
 
-import pfp.fields as fields
+import pfp.bitwrap as bitwrap
 import pfp.errors as errors
+import pfp.fields as fields
 import pfp.functions as functions
 import pfp.native as native
 import pfp.utils as utils
@@ -181,6 +182,81 @@ class DebugLogger(object):
 	
 	def dec(self):
 		self._indent -= 1
+
+class NullStream(object):
+	def __init__(self):
+		self._pos = 0
+	
+	def read(self, num):
+		return utils.binary("\x00" * num)
+	
+	def write(self, data):
+		pass
+	
+	def close(self):
+		pass
+	
+	def seek(self, pos, seek_type=0):
+		if seek_type == 0:
+			self._pos = pos
+		elif seek_type == 1:
+			self._pos += pos
+		elif seek_type == 2:
+			# we never use this anyways
+			pass
+	
+	def tell(self):
+		return self._pos
+
+class PfpTypes(object):
+	"""A class to hold all typedefd types in a template. Note that
+	types are instantiated by having them parse a null-stream. This
+	means that type creation will not work correctly for complicated
+	structs that have internal control-flow"""
+
+	_interp = None
+	_scope = None
+	_types_map = None
+	_null_stream = None
+
+	def __init__(self, interp, scope):
+		"""Init the ``PfpTypes`` class
+
+		:param pfp.interp.PfpInterp interp: The pfp interpreter
+		:param pfp.interp.Scope scope: The scope to pull all the types from
+		"""
+		self._interp = interp
+		self._scope = scope
+		self._null_stream = bitwrap.BitwrappedStream(NullStream())
+
+		self._types_map = {}
+
+		for scope_ctxt in self._scope._scope_stack:
+			for type_name,type_cls in six.iteritems(scope_ctxt["types"]):
+				if isinstance(type_cls, list):
+					type_cls = self._interp._resolve_to_field_class(type_cls, self._scope)
+				self._types_map[type_name] = type_cls
+	
+	def _wrap_type_instantiation(self, type_cls):
+		"""Wrap the creation of the type so that we can provide
+		a null-stream to initialize it"""
+		def wrapper(*args, **kwargs):
+			# use args for struct arguments??
+			return type_cls(stream=self._null_stream)
+		return wrapper
+	
+	def __getattr__(self, attr_name):
+		if attr_name in self._types_map:
+			return self._wrap_type_instantiation(self._types_map[attr_name])
+		else:
+			# let this raise any errors
+			return super(self.__class__, self).__getattribute__(attr_name)
+	
+	def __getitem__(self, attr_name):
+		if attr_name in self._types_map:
+			return self._wrap_type_instantiation(self._types_map[attr_name])
+		else:
+			raise KeyError(attr_name)
 
 class Scope(object):
 	"""A class to keep track of the current scope of the interpreter"""
@@ -677,6 +753,22 @@ class PfpInterp(object):
 		"""
 		return self._orig_filename
 	
+	def get_types(self):
+		"""Return a types object that will contain all of the typedefd structs'
+		classes.
+
+		:returns: Types object
+
+		Example:
+
+			Create a new PNG_CHUNK object from a PNG_CHUNK type that was defined
+			in a template: ::
+
+			types = interp.get_types()
+			chunk = types.PNG_CHUNK()
+		"""
+		return PfpTypes(self, self._scope)
+	
 	# --------------------
 	# PRIVATE
 	# --------------------
@@ -767,6 +859,9 @@ class PfpInterp(object):
 		# final drop-in after everything has executed
 		if self._break_type != self.BREAK_NONE:
 			self.debugger.cmdloop("execution finished")
+
+		types = self.get_types()
+		res._pfp__types = types
 
 		return res
 
@@ -1317,7 +1412,7 @@ class PfpInterp(object):
 
 		"""
 		self._dlog("handling identifier")
-		cls = self._resolve_to_field_class(node.names, scope, ctxt)
+		cls = self._resolve_to_field_class(node.names, scope)
 		return cls
 
 	def _handle_typedef(self, node, scope, ctxt, stream):
@@ -2089,7 +2184,7 @@ class PfpInterp(object):
 		else:
 			return res
 	
-	def _resolve_to_field_class(self, names, scope, ctxt):
+	def _resolve_to_field_class(self, names, scope):
 		"""Resolve the names to a class in fields.py, resolving past
 		typedefs, etc
 
