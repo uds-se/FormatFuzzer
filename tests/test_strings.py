@@ -106,5 +106,38 @@ class TestStrings(unittest.TestCase, utils.UtilsMixin):
 			stdout="Rar!\x1a\x07"
 		)
 
+	# temp_char ends up being of class Bytes in python 3 - but not on python 2
+	# This test ensures we can handle adding both a String and byte together
+	def test_add_strings(self):
+		dom = self._test_parse_build(
+			"\x01\x02\x03\x04\x05",
+			"""
+	                         local string temp_expected, temp_char;
+	                         local int i;
+	                         for(i = 0; i < 5; i++) {
+	                             SPrintf(temp_char, "%.2X", ReadUByte(FTell()+i));
+	                             temp_expected += temp_char;
+	                         }
+	                         Printf("%s", temp_expected);
+	                 """,
+			stdout="0102030405",
+			verify=False
+		)
+
+	def test_add_strings_simple(self):
+		dom = self._test_parse_build(
+			"\x01",
+			"""
+	                         local string test;
+                                 local int i;
+                                 for(i = 0; i < 5; i++) {
+                                     test += "test";
+                                 }
+                                 Printf("%s", test);
+                         """,
+			stdout="testtesttesttesttest",
+			verify=False
+		 )
+
 if __name__ == "__main__":
 	unittest.main()
