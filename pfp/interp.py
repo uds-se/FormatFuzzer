@@ -1063,7 +1063,8 @@ class PfpInterp(object):
 		# locals and consts still get a field instance, but DON'T parse the
 		# stream!
 		elif "local" in node.quals or "const" in node.quals:
-			if not isinstance(field, fields.Field):
+			is_struct = issubclass(field, fields.Struct)
+			if not isinstance(field, fields.Field) and not is_struct:
 				field = field()
 			scope.add_local(field_name, field)
 
@@ -1071,7 +1072,11 @@ class PfpInterp(object):
 			# if not, move it to the bottom of the function
 			if node.init is not None:
 				val = self._handle_node(node.init, scope, ctxt, stream)
-				field._pfp__set_value(val)
+				if is_struct:
+					field = val
+					scope.add_local(field_name, field)
+				else:
+					field._pfp__set_value(val)
 
 			if "const" in node.quals:
 				field._pfp__freeze()

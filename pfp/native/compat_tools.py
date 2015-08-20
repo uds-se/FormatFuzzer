@@ -439,8 +439,8 @@ typedef struct {
 #    int64 start=0, 
 #    int64 size=0, 
 #    int wildcardMatchLength=24 )
-@native(name="FindAll", ret="TFindResults")
-def FindAll(params, ctxt, scope, stream, coord):
+@native(name="FindAll", ret="TFindResults", send_interp=True)
+def FindAll(params, ctxt, scope, stream, coord, interp):
 	"""
 	This function converts the argument data into a set of hex bytes
 	and then searches the current file for all occurrences of those
@@ -461,8 +461,6 @@ def FindAll(params, ctxt, scope, stream, coord):
 
 	The return value is a TFindResults structure. This structure contains a count variable indicating the number of matches, and a start array holding an array of starting positions, plus a size array which holds an array of target lengths. For example, use the following code to find all occurrences of the ASCII string "Test" in a file:
 	"""
-	raise NotImplementedError("FindAll is not yet implemented, waiting on issue #3 to be implemented")
-
 	if len(params) == 0:
 		raise errors.InvalidArguments(coord, "at least 1 argument", "{} args".format(len(params)))
 
@@ -543,12 +541,19 @@ def FindAll(params, ctxt, scope, stream, coord):
 	if not match_case:
 		flags |= re.IGNORECASE
 
-	matches = re.finditer(regex, search_data, flags)
+	matches = list(re.finditer(regex, search_data, flags))
 
-	res = interp.get_type("TFindResult")()
+	types = interp.get_types()
+	res = types.TFindResults()
+
 	res.count = len(matches)
-	res.start = [1,2,3]
-	res.size = [3,3,3]
+
+	starts = map(lambda m: m.start(), matches)
+
+	res.start = starts
+
+	sizes = map(lambda m: m.end()-m.start(), matches)
+	res.size = sizes
 
 	return res
 

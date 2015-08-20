@@ -1394,8 +1394,9 @@ class Array(Field):
 		if stream is not None:
 			self._pfp__parse(stream, save_offset=True)
 		else:
-			for x in six.moves.range(self.width):
-				self.items.append(self.field_cls())
+			if width is not None:
+				for x in six.moves.range(self.width):
+					self.items.append(self.field_cls())
 	
 	def append(self, item):
 		# TODO check for consistent type
@@ -1472,11 +1473,17 @@ class Array(Field):
 		#		len(value)
 		#	))
 
-		if len(value) > PYVAL(self.width):
-			raise Exception("This is not actual C, memory corruption is not allowed!")
+		if len(value) > len(self.items):
+			self.items.extend([None] * (len(value) - len(self.items)))
 
 		for idx,item in enumerate(value):
+			if not isinstance(item, Field):
+				new_item = self.field_cls()
+				new_item._pfp__set_value(item)
+				item = new_item
 			self.items[idx] = item
+
+		self.width = len(self.items)
 
 		self._pfp__notify_parent()
 
@@ -1484,6 +1491,9 @@ class Array(Field):
 		start_offset = stream.tell()
 		if save_offset:
 			self._pfp__offset = start_offset
+
+		if self.width is None:
+			return
 
 		# will always be known widths for these field types
 		if issubclass(self.field_cls, NumberBase):

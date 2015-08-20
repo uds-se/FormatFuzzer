@@ -444,13 +444,21 @@ class TestCompatTools(unittest.TestCase, utils.UtilsMixin):
 		pass
 	
 	def test_find_all(self):
-		# waiting on issue #3 to be implemented
-		return
+		# TODO maybe we should just expose all defined fields/locals/types/vars/etc
+		# to the user? then could just directly test dom.results...
+		#
+		# I like having it a bit cleaner though and not cluttered with
+		# all of the locals.
 		dom = self._test_parse_build(
 			"abcd HELLO THERE HELLO blah HELLO blkajsdf",
 			"""
-				TFindResults results = FindAll("HELLO");
+				local TFindResults results = FindAll("HELLO");
+				Printf("count:%d", results.count);
+				for(local int i = 0 ; i < results.count; i++) {
+					Printf("start-size:%d-%d", results.start[i], results.size[i]);
+				}
 			""",
+			stdout="count:3start-size:5-5start-size:17-5start-size:28-5",
 			verify=False,
 			predefines=True
 		)
