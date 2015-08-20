@@ -11,7 +11,7 @@ import sys
 
 from pfp.native import native, predefine
 import pfp.fields
-import pfp.errors
+import pfp.errors as errors
 
 # http://www.sweetscape.com/010editor/manual/FuncInterface.htm
 
@@ -109,7 +109,7 @@ def Exit(params, ctxt, scope, stream, coord):
 	if len(params) != 1:
 		raise errors.InvalidArguments(coord, "1 arguments", "{} args".format(len(params)))
 	error_code = PYVAL(params[0])
-	raise pfp.errors.InterpExit(error_code)
+	raise errors.InterpExit(error_code)
 
 #void ExpandAll()
 @native(name="ExpandAll", ret=pfp.fields.Void)
@@ -738,7 +738,7 @@ def StatusMessage(params, ctxt, scope, stream, coord):
 #void Terminate( int force=true )
 @native(name="Terminate", ret=pfp.fields.Void)
 def Terminate(params, ctxt, scope, stream, coord):
-	raise pfp.errors.InterpExit()
+	raise errors.InterpExit()
 
 #void Warning( const char format[] [, argument, ... ] )
 @native(name="Warning", ret=pfp.fields.Void)

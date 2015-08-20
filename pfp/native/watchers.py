@@ -9,6 +9,7 @@ from pfp.native import native
 import pfp.fields
 from pfp.dbg import PfpDbg
 import pfp.utils as utils
+import pfp.errors as errors
 
 @native(name="WatchLength", ret=pfp.fields.Void)
 def watch_length(params, ctxt, scope, stream, coord):

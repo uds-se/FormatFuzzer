@@ -14,6 +14,7 @@ import sys
 from pfp.native import native, predefine
 import pfp.errors as errors
 import pfp.fields
+import zlib
 
 # http://www.sweetscape.com/010editor/manual/FuncTools.htm
 
@@ -86,7 +87,7 @@ def Checksum(params, ctxt, scope, stream, coord):
 		11: "CHECKSUM_CRC16",
 		12: "CHECKSUM_CRCCCITT",
 		13: _crc32,
-		14: "CHECKSUM_ADLER32"
+		14: _checksum_Adler32
 	}
 
 	if len(params) < 1:
@@ -128,6 +129,9 @@ def Checksum(params, ctxt, scope, stream, coord):
 		# yes, this does execute even though a return statement
 		# exists within the try
 		stream.seek(stream_pos, 0)
+
+def _checksum_Adler32(data, crc_init=-1, crc_poly=-1):
+	return zlib.adler32(data)
 
 def _crc32(data, crc_init=-1, crc_poly=-1):
 	if crc_init == -1:

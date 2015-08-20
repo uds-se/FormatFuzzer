@@ -8,6 +8,7 @@ from pfp.native import native
 import pfp.fields
 from pfp.dbg import PfpDbg
 import pfp.utils as utils
+import pfp.errors as errors
 
 @native(name="PackerGZip", ret=pfp.fields.Array)
 def packer_gzip(params, ctxt, scope, stream, coord):
