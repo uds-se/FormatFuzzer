@@ -1625,7 +1625,7 @@ class String(Field):
 	terminator = utils.binary("\x00")
 
 	def __init__(self, stream=None, metadata_processor=None):
-		self._pfp__value = ""
+		self._pfp__value = utils.binary("")
 
 		super(String, self).__init__(stream=stream, metadata_processor=metadata_processor)
 
@@ -1705,7 +1705,7 @@ class String(Field):
 
 		"""
 		res_field = String()
-		res = ""
+		res = utils.binary("")
 		if isinstance(other, String):
 			res = self._pfp__value + other._pfp__value
 		else:
