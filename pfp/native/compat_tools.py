@@ -9,11 +9,13 @@ are nops, some are fully implemented.
 
 import binascii
 import re
+import six
 import sys
 
 from pfp.native import native, predefine
 import pfp.errors as errors
 import pfp.fields
+import pfp.utils as utils
 import zlib
 
 # http://www.sweetscape.com/010editor/manual/FuncTools.htm
@@ -410,6 +412,9 @@ def ExportFile(params, ctxt, scope, stream, coord):
 	"""
 	raise NotImplementedError()
 
+FIND_MATCHES_ITER = None
+FIND_MATCHES_START_OFFSET = 0
+
 FINDMETHOD_NORMAL = 0
 FINDMETHOD_WILDCARDS = 1
 FINDMETHOD_REGEX = 2
@@ -429,38 +434,9 @@ typedef struct {
 	unsigned int size[];
 } TFindResults;
 """)
-#TFindResults FindAll( 
-#    <datatype> data, 
-#    int matchcase=true, 
-#    int wholeword=false, 
-#    int method=0, 
-#    double tolerance=0.0, 
-#    int dir=1, 
-#    int64 start=0, 
-#    int64 size=0, 
-#    int wildcardMatchLength=24 )
-@native(name="FindAll", ret="TFindResults", send_interp=True)
-def FindAll(params, ctxt, scope, stream, coord, interp):
-	"""
-	This function converts the argument data into a set of hex bytes
-	and then searches the current file for all occurrences of those
-	bytes. data may be any of the basic types or an array of one of
-	the types. If data is an array of signed bytes, it is assumed to
-	be a null-terminated string. To search for an array of hex bytes,
-	create an unsigned char array and fill it with the target value. If
-	the type being search for is a string, the matchcase and wholeworld
-	arguments can be used to control the search (see Using Find for more
-	information). method controls which search method is used from the
-	following options:
+def _find_helper(params, ctxt, scope, stream, coord, interp):
+	global FIND_MATCHES_START_OFFSET
 
-	FINDMETHOD_NORMAL=0 - a normal search
-	FINDMETHOD_WILDCARDS=1 - when searching for strings use wildcards '*' or '?'
-	FINDMETHOD_REGEX=2 - when searching for strings use Regular Expressions
-
-	wildcardMatchLength indicates the maximum number of characters a '*' can match when searching using wildcards. If the target is a float or double, the tolerance argument indicates that values that are only off by the tolerance value still match. If dir is 1 the find direction is down and if dir is 0 the find direction is up. start and size can be used to limit the area of the file that is searched. start is the starting byte address in the file where the search will begin and size is the number of bytes after start that will be searched. If size is zero, the file will be searched from start to the end of the file.
-
-	The return value is a TFindResults structure. This structure contains a count variable indicating the number of matches, and a start array holding an array of starting positions, plus a size array which holds an array of target lengths. For example, use the following code to find all occurrences of the ASCII string "Test" in a file:
-	"""
 	if len(params) == 0:
 		raise errors.InvalidArguments(coord, "at least 1 argument", "{} args".format(len(params)))
 
@@ -501,6 +477,7 @@ def FindAll(params, ctxt, scope, stream, coord, interp):
 		start = PYVAL(params[6])
 	else:
 		start = 0
+	FIND_MATCHES_START_OFFSET = start
 	
 	if len(params) > 7:
 		size = PYVAL(params[7])
@@ -516,7 +493,8 @@ def FindAll(params, ctxt, scope, stream, coord, interp):
 
 	if method == FINDMETHOD_WILDCARDS:
 		# * wildcard
-		regex = regex.replace(r"\*", ".{:" + str(wildcard_match_length) + "}")
+		# make it a non-greedy match as well (add the question mark at the end)
+		regex = regex.replace(r"\*", ".{," + str(wildcard_match_length) + "}?")
 		# ? wildcard
 		regex = regex.replace(r"\?", ".")
 	if method == FINDMETHOD_REGEX:
@@ -524,7 +502,9 @@ def FindAll(params, ctxt, scope, stream, coord, interp):
 	
 	if wholeword:
 		regex = "\\b" + regex + "\\b"
-	
+
+	regex = utils.binary(regex)
+
 	stream_bits = stream._bits
 	stream_pos = stream.tell()
 
@@ -541,22 +521,60 @@ def FindAll(params, ctxt, scope, stream, coord, interp):
 	if not match_case:
 		flags |= re.IGNORECASE
 
-	matches = list(re.finditer(regex, search_data, flags))
+	return re.finditer(regex, search_data, flags)
+
+#TFindResults FindAll( 
+#    <datatype> data, 
+#    int matchcase=true, 
+#    int wholeword=false, 
+#    int method=0, 
+#    double tolerance=0.0, 
+#    int dir=1, 
+#    int64 start=0, 
+#    int64 size=0, 
+#    int wildcardMatchLength=24 )
+@native(name="FindAll", ret="TFindResults", send_interp=True)
+def FindAll(params, ctxt, scope, stream, coord, interp):
+	"""
+	This function converts the argument data into a set of hex bytes
+	and then searches the current file for all occurrences of those
+	bytes. data may be any of the basic types or an array of one of
+	the types. If data is an array of signed bytes, it is assumed to
+	be a null-terminated string. To search for an array of hex bytes,
+	create an unsigned char array and fill it with the target value. If
+	the type being search for is a string, the matchcase and wholeworld
+	arguments can be used to control the search (see Using Find for more
+	information). method controls which search method is used from the
+	following options:
+
+	FINDMETHOD_NORMAL=0 - a normal search
+	FINDMETHOD_WILDCARDS=1 - when searching for strings use wildcards '*' or '?'
+	FINDMETHOD_REGEX=2 - when searching for strings use Regular Expressions
+
+	wildcardMatchLength indicates the maximum number of characters a '*' can match when searching using wildcards. If the target is a float or double, the tolerance argument indicates that values that are only off by the tolerance value still match. If dir is 1 the find direction is down and if dir is 0 the find direction is up. start and size can be used to limit the area of the file that is searched. start is the starting byte address in the file where the search will begin and size is the number of bytes after start that will be searched. If size is zero, the file will be searched from start to the end of the file.
+
+	The return value is a TFindResults structure. This structure contains a count variable indicating the number of matches, and a start array holding an array of starting positions, plus a size array which holds an array of target lengths. For example, use the following code to find all occurrences of the ASCII string "Test" in a file:
+	"""
+	matches_iter = _find_helper(params, ctxt, scope, stream, coord, interp)
+	matches = list(matches_iter)
 
 	types = interp.get_types()
 	res = types.TFindResults()
 
 	res.count = len(matches)
 
-	starts = map(lambda m: m.start(), matches)
+	# python3 map doesn't return a list
+	starts = list(map(lambda m: m.start()+FIND_MATCHES_START_OFFSET, matches))
 
 	res.start = starts
 
-	sizes = map(lambda m: m.end()-m.start(), matches)
+	# python3 map doesn't return a list
+	sizes = list(map(lambda m: m.end()-m.start(), matches))
 	res.size = sizes
 
 	return res
 
+"""Used to keep track of the current matches"""
 #int64 FindFirst( 
 #    <datatype> data, 
 #    int matchcase=true, 
@@ -567,14 +585,52 @@ def FindAll(params, ctxt, scope, stream, coord, interp):
 #    int64 start=0, 
 #    int64 size=0, 
 #    int wildcardMatchLength=24 )
-@native(name="FindFirst", ret=pfp.fields.Int64)
-def FindFirst(params, ctxt, scope, stream, coord):
+@native(name="FindFirst", ret=pfp.fields.Int64, send_interp=True)
+def FindFirst(params, ctxt, scope, stream, coord, interp):
 	"""
 	This function is identical to the FindAll function except that the
 	return value is the position of the first occurrence of the target
 	found. A negative number is returned if the value could not be found.
 	"""
-	raise NotImplementedError()
+	global FIND_MATCHES_ITER
+	FIND_MATCHES_ITER = _find_helper(params, ctxt, scope, stream, coord, interp)
+
+	try:
+		first = six.next(FIND_MATCHES_ITER)
+		return first.start() + FIND_MATCHES_START_OFFSET
+	except StopIteration as e:
+		return -1
+
+#int64 FindNext( int dir=1 )
+@native(name="FindNext", ret=pfp.fields.Int64)
+def FindNext(params, ctxt, scope, stream, coord):
+	"""
+	This function returns the position of the next occurrence of the
+	target value specified with the FindFirst function. If dir is 1, the
+	find direction is down. If dir is 0, the find direction is up. The
+	return value is the address of the found data, or -1 if the target
+	is not found.
+	"""
+	if FIND_MATCHES_ITER is None:
+		raise errors.InvalidState()
+	
+	direction = 1
+	if len(params) > 0:
+		direction = PYVAL(params[0])
+	
+	if direction != 1:
+		# TODO maybe instead of storing the iterator in FIND_MATCHES_ITER,
+		# we should go ahead and find _all the matches in the file and store them
+		# in a list, keeping track of the idx of the current match.
+		#
+		# This would be highly inefficient on large files though.
+		raise NotImplementedError("Reverse searching is not yet implemented")
+	
+	try:
+		next_match = six.next(FIND_MATCHES_ITER)
+		return next_match.start() + FIND_MATCHES_START_OFFSET
+	except StopIteration as e:
+		return -1
 
 #TFindInFilesResults FindInFiles( 
 #    <datatype> data, 
@@ -602,18 +658,6 @@ def FindInFiles(params, ctxt, scope, stream, coord):
 	found plus an array of file variables. Each file variable contains
 	a count variable indicating the number of matches, plus an array of
 	start and size variables indicating the match position. For example:
-	"""
-	raise NotImplementedError()
-
-#int64 FindNext( int dir=1 )
-@native(name="FindNext", ret=pfp.fields.Int64)
-def FindNext(params, ctxt, scope, stream, coord):
-	"""
-	This function returns the position of the next occurrence of the
-	target value specified with the FindFirst function. If dir is 1, the
-	find direction is down. If dir is 0, the find direction is up. The
-	return value is the address of the found data, or -1 if the target
-	is not found.
 	"""
 	raise NotImplementedError()
 

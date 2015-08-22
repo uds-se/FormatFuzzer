@@ -750,6 +750,9 @@ class Struct(Field):
 	def __repr__(self):
 		return object.__repr__(self)
 	
+	def __eq__(self, other):
+		return self is other
+	
 	def _pfp__show(self, level=0, include_offset=False):
 		"""Show the contents of the struct
 		"""

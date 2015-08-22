@@ -273,15 +273,17 @@ class Scope(object):
 		"""
 		return len(self._scope_stack)
 		
-	def push(self):
+	def push(self, new_scope=None):
 		"""Create a new scope
 		:returns: TODO
 
 		"""
-		self._curr_scope = {
-			"types": {},
-			"vars": {}
-		}
+		if new_scope is None:
+			new_scope = {
+				"types": {},
+				"vars": {}
+			}
+		self._curr_scope = new_scope
 		self._dlog("pushing new scope, scope level = {}".format(self.level()))
 		self._scope_stack.append(self._curr_scope)
 	
@@ -306,9 +308,10 @@ class Scope(object):
 		:returns: TODO
 
 		"""
-		self._scope_stack.pop()
+		res = self._scope_stack.pop()
 		self._dlog("popping scope, scope level = {}".format(self.level()))
 		self._curr_scope = self._scope_stack[-1]
+		return res
 	
 	def add_var(self, field_name, field):
 		"""Add a var to the current scope (vars are fields that
@@ -1581,17 +1584,28 @@ class PfpInterp(object):
 
 		"""
 		self._dlog("handling unary op {}".format(node.op))
-		switch = {
-			"p++": lambda x,v: x.__iadd__(1),
-			"p--": lambda x,v: x.__isub__(1),
-			"~":   lambda x,v: ~x,
-			"!":   lambda x,v: not x,
-			"-":   lambda x,v: -x,
-			"sizeof":	lambda x,v: (fields.UInt64()+x._pfp__width())
+
+		special_switch = {
+			"parentof"			: self._handle_parentof,
+			"exists"			: self._handle_exists,
+			"function_exists"	: self._handle_function_exists,
 		}
 
-		if node.op not in switch:
+		switch = {
+			"p++":		lambda x,v: x.__iadd__(1),
+			"p--":		lambda x,v: x.__isub__(1),
+			"~":		lambda x,v: ~x,
+			"!":		lambda x,v: not x,
+			"-":		lambda x,v: -x,
+			"sizeof":	lambda x,v: (fields.UInt64()+x._pfp__width()),
+			"startof":	lambda x,v: x._pfp__offset,
+		}
+
+		if node.op not in switch and node.op not in special_switch:
 			raise errors.UnsupportedUnaryOperator(node.coord, node.op)
+
+		if node.op in special_switch:
+			return special_switch[node.op](node, scope, ctxt, stream)
 
 		field = self._handle_node(node.expr, scope, ctxt, stream)
 		res = switch[node.op](field, 1)
@@ -1599,6 +1613,69 @@ class PfpInterp(object):
 			new_res = field.__class__()
 			new_res._pfp__set_value(1 if res == True else 0)
 			res = new_res
+		return res
+	
+	def _handle_parentof(self, node, scope, ctxt, stream):
+		"""Handle the parentof unary operator
+
+		:node: TODO
+		:scope: TODO
+		:ctxt: TODO
+		:stream: TODO
+		:returns: TODO
+
+		"""
+		# if someone does something like parentof(this).blah,
+		# we'll end up with a StructRef instead of an ID ref
+		# for node.expr, but we'll also end up with a structref
+		# if the user does parentof(a.b.c)...
+		# 
+		# TODO how to differentiate between the two??
+		#
+		# the proper way would be to do (parentof(a.b.c)).a or
+		# (parentof a.b.c).a
+
+		field = self._handle_node(node.expr, scope, ctxt, stream)
+		parent = field._pfp__parent
+		return parent
+	
+	def _handle_exists(self, node, scope, ctxt, stream):
+		"""Handle the exists unary operator
+
+		:node: TODO
+		:scope: TODO
+		:ctxt: TODO
+		:stream: TODO
+		:returns: TODO
+
+		"""
+		res = fields.Int()
+		try:
+			self._handle_node(node.expr, scope, ctxt, stream)
+			res._pfp__set_value(1)
+		except AttributeError:
+			res._pfp__set_value(0)
+		return res
+	
+	def _handle_function_exists(self, node, scope, ctxt, stream):
+		"""Handle the function_exists unary operator
+
+		:node: TODO
+		:scope: TODO
+		:ctxt: TODO
+		:stream: TODO
+		:returns: TODO
+
+		"""
+		res = fields.Int()
+		try:
+			func = self._handle_node(node.expr, scope, ctxt, stream)
+			if isinstance(func, functions.Function):
+				res._pfp__set_value(1)
+			else:
+				res._pfp__set_value(0)
+		except errors.UnresolvedID:
+			res._pfp__set_value(0)
 		return res
 	
 	def _handle_id(self, node, scope, ctxt, stream):
