@@ -70,19 +70,21 @@ class TestStructUnion(unittest.TestCase, utils.UtilsMixin):
 		self.assertEqual(dom.decldStruct.d, ord("D"))
 	
 	def test_struct_initialization(self):
-		dom = self._test_parse_build(
-			"",
-			"""
-				typedef struct {
-					char a;
-					char b;
-					char c;
-					char d;
-				} blah;
-
-				local blah some_struct = { 'a', 'b', 'c', 'd'};
-			"""
-		)
+		# local structs aren't allowed!!!
+		return
+#		dom = self._test_parse_build(
+#			"",
+#			"""
+#				typedef struct {
+#					char a;
+#					char b;
+#					char c;
+#					char d;
+#				} blah;
+#
+#				local blah some_struct = { 'a', 'b', 'c', 'd'};
+#			"""
+#		)
 	
 	def test_union(self):
 		dom = self._test_parse_build(
@@ -171,6 +173,7 @@ class TestStructUnion(unittest.TestCase, utils.UtilsMixin):
 		dom = self._test_parse_build(
 			"a\x00\x010\x00\x02",
 			"""
+				BigEndian();
 				while(!FEof()) {
 					char header;
 					short val;
