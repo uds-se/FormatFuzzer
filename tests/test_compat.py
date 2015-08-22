@@ -102,7 +102,7 @@ class TestCompatInterface(unittest.TestCase, utils.UtilsMixin):
 
 class TestCompatIO(unittest.TestCase, utils.UtilsMixin):
 	def setUp(self):
-		pass
+		pfp.fields.NumberBase.endian = pfp.fields.BIG_ENDIAN
 	
 	def tearDown(self):
 		pass
@@ -443,16 +443,179 @@ class TestCompatTools(unittest.TestCase, utils.UtilsMixin):
 	def tearDown(self):
 		pass
 	
-	def test_find_all(self):
-		# waiting on issue #3 to be implemented
-		return
+	def test_find_all1(self):
+		# TODO maybe we should just expose all defined fields/locals/types/vars/etc
+		# to the user? then could just directly test dom.results...
+		#
+		# I like having it a bit cleaner though and not cluttered with
+		# all of the locals.
 		dom = self._test_parse_build(
 			"abcd HELLO THERE HELLO blah HELLO blkajsdf",
 			"""
-				TFindResults results = FindAll("HELLO");
+				local TFindResults results = FindAll("HELLO");
+				Printf("count:%d", results.count);
+				for(local int i = 0 ; i < results.count; i++) {
+					Printf("start-size:%d-%d", results.start[i], results.size[i]);
+				}
 			""",
+			stdout="count:3start-size:5-5start-size:17-5start-size:28-5",
 			verify=False,
 			predefines=True
+		)
+	
+	def test_find_all2(self):
+		# TODO maybe we should just expose all defined fields/locals/types/vars/etc
+		# to the user? then could just directly test dom.results...
+		#
+		# I like having it a bit cleaner though and not cluttered with
+		# all of the locals.
+		dom = self._test_parse_build(
+			"abcd HELLO THERE HELLO blah HELLO blkajsdf",
+			"""
+				local TFindResults results = FindAll("HELLO");
+				Printf("count:%d", results.count);
+				for(local int i = 0 ; i < results.count; i++) {
+					Printf("start-size:%d-%d", results.start[i], results.size[i]);
+				}
+			""",
+			stdout="count:3start-size:5-5start-size:17-5start-size:28-5",
+			verify=False,
+			predefines=True
+		)
+	
+	def test_find_all_no_match_case(self):
+		# TODO maybe we should just expose all defined fields/locals/types/vars/etc
+		# to the user? then could just directly test dom.results...
+		#
+		# I like having it a bit cleaner though and not cluttered with
+		# all of the locals.
+		dom = self._test_parse_build(
+			"abcd HELLO THERE HELLO blah HellO blkajsdf",
+			"""
+				local TFindResults results = FindAll("HELLO", 0/*match case*/);
+				Printf("count:%d", results.count);
+				for(local int i = 0 ; i < results.count; i++) {
+					Printf("start-size:%d-%d", results.start[i], results.size[i]);
+				}
+			""",
+			stdout="count:3start-size:5-5start-size:17-5start-size:28-5",
+			verify=False,
+			predefines=True
+		)
+	
+	def test_find_all_whole_words_only(self):
+		# TODO maybe we should just expose all defined fields/locals/types/vars/etc
+		# to the user? then could just directly test dom.results...
+		#
+		# I like having it a bit cleaner though and not cluttered with
+		# all of the locals.
+		dom = self._test_parse_build(
+			"abcd HELLO THHELLOERE HELLO blah HELLO blkajsdf",
+			"""
+				local TFindResults results = FindAll("HELLO", 1/*match case*/, 1/*whole words only*/);
+				Printf("count:%d", results.count);
+				for(local int i = 0 ; i < results.count; i++) {
+					Printf("start-size:%d-%d", results.start[i], results.size[i]);
+				}
+			""",
+			stdout="count:3start-size:5-5start-size:22-5start-size:33-5",
+			verify=False,
+			predefines=True
+		)
+
+	def test_find_all_wildcards(self):
+		# TODO maybe we should just expose all defined fields/locals/types/vars/etc
+		# to the user? then could just directly test dom.results...
+		#
+		# I like having it a bit cleaner though and not cluttered with
+		# all of the locals.
+		dom = self._test_parse_build(
+			"abcd HELLO THHELLOERE HELLO blah HELLO blkajsdf",
+			"""
+				local TFindResults results = FindAll(
+					"HE??O",
+					1/*match case*/,
+					1/*whole words only*/,
+					FINDMETHOD_WILDCARDS
+				);
+				Printf("count:%d", results.count);
+				for(local int i = 0 ; i < results.count; i++) {
+					Printf("start-size:%d-%d", results.start[i], results.size[i]);
+				}
+			""",
+			stdout="count:3start-size:5-5start-size:22-5start-size:33-5",
+			verify=False,
+			predefines=True
+		)
+
+	def test_find_all_wildcards2(self):
+		# TODO maybe we should just expose all defined fields/locals/types/vars/etc
+		# to the user? then could just directly test dom.results...
+		#
+		# I like having it a bit cleaner though and not cluttered with
+		# all of the locals.
+		dom = self._test_parse_build(
+			"abcd HELLO abcd HELLO abcd HELLO abcd",
+			"""
+				local TFindResults results = FindAll(
+					"H*O",
+					1/*match case*/,
+					1/*whole words only*/,
+					FINDMETHOD_WILDCARDS
+				);
+				Printf("count:%d", results.count);
+				for(local int i = 0 ; i < results.count; i++) {
+					Printf("start-size:%d-%d", results.start[i], results.size[i]);
+				}
+			""",
+			stdout="count:3start-size:5-5start-size:16-5start-size:27-5",
+			verify=False,
+			predefines=True
+		)
+
+	def test_find_all_with_size(self):
+		# TODO maybe we should just expose all defined fields/locals/types/vars/etc
+		# to the user? then could just directly test dom.results...
+		#
+		# I like having it a bit cleaner though and not cluttered with
+		# all of the locals.
+		dom = self._test_parse_build(
+			"abcd HELLO abcd HELLO abcd HELLO abcd",
+			"""
+				local TFindResults results = FindAll(
+					"H*O",
+					1/*match case*/,
+					1/*whole words only*/,
+					FINDMETHOD_WILDCARDS,
+					0.0/*tolerance*/,
+					1/*dir*/,
+					4,/*start*/
+					17/*size*/
+				);
+				Printf("count:%d", results.count);
+				for(local int i = 0 ; i < results.count; i++) {
+					Printf("start-size:%d-%d", results.start[i], results.size[i]);
+				}
+			""",
+			stdout="count:2start-size:5-5start-size:16-5",
+			verify=False,
+			predefines=True
+		)
+	
+	
+	def test_find_first_next(self):
+		dom = self._test_parse_build(
+			"abcd HELLO defg HELLO hijk HELLO",
+			"""
+				local uint index = FindFirst("HELLO");
+				Printf("%d,", index);
+				index = FindNext();
+				Printf("%d,", index);
+				index = FindNext();
+				Printf("%d", index);
+			""",
+			verify=False,
+			stdout="5,16,27"
 		)
 
 if __name__ == "__main__":

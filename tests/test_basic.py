@@ -241,6 +241,95 @@ class TestBasic(unittest.TestCase, utils.UtilsMixin):
 			stdout="5"
 		)
 	
+	def test_unary_exists(self):
+		dom = self._test_parse_build(
+			"\x00",
+			"""
+				if(exists(this.size)) {
+					Printf("True");
+				} else {
+					Printf("False");
+					uchar size;
+				}
+
+				if(exists(this.size)) {
+					Printf("True");
+				} else {
+					Printf("False");
+				}
+			""",
+			stdout="FalseTrue"
+		)
+	
+	def test_unary_function_exists(self):
+		dom = self._test_parse_build(
+			"",
+			"""
+				if(function_exists(Func1)) {
+					Printf("True");
+				} else {
+					Printf("False");
+				}
+
+				void Func1() {
+					
+				}
+
+				if(function_exists(Func1)) {
+					Printf("True");
+				} else {
+					Printf("False");
+				}
+			""",
+			stdout="FalseTrue"
+		)
+	
+	def test_unary_startof(self):
+		dom = self._test_parse_build(
+			"\x01\x02\x03",
+			"""
+				uchar a;
+				uchar b;
+				uchar c;
+
+				Printf("%d,", startof(a));
+				Printf("%d,", startof(b));
+				Printf("%d,", startof(c));
+				Printf("%d,", startof(this.a));
+				Printf("%d,", startof(this.b));
+				Printf("%d", startof(this.c));
+			""",
+			stdout="0,1,2,0,1,2"
+		)
+	
+	def test_unary_parentof(self):
+		dom = self._test_parse_build(
+			"\x01\x02\x03",
+			"""
+				struct {
+					uchar a;
+					struct {
+						uchar a;
+						Printf("%d", (parentof(this)).a);
+						struct {
+							uchar a;
+							Printf("%d", (parentof(this)).a);
+						} b;
+					} b;
+				} b;
+
+				Printf("%d", (parentof(b.b.b.a)).a); // 3
+				Printf("%d", (parentof b.b.b.a).a); // 3
+
+				Printf("%d", (parentof(parentof(b.b.b.a))).a); // 2
+				Printf("%d", (parentof (parentof b.b.b.a)).a); // 2
+
+				Printf("%d", (parentof(parentof(parentof(b.b.b.a)))).a); // 1
+				Printf("%d", (parentof (parentof (parentof b.b.b.a))).a); // 1
+			""",
+			stdout="12332211"
+		)
+	
 	def test_comparisons(self):
 		dom = self._test_parse_build(
 			"",

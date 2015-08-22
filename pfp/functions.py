@@ -75,6 +75,10 @@ class NativeFunction(object):
 		elif utils.is_str(res) and self.ret == pfp.fields.Array:
 			tmp_stream = bitwrap.BitwrappedStream(six.BytesIO(res))
 			res_field = pfp.fields.Array(len(res), pfp.fields.Char, tmp_stream)
+		elif utils.is_str(self.ret) and scope.get_type(self.ret) is not None:
+			# TODO should we do any type-checking here to make sure that the
+			# return value matches what is declared as the return type?
+			res_field = res
 		else:
 			res_field = self.ret()
 			res_field._pfp__set_value(res)
