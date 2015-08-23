@@ -241,6 +241,25 @@ class TestBasic(unittest.TestCase, utils.UtilsMixin):
 			stdout="5"
 		)
 	
+	def test_unary_sizeof_atomic_type(self):
+		dom = self._test_parse_build(
+			"",
+			"""
+				Printf("%d", sizeof(int));
+			""",
+			stdout="4"
+		)
+	
+	def test_unary_sizeof_atomic_type2(self):
+		dom = self._test_parse_build(
+			"",
+			"""
+				typedef unsigned int NEW_TYPE;
+				Printf("%d", sizeof(NEW_TYPE));
+			""",
+			stdout="4"
+		)
+	
 	def test_unary_exists(self):
 		dom = self._test_parse_build(
 			"\x00",

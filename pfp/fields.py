@@ -942,6 +942,12 @@ class NumberBase(Field):
 	bitsize = None			# for IntBase
 
 	_pfp__value = 0			# default value
+
+	@classmethod
+	def _pfp__width(self):
+		"""Return the width of the current atomic type
+		"""
+		return self.width
 	
 	def __init__(self, stream=None, bitsize=None, metadata_processor=None, bitfield_rw=None, bitfield_padded=False, bitfield_left_right=False):
 		"""Special init for the bitsize
