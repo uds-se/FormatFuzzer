@@ -192,6 +192,18 @@ class TestBasic(unittest.TestCase, utils.UtilsMixin):
 			"""
 		)
 	
+	def test_local_accessible_via_this(self):
+		dom = self._test_parse_build(
+			"\x01\x02\x03\x04",
+			"""
+				struct {
+					local uint test = ReadUInt();
+					Printf("%d", this.test);
+				} blah;
+			""",
+			verify=False
+		)
+	
 	def test_add(self):
 		dom = self._test_parse_build(
 			"ab",
