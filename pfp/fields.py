@@ -548,6 +548,8 @@ class Struct(Field):
 	_pfp__name_collisions = {}
 	"""Counters for any naming collisions"""
 
+	_pfp__scope = None
+
 	def __init__(self, stream=None, metadata_processor=None):
 		# ordered list of children
 		super(Struct, self).__setattr__("_pfp__children", [])
@@ -726,6 +728,10 @@ class Struct(Field):
 		if name in children_map:
 			return children_map[name]
 		else:
+			res = self._pfp__scope.get_var(name, recurse=False)
+			if res is not None:
+				return res
+
 			# default getattr instead
 			return super(Struct, self).__getattribute__(name)
 	
