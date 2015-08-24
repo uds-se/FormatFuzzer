@@ -260,10 +260,11 @@ class PfpTypes(object):
 
 class Scope(object):
 	"""A class to keep track of the current scope of the interpreter"""
-	def __init__(self, logger):
+	def __init__(self, logger, parent=None):
 		super(Scope, self).__init__()
 
 		self._log = logger
+		self._parent = parent
 
 		self._scope_stack = []
 		self.push()
@@ -326,17 +327,18 @@ class Scope(object):
 		# TODO do we allow clobbering of vars???
 		self._curr_scope["vars"][field_name] = field
 	
-	def get_var(self, name):
+	def get_var(self, name, recurse=True):
 		"""Return the first var of name ``name`` in the current
 		scope stack (remember, vars are the ones that parse the
 		input stream)
 
 		:name: The name of the id
+		:recurse: Whether parent scopes should also be searched (defaults to True)
 		:returns: TODO
 
 		"""
 		self._dlog("getting var '{}'".format(name))
-		return self._search("vars", name)
+		return self._search("vars", name, recurse)
 	
 	def add_local(self, field_name, field):
 		"""Add a local variable in the current scope
@@ -351,13 +353,14 @@ class Scope(object):
 		# TODO do we allow clobbering of locals???
 		self._curr_scope["vars"][field_name] = field
 	
-	def get_local(self, name):
-		"""Get the local field (search for it) from the scope stack
+	def get_local(self, name, recurse=True):
+		"""Get the local field (search for it) from the scope stack. An alias
+		for ``get_var``
 
 		:name: The name of the local field
 		"""
 		self._dlog("getting local '{}'".format(name))
-		return self._search("vars", name)
+		return self._search("vars", name, recurse)
 	
 	def add_type_class(self, name, cls):
 		"""Store the class with the name
@@ -393,7 +396,7 @@ class Scope(object):
 
 		self._curr_scope["types"][new_name] = res
 	
-	def get_type(self, name):
+	def get_type(self, name, recurse=True):
 		"""Get the names for the typename (created by typedef)
 
 		:name: The typedef'd name to resolve
@@ -401,18 +404,18 @@ class Scope(object):
 
 		"""
 		self._dlog("getting type '{}'".format(name))
-		return self._search("types", name)
+		return self._search("types", name, recurse)
 	
-	def get_id(self, name):
+	def get_id(self, name, recurse=True):
 		"""Get the first id matching ``name``. Will either be a local
-		or a var. Locals will be searched before vars.
+		or a var.
 
 		:name: TODO
 		:returns: TODO
 
 		"""
 		self._dlog("getting id '{}'".format(name))
-		var = self._search("vars", name)
+		var = self._search("vars", name, recurse)
 		return var
 	
 	# ------------------
@@ -443,7 +446,7 @@ class Scope(object):
 
 		return res
 	
-	def _search(self, category, name):
+	def _search(self, category, name, recurse=True):
 		"""Search the scope stack for the name in the specified
 		category (types/locals/vars).
 
@@ -457,6 +460,9 @@ class Scope(object):
 			res = scope[category].get(name, None)
 			if res is not None:
 				return res
+
+		if recurse and self._parent is not None:
+			return self._parent._search(category, name, recurse)
 
 		return None
 	
@@ -945,6 +951,7 @@ class PfpInterp(object):
 
 		"""
 		self._root = ctxt = fields.Dom(stream)
+		ctxt._pfp__scope = scope
 		self._root._pfp__name = "__root"
 		self._root._pfp__interp = self
 		self._dlog("handling file AST with {} children".format(len(node.children())))
@@ -1317,7 +1324,7 @@ class PfpInterp(object):
 	
 	def _handle_union_decls(self, node, scope, ctxt, stream):
 		self._dlog("handling union decls")
-		scope.push()
+		scope = ctxt._pfp__scope = Scope(self._log, parent=scope)
 
 		try:
 			max_pos = 0
@@ -1327,7 +1334,7 @@ class PfpInterp(object):
 		finally:
 			# the union will have reset the stream
 			stream.seek(stream.tell()+ctxt._pfp__width(), 0)
-			scope.pop()
+			#scope.pop()
 	
 	def _handle_init_list(self, node, scope, ctxt, stream):
 		"""Handle InitList nodes (e.g. when initializing a struct)
@@ -1394,7 +1401,7 @@ class PfpInterp(object):
 		self._dlog("handling struct decls")
 
 		# new scope
-		scope.push()
+		scope = ctxt._pfp__scope = Scope(self._log, parent=scope)
 
 		try:
 			for decl in node.decls:
@@ -1407,7 +1414,8 @@ class PfpInterp(object):
 		# happen, we'll still pop scope
 		finally:
 			# need to pop the scope!
-			scope.pop()
+			#scope.pop()
+			pass
 	
 	def _handle_identifier_type(self, node, scope, ctxt, stream):
 		"""TODO: Docstring for _handle_identifier_type.

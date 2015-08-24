@@ -198,10 +198,12 @@ class TestBasic(unittest.TestCase, utils.UtilsMixin):
 			"""
 				struct {
 					local uint test = ReadUInt();
-					Printf("%d", this.test);
+					Printf("%d,", this.test);
+					Printf("%d", test);
 				} blah;
 			""",
-			verify=False
+			verify=False,
+			stdout="{a},{a}".format(a=str(0x04030201))
 		)
 	
 	def test_add(self):
