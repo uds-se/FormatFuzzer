@@ -16,7 +16,7 @@ import utils
 
 class TestBasic(unittest.TestCase, utils.UtilsMixin):
 	def setUp(self):
-		pass
+		pfp.fields.NumberBase.endian = pfp.fields.LITTLE_ENDIAN
 
 	def tearDown(self):
 		pass
@@ -206,6 +206,24 @@ class TestBasic(unittest.TestCase, utils.UtilsMixin):
 			stdout="{a},{a}".format(a=str(0x04030201))
 		)
 	
+	def test_struct_field_declared_in_function(self):
+		dom = self._test_parse_build(
+			"\x01\x02\x03\x04",
+			"""
+				void DeclareField() {
+					uint test;
+				}
+
+				struct {
+					DeclareField();
+					Printf("%d,", this.test);
+					Printf("%d", test);
+				} blah;
+			""",
+			verify=False,
+			stdout="{a},{a}".format(a=str(0x04030201))
+		)
+	
 	def test_add(self):
 		dom = self._test_parse_build(
 			"ab",
@@ -231,6 +249,24 @@ class TestBasic(unittest.TestCase, utils.UtilsMixin):
 				!i;
 			"""
 		)
+	
+	def test_unary_double_plus_minus1(self):
+		dom = self._test_parse_build(
+			"",
+			"""
+				local int a = 0;
+				local int b = ++a; // 1
+				local int c = a++; // 1
+				local int d = a; // 2
+			"""
+		)
+		# also, locals are now accessible via structs! easier testing FTW!
+		# TODO stop checking stdout and check the actual local values in
+		# tests
+		self.assertEqual(dom.a, 2)
+		self.assertEqual(dom.b, 1)
+		self.assertEqual(dom.c, 1)
+		self.assertEqual(dom.d, 2)
 	
 	def test_unary_sizeof_basic(self):
 		dom = self._test_parse_build(

@@ -314,7 +314,7 @@ class Scope(object):
 		self._curr_scope = self._scope_stack[-1]
 		return res
 	
-	def add_var(self, field_name, field):
+	def add_var(self, field_name, field, root=False):
 		"""Add a var to the current scope (vars are fields that
 		parse the input stream)
 
@@ -323,9 +323,15 @@ class Scope(object):
 		:returns: TODO
 
 		"""
-		self._dlog("adding var '{}'".format(field_name))
+		self._dlog("adding var '{}' (root={})".format(field_name, root))
+
+		# do both so it's not clobbered by intermediate values of the same name
+		if root:
+			self._scope_stack[0]["vars"][field_name] = field
+
 		# TODO do we allow clobbering of vars???
 		self._curr_scope["vars"][field_name] = field
+
 	
 	def get_var(self, name, recurse=True):
 		"""Return the first var of name ``name`` in the current
@@ -423,7 +429,7 @@ class Scope(object):
 	# ------------------
 
 	def _dlog(self, msg):
-		self._log.debug(" scope", msg)
+		self._log.debug(" scope({:08x})".format(id(self)), msg)
 
 	def _resolve_name(self, name):
 		"""TODO: Docstring for _resolve_names.
@@ -844,9 +850,9 @@ class PfpInterp(object):
 			res = self._handle_node(self._ast, None, None, self._stream)
 		except errors.InterpReturn as e:
 			# TODO handle exit/return codes (e.g. return -1)
-			pass
+			res = self._root
 		except errors.InterpExit as e:
-			pass
+			res = self._root
 		except Exception as e:
 			if keep_successfull:
 				# return the root and set _pfp__error
@@ -1134,7 +1140,12 @@ class PfpInterp(object):
 					field = field(stream, metadata_processor=metadata_processor, do_init=False)
 					field._pfp__interp = self
 					field_res = ctxt._pfp__add_child(field_name, field, stream)
-					scope.add_var(field_name, field_res)
+
+					# when adding a new field to a struct/union/fileast, add it to the
+					# root of the ctxt's scope so that it doesn't get lost by being declared
+					# from within a function
+					scope.add_var(field_name, field_res, root=True)
+
 					field_res._pfp__interp = self
 					field._pfp__init(stream)
 					added_child = True
@@ -1145,7 +1156,11 @@ class PfpInterp(object):
 				field._pfp__interp = self
 				field_res = ctxt._pfp__add_child(field_name, field, stream)
 				field_res._pfp__interp = self
-				scope.add_var(field_name, field_res)
+
+				# when adding a new field to a struct/union/fileast, add it to the
+				# root of the ctxt's scope so that it doesn't get lost by being declared
+				# from within a function
+				scope.add_var(field_name, field_res, root=True)
 
 				# this shouldn't be used elsewhere, but should still be explicit with
 				# this flag
@@ -1324,6 +1339,8 @@ class PfpInterp(object):
 	
 	def _handle_union_decls(self, node, scope, ctxt, stream):
 		self._dlog("handling union decls")
+
+		# new scope
 		scope = ctxt._pfp__scope = Scope(self._log, parent=scope)
 
 		try:
@@ -1334,7 +1351,7 @@ class PfpInterp(object):
 		finally:
 			# the union will have reset the stream
 			stream.seek(stream.tell()+ctxt._pfp__width(), 0)
-			#scope.pop()
+			self._scope = scope._parent
 	
 	def _handle_init_list(self, node, scope, ctxt, stream):
 		"""Handle InitList nodes (e.g. when initializing a struct)
@@ -1402,6 +1419,7 @@ class PfpInterp(object):
 
 		# new scope
 		scope = ctxt._pfp__scope = Scope(self._log, parent=scope)
+		self._scope = scope
 
 		try:
 			for decl in node.decls:
@@ -1414,8 +1432,7 @@ class PfpInterp(object):
 		# happen, we'll still pop scope
 		finally:
 			# need to pop the scope!
-			#scope.pop()
-			pass
+			self._scope = scope._parent
 	
 	def _handle_identifier_type(self, node, scope, ctxt, stream):
 		"""TODO: Docstring for _handle_identifier_type.
@@ -1597,11 +1614,15 @@ class PfpInterp(object):
 			"parentof"			: self._handle_parentof,
 			"exists"			: self._handle_exists,
 			"function_exists"	: self._handle_function_exists,
+			"p++"				: self._handle_post_plus_plus,
+			"p--"				: self._handle_post_minus_minus,
 		}
 
 		switch = {
-			"p++":		lambda x,v: x.__iadd__(1),
-			"p--":		lambda x,v: x.__isub__(1),
+			# for ++i and --i
+			"++":		lambda x,v: x.__iadd__(1),
+			"--":		lambda x,v: x.__isub__(1),
+
 			"~":		lambda x,v: ~x,
 			"!":		lambda x,v: not x,
 			"-":		lambda x,v: -x,
@@ -1622,6 +1643,20 @@ class PfpInterp(object):
 			new_res._pfp__set_value(1 if res == True else 0)
 			res = new_res
 		return res
+	
+	def _handle_post_plus_plus(self, node, scope, ctxt, stream):
+		field = self._handle_node(node.expr, scope, ctxt, stream)
+		clone = field.__class__()
+		clone._pfp__set_value(field)
+		field += 1
+		return clone
+	
+	def _handle_post_minus_minus(self, node, scope, ctxt, stream):
+		field = self._handle_node(node.expr, scope, ctxt, stream)
+		clone = field.__class__()
+		clone._pfp__set_value(field)
+		field -= 1
+		return clone
 	
 	def _handle_parentof(self, node, scope, ctxt, stream):
 		"""Handle the parentof unary operator
