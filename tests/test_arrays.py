@@ -80,6 +80,24 @@ class TestArrays(unittest.TestCase, utils.UtilsMixin):
 			"""
 		)
 		self.assertEqual(len(dom.chars), 4)
+		self.assertEqual(dom.chars[0], ord("A"))
+		self.assertEqual(dom.chars[1], ord("B"))
+		self.assertEqual(dom.chars[2], ord("C"))
+		self.assertEqual(dom.chars[3], ord("D"))
+	
+	def test_array_length1(self):
+		dom = self._test_parse_build(
+			"abcd",
+			"""
+				char chars[4];
+			"""
+		)
+		self.assertEqual(dom.chars[0], ord("a"))
+		self.assertEqual(dom.chars[1], ord("b"))
+		self.assertEqual(dom.chars[2], ord("c"))
+		self.assertEqual(dom.chars[3], ord("d"))
+		# this broke because of the Array.raw_data optimization
+		self.assertEqual(len(dom.chars), 4)
 	
 	def test_implicit_array_complex(self):
 		dom = self._test_parse_build(
