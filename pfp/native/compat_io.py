@@ -124,7 +124,12 @@ def FSeek(params, ctxt, scope, stream, coord):
 	curr_pos = stream.tell()
 
 	fsize = stream.size()
-	if pos > fsize or pos < 0:
+
+	if pos > fsize:
+		stream.seek(fsize)
+		return -1
+	elif pos < 0:
+		stream.seek(0)
 		return -1
 
 	diff = pos - curr_pos
@@ -139,9 +144,11 @@ def FSeek(params, ctxt, scope, stream, coord):
 	skipped_name = "_skipped"
 
 	if len(ctxt._pfp__children) > 0 and ctxt._pfp__children[-1]._pfp__name.startswith("_skipped"):
+		old_name = ctxt._pfp__children[-1]._pfp__name
 		data = ctxt._pfp__children[-1].raw_data + data
-		skipped_name = ctxt._pfp__children[-1]._pfp__name
+		skipped_name = old_name
 		ctxt._pfp__children = ctxt._pfp__children[:-1]
+		del ctxt._pfp__children_map[old_name]
 
 	tmp_stream = bitwrap.BitwrappedStream(six.BytesIO(data))
 	new_field = pfp.fields.Array(len(data), pfp.fields.Char, tmp_stream)
@@ -159,8 +166,8 @@ def FSkip(params, ctxt, scope, stream, coord):
 		raise errors.InvalidArguments(coord, "{} args".format(len(params)), "FSkip accepts only one argument")
 
 	skip_amt = PYVAL(params[0])
-	pos = stream.tell()
-	return FSeek([pos + skip_amt], ctxt, scope, stream, coord)
+	pos = skip_amt + stream.tell()
+	return FSeek([pos], ctxt, scope, stream, coord)
 
 #int64 FTell()
 @native(name="FTell", ret=pfp.fields.Int64)

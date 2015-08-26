@@ -186,6 +186,40 @@ class TestCompatIO(unittest.TestCase, utils.UtilsMixin):
 			stdout="0-1"
 		)
 	
+	def test_seek4(self):
+		dom = self._test_parse_build(
+			"ABCD",
+			"""
+				local int pos1 = FTell();
+				local int rv1 = FSeek(1);
+				local int pos2 = FTell();
+				local int rv2 = FSeek(2);
+				local int pos3 = FTell();
+				local int rv3 = FSeek(0x1000);
+				local int pos4 = FTell();
+				local int rv4 = FSeek(FileSize());
+				local int pos5 = FTell();
+				local int rv5 = FSeek(-0x1000);
+				local int pos6 = FTell();
+				local int rv6 = FSeek(0);
+				local int pos7 = FTell();
+			""",
+			verify=False
+		)
+		self.assertEqual(dom.pos1, 0)
+		self.assertEqual(dom.rv1, 0)
+		self.assertEqual(dom.pos2, 1)
+		self.assertEqual(dom.rv2, 0)
+		self.assertEqual(dom.pos3, 2)
+		self.assertEqual(dom.rv3, -1)
+		self.assertEqual(dom.pos4, 4)
+		self.assertEqual(dom.rv4, 0)
+		self.assertEqual(dom.pos5, 4)
+		self.assertEqual(dom.rv5, -1)
+		self.assertEqual(dom.pos6, 0)
+		self.assertEqual(dom.rv6, 0)
+		self.assertEqual(dom.pos7, 0)
+	
 	def test_skip1(self):
 		dom = self._test_parse_build(
 			"\x01\x02ABCD\x03\x04",
@@ -204,7 +238,7 @@ class TestCompatIO(unittest.TestCase, utils.UtilsMixin):
 		self.assertEqual(dom.c, 3)
 		self.assertEqual(dom.d, 4)
 	
-	def test_seek2(self):
+	def test_skip2(self):
 		dom = self._test_parse_build(
 			"\x01\x02ABCD\x03EF\x04",
 			"""
@@ -221,21 +255,30 @@ class TestCompatIO(unittest.TestCase, utils.UtilsMixin):
 		self.assertEqual(dom.a, 1)
 		self.assertEqual(dom.b, 2)
 		# should be merged into one _skipped array
-		self.assertEqual(dom._skipped_1, "ABCD")
+		self.assertEqual(dom._skipped_0, "ABCD")
 		self.assertEqual(dom.c, 3)
-		self.assertEqual(dom._skipped_2, "EF")
+		self.assertEqual(dom._skipped_1, "EF")
 		self.assertEqual(dom.d, 4)
 	
 	def test_skip3(self):
 		dom = self._test_parse_build(
 			"ABCD",
 			"""
-				Printf("%d", FSkip(4));
-				Printf("%d", FSkip(2));
+				local int fskip_rv1 = FSkip(1);
+				local int pos1 = FTell();
+				uchar b;
+				uchar c;
+				local int fskip_rv2 = FSkip(3);
+				local int pos2 = FTell();
 			""",
 			verify=False,
-			stdout="0-1"
 		)
+		self.assertEqual(dom.fskip_rv1, 0)
+		self.assertEqual(dom.pos1, 1)
+		self.assertEqual(dom.b, ord("B"))
+		self.assertEqual(dom.c, ord("C"))
+		self.assertEqual(dom.fskip_rv2, -1)
+		self.assertEqual(dom.pos2, 4)
 
 class TestCompatString(unittest.TestCase, utils.UtilsMixin):
 	def setup(self):
