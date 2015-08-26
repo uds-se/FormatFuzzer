@@ -8,6 +8,8 @@ import py010parser.c_parser
 import pfp.interp
 from pfp.bitwrap import BitwrappedStream
 
+__version__ = "0.1.13"
+
 PARSER = py010parser.c_parser.CParser()
 
 def parse(data=None, template=None, data_file=None, template_file=None, interp=None, debug=False, predefines=True, int3=True, cpp_path="cpp", cpp_args="-xc++", keep_successful=False):
