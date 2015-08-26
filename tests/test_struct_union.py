@@ -49,6 +49,53 @@ class TestStructUnion(unittest.TestCase, utils.UtilsMixin):
 		self.assertEqual(dom.test.chars1, "aa")
 		self.assertEqual(dom.test.chars2, "bbb")
 	
+	def test_struct_with_parameters2(self):
+		# ``descr_length l(bytes)`` is being treated as a function
+		# declaration!
+		dom = self._test_parse_build(
+			"\x01\x02\x03\x04",
+			"""
+				typedef struct (int arraySize)
+				{
+					uchar b[arraySize];
+				} descr_length <read=descr_format>;
+
+				local int bytes = 4;
+				descr_length l(bytes);
+			"""
+		)
+		self.assertEqual(len(dom.l.b), 4)
+		self.assertEqual(dom.l.b[0], 1)
+		self.assertEqual(dom.l.b[1], 2)
+		self.assertEqual(dom.l.b[2], 3)
+		self.assertEqual(dom.l.b[3], 4)
+	
+	def test_struct_with_parameters3(self):
+		# ``descr_length l(bytes)`` is being treated as a function
+		# declaration!
+		dom = self._test_parse_build(
+			"\x01\x02\x03\x04\x01\x02\x03",
+			"""
+				typedef struct (int arraySize, int arraySize2)
+				{
+					uchar b[arraySize];
+					uchar c[arraySize2];
+				} descr_length <read=descr_format>;
+
+				local int bytes = 4;
+				descr_length l(bytes, 3);
+			"""
+		)
+		self.assertEqual(len(dom.l.b), 4)
+		self.assertEqual(dom.l.b[0], 1)
+		self.assertEqual(dom.l.b[1], 2)
+		self.assertEqual(dom.l.b[2], 3)
+		self.assertEqual(dom.l.b[3], 4)
+		self.assertEqual(len(dom.l.c), 3)
+		self.assertEqual(dom.l.c[0], 1)
+		self.assertEqual(dom.l.c[1], 2)
+		self.assertEqual(dom.l.c[2], 3)
+	
 	def test_struct_decl_with_struct_keyword(self):
 		dom = self._test_parse_build(
 			"ABCD",
