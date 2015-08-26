@@ -272,7 +272,10 @@ class Scope(object):
 	def level(self):
 		"""Return the current scope level
 		"""
-		return len(self._scope_stack)
+		res = len(self._scope_stack)
+		if self._parent is not None:
+			res += self._parent.level()
+		return res
 		
 	def push(self, new_scope=None):
 		"""Create a new scope
@@ -1010,6 +1013,7 @@ class PfpInterp(object):
 
 		"""
 		self._dlog("handling typename")
+
 		return self._handle_node(node.type, scope, ctxt, stream)
 	
 	def _get_node_name(self, node):
@@ -1445,6 +1449,7 @@ class PfpInterp(object):
 
 		"""
 		self._dlog("handling identifier")
+
 		cls = self._resolve_to_field_class(node.names, scope)
 		return cls
 
@@ -2274,7 +2279,7 @@ class PfpInterp(object):
 			AST.Continue,
 			AST.Break,
 			AST.Switch,
-			AST.Case
+			AST.Case,
 		]
 
 		return node.__class__ in breakable_classes

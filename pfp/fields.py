@@ -1636,7 +1636,10 @@ class Array(Field):
 		return "\n".join(res)
 	
 	def __len__(self):
-		return len(self.items)
+		if self.raw_data is not None:
+			return int(len(self.raw_data) / self.field_cls.width)
+		else:
+			return len(self.items)
 
 # http://www.sweetscape.com/010editor/manual/ArraysStrings.htm
 class String(Field):
