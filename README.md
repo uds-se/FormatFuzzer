@@ -12,7 +12,7 @@ See the main documentation on [Read the Docs](http://pfp.readthedocs.org/en/late
 
 Install pfp with
 
-	pip install pfp
+	pip install --upgrade pfp
 
 ## Tl;DR
 
