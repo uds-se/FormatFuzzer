@@ -537,6 +537,11 @@ class Field(object):
 	def __repr__(self):
 		return "{}({!r})".format(self.__class__.__name__, self._pfp__value)
 	
+	def __getitem__(self, idx):
+		if idx != 0:
+			raise IndexError(idx)
+		return self
+	
 	def _pfp__show(self, level=0, include_offset=False):
 		"""Return a representation of this field
 
