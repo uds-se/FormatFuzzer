@@ -14,6 +14,7 @@ import unittest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import pfp
+import pfp.interp as interp
 import pfp.errors
 from pfp.fields import *
 import pfp.utils
@@ -93,7 +94,7 @@ class TestBitfields(unittest.TestCase, utils.UtilsMixin):
 		b = lambda x: chr(int(x,2))
 
 		dom = self._test_parse_build(
-			b("10011011") + b("10011111") + b("10000001"),
+			 b("10011111") + b("10000001") + b("10011011"),
 			"""
 				LittleEndian();
 				struct {
@@ -104,16 +105,16 @@ class TestBitfields(unittest.TestCase, utils.UtilsMixin):
 				} blah;
 			"""
 		)
-		self.assertEqual(dom.blah.test, int("1001", 2))
-		self.assertEqual(dom.blah.test1, int("10", 2))
-		self.assertEqual(dom.blah.test2, int("11", 2))
-		self.assertEqual(dom.blah.test3, int("1000000110011111",2))
+		self.assertEqual(dom.blah.test, int("1111", 2))
+		self.assertEqual(dom.blah.test1, int("01", 2))
+		self.assertEqual(dom.blah.test2, int("10", 2))
+		self.assertEqual(dom.blah.test3, int("1001101110000001",2))
 	
 	def test_bitfield_basic_padded_little_endian(self):
 		b = lambda x: chr(int(x,2))
 		
 		dom = self._test_parse_build(
-			b("11100000") + b("00000000") + b("10000000"),
+			b("00000111") + b("00000000") + b("10000000"),
 			"""
 				LittleEndian();
 				BitfieldEnablePadding();
@@ -122,7 +123,7 @@ class TestBitfields(unittest.TestCase, utils.UtilsMixin):
 					ushort big;
 				} blah;
 			""",
-			predefines=False
+			predefines=False,
 		)
 		self.assertEqual(dom.blah.test, int("111", 2))
 		self.assertEqual(dom.blah.big, int("1000000000000000", 2))
@@ -170,8 +171,9 @@ class TestBitfields(unittest.TestCase, utils.UtilsMixin):
 				LittleEndian();
 				struct {
 					if(1) {
-						int bitfield_1:4;
-						int bitfield_2:4;
+						// bitfields are padded by default
+						uchar bitfield_1:4;
+						uchar bitfield_2:4;
 					}
 				} blah;
 			"""
@@ -195,6 +197,7 @@ class TestBitfields(unittest.TestCase, utils.UtilsMixin):
 			"\x78\x00\x05\x5f\x00\x00\x0f\xa0\x00\x00\x0c",
 			"""
 			LittleEndian();
+			BitfieldLeftToRight();
 			typedef struct {
 				ubyte Nbits         : 5;
 				BitfieldDisablePadding();
@@ -216,6 +219,32 @@ class TestBitfields(unittest.TestCase, utils.UtilsMixin):
 		self.assertEqual(dom.rect.Ymin, 0)
 		self.assertEqual(dom.rect.Ymax, 8000)
 		self.assertEqual(dom.test, 0x0c00)
+	
+	def test_bitfield_with_mixed_types_and_enum(self):
+		b = lambda x: chr(int(x,2))
+
+		dom = self._test_parse_build(
+			b("11011110"),
+			"""
+				enum <uchar> BLAHS {
+					BLAH1=1,
+					BLAH2,
+					BLAH3,
+					BLAH4
+				};
+
+				// this should work in padded mode
+				uchar test1: 2;
+				uchar test2: 2;
+				BLAHS test3: 2;
+				byte test4: 2;
+			"""
+		)
+		self.assertEqual(dom.test1, 2)
+		self.assertEqual(dom.test2, 3)
+		self.assertEqual(dom.test3, 1)
+		self.assertEqual(dom.test3.enum_name, "BLAH1")
+		self.assertEqual(dom.test4, 3)
 
 if __name__ == "__main__":
 	unittest.main()
