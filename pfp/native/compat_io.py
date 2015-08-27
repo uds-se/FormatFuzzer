@@ -43,14 +43,14 @@ def BitfieldEnablePadding(params, ctxt, scope, stream, coord, interp):
 def BitfieldLeftToRight(params, ctxt, scope, stream, coord, interp):
 	if len(params) > 0:
 		raise errors.InvalidArguments(coord, "0 arguments", "{} args".format(len(params)))
-	interp.set_bitfield_left_right()
+	interp.set_bitfield_direction(interp.BITFIELD_DIR_LEFT_RIGHT)
 
 #void BitfieldRightToLeft()
 @native(name="BitfieldRightToLeft", ret=pfp.fields.Void, send_interp=True)
 def BitfieldRightToLeft(params, ctxt, scope, stream, coord, interp):
 	if len(params) > 0:
 		raise errors.InvalidArguments(coord, "0 arguments", "{} args".format(len(params)))
-	interp.set_bitfield_right_left()
+	interp.set_bitfield_direction(interp.BITFIELD_DIR_RIGHT_LEFT)
 
 #double ConvertBytesToDouble( uchar byteArray[] )
 @native(name="ConvertBytesToDouble", ret=pfp.fields.Double)

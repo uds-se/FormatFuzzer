@@ -5,7 +5,10 @@ import pfp.errors as errors
 import pfp.utils as utils
 import pfp.fields
 
-class Function(object):
+class BaseFunction(object):
+	pass
+
+class Function(BaseFunction):
 	"""A class to maintain function state and arguments"""
 	def __init__(self, return_type, params, scope):
 		"""
@@ -52,7 +55,7 @@ class Function(object):
 
 		return ret_val
 
-class NativeFunction(object):
+class NativeFunction(BaseFunction):
 	"""A class for native functions"""
 	def __init__(self, name, func, ret, send_interp=False):
 		"""

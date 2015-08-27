@@ -22,6 +22,26 @@ class TestControlFlow(unittest.TestCase, utils.UtilsMixin):
 	def tearDown(self):
 		pass
 	
+	def test_ternary1(self):
+		dom = self._test_parse_build(
+			"",
+			"""
+				local int b = 10;
+				local int a = (b == 10 ? 5 : 6);
+			""",
+		)
+		self.assertEqual(dom.a, 5)
+	
+	def test_ternary2(self):
+		dom = self._test_parse_build(
+			"",
+			"""
+				local int b = 9;
+				local int a = (b == 10 ? 5 : 6);
+			""",
+		)
+		self.assertEqual(dom.a, 6)
+	
 	def test_if1(self):
 		dom = self._test_parse_build(
 			"",

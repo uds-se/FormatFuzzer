@@ -143,6 +143,18 @@ class BitfieldRW(object):
 
 			if len(self._write_bits) == self.reserved_bits:
 				bits = self._endian_transform(self._write_bits, endian)
+
+				# if it's padded, and all of the bits in the field weren't used,
+				# we need to flush out the unused bits
+				# TODO should we save the value of the unused bits so the data that
+				# is written out matches exactly what was read?
+				if self.reserved_bits < self.cls.width * 8:
+					filler = [0] * ((self.cls.width * 8) - self.reserved_bits)
+					if left_right:
+						bits += filler
+					else:
+						bits = filler + bits
+
 				stream.write_bits(bits)
 				self._write_bits = []
 
@@ -524,6 +536,11 @@ class Field(object):
 	
 	def __repr__(self):
 		return "{}({!r})".format(self.__class__.__name__, self._pfp__value)
+	
+	def __getitem__(self, idx):
+		if idx != 0:
+			raise IndexError(idx)
+		return self
 	
 	def _pfp__show(self, level=0, include_offset=False):
 		"""Return a representation of this field
@@ -1334,7 +1351,6 @@ class Enum(IntBase):
 	def __init__(self, stream=None, enum_cls=None, enum_vals=None, bitsize=None, metadata_processor=None, bitfield_rw=None, bitfield_padded=False, bitfield_left_right=False):
 		"""Init the enum
 		"""
-		# discard the bitsize value and bitfield_rw value
 		self.enum_name = None
 
 		if enum_vals is not None:
@@ -1346,7 +1362,13 @@ class Enum(IntBase):
 			self.width = enum_cls.width
 			self.format = enum_cls.format
 
-		super(Enum, self).__init__(stream, metadata_processor=metadata_processor)
+		super(Enum, self).__init__(stream,
+			metadata_processor	= metadata_processor,
+			bitfield_rw			= bitfield_rw,
+			bitsize				= bitsize,
+			bitfield_padded		= bitfield_padded,
+			bitfield_left_right	= bitfield_left_right
+		)
 	
 	def _pfp__parse(self, stream, save_offset=False):
 		"""Parse the IO stream for this enum
