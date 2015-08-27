@@ -226,6 +226,41 @@ class TestArrays(unittest.TestCase, utils.UtilsMixin):
 		self.assertEqual(dom.chars[1], ord("B"))
 		self.assertEqual(dom.chars[2], ord("C"))
 		self.assertEqual(dom.chars[3], ord("D"))
+	
+	def test_implicit_single_item_array1(self):
+		dom = self._test_parse_build(
+			"\x01",
+			"""
+				uchar blah;
+				local uchar a = blah[0];
+			""",
+		)
+		self.assertEqual(dom.blah, 1)
+		self.assertEqual(dom.a, 1)
+	
+	def test_implicit_single_item_array2(self):
+		dom = self._test_parse_build(
+			"aaaa",
+			"""
+				int blah;
+				local int a = blah[0];
+			""",
+		)
+		self.assertEqual(dom.blah, 0x61616161)
+		self.assertEqual(dom.a, 0x61616161)
+	
+	def test_implicit_single_item_array3(self):
+		dom = self._test_parse_build(
+			"aaaa",
+			"""
+				struct {
+					int blah;
+				} test;
+				local int a = test[0].blah;
+			""",
+		)
+		self.assertEqual(dom.test.blah, 0x61616161)
+		self.assertEqual(dom.a, 0x61616161)
 
 if __name__ == "__main__":
 	unittest.main()
