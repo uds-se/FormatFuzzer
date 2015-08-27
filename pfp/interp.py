@@ -482,6 +482,10 @@ class PfpInterp(object):
 	"""
 	"""
 
+	BITFIELD_DIR_LEFT_RIGHT = -1
+	BITFIELD_DIR_DEFAULT = 0
+	BITFIELD_DIR_RIGHT_LEFT = 1
+
 	# do not break (execute until finished)
 	BREAK_NONE = 0
 	# break on the next instruction on the same level
@@ -579,7 +583,7 @@ class PfpInterp(object):
 		self._no_debug = False
 		self._padded_bitfield = True
 		# TODO does this default change based on the endianness?
-		self._bitfield_left_right = True
+		self._bitfield_direction = self.BITFIELD_DIR_DEFAULT
 		# whether or not debugging is allowed (ie Int3())
 		self._int3 = int3
 		
@@ -635,6 +639,7 @@ class PfpInterp(object):
 			AST.EmptyStatement: 	self._handle_empty_statement,
 			AST.DoWhile:			self._handle_do_while,
 			AST.StructCallTypeDecl:	self._handle_struct_call_type_decl,
+			AST.TernaryOp:			self._handle_if,
 
 			StructDecls:			self._handle_struct_decls,
 			UnionDecls:				self._handle_union_decls,
@@ -737,17 +742,10 @@ class PfpInterp(object):
 		self._stream.padded = val
 		self._ctxt._pfp__padded_bitfield = val
 	
-	def set_bitfield_right_left(self):
-		"""Set the bitfields to parse from left to right
+	def set_bitfield_direction(self, val):
+		"""Set the bitfields to parse from left to right (1), the default (None), or right to left (-1)
 		"""
-		self._bitfield_left_right = False
-		# TODO
-	
-	def set_bitfield_left_right(self):
-		"""Set the bitfields to parse from left to right
-		"""
-		self._bitfield_left_right = True
-		# TODO
+		self._bitfield_direction = val
 	
 	def get_bitfield_padded(self):
 		"""Return if the bitfield input/output stream should be padded
@@ -756,12 +754,12 @@ class PfpInterp(object):
 		"""
 		return self._padded_bitfield
 	
-	def get_bitfield_left_right(self):
-		"""Return if the bits should be interpreted from left to right.
+	def get_bitfield_direction(self):
+		"""Return if the bitfield direction
 
 		.. note:: This should be applied AFTER taking into account endianness.
 		"""
-		return self._bitfield_left_right
+		return self._bitfield_direction
 	
 	def get_filename(self):
 		"""Return the filename of the data that is currently being
@@ -1066,7 +1064,7 @@ class PfpInterp(object):
 				# E.g.
 				# 	char a: 8, b:8;
 				#	char c: 8, d:8;
-				if ((self._padded_bitfield and prev.__class__ == field) or not self._padded_bitfield) \
+				if ((self._padded_bitfield and prev.__class__.width == field.width) or not self._padded_bitfield) \
 						and prev.bitsize is not None and prev.bitfield_rw.reserve_bits(bitsize, stream):
 					bitfield_rw = prev.bitfield_rw
 
@@ -1118,13 +1116,19 @@ class PfpInterp(object):
 			# in order to set the new context)
 			if not isinstance(field, fields.Field):
 				if issubclass(field, fields.NumberBase):
+					# use the default bitfield direction
+					if self._bitfield_direction is self.BITFIELD_DIR_DEFAULT:
+						bitfield_left_right = True if field.endian == fields.BIG_ENDIAN else False
+					else:
+						bitfield_left_right = (self._bitfield_direction is self.BITFIELD_DIR_LEFT_RIGHT)
+
 					field = field(
 						stream,
 						bitsize=bitsize,
 						metadata_processor=metadata_processor,
 						bitfield_rw=bitfield_rw,
 						bitfield_padded=self._padded_bitfield,
-						bitfield_left_right=self._bitfield_left_right
+						bitfield_left_right=bitfield_left_right
 					)
 
 				# TODO
@@ -1411,6 +1415,10 @@ class PfpInterp(object):
 		# it's actually being defined
 		if node.decls is not None:
 			struct_cls = StructUnionDef("struct", self, node)
+
+			if node.name is not None:
+				scope.add_type_class(node.name, struct_cls)
+
 			return struct_cls
 
 		# it's declaring a struct field. E.g.
@@ -1718,7 +1726,7 @@ class PfpInterp(object):
 		res = fields.Int()
 		try:
 			func = self._handle_node(node.expr, scope, ctxt, stream)
-			if isinstance(func, functions.Function):
+			if isinstance(func, functions.BaseFunction):
 				res._pfp__set_value(1)
 			else:
 				res._pfp__set_value(0)
@@ -1970,7 +1978,8 @@ class PfpInterp(object):
 
 		if node.name is not None:
 			enum_cls = EnumDef(node.name, enum_cls, enum_vals)
-			#scope.add_type_class(node.name, enum_cls)
+			scope.add_type_class(node.name, enum_cls)
+
 		else:
 			enum_cls = EnumDef("enum_" + enum_cls.__name__, enum_cls, enum_vals)
 			# don't add to scope if we don't have a name
@@ -2018,7 +2027,7 @@ class PfpInterp(object):
 		ary = self._handle_node(node.name, scope, ctxt, stream)
 		subscript = self._handle_node(node.subscript, scope, ctxt, stream)
 		return ary[fields.PYVAL(subscript)]
-	
+
 	def _handle_if(self, node, scope, ctxt, stream):
 		"""Handle If nodes
 
@@ -2029,7 +2038,7 @@ class PfpInterp(object):
 		:returns: TODO
 
 		"""
-		self._dlog("handling if")
+		self._dlog("handling if/ternary_op")
 		cond = self._handle_node(node.cond, scope, ctxt, stream)
 		if cond:
 			# there should always be an iftrue

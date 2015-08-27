@@ -17,7 +17,7 @@ import utils
 
 class TestEnums(unittest.TestCase, utils.UtilsMixin):
 	def setUp(self):
-		pass
+		pfp.fields.NumberBase.endian = pfp.fields.BIG_ENDIAN
 	
 	def tearDown(self):
 		pass
@@ -26,7 +26,6 @@ class TestEnums(unittest.TestCase, utils.UtilsMixin):
 		dom = self._test_parse_build(
 			"\x00\x00\x00\x01",
 			"""
-				BigEndian();
 				enum TEST_ENUM {
 					BLAH1,
 					BLAH2,
@@ -116,6 +115,85 @@ class TestEnums(unittest.TestCase, utils.UtilsMixin):
 			""",
 			stdout="5"
 		)
+	
+	def test_enum_name_as_type(self):
+		dom = self._test_parse_build(
+			"\x01",
+			"""
+				enum <uchar> BLAHS {
+					BLAH1,
+					BLAH2,
+					BLAH3
+				};
+				BLAHS test;
+			"""
+		)
+		self.assertEqual(dom.test, 1)
+		self.assertEqual(dom.test.enum_name, "BLAH2")
+	
+	def test_enum_with_bitfield(self):
+		dom = self._test_parse_build(
+			"\x31",
+			"""
+				enum <uchar> BLAHS {
+					BLAH1,
+					BLAH2,
+					BLAH3,
+					BLAH4
+				};
+
+				BLAHS test1: 4;
+				BLAHS test2: 4;
+			"""
+		)
+		self.assertEqual(dom.test1, 3)
+		self.assertEqual(dom.test1.enum_name, "BLAH4")
+		self.assertEqual(dom.test2, 1)
+		self.assertEqual(dom.test2.enum_name, "BLAH2")
+
+	def test_enum_with_bitfield_typedef(self):
+		dom = self._test_parse_build(
+			"\x31",
+			"""
+				typedef enum <uchar> blahs {
+					BLAH1,
+					BLAH2,
+					BLAH3,
+					BLAH4
+				} BLAHS;
+
+				BLAHS test1: 4;
+				BLAHS test2: 4;
+			"""
+		)
+		self.assertEqual(dom.test1, 3)
+		self.assertEqual(dom.test1.enum_name, "BLAH4")
+		self.assertEqual(dom.test2, 1)
+		self.assertEqual(dom.test2.enum_name, "BLAH2")
+
+	def test_enum_with_bitfield_inline(self):
+		dom = self._test_parse_build(
+			"\x31",
+			"""
+				enum <uchar> {
+					BLAH1,
+					BLAH2,
+					BLAH3,
+					BLAH4
+				} test1: 4;
+
+				enum <uchar> {
+					BLAH1,
+					BLAH2,
+					BLAH3,
+					BLAH4
+				} test2: 4;
+			"""
+		)
+		self.assertEqual(dom.test1, 3)
+		self.assertEqual(dom.test1.enum_name, "BLAH4")
+		self.assertEqual(dom.test2, 1)
+		self.assertEqual(dom.test2.enum_name, "BLAH2")
 
 if __name__ == "__main__":
 	unittest.main()
