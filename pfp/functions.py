@@ -88,6 +88,23 @@ class NativeFunction(BaseFunction):
 
 		return res_field
 
+
+class ParamClsWrapper(object):
+    """This is a temporary wrapper around a param class
+    that can store temporary information, such as byref values
+    """
+
+    def __init__(self, param_cls):
+        self._cls = param_cls
+
+    def __call__(self, *args, **kwargs):
+        """This should be fairly transparent in use and should
+        behave as if a new object of `self._cls` was directly
+        instantiated
+        """
+        return self._cls(*args, **kwargs)
+
+
 class ParamListDef(object):
 	"""docstring for ParamList"""
 	def __init__(self, params, coords):
