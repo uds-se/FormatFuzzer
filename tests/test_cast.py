@@ -17,22 +17,22 @@ import utils
 
 
 class TestArrays(unittest.TestCase, utils.UtilsMixin):
-	def setUp(self):
-		pfp.fields.NumberBase.endian = pfp.fields.BIG_ENDIAN
-	
-	def tearDown(self):
-		pass
-	
-	def test_cast_basic(self):
-		dom = self._test_parse_build(
-			"",
-			"""
-				local int a = 0x61;
-				local uchar b = (char)a;
-				Printf(b);
-			""",
-			stdout="a"
-		)
+    def setUp(self):
+        pfp.fields.NumberBase.endian = pfp.fields.BIG_ENDIAN
+    
+    def tearDown(self):
+        pass
+    
+    def test_cast_basic(self):
+        dom = self._test_parse_build(
+            "",
+            """
+                local int a = 0x61;
+                local uchar b = (char)a;
+                Printf(b);
+            """,
+            stdout="a"
+        )
 
 if __name__ == "__main__":
-	unittest.main()
+    unittest.main()
