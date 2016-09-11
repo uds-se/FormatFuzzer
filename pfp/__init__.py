@@ -21,8 +21,6 @@ def parse(
         debug           = False,
         predefines      = True,
         int3            = True,
-        cpp_path        = "cpp",
-        cpp_args        = "-xc++",
         keep_successful = False
     ):
     """Parse the data stream using the supplied template. The data stream
@@ -36,8 +34,6 @@ def parse(
     :debug: if debug information should be printed while interpreting the template (false)
     :predefines: if built-in type information should be inserted (true)
     :int3: if debugger breaks are allowed while interpreting the template (true)
-    :cpp_path: the path to the ``cpp`` binary, used to strip comments ("cpp")
-    :cpp_args: the args to the ``cpp`` binary to strip comments. Defaults to "", but "-xc++" might be useful on macs.
     :keep_successful: return any succesfully parsed data instead of raising an error. If an error occurred and ``keep_successful`` is True, then ``_pfp__error`` will be contain the exception object
     :returns: pfp DOM
     """
@@ -68,12 +64,22 @@ def parse(
     # the user may specify their own instance of PfpInterp to be
     # used
     if interp is None:
-        interp = pfp.interp.PfpInterp(debug=debug, parser=PARSER, int3=int3, cpp_path=cpp_path, cpp_args=cpp_args)
+        interp = pfp.interp.PfpInterp(
+            debug  = debug,
+            parser = PARSER,
+            int3   = int3,
+        )
     
     # so we can consume single bits at a time
     data = BitwrappedStream(data)
 
-    dom = interp.parse(data, template, predefines=predefines, orig_filename=orig_filename, keep_successful=keep_successful)
+    dom = interp.parse(
+        data,
+        template,
+        predefines      = predefines,
+        orig_filename   = orig_filename,
+        keep_successful = keep_successful
+    )
 
     # close the data stream if a data_file was specified
     if data_file is not None:
