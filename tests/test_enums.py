@@ -15,7 +15,7 @@ import pfp.utils
 
 import utils
 
-class TestEnums(unittest.TestCase, utils.UtilsMixin):
+class TestEnums(utils.PfpTestCase):
     def setUp(self):
         pfp.fields.NumberBase.endian = pfp.fields.BIG_ENDIAN
     

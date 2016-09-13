@@ -14,7 +14,7 @@ import pfp.utils
 
 import utils
 
-class TestStructUnion(unittest.TestCase, utils.UtilsMixin):
+class TestStructUnion(utils.PfpTestCase):
     def setUp(self):
         pass
 

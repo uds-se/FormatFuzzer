@@ -14,7 +14,7 @@ import pfp.utils
 
 import utils
 
-class TestBasic(unittest.TestCase, utils.UtilsMixin):
+class TestBasic(utils.PfpTestCase):
     def setUp(self):
         pfp.fields.NumberBase.endian = pfp.fields.LITTLE_ENDIAN
 
@@ -431,7 +431,7 @@ class TestBasic(unittest.TestCase, utils.UtilsMixin):
             """
         )
 
-class TestByRef(unittest.TestCase, utils.UtilsMixin):
+class TestByRef(utils.PfpTestCase):
     def setUp(self):
         pass
 

@@ -15,7 +15,7 @@ import pfp.utils
 
 import utils
 
-class TestControlFlow(unittest.TestCase, utils.UtilsMixin):
+class TestControlFlow(utils.PfpTestCase):
     def setUp(self):
         pass
 
