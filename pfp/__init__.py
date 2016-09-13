@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import os
+import six
 import sys
 
 import py010parser.c_parser
@@ -26,9 +27,9 @@ def parse(
     """Parse the data stream using the supplied template. The data stream
     WILL NOT be automatically closed.
 
-    :data: Input stream (yes, a STREAM, not str)
+    :data: Input data, can be either a string or a file-like object (StringIO, file, etc)
     :template: template contents (str)
-    :data_file: path to the data to be used as the input stream
+    :data_file: PATH to the data to be used as the input stream
     :template_file: template file path
     :interp: the interpretor to be used (a default one will be created if ``None``)
     :debug: if debug information should be printed while interpreting the template (false)
@@ -42,6 +43,9 @@ def parse(
     
     if data is not None and data_file is not None:
         raise Exception("Only one input data may be specified")
+
+    if isinstance(data, six.string_types):
+        data = six.StringIO(data)
     
     if data_file is not None:
         data = open(os.path.expanduser(data_file), "rb")

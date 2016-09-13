@@ -20,7 +20,7 @@ import pfp.utils
 
 import utils
 
-class TestNumericFields(unittest.TestCase, utils.UtilsMixin):
+class TestNumericFields(utils.PfpTestCase):
     def setUp(self):
         pass
 

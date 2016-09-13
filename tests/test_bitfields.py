@@ -21,7 +21,7 @@ import pfp.utils
 
 import utils
 
-class TestBitfields(unittest.TestCase, utils.UtilsMixin):
+class TestBitfields(utils.PfpTestCase):
     def setUp(self):
         pass
 

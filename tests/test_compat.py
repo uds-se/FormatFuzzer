@@ -15,7 +15,7 @@ import pfp.utils
 
 import utils
 
-class TestCompat(unittest.TestCase, utils.UtilsMixin):
+class TestCompat(utils.PfpTestCase):
     def setUp(self):
         self._start_endian = pfp.fields.NumberBase.endian
     
@@ -58,7 +58,7 @@ class TestCompat(unittest.TestCase, utils.UtilsMixin):
 
         self.assertEqual(output_.getvalue(), "5")
 
-class TestCompatInterface(unittest.TestCase, utils.UtilsMixin):
+class TestCompatInterface(utils.PfpTestCase):
     def setUp(self):
         pass
     
@@ -100,7 +100,7 @@ class TestCompatInterface(unittest.TestCase, utils.UtilsMixin):
             predefines=True
         )
 
-class TestCompatIO(unittest.TestCase, utils.UtilsMixin):
+class TestCompatIO(utils.PfpTestCase):
     def setUp(self):
         pfp.fields.NumberBase.endian = pfp.fields.BIG_ENDIAN
     
@@ -280,7 +280,7 @@ class TestCompatIO(unittest.TestCase, utils.UtilsMixin):
         self.assertEqual(dom.fskip_rv2, -1)
         self.assertEqual(dom.pos2, 4)
 
-class TestCompatString(unittest.TestCase, utils.UtilsMixin):
+class TestCompatString(utils.PfpTestCase):
     def setup(self):
         pass
     
@@ -479,7 +479,7 @@ class TestCompatString(unittest.TestCase, utils.UtilsMixin):
             stdout="-1"
         )
 
-class TestCompatTools(unittest.TestCase, utils.UtilsMixin):
+class TestCompatTools(utils.PfpTestCase):
     def setUp(self):
         pass
     

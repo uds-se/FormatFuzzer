@@ -18,7 +18,7 @@ import pfp.dbg
 
 import utils
 
-class TestDebug(unittest.TestCase, utils.UtilsMixin):
+class TestDebug(utils.PfpTestCase):
     def setUp(self):
         pass
     

@@ -20,7 +20,7 @@ import pfp.utils
 
 import utils
 
-class TestFunctions(unittest.TestCase, utils.UtilsMixin):
+class TestFunctions(utils.PfpTestCase):
     def setUp(self):
         pass
     

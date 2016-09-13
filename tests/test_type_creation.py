@@ -15,7 +15,7 @@ import pfp.utils
 
 import utils
 
-class TestTypeCreation(unittest.TestCase, utils.UtilsMixin):
+class TestTypeCreation(utils.PfpTestCase):
     def setUp(self):
         pfp.fields.NumberBase.endian = pfp.fields.LITTLE_ENDIAN
 
