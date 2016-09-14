@@ -145,7 +145,10 @@ class ParamListDef(object):
 
         for x in six.moves.range(len(args)):
             param = param_instances[x]
-            if param is BYREF:
+             
+            # arrays are simply passed through into the function. We shouldn't
+            # have to worry about frozenness/unfrozenness at this point
+            if param is BYREF or isinstance(param, pfp.fields.Array):
                 param = args[x]
                 param_instances[x] = param
                 scope.add_local(self._params[x][0], param)

@@ -22,7 +22,7 @@ import utils
 
 class TestFunctions(utils.PfpTestCase):
     def setUp(self):
-        pass
+        pfp.fields.NumberBase.endian = pfp.fields.LITTLE_ENDIAN
     
     def tearDown(self):
         pass
@@ -127,6 +127,26 @@ class TestFunctions(utils.PfpTestCase):
             """,
             verify=False,
             stdout="true"
+        )
+
+    def test_array_as_param(self):
+        dom = self._test_parse_build(
+            "".join([
+                "\x00\x00\x00\x01",
+                "\x00\x00\x00\x02",
+                "\x00\x00\x00\x03",
+                "\x00\x00\x00\x04",
+                "\x00\x00\x00\x05",
+            ]),
+            r"""
+                LittleEndian();
+                int me[5];
+                void passMe(int value[]) {
+                    Printf("%08x", value[0]);
+                }
+                passMe(me);
+            """,
+            stdout="01000000"
         )
     
 if __name__ == "__main__":
