@@ -1940,7 +1940,10 @@ class PfpInterp(object):
 
         """
         self._dlog("handling return")
-        ret_val = self._handle_node(node.expr, scope, ctxt, stream)
+        if node.expr is None:
+            ret_val = None
+        else:
+            ret_val = self._handle_node(node.expr, scope, ctxt, stream)
         self._dlog("return value = {}".format(ret_val))
         raise errors.InterpReturn(ret_val)
     
