@@ -129,6 +129,21 @@ class TestFunctions(utils.PfpTestCase):
             stdout="true"
         )
 
+    # see https://github.com/d0c-s4vage/pfp/issues/27 - thanks @vit9696!
+    def test_void_return(self):
+        dom = self._test_parse_build(
+            "",
+            r"""
+                void func() {
+                    #ifndef DEBUG
+                        return;
+                    #endif
+                    Printf("Hello\n");
+                }
+                func();
+            """
+        )
+
     def test_array_as_param(self):
         dom = self._test_parse_build(
             "".join([
