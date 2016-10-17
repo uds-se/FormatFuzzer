@@ -13,6 +13,7 @@ import pfp.utils as utils
 import pfp.bitwrap as bitwrap
 import pfp.functions as functions
 
+
 BIG_ENDIAN = ">"
 LITTLE_ENDIAN = "<"
 
@@ -226,9 +227,22 @@ class Field(object):
         self._ = None
 
         self._pfp__array_idx = None
+
+        self._pfp__snapshot_value = None
         
         if stream is not None:
             self._pfp__parse(stream, save_offset=True)
+
+    def _pfp__snapshot(self, recurse=True):
+        """Save off the current value of the field
+        """
+        if hasattr(self, "_pfp__value"):
+            self._pfp__snapshot_value = self._pfp__value
+
+    def _pfp__restore_snapshot(self, recurse=True):
+        """Restore a saved value snapshot
+        """
+        self._pfp__value = self._pfp__snapshot_value
     
     def _pfp__process_metadata(self):
         """Process the metadata once the entire struct has been
@@ -580,6 +594,24 @@ class Struct(Field):
 
         if stream is not None:
             self._pfp__offset = stream.tell()
+
+    def _pfp__snapshot(self, recurse=True):
+        """Save off the current value of the field
+        """
+        super(Struct, self)._pfp__snapshot(recurse=recurse)
+
+        if recurse:
+            for child in self._pfp__children:
+                child._pfp__snapshot(recurse=recurse)
+
+    def _pfp__restore_snapshot(self, recurse=True):
+        """Restore the snapshotted value without triggering any events
+        """
+        super(Struct, self)._pfp__restore_snapshot(recurse=recurse)
+
+        if recurse:
+            for child in self._pfp__children:
+                child._pfp__restore_snapshot(recurse=recurse)
     
     def _pfp__process_fields_metadata(self):
         """Tell each child to process its metadata
@@ -644,7 +676,7 @@ class Struct(Field):
         child._pfp__name = new_name
         self._pfp__name_collisions[name] = next_suffix + 1
         self._pfp__children_map[new_name] = child
-        self._pfp__parent = self
+        child._pfp__parent = self
 
         if insert:
             self._pfp__children.append(child)
@@ -1434,7 +1466,27 @@ class Array(Field):
             if width is not None:
                 for x in six.moves.range(self.width):
                     self.items.append(self.field_cls())
-    
+
+    def _pfp__snapshot(self, recurse=True):
+        """Save off the current value of the field
+        """
+        super(Array, self)._pfp__snapshot(recurse=recurse)
+        self.snapshot_raw_data = self.raw_data
+
+        if recurse:
+            for item in self.items:
+                item._pfp__snapshot(recurse=recurse)
+
+    def _pfp__restore_snapshot(self, recurse=True):
+        """Restore the snapshotted value without triggering any events
+        """
+        super(Array, self)._pfp__restore_snapshot(recurse=recurse)
+        self.raw_data = self.snapshot_raw_data
+
+        if recurse:
+            for item in self.items:
+                item._pfp__restore_snapshot(recurse=recurse)
+
     def append(self, item):
         # TODO check for consistent type
         item._pfp__parent = self
