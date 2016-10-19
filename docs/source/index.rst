@@ -75,6 +75,7 @@ Contents:
    getting_started
    metadata
    fields
+   fuzz
    debugger
    interpreter
    functions
