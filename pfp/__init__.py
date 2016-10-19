@@ -12,7 +12,7 @@ import pfp.fuzz
 pfp.fuzz.init()
 
 
-__version__ = "0.1.15"
+__version__ = "0.2.0"
 
 PARSER = py010parser.c_parser.CParser()
 
