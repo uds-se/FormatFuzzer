@@ -17,13 +17,13 @@ setup(
         etc.
     """,
     license='MIT',
-    version='0.2.1',
+    version='0.2.2',
     author='James Johnson',
     maintainer='James Johnson',
     author_email='d0c.s4vage@gmail.com',
     url='https://github.com/d0c-s4vage/pfp',
     platforms='Cross Platform',
-    download_url="https://github.com/d0c-s4vage/pfp/tarball/v0.1.15",
+    download_url="https://github.com/d0c-s4vage/pfp/tarball/v0.2.2",
     install_requires = open(os.path.join(os.path.dirname(__file__), "requirements.txt")).read().split("\n"),
     classifiers = [
         'Programming Language :: Python :: 2',
