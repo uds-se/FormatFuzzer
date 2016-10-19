@@ -33,10 +33,22 @@ def init():
         if filename in ["__init__.py", "base.py"]:
             continue
         mod_name = filename.replace(".py", "").replace(".pyc", "")
-        __import__("pfp.fuzz.{}".format(mod_name))
+        __import__("pfp.fuzz." + mod_name)
 
 
 def mutate(field, strat_name_or_cls, num=100, at_once=1):
+    """Mutate the provided field (probably a Dom or struct instance) using the
+    strategy specified with ``strat_name_or_class``, yielding ``num`` mutations
+    that affect up to ``at_once`` fields at once.
+
+    This function will yield back the field after each mutation.
+
+    :param pfp.fields.Field field: The field to mutate (can be anything, not just Dom/Structs)
+    :param strat_name_or_class: Can be the name of a strategy, or the actual strategy class (not an instance)
+    :param int num: The number of mutations to yield
+    :param int at_once: The number of fields to mutate at once
+    :returns: None
+    """
     import pfp.fuzz.rand as rand
 
     init()

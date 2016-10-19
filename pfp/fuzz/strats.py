@@ -27,6 +27,9 @@ STRATS = {}
 """Stores information on registered StatGroups"""
 
 def get_strategy(name_or_cls):
+    """Return the strategy identified by its name. If ``name_or_class`` is a class,
+    it will be simply returned.
+    """
     if isinstance(name_or_cls, six.string_types):
         if name_or_cls not in STRATS:
             raise MutationError("strat is not defined")
@@ -54,8 +57,15 @@ class StratGroupMeta(type):
 class StratGroup(object):
     """StatGroups choose which sub-fields should be mutated, and which FieldStrat should
     be used to do the mutating.
+
+    The ``filter_fields`` method is intended to be overridden to provide
+    custom filtering of child leaf fields should be mutated.
     """
+
     name = None
+    """The unique name of the fuzzing strategy group. Can be used as the ``strat_name_or_cls`` parameter
+    to the :any:`pfp.fuzz.mutate() <pfp.fuzz.mutate>` function
+    """
 
     def __init__(self):
         self._strats = {}
@@ -142,15 +152,22 @@ class StratGroup(object):
 
 
 class FieldStrat(object):
+    """A FieldStrat is used to define a fuzzing strategy for a specific field
+    (or list of fields). A list of choices can be defined, or a set or probabilities
+    that will yield 
+    """
+
     choices = None
     """An enumerable of new value choices to choose from when mutating.
 
-    This can also be a function/callable that returns an enumerable of choices
+    This can also be a function/callable that returns an enumerable of choices. If it is
+    a callable, the currently-being-fuzzed field will be passed in as a parameter.
     """
 
     prob = None
     """An enumerable of probabilities used to choose from when mutating
-    E.g.:
+    E.g.::
+
         [
             (0.50, 0xffff),             # 50% of the time it should be the value 0xffff
             (0.25, xrange(0, 0x100)),   # 25% of the time it should be in the range [0, 0x100)
@@ -160,15 +177,18 @@ class FieldStrat(object):
 
     NOTE that the percentages need to add up to 100.
 
-    This can also be a function/callable that returns an enumerable.
+    This can also be a function/callable that returns an probabilities list. If it is
+    a callable, the currently-being-fuzzed field will be passed in as a parameter.
     """
 
     klass = None
-    """The class this strategy should be applied to. Can be a class instance,
-    or a string of the class name.
+    """The class this strategy should be applied to. Can be a pfp.fields.field class
+    (or subclass) or a string of the class name.
 
     Note that strings for the class name will only apply to direct instances
     of that class and not instances of subclasses.
+
+    Can also be a list of classes or class names.
     """
 
     def mutate(self, field):
@@ -177,18 +197,17 @@ class FieldStrat(object):
 
         :field: The pfp.fields.Field instance that will receive the new value
         """
-        print(field)
         new_val = self.next_val(field)
         field._pfp__set_value(new_val)
         return field
 
     def next_val(self, field):
         """Return a new value to mutate a field with. Do not modify the field directly
-        in this function. Override the mutate() function if that is needed (the field is
-        only passed in as a reference).
+        in this function. Override the ``mutate()`` function if that is needed (the field is
+        only passed into this function as a reference).
 
-        :field: The pfp.fields.Field instance that will receive the new value. Passed in
-        for reference only.
+        :field: The pfp.fields.Field instance that will receive the new value. Passed in for reference only.
+        :returns: The next value for the field
         """
         import pfp.fuzz.rand as rand
 

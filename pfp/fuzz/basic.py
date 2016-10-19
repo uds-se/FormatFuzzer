@@ -14,6 +14,10 @@ import pfp.fields as fields
 
 
 class BasicStrat(fuzz.StratGroup):
+    """A basic strategy that has FieldStrats (field strategies) defined
+    for every field type. Nothing fancy, just basic.
+    """
+
     name = "basic"
 
     class Char(fuzz.FieldStrat):
