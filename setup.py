@@ -17,7 +17,7 @@ setup(
         etc.
     """,
     license='MIT',
-    version='0.2.0',
+    version='0.2.1',
     author='James Johnson',
     maintainer='James Johnson',
     author_email='d0c.s4vage@gmail.com',
@@ -28,5 +28,5 @@ setup(
     classifiers = [
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 3',],
-    packages=['pfp', 'pfp.native'],
+    packages=['pfp', 'pfp.native', 'pfp.fuzz'],
 )
