@@ -2334,16 +2334,17 @@ class PfpInterp(object):
 
         """
         switch = {
-            "char":        "Char",
-            "int":        "Int",
-            "long":     "Int",
-            "uint64":    "UInt64",
-            "short":    "Short",
-            "double":    "Double",
-            "float":    "Float",
-            "void":        "Void",
-            "string":    "String",
-            "wstring":    "WString"
+            "char"    : "Char",
+            "int"     : "Int",
+            "long"    : "Int",
+            "int64"   : "Int64",
+            "uint64"  : "UInt64",
+            "short"   : "Short",
+            "double"  : "Double",
+            "float"   : "Float",
+            "void"    : "Void",
+            "string"  : "String",
+            "wstring" : "WString"
         }
 
         core = names[-1]

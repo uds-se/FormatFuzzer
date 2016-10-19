@@ -8,8 +8,11 @@ import py010parser.c_parser
 
 import pfp.interp
 from pfp.bitwrap import BitwrappedStream
+import pfp.fuzz
+pfp.fuzz.init()
 
-__version__ = "0.1.14"
+
+__version__ = "0.1.15"
 
 PARSER = py010parser.c_parser.CParser()
 
