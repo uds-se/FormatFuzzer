@@ -2362,8 +2362,11 @@ class PfpInterp(object):
             names = copy.copy(names)
             names.pop()
             names += resolved_names
-
-        res = switch[names[-1]]
+        
+        if len(names) >= 2 and names[-1] == names[-2] and names[-1] == "long":
+            res = "Int64"
+        else:        
+            res = switch[names[-1]]
 
         if names[-1] in ["char", "short", "int", "long"] and "unsigned" in names[:-1]:
             res = "U" + res
