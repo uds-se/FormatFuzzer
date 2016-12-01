@@ -1647,6 +1647,8 @@ class PfpInterp(object):
             return special_switch[node.op](node, scope, ctxt, stream)
 
         field = self._handle_node(node.expr, scope, ctxt, stream)
+        if type(field) is type:
+            field = field()
         res = switch[node.op](field, 1)
         if type(res) is bool:
             new_res = field.__class__()
