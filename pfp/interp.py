@@ -1637,7 +1637,7 @@ class PfpInterp(object):
             "!":        lambda x,v: not x,
             "-":        lambda x,v: -x,
             "sizeof":    lambda x,v: (fields.UInt64()+x._pfp__width()),
-            "startof":    lambda x,v: x._pfp__offset,
+            "startof":    lambda x,v: (fields.UInt64()+x._pfp__offset),
         }
 
         if node.op not in switch and node.op not in special_switch:
@@ -1647,8 +1647,10 @@ class PfpInterp(object):
             return special_switch[node.op](node, scope, ctxt, stream)
 
         field = self._handle_node(node.expr, scope, ctxt, stream)
+        if type(field) is type:
+            field = field()
         res = switch[node.op](field, 1)
-        if res in [True, False]:
+        if type(res) is bool:
             new_res = field.__class__()
             new_res._pfp__set_value(1 if res == True else 0)
             res = new_res
@@ -2362,8 +2364,11 @@ class PfpInterp(object):
             names = copy.copy(names)
             names.pop()
             names += resolved_names
-
-        res = switch[names[-1]]
+        
+        if len(names) >= 2 and names[-1] == names[-2] and names[-1] == "long":
+            res = "Int64"
+        else:        
+            res = switch[names[-1]]
 
         if names[-1] in ["char", "short", "int", "long"] and "unsigned" in names[:-1]:
             res = "U" + res
