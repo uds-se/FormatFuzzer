@@ -20,6 +20,25 @@ class TestBasic(utils.PfpTestCase):
 
     def tearDown(self):
         pass
+
+    def test_printf(self):
+        dom = self._test_parse_build(
+            "",
+            """
+                Printf("hello");
+            """,
+            stdout="hello",
+            printf=True,
+        )
+
+        dom = self._test_parse_build(
+            "",
+            """
+                Printf("hello");
+            """,
+            stdout="",
+            printf=False,
+        )
     
     def test_single_decl_parse(self):
         dom = self._test_parse_build(

@@ -59,7 +59,8 @@ class PfpTestCase(unittest.TestCase):
             debug      = False,
             predefines = False,
             verify     = True,
-            _stream    = True
+            _stream    = True,
+            printf     = True,
         ):
         if stdout is not None:
             fake_stdout = sys.stdout = six.StringIO()
@@ -67,7 +68,13 @@ class PfpTestCase(unittest.TestCase):
         if _stream:
             data = six.StringIO(data)
 
-        dom = pfp.parse(data, template, debug=debug, predefines=predefines)
+        dom = pfp.parse(
+            data,
+            template,
+            debug      = debug,
+            predefines = predefines,
+            printf     = printf
+        )
 
         if stdout is not None:
             sys.stdout = sys.__stdout__

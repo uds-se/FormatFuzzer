@@ -538,8 +538,8 @@ def PasteFromClipboard(params, ctxt, scope, stream, coord):
     pass
 
 #int Printf( const char format[] [, argument, ... ] ) 
-@native(name="Printf", ret=pfp.fields.Int)
-def Printf(params, ctxt, scope, stream, coord):
+@native(name="Printf", ret=pfp.fields.Int, send_interp=True)
+def Printf(params, ctxt, scope, stream, coord, interp):
     """Prints format string to stdout
 
     :params: TODO
@@ -547,7 +547,8 @@ def Printf(params, ctxt, scope, stream, coord):
 
     """
     if len(params) == 1:
-        sys.stdout.write(PYSTR(params[0]))
+        if interp._printf:
+            sys.stdout.write(PYSTR(params[0]))
         return len(PYSTR(params[0]))
 
     parts = []
@@ -559,8 +560,10 @@ def Printf(params, ctxt, scope, stream, coord):
 
     to_print = PYSTR(params[0]) % tuple(parts)
     res = len(to_print)
-    sys.stdout.write(to_print)
-    sys.stdout.flush()
+
+    if interp._printf:
+        sys.stdout.write(to_print)
+        sys.stdout.flush()
     return res
 
 #int64 ProcessGetHeapLocalAddress( int index )
