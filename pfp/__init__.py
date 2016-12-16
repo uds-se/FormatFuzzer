@@ -25,7 +25,8 @@ def parse(
         debug           = False,
         predefines      = True,
         int3            = True,
-        keep_successful = False
+        keep_successful = False,
+        printf          = True,
     ):
     """Parse the data stream using the supplied template. The data stream
     WILL NOT be automatically closed.
@@ -39,6 +40,7 @@ def parse(
     :predefines: if built-in type information should be inserted (true)
     :int3: if debugger breaks are allowed while interpreting the template (true)
     :keep_successful: return any succesfully parsed data instead of raising an error. If an error occurred and ``keep_successful`` is True, then ``_pfp__error`` will be contain the exception object
+    :printf: if ``False``, all calls to ``Printf`` (:any:`pfp.native.compat_interface.Printf`) will be noops. (default=``True``)
     :returns: pfp DOM
     """
     if data is None and data_file is None:
@@ -85,7 +87,8 @@ def parse(
         template,
         predefines      = predefines,
         orig_filename   = orig_filename,
-        keep_successful = keep_successful
+        keep_successful = keep_successful,
+        printf          = printf,
     )
 
     # close the data stream if a data_file was specified
