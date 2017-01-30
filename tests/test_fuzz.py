@@ -49,7 +49,7 @@ class TestPfpFuzz(unittest.TestCase):
         data = "abc"
         dom = pfp.parse(template=template, data=data)
 
-        for at_once in [0,1,2]:
+        for at_once in [1,2,3]:
             for mutated,changed_fields in pfp.fuzz.mutate(
                     dom,
                     "basic",
@@ -57,7 +57,7 @@ class TestPfpFuzz(unittest.TestCase):
                     at_once       = at_once,
                     yield_changed = True
                 ):
-                pass
+                self.assertEqual(len(changed_fields), at_once)
 
     # see #49 - make mutate return the changed fields
     def test_fuzz_yield_fields_no_yield(self):

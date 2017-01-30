@@ -41,7 +41,10 @@ def mutate(field, strat_name_or_cls, num=100, at_once=1, yield_changed=False):
     strategy specified with ``strat_name_or_class``, yielding ``num`` mutations
     that affect up to ``at_once`` fields at once.
 
-    This function will yield back the field after each mutation.
+    This function will yield back the field after each mutation, optionally
+    also yielding a ``set`` of fields that were mutated in that iteration (if ``yield_changed`` is
+    ``True``). It should also be noted that the yielded set of changed fields *can*
+    be modified and is no longer needed by the mutate() function.
 
     :param pfp.fields.Field field: The field to mutate (can be anything, not just Dom/Structs)
     :param strat_name_or_class: Can be the name of a strategy, or the actual strategy class (not an instance)
