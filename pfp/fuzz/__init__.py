@@ -36,7 +36,7 @@ def init():
         __import__("pfp.fuzz." + mod_name)
 
 
-def mutate(field, strat_name_or_cls, num=100, at_once=1):
+def mutate(field, strat_name_or_cls, num=100, at_once=1, yield_changed=False):
     """Mutate the provided field (probably a Dom or struct instance) using the
     strategy specified with ``strat_name_or_class``, yielding ``num`` mutations
     that affect up to ``at_once`` fields at once.
@@ -47,7 +47,8 @@ def mutate(field, strat_name_or_cls, num=100, at_once=1):
     :param strat_name_or_class: Can be the name of a strategy, or the actual strategy class (not an instance)
     :param int num: The number of mutations to yield
     :param int at_once: The number of fields to mutate at once
-    :returns: None
+    :param bool yield_changed: Yield a list of fields changed along with the mutated dom
+    :returns: generator
     """
     import pfp.fuzz.rand as rand
 
@@ -73,17 +74,26 @@ def mutate(field, strat_name_or_cls, num=100, at_once=1):
     for x in six.moves.range(num):
 
         chosen_fields = set()
-        # modify `at_once` number of fields
-        for at_onces in six.moves.xrange(at_once):
-            rand_field,field_strat = rand.choice(with_strats)
-            if rand_field in chosen_fields:
-                continue
+        idx_pool = set([x for x in six.moves.xrange(len(with_strats))])
+
+        # modify `at_once` number of fields OR len(with_strats) number of fields,
+        # whichever is lower
+        for at_onces in six.moves.xrange(min(len(with_strats), at_once)):
+            # we'll never pull the same idx from idx_pool more than once
+            # since we're removing the idx after choosing it
+            rand_idx = rand.sample(idx_pool, 1)[0]
+            idx_pool.remove(rand_idx)
+
+            rand_field,field_strat = with_strats[rand_idx]
             chosen_fields.add(rand_field)
 
             field_strat.mutate(rand_field)
         
-        # yield back the original field
-        yield field
+        if yield_changed:
+            yield field, chosen_fields
+        else:
+            # yield back the original field
+            yield field
 
         # restore the saved value of all subfields without
         # triggering events
