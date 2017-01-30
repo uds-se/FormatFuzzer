@@ -547,6 +547,11 @@ class Field(object):
         """
         val = get_value(other)
         return self._pfp__value == val
+
+    # see #49 - needed for some fuzzing functionality changes (python3
+    # was complaining about Fields not being hashable)
+    def __hash__(self):
+        return self._pfp__value.__hash__()
     
     def __repr__(self):
         return "{}({!r})".format(self.__class__.__name__, self._pfp__value)

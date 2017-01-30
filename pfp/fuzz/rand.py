@@ -7,6 +7,7 @@ RANDOM = r.Random()
 _randint = RANDOM.randint
 random =_random = RANDOM.random
 choice =_choice = RANDOM.choice
+sample = _sample = RANDOM.sample
 
 def seed(val):
 	RANDOM.seed(val)
