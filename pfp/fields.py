@@ -1579,6 +1579,10 @@ class Array(Field):
 
         self.width = len(self.items)
 
+        # see #54 - make sure raw_data is set to None if overwriting with
+        # a new array/list/set/tuple
+        self.raw_data = None
+
         self._pfp__notify_parent()
 
     def _pfp__parse(self, stream, save_offset=False):
