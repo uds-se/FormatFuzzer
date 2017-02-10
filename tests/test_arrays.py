@@ -262,5 +262,23 @@ class TestArrays(utils.PfpTestCase):
         self.assertEqual(dom.test.blah, 0x61616161)
         self.assertEqual(dom.a, 0x61616161)
 
+    # see #54 - after overwriting all items in an array with a new
+    # list, fetching individual items does not work (attemps to pull
+    # the "current" item data its raw data, instead of from the items)
+    def test_array_overwrite_fetch(self):
+        dom = self._test_parse_build(
+            "",
+            """
+                typedef struct {
+                    uint array[1];
+                } TestStruct;
+            """,
+            verify=False,
+        )
+        struct = dom.TestStruct()
+        struct.array = [0xffff]
+        self.assertEqual(struct.array[0], 0xffff)
+
+
 if __name__ == "__main__":
     unittest.main()
