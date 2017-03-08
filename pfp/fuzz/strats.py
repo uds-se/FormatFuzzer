@@ -129,7 +129,7 @@ class StratGroup(object):
             iter_fields = field._pfp__children
 
         elif isinstance(field, pfp.fields.Array):
-            if field.raw_data is None:
+            if field.raw_data is not None:
                 return [field]
             else:
                 iter_fields = field.items
