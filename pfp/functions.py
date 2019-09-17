@@ -5,11 +5,14 @@ import pfp.errors as errors
 import pfp.utils as utils
 import pfp.fields
 
+
 class BaseFunction(object):
     pass
 
+
 class Function(BaseFunction):
     """A class to maintain function state and arguments"""
+
     def __init__(self, return_type, params, scope):
         """
         Initialized the function. The Function body is intended to be set
@@ -19,13 +22,13 @@ class Function(BaseFunction):
 
         self.name = None
         self.body = None
-        
+
         # note that the _scope is determined by where the function is
         # declared, not where it is called from
-         # TODO see the comment in Scope.clone for potential future work/bugs
+        # TODO see the comment in Scope.clone for potential future work/bugs
         self._scope = scope.clone()
         self._params = params
-    
+
     def call(self, args, ctxt, scope, stream, interp, coord, no_cast=False):
         # the no_cast arg does nothing for interpreted functions
 
@@ -55,8 +58,10 @@ class Function(BaseFunction):
 
         return ret_val
 
+
 class NativeFunction(BaseFunction):
     """A class for native functions"""
+
     def __init__(self, name, func, ret, send_interp=False):
         """
         """
@@ -66,7 +71,7 @@ class NativeFunction(BaseFunction):
         self.func = func
         self.ret = ret
         self.send_interp = send_interp
-    
+
     def call(self, args, ctxt, scope, stream, interp, coord, no_cast=False):
         if self.send_interp:
             res = self.func(args, ctxt, scope, stream, coord, interp)
@@ -107,12 +112,13 @@ class ParamClsWrapper(object):
 
 class ParamListDef(object):
     """docstring for ParamList"""
+
     def __init__(self, params, coords):
         super(ParamListDef, self).__init__()
 
         self._params = params
         self._coords = coords
-    
+
     def instantiate(self, scope, args, interp):
         """Create a ParamList instance for actual interpretation
 
@@ -138,14 +144,14 @@ class ParamListDef(object):
             raise errors.InvalidArguments(
                 self._coords,
                 [x.__class__.__name__ for x in args],
-                [x.__class__.__name__ for x in param_instances]
+                [x.__class__.__name__ for x in param_instances],
             )
 
         # TODO type checking on provided types
 
         for x in six.moves.range(len(args)):
             param = param_instances[x]
-             
+
             # arrays are simply passed through into the function. We shouldn't
             # have to worry about frozenness/unfrozenness at this point
             if param is BYREF or isinstance(param, pfp.fields.Array):
@@ -158,6 +164,7 @@ class ParamListDef(object):
             param._pfp__interp = interp
 
         return ParamList(param_instances)
+
 
 class ParamList(object):
     """Used for when a function is actually called. See ParamListDef
@@ -172,7 +179,7 @@ class ParamList(object):
         self._params_map = {}
         for param in self.params:
             self._params_map[param._pfp__name] = param
-    
+
     def __iter__(self):
         """Return an iterator that will iterate through each of the
         parameters in order
@@ -180,10 +187,10 @@ class ParamList(object):
         """
         for param in self.params:
             yield param
-    
+
     def __getitem__(self, name):
         if name in self._params_map:
             return self._params_map[name]
         raise KeyError(name)
-    
+
     # def __setitem__???

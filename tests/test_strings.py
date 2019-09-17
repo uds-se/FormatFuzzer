@@ -20,7 +20,7 @@ import utils
 class TestStrings(utils.PfpTestCase):
     def setUp(self):
         pfp.fields.NumberBase.endian = pfp.fields.BIG_ENDIAN
-    
+
     def tearDown(self):
         pass
 
@@ -32,9 +32,9 @@ class TestStrings(utils.PfpTestCase):
                         if(newline == \'\\n\') {
                            Warning("Found newline!");
                         }
-                        """
-                        )
-        self.assertEqual(dom.newline, ord('\n'))
+                        """,
+        )
+        self.assertEqual(dom.newline, ord("\n"))
 
     def test_basic_string(self):
         dom = self._test_parse_build(
@@ -44,11 +44,11 @@ class TestStrings(utils.PfpTestCase):
                     string hello;
                     string goodbye;
                 } greetings;
-            """
+            """,
         )
         self.assertEqual(dom.greetings.hello, pfp.utils.binary("hello there"))
         self.assertEqual(dom.greetings.goodbye, pfp.utils.binary("good byte"))
-    
+
     def test_basic_wstring(self):
         dom = self._test_parse_build(
             "h\x00e\x00l\x00l\x00o\x00 \x00t\x00h\x00e\x00r\x00e\x00\x00\x00g\x00o\x00o\x00d\x00 \x00b\x00y\x00t\x00e\x00\x00\x00",
@@ -57,11 +57,11 @@ class TestStrings(utils.PfpTestCase):
                     wstring hello;
                     wstring goodbye;
                 } greetings;
-            """
+            """,
         )
         self.assertEqual(dom.greetings.hello, pfp.utils.binary("hello there"))
         self.assertEqual(dom.greetings.goodbye, pfp.utils.binary("good byte"))
-    
+
     def test_unterminated_string(self):
         with self.assertRaises(pfp.errors.PfpError):
             dom = self._test_parse_build(
@@ -70,9 +70,9 @@ class TestStrings(utils.PfpTestCase):
                     struct {
                         string something;
                     } data;
-                """
+                """,
             )
-    
+
     def test_string_indexing(self):
         dom = self._test_parse_build(
             "abcd\x00",
@@ -81,7 +81,7 @@ class TestStrings(utils.PfpTestCase):
                 local char a = alpha[0];
                 Printf(a);
             """,
-            stdout="a"
+            stdout="a",
         )
 
         self.assertEqual(dom.alpha[0], ord("a"))
@@ -95,7 +95,7 @@ class TestStrings(utils.PfpTestCase):
         self.assertEqual(dom.alpha[1], ord("b"))
         self.assertEqual(dom.alpha[2], ord("C"))
         self.assertEqual(dom.alpha[3], ord("d"))
-    
+
     def test_string_declaration_with_chars(self):
         dom = self._test_parse_build(
             "",
@@ -103,7 +103,7 @@ class TestStrings(utils.PfpTestCase):
                 local string RarSignature = "Rar!" + '\x1A' + '\x07';
                 Printf("%s", RarSignature);
             """,
-            stdout="Rar!\x1a\x07"
+            stdout="Rar!\x1a\x07",
         )
 
     # temp_char ends up being of class Bytes in python 3 - but not on python 2
@@ -121,7 +121,7 @@ class TestStrings(utils.PfpTestCase):
                              Printf("%s", temp_expected);
                      """,
             stdout="0102030405",
-            verify=False
+            verify=False,
         )
 
     def test_add_strings_simple(self):
@@ -136,8 +136,9 @@ class TestStrings(utils.PfpTestCase):
                                  Printf("%s", test);
                          """,
             stdout="testtesttesttesttest",
-            verify=False
-         )
+            verify=False,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

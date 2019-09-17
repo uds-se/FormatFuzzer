@@ -2,7 +2,7 @@
 # encoding: utf-8
 
 import collections
-from intervaltree import IntervalTree,Interval
+from intervaltree import IntervalTree, Interval
 import math
 import os
 import six
@@ -10,7 +10,10 @@ import sys
 
 import pfp.utils as utils
 
-class EOFError(Exception): pass
+
+class EOFError(Exception):
+    pass
+
 
 def bits_to_bytes(bits):
     """Convert the bit list into bytes. (Assumes bits is a list
@@ -22,11 +25,12 @@ def bits_to_bytes(bits):
     res = ""
 
     for x in six.moves.range(0, len(bits), 8):
-        byte_bits = bits[x:x+8]
-        byte_val = int(''.join(map(str, byte_bits)), 2)
+        byte_bits = bits[x : x + 8]
+        byte_val = int("".join(map(str, byte_bits)), 2)
         res += chr(byte_val)
 
     return utils.binary(res)
+
 
 def bytes_to_bits(bytes_):
     """Convert bytes to a list of bits
@@ -38,10 +42,12 @@ def bytes_to_bits(bytes_):
         res += byte_to_bits(x)
     return res
 
+
 def byte_to_bits(b):
     """Convert a byte into bits
     """
     return [(b >> x) & 1 for x in six.moves.range(7, -1, -1)]
+
 
 class BitwrappedStream(object):
 
@@ -59,14 +65,14 @@ class BitwrappedStream(object):
         self._bits = collections.deque()
 
         self.closed = False
-        
+
         # assume that bitfields end on an even boundary,
         # otherwise the entire stream will be treated as
         # a bit stream with no padding
         self.padded = True
 
         self.range_set = IntervalTree()
-    
+
     def is_eof(self):
         """Return if the stream has reached EOF or not
         without discarding any unflushed bits
@@ -78,25 +84,25 @@ class BitwrappedStream(object):
         self._stream.seek(pos, 0)
 
         return utils.binary(byte) == utils.binary("")
-        
+
     def close(self):
         """Close the stream
         """
         self.closed = True
         self._flush_bits_to_stream()
         self._stream.close()
-    
+
     def flush(self):
         """Flush the stream
         """
         self._flush_bits_to_stream()
         self._stream.flush()
-    
+
     def isatty(self):
         """Return if the stream is a tty
         """
         return self._stream.isatty()
-    
+
     def read(self, num):
         """Read ``num`` number of bytes from the stream. Note that this will
         automatically resets/ends the current bit-reading if it does not
@@ -121,7 +127,7 @@ class BitwrappedStream(object):
         self._update_consumed_ranges(start_pos, end_pos)
 
         return res
-    
+
     def read_bits(self, num):
         """Read ``num`` number of bits from the stream
 
@@ -141,7 +147,7 @@ class BitwrappedStream(object):
             res.append(self._bits.popleft())
 
         return res
-    
+
     def write(self, data):
         """Write data to the stream
 
@@ -160,7 +166,7 @@ class BitwrappedStream(object):
 
             bits = bytes_to_bits(data)
             self.write_bits(bits)
-    
+
     def write_bits(self, bits):
         """Write the bits to the stream.
 
@@ -174,9 +180,9 @@ class BitwrappedStream(object):
             byte_bits = [self._bits.popleft() for x in six.moves.range(8)]
             byte = bits_to_bytes(byte_bits)
             self._stream.write(byte)
-        
+
         # there may be unflushed bits leftover and THAT'S OKAY
-    
+
     def tell(self):
         """Return the current position in the stream (ignoring bit
         position)
@@ -187,7 +193,7 @@ class BitwrappedStream(object):
         if len(self._bits) > 0:
             res -= 1
         return res
-    
+
     def seek(self, pos, seek_type=0):
         """Seek to the specified position in the stream with seek_type.
         Unflushed bits will be discarded in the case of a seek.
@@ -203,19 +209,19 @@ class BitwrappedStream(object):
         """
         self._bits.clear()
         return self._stream.seek(pos, seek_type)
-    
+
     def size(self):
         """Return the size of the stream, or -1 if it cannot
         be determined.
         """
         pos = self._stream.tell()
         # seek to the end of the stream
-        self._stream.seek(0,2)
+        self._stream.seek(0, 2)
         size = self._stream.tell()
         self._stream.seek(pos, 0)
 
         return size
-    
+
     def unconsumed_ranges(self):
         """Return an IntervalTree of unconsumed ranges, of the format
         (start, end] with the end value not being included
@@ -233,13 +239,13 @@ class BitwrappedStream(object):
                 continue
             res.add(Interval(prev.end, rng.begin))
             prev = rng
-        
+
         # means we've seeked past the end
         if len(self.range_set[self.tell()]) != 1:
             res.add(Interval(prev.end, self.tell()))
 
         return res
-    
+
     # -----------------------------
     # PRIVATE FUNCTIONS
     # -----------------------------
@@ -248,9 +254,9 @@ class BitwrappedStream(object):
         """Update the ``self.consumed_ranges`` array with which
         byte ranges have been consecutively consumed.
         """
-        self.range_set.add(Interval(start_pos, end_pos+1))
+        self.range_set.add(Interval(start_pos, end_pos + 1))
         self.range_set.merge_overlaps()
-    
+
     def _flush_bits_to_stream(self):
         """Flush the bits to the stream. This is used when
         a few bits have been read and ``self._bits`` contains unconsumed/

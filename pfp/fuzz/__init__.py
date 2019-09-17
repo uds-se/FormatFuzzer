@@ -28,7 +28,9 @@ def init():
     FieldStrat = pfp.fuzz.strats.FieldStrat
 
     # load all of the built-in strategies
-    for strat_file in glob.glob(os.path.join(os.path.dirname(__file__), "*.py")):
+    for strat_file in glob.glob(
+        os.path.join(os.path.dirname(__file__), "*.py")
+    ):
         filename = os.path.basename(strat_file)
         if filename in ["__init__.py", "base.py"]:
             continue
@@ -87,11 +89,11 @@ def mutate(field, strat_name_or_cls, num=100, at_once=1, yield_changed=False):
             rand_idx = rand.sample(idx_pool, 1)[0]
             idx_pool.remove(rand_idx)
 
-            rand_field,field_strat = with_strats[rand_idx]
+            rand_field, field_strat = with_strats[rand_idx]
             chosen_fields.add(rand_field)
 
             field_strat.mutate(rand_field)
-        
+
         if yield_changed:
             yield field, chosen_fields
         else:

@@ -15,13 +15,14 @@ import pfp.utils
 
 import utils
 
+
 class TestEnums(utils.PfpTestCase):
     def setUp(self):
         pfp.fields.NumberBase.endian = pfp.fields.BIG_ENDIAN
-    
+
     def tearDown(self):
         pass
-    
+
     def test_basic_enum(self):
         dom = self._test_parse_build(
             "\x00\x00\x00\x01",
@@ -34,11 +35,11 @@ class TestEnums(utils.PfpTestCase):
                     BLAH5,
                     BLAH6
                 } var1;
-            """
+            """,
         )
         self.assertEqual(dom.var1.enum_cls, Int)
         self.assertEqual(dom.var1.enum_name, "BLAH2")
-    
+
     def test_basic_enum2(self):
         dom = self._test_parse_build(
             "\x01",
@@ -55,11 +56,11 @@ class TestEnums(utils.PfpTestCase):
                 local uchar blah = BLAH4;
                 Printf("%d", blah);
             """,
-            stdout="3"
+            stdout="3",
         )
         self.assertEqual(dom.var1.enum_cls, UChar)
         self.assertEqual(dom.var1.enum_name, "BLAH2")
-    
+
     def test_basic_enum_unnamed(self):
         dom = self._test_parse_build(
             "\x01",
@@ -76,7 +77,7 @@ class TestEnums(utils.PfpTestCase):
         )
         self.assertEqual(dom.var1.enum_cls, UChar)
         self.assertEqual(dom.var1.enum_name, "BLAH2")
-    
+
     def test_basic_enum_typedef(self):
         dom = self._test_parse_build(
             "\x01",
@@ -96,7 +97,7 @@ class TestEnums(utils.PfpTestCase):
         self.assertEqual(dom.hello.enum_cls, UChar)
         self.assertEqual(dom.hello.enum_name, "BLAH2")
         self.assertEqual(dom.hello, 1)
-    
+
     def test_basic_enum_types(self):
         dom = self._test_parse_build(
             "",
@@ -113,9 +114,9 @@ class TestEnums(utils.PfpTestCase):
                 local uchar blah = BLAH6;
                 Printf("%d", blah);
             """,
-            stdout="5"
+            stdout="5",
         )
-    
+
     def test_enum_name_as_type(self):
         dom = self._test_parse_build(
             "\x01",
@@ -126,11 +127,11 @@ class TestEnums(utils.PfpTestCase):
                     BLAH3
                 };
                 BLAHS test;
-            """
+            """,
         )
         self.assertEqual(dom.test, 1)
         self.assertEqual(dom.test.enum_name, "BLAH2")
-    
+
     def test_enum_with_bitfield(self):
         dom = self._test_parse_build(
             "\x31",
@@ -144,7 +145,7 @@ class TestEnums(utils.PfpTestCase):
 
                 BLAHS test1: 4;
                 BLAHS test2: 4;
-            """
+            """,
         )
         self.assertEqual(dom.test1, 3)
         self.assertEqual(dom.test1.enum_name, "BLAH4")
@@ -164,7 +165,7 @@ class TestEnums(utils.PfpTestCase):
 
                 BLAHS test1: 4;
                 BLAHS test2: 4;
-            """
+            """,
         )
         self.assertEqual(dom.test1, 3)
         self.assertEqual(dom.test1.enum_name, "BLAH4")
@@ -188,12 +189,13 @@ class TestEnums(utils.PfpTestCase):
                     BLAH3,
                     BLAH4
                 } test2: 4;
-            """
+            """,
         )
         self.assertEqual(dom.test1, 3)
         self.assertEqual(dom.test1.enum_name, "BLAH4")
         self.assertEqual(dom.test2, 1)
         self.assertEqual(dom.test2.enum_name, "BLAH2")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -9,11 +9,12 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import pfp
 import pfp.fields
-from pfp.fields import PYVAL,PYSTR
+from pfp.fields import PYVAL, PYSTR
 import pfp.interp
 import pfp.utils
 
 import utils
+
 
 class TestControlFlow(utils.PfpTestCase):
     def setUp(self):
@@ -21,7 +22,7 @@ class TestControlFlow(utils.PfpTestCase):
 
     def tearDown(self):
         pass
-    
+
     def test_ternary1(self):
         dom = self._test_parse_build(
             "",
@@ -31,7 +32,7 @@ class TestControlFlow(utils.PfpTestCase):
             """,
         )
         self.assertEqual(dom.a, 5)
-    
+
     def test_ternary2(self):
         dom = self._test_parse_build(
             "",
@@ -41,7 +42,7 @@ class TestControlFlow(utils.PfpTestCase):
             """,
         )
         self.assertEqual(dom.a, 6)
-    
+
     def test_if1(self):
         dom = self._test_parse_build(
             "",
@@ -55,7 +56,7 @@ class TestControlFlow(utils.PfpTestCase):
                     Printf("false");
                 }
             """,
-            stdout="true"
+            stdout="true",
         )
 
     def test_if2(self):
@@ -71,7 +72,7 @@ class TestControlFlow(utils.PfpTestCase):
                     Printf("false");
                 }
             """,
-            stdout="true"
+            stdout="true",
         )
 
     def test_if3(self):
@@ -87,9 +88,9 @@ class TestControlFlow(utils.PfpTestCase):
                     Printf("true");
                 }
             """,
-            stdout="true"
+            stdout="true",
         )
-    
+
     def test_for1(self):
         dom = self._test_parse_build(
             "",
@@ -99,7 +100,7 @@ class TestControlFlow(utils.PfpTestCase):
                     Printf("a");
                 }
             """,
-            stdout="a"*10
+            stdout="a" * 10,
         )
 
     def test_for2(self):
@@ -111,7 +112,7 @@ class TestControlFlow(utils.PfpTestCase):
                     Printf("a");
                 }
             """,
-            stdout="a"*10
+            stdout="a" * 10,
         )
 
     def test_for3(self):
@@ -124,7 +125,7 @@ class TestControlFlow(utils.PfpTestCase):
                     break;
                 }
             """,
-            stdout="a"
+            stdout="a",
         )
 
     def test_for4(self):
@@ -139,7 +140,7 @@ class TestControlFlow(utils.PfpTestCase):
                     Printf("a");
                 }
             """,
-            stdout="aaaaa"
+            stdout="aaaaa",
         )
 
     def test_for5(self):
@@ -154,9 +155,9 @@ class TestControlFlow(utils.PfpTestCase):
                     }
                 }
             """,
-            stdout="aaaa"
+            stdout="aaaa",
         )
-    
+
     def test_while1(self):
         dom = self._test_parse_build(
             "",
@@ -167,9 +168,9 @@ class TestControlFlow(utils.PfpTestCase):
                     Printf("a");
                 }
             """,
-            stdout="aaa"
+            stdout="aaa",
         )
-    
+
     def test_while2(self):
         dom = self._test_parse_build(
             "",
@@ -183,9 +184,9 @@ class TestControlFlow(utils.PfpTestCase):
                     }
                 }
             """,
-            stdout="aaa"
+            stdout="aaa",
         )
-    
+
     def test_while3(self):
         dom = self._test_parse_build(
             "",
@@ -200,9 +201,9 @@ class TestControlFlow(utils.PfpTestCase):
                     break;
                 }
             """,
-            stdout="aaa"
+            stdout="aaa",
         )
-    
+
     def test_do_while(self):
         dom = self._test_parse_build(
             "abcd\x00",
@@ -239,7 +240,7 @@ class TestControlFlow(utils.PfpTestCase):
         )
         self.assertEqual(dom.case_5, 1)
         self.assertEqual(dom.case_default, 2)
-    
+
     def test_fall_through_no_case_body(self):
         dom = self._test_parse_build(
             "\x00\x01\x00\x02\x00\x03",
@@ -263,7 +264,7 @@ class TestControlFlow(utils.PfpTestCase):
                     uchar c;
                     break;
             };
-            """
+            """,
         )
         self.assertEqual(dom.a, 1)
         self.assertEqual(dom.b, 2)
@@ -290,7 +291,7 @@ class TestControlFlow(utils.PfpTestCase):
                 default:
                     break;
             };
-            """
+            """,
         )
 
     def test_fall_through_no_case_body3(self):
@@ -317,8 +318,9 @@ class TestControlFlow(utils.PfpTestCase):
                         break;
                 };
             }
-            """
+            """,
         )
+
 
 if __name__ == "__main__":
     unittest.main()

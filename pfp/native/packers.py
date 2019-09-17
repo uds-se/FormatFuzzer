@@ -10,6 +10,7 @@ from pfp.dbg import PfpDbg
 import pfp.utils as utils
 import pfp.errors as errors
 
+
 @native(name="PackerGZip", ret=pfp.fields.Array)
 def packer_gzip(params, ctxt, scope, stream, coord):
     """``PackerGZip`` - implements both unpacking and packing. Can be used
@@ -31,13 +32,16 @@ def packer_gzip(params, ctxt, scope, stream, coord):
     :returns: An array
     """
     if len(params) <= 1:
-        raise errors.InvalidArguments(coord, "{} args".format(len(params)), "at least two arguments")
+        raise errors.InvalidArguments(
+            coord, "{} args".format(len(params)), "at least two arguments"
+        )
 
     # to gzip it (pack it)
     if params[0]:
         return pack_gzip(params[1:], ctxt, scope, stream, coord)
     else:
         return unpack_gzip(params[1:], ctxt, scope, stream, coord)
+
 
 @native(name="PackGZip", ret=pfp.fields.Array)
 def pack_gzip(params, ctxt, scope, stream, coord):
@@ -49,16 +53,19 @@ def pack_gzip(params, ctxt, scope, stream, coord):
         char data[0x100]<pack=PackGZip, ...>;
     """
     if len(params) == 0:
-        raise errors.InvalidArguments(coord, "{} args".format(len(params)), "at least one argument")
-    
+        raise errors.InvalidArguments(
+            coord, "{} args".format(len(params)), "at least one argument"
+        )
+
     built = utils.binary("")
     for param in params:
         if isinstance(param, pfp.fields.Field):
             built += param._pfp__build()
         else:
             built += param
-    
+
     return zlib.compress(built)
+
 
 @native(name="UnpackGZip", ret=pfp.fields.Array)
 def unpack_gzip(params, ctxt, scope, stream, coord):
@@ -70,13 +77,15 @@ def unpack_gzip(params, ctxt, scope, stream, coord):
         char data[0x100]<pack=UnpackGZip, ...>;
     """
     if len(params) == 0:
-        raise errors.InvalidArguments(coord, "{} args".format(len(params)), "at least one argument")
-    
+        raise errors.InvalidArguments(
+            coord, "{} args".format(len(params)), "at least one argument"
+        )
+
     built = utils.binary("")
     for param in params:
         if isinstance(param, pfp.fields.Field):
             built += param._pfp__build()
         else:
             built += param
-    
+
     return zlib.decompress(built)

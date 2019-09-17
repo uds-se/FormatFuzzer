@@ -15,22 +15,23 @@ import pfp.utils
 
 import utils
 
+
 class TestCompatStrings(utils.PfpTestCase):
     def setUp(self):
         pfp.fields.NumberBase.endian = pfp.fields.BIG_ENDIAN
-    
+
     def tearDown(self):
         pass
-    
+
     def test_strlen(self):
         dom = self._test_parse_build(
             "",
             """
                 Printf("%d.%d.%d", Strlen("HELLO"), Strlen("abcd"), Strlen("abc"));
             """,
-            stdout="5.4.3"
+            stdout="5.4.3",
         )
-    
+
     def test_substr(self):
         dom = self._test_parse_build(
             "",
@@ -40,8 +41,9 @@ class TestCompatStrings(utils.PfpTestCase):
                 string local someString = "abcdefg";
                 Printf("%s", SubStr(someString, 3));
             """,
-            stdout="Hello\ndefg"
+            stdout="Hello\ndefg",
         )
+
 
 if __name__ == "__main__":
     unittest.main()

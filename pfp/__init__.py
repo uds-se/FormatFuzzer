@@ -9,6 +9,7 @@ import py010parser.c_parser
 import pfp.interp
 from pfp.bitwrap import BitwrappedStream
 import pfp.fuzz
+
 pfp.fuzz.init()
 
 
@@ -16,18 +17,19 @@ __version__ = "0.2.3"
 
 PARSER = py010parser.c_parser.CParser()
 
+
 def parse(
-        data            = None,
-        template        = None,
-        data_file       = None,
-        template_file   = None,
-        interp          = None,
-        debug           = False,
-        predefines      = True,
-        int3            = True,
-        keep_successful = False,
-        printf          = True,
-    ):
+    data=None,
+    template=None,
+    data_file=None,
+    template_file=None,
+    interp=None,
+    debug=False,
+    predefines=True,
+    int3=True,
+    keep_successful=False,
+    printf=True,
+):
     """Parse the data stream using the supplied template. The data stream
     WILL NOT be automatically closed.
 
@@ -45,22 +47,22 @@ def parse(
     """
     if data is None and data_file is None:
         raise Exception("No input data was specified")
-    
+
     if data is not None and data_file is not None:
         raise Exception("Only one input data may be specified")
 
     if isinstance(data, six.string_types):
         data = six.StringIO(data)
-    
+
     if data_file is not None:
         data = open(os.path.expanduser(data_file), "rb")
 
     if template is None and template_file is None:
         raise Exception("No template specified!")
-    
+
     if template is not None and template_file is not None:
         raise Exception("Only one template may be specified!")
-    
+
     orig_filename = "string"
     if template_file is not None:
         orig_filename = template_file
@@ -68,27 +70,25 @@ def parse(
             with open(os.path.expanduser(template_file), "r") as f:
                 template = f.read()
         except Exception as e:
-            raise Exception("Could not open template file '{}'".format(template_file))
+            raise Exception(
+                "Could not open template file '{}'".format(template_file)
+            )
 
     # the user may specify their own instance of PfpInterp to be
     # used
     if interp is None:
-        interp = pfp.interp.PfpInterp(
-            debug  = debug,
-            parser = PARSER,
-            int3   = int3,
-        )
-    
+        interp = pfp.interp.PfpInterp(debug=debug, parser=PARSER, int3=int3)
+
     # so we can consume single bits at a time
     data = BitwrappedStream(data)
 
     dom = interp.parse(
         data,
         template,
-        predefines      = predefines,
-        orig_filename   = orig_filename,
-        keep_successful = keep_successful,
-        printf          = printf,
+        predefines=predefines,
+        orig_filename=orig_filename,
+        keep_successful=keep_successful,
+        printf=printf,
     )
 
     # close the data stream if a data_file was specified

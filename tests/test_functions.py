@@ -2,6 +2,7 @@
 # encoding: utf-8
 
 import os
+
 try:
     from StringIO import StringIO
 
@@ -20,13 +21,14 @@ import pfp.utils
 
 import utils
 
+
 class TestFunctions(utils.PfpTestCase):
     def setUp(self):
         pfp.fields.NumberBase.endian = pfp.fields.LITTLE_ENDIAN
-    
+
     def tearDown(self):
         pass
-    
+
     def test_function(self):
         dom = self._test_parse_build(
             "",
@@ -36,9 +38,9 @@ class TestFunctions(utils.PfpTestCase):
                 }
 
                 func(10, 20);
-            """
+            """,
         )
-    
+
     def test_builtin(self):
         dom = self._test_parse_build(
             "",
@@ -46,9 +48,9 @@ class TestFunctions(utils.PfpTestCase):
                 Printf("hello there");
                 Printf("%d", 10);
             """,
-            stdout="hello there10"
+            stdout="hello there10",
         )
-    
+
     def test_custom_func(self):
         dom = self._test_parse_build(
             "",
@@ -59,9 +61,9 @@ class TestFunctions(utils.PfpTestCase):
 
                 Printf("%d", add(5, 8));
             """,
-            stdout="13"
+            stdout="13",
         )
-    
+
     def test_custom_func2(self):
         dom = self._test_parse_build(
             "",
@@ -72,11 +74,12 @@ class TestFunctions(utils.PfpTestCase):
 
                 Printf(prepend("hello"));
             """,
-            stdout="blah: hello"
+            stdout="blah: hello",
         )
-    
+
     def test_native_func(self):
         func_called = False
+
         def func(params, ctxt, scope, stream, coord):
             func_called = True
             return 555
@@ -89,9 +92,9 @@ class TestFunctions(utils.PfpTestCase):
             """
             Printf("%d", func());
             """,
-            stdout="555"
+            stdout="555",
         )
-    
+
     def test_lazy_type_checking(self):
         dom = self._test_parse_build(
             "\x0a",
@@ -107,9 +110,9 @@ class TestFunctions(utils.PfpTestCase):
                 LAZY_TYPE_TYPE a;
                 lazy_type_checking_function(a);
             """,
-            stdout="blah.var1 = 10"
+            stdout="blah.var1 = 10",
         )
-    
+
     def test_function_string_return(self):
         dom = self._test_parse_build(
             "abcd\x00",
@@ -126,7 +129,7 @@ class TestFunctions(utils.PfpTestCase):
                 }
             """,
             verify=False,
-            stdout="true"
+            stdout="true",
         )
 
     # see https://github.com/d0c-s4vage/pfp/issues/27 - thanks @vit9696!
@@ -141,18 +144,20 @@ class TestFunctions(utils.PfpTestCase):
                     Printf("Hello\n");
                 }
                 func();
-            """
+            """,
         )
 
     def test_array_as_param(self):
         dom = self._test_parse_build(
-            "".join([
-                "\x00\x00\x00\x01",
-                "\x00\x00\x00\x02",
-                "\x00\x00\x00\x03",
-                "\x00\x00\x00\x04",
-                "\x00\x00\x00\x05",
-            ]),
+            "".join(
+                [
+                    "\x00\x00\x00\x01",
+                    "\x00\x00\x00\x02",
+                    "\x00\x00\x00\x03",
+                    "\x00\x00\x00\x04",
+                    "\x00\x00\x00\x05",
+                ]
+            ),
             r"""
                 LittleEndian();
                 int me[5];
@@ -161,8 +166,9 @@ class TestFunctions(utils.PfpTestCase):
                 }
                 passMe(me);
             """,
-            stdout="01000000"
+            stdout="01000000",
         )
-    
+
+
 if __name__ == "__main__":
     unittest.main()

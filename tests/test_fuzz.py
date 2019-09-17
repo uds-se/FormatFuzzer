@@ -31,10 +31,10 @@ class TestPfpFuzz(unittest.TestCase):
 
     def setUp(self):
         super(TestPfpFuzz, self).setUp()
-    
+
     def tearDown(self):
         super(TestPfpFuzz, self).tearDown()
-    
+
     # see #49 - make mutate return the changed fields
     def test_fuzz_yield_fields(self):
         template = """
@@ -49,14 +49,10 @@ class TestPfpFuzz(unittest.TestCase):
         data = "abc"
         dom = pfp.parse(template=template, data=data)
 
-        for at_once in [1,2,3]:
-            for mutated,changed_fields in pfp.fuzz.mutate(
-                    dom,
-                    "basic",
-                    num           = 100,
-                    at_once       = at_once,
-                    yield_changed = True
-                ):
+        for at_once in [1, 2, 3]:
+            for mutated, changed_fields in pfp.fuzz.mutate(
+                dom, "basic", num=100, at_once=at_once, yield_changed=True
+            ):
                 self.assertEqual(len(changed_fields), at_once)
 
     # see #49 - make mutate return the changed fields
@@ -73,18 +69,14 @@ class TestPfpFuzz(unittest.TestCase):
         data = "abc"
         dom = pfp.parse(template=template, data=data)
 
-        for at_once in [0,1,2]:
+        for at_once in [0, 1, 2]:
             for mutated in pfp.fuzz.mutate(
-                    dom,
-                    "basic",
-                    num           = 100,
-                    at_once       = at_once,
-                    yield_changed = False
-                ):
+                dom, "basic", num=100, at_once=at_once, yield_changed=False
+            ):
                 # make sure it does not return a tuple, as would be the case with
                 # yield_changed = True
                 self.assertFalse(isinstance(mutated, tuple))
 
 
 if __name__ == "__main__":
-    unittest.main() 
+    unittest.main()
