@@ -26,6 +26,7 @@ class MutationError(pfp.errors.PfpError):
 STRATS = {}
 """Stores information on registered StatGroups"""
 
+
 def get_strategy(name_or_cls):
     """Return the strategy identified by its name. If ``name_or_class`` is a class,
     it will be simply returned.
@@ -42,14 +43,17 @@ class StratGroupMeta(type):
     """A metaclass for StratGroups that tracks subclasses
     of the StatGroup class.
     """
+
     def __init__(cls, *args, **kwargs):
         global STRATS
 
         if cls.name is None and cls.__name__ != "StratGroup":
-            raise MutationError("Subclasses of StratGroup must specify a name for the group")
+            raise MutationError(
+                "Subclasses of StratGroup must specify a name for the group"
+            )
 
         STRATS[cls.name] = cls
-            
+
         super(StratGroupMeta, cls).__init__(*args, **kwargs)
 
 
@@ -103,19 +107,21 @@ class StratGroup(object):
             return val
 
         # now this will work for subclasses
-        for k,v in six.iteritems(self._strats):
+        for k, v in six.iteritems(self._strats):
             # only check subclasses for class keys
             if type(k) is type and isinstance(field, k):
                 return v
 
         return None
 
-
     def which(self, field):
         """Return a list of leaf fields that should be mutated. If the field
         passed in is a leaf field, it will be returned in a list.
         """
-        if not isinstance(field, (pfp.fields.Struct, pfp.fields.Array)) and field._ is None:
+        if (
+            not isinstance(field, (pfp.fields.Struct, pfp.fields.Array))
+            and field._ is None
+        ):
             return [field]
 
         iter_fields = []
@@ -124,7 +130,7 @@ class StratGroup(object):
         # and the list of field.items will be returned
         if field._ is not None:
             iter_fields = field._._pfp__children
-            
+
         elif isinstance(field, pfp.fields.Struct):
             iter_fields = field._pfp__children
 
@@ -227,16 +233,18 @@ class FieldStrat(object):
                     return self._resolve_val(prob_val)
                 curr_total += prob_percent
 
-            raise MutationError("probabilities did not add up to 100%! {}".format(
-                [str(x[0]) + " - " + str(x[1])[:10] for x in prob]
-            ))
+            raise MutationError(
+                "probabilities did not add up to 100%! {}".format(
+                    [str(x[0]) + " - " + str(x[1])[:10] for x in prob]
+                )
+            )
 
     # -----------------
     # utility functions
 
     def _resolve_member_val(self, mval, field):
         if hasattr(mval, "__call__"):
-            return  mval(field)
+            return mval(field)
         else:
             return mval
 

@@ -19,10 +19,10 @@ import utils
 class TestArrays(utils.PfpTestCase):
     def setUp(self):
         pfp.fields.NumberBase.endian = pfp.fields.BIG_ENDIAN
-    
+
     def tearDown(self):
         pass
-    
+
     def test_cast_basic(self):
         dom = self._test_parse_build(
             "",
@@ -31,8 +31,9 @@ class TestArrays(utils.PfpTestCase):
                 local uchar b = (char)a;
                 Printf(b);
             """,
-            stdout="a"
+            stdout="a",
         )
+
 
 if __name__ == "__main__":
     unittest.main()

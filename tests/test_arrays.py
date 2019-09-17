@@ -22,10 +22,10 @@ class TestArrays(utils.PfpTestCase):
 
     def tearDown(self):
         pass
-    
+
     def _do_parse(self, field, data):
         field._pfp__parse(StringIO(data))
-    
+
     def _do_endian_tests(self, field, format):
         field.endian = pfp.fields.BIG_ENDIAN
         self._do_parse(field, struct.pack(">" + format, 1))
@@ -40,7 +40,7 @@ class TestArrays(utils.PfpTestCase):
             "AABBCC",
             """
                 char blah[6];
-            """
+            """,
         )
         self.assertEqual(dom.blah[0], ord("A"))
         self.assertEqual(dom.blah[1], ord("A"))
@@ -57,7 +57,7 @@ class TestArrays(utils.PfpTestCase):
 
         dom.blah[5] = 10
         self.assertEqual(dom.blah[5], 10)
-    
+
     def test_char_array_string_compare(self):
         dom = self._test_parse_build(
             "AABBCC",
@@ -67,7 +67,7 @@ class TestArrays(utils.PfpTestCase):
                     Printf("true");
                 }
             """,
-            stdout="true"
+            stdout="true",
         )
 
     def test_implicit_array_basic(self):
@@ -77,20 +77,20 @@ class TestArrays(utils.PfpTestCase):
                 while(!FEof()) {
                     char chars;
                 }
-            """
+            """,
         )
         self.assertEqual(len(dom.chars), 4)
         self.assertEqual(dom.chars[0], ord("A"))
         self.assertEqual(dom.chars[1], ord("B"))
         self.assertEqual(dom.chars[2], ord("C"))
         self.assertEqual(dom.chars[3], ord("D"))
-    
+
     def test_array_length1(self):
         dom = self._test_parse_build(
             "abcd",
             """
                 char chars[4];
-            """
+            """,
         )
         self.assertEqual(dom.chars[0], ord("a"))
         self.assertEqual(dom.chars[1], ord("b"))
@@ -98,7 +98,7 @@ class TestArrays(utils.PfpTestCase):
         self.assertEqual(dom.chars[3], ord("d"))
         # this broke because of the Array.raw_data optimization
         self.assertEqual(len(dom.chars), 4)
-    
+
     def test_implicit_array_complex(self):
         dom = self._test_parse_build(
             "\x01A\x02B\x03C",
@@ -121,7 +121,7 @@ class TestArrays(utils.PfpTestCase):
         self.assertEqual(dom.structs[0].some_char, 0x41)
         self.assertEqual(dom.structs[1].some_char, 0x42)
         self.assertEqual(dom.structs[2].some_char, 0x43)
-    
+
     def test_array_ref(self):
         dom = self._test_parse_build(
             "abcd",
@@ -129,7 +129,7 @@ class TestArrays(utils.PfpTestCase):
                 char bytes[4];
                 Printf("%02x", bytes[0]);
             """,
-            stdout="61"
+            stdout="61",
         )
 
     def test_array_initialization(self):
@@ -141,9 +141,9 @@ class TestArrays(utils.PfpTestCase):
                 local uchar blah[2] = { 'a', 'b' };
                 Printf("%s", blah);
             """,
-            stdout="ab"
+            stdout="ab",
         )
-    
+
     def test_struct_array_decl(self):
         dom = self._test_parse_build(
             "abcd",
@@ -153,7 +153,7 @@ class TestArrays(utils.PfpTestCase):
                 } structs[4];
             """,
         )
-    
+
     def test_typedefd_array(self):
         dom = self._test_parse_build(
             "abcd",
@@ -163,12 +163,12 @@ class TestArrays(utils.PfpTestCase):
                 BLAH blah1;
                 BLAH blah2;
             """,
-            predefines=False
+            predefines=False,
         )
 
         self.assertEqual(PYSTR(dom.blah1), "ab")
         self.assertEqual(PYSTR(dom.blah2), "cd")
-    
+
     def test_struct_raw_data_optmization1(self):
         dom = self._test_parse_build(
             "abcd",
@@ -179,7 +179,7 @@ class TestArrays(utils.PfpTestCase):
             """,
         )
         self.assertEqual(dom.structs.raw_data, None)
-    
+
     def test_struct_raw_data_optmization2(self):
         dom = self._test_parse_build(
             "abcd",
@@ -226,7 +226,7 @@ class TestArrays(utils.PfpTestCase):
         self.assertEqual(dom.chars[1], ord("B"))
         self.assertEqual(dom.chars[2], ord("C"))
         self.assertEqual(dom.chars[3], ord("D"))
-    
+
     def test_implicit_single_item_array1(self):
         dom = self._test_parse_build(
             "\x01",
@@ -237,7 +237,7 @@ class TestArrays(utils.PfpTestCase):
         )
         self.assertEqual(dom.blah, 1)
         self.assertEqual(dom.a, 1)
-    
+
     def test_implicit_single_item_array2(self):
         dom = self._test_parse_build(
             "aaaa",
@@ -248,7 +248,7 @@ class TestArrays(utils.PfpTestCase):
         )
         self.assertEqual(dom.blah, 0x61616161)
         self.assertEqual(dom.a, 0x61616161)
-    
+
     def test_implicit_single_item_array3(self):
         dom = self._test_parse_build(
             "aaaa",
@@ -276,8 +276,8 @@ class TestArrays(utils.PfpTestCase):
             verify=False,
         )
         struct = dom.TestStruct()
-        struct.array = [0xffff]
-        self.assertEqual(struct.array[0], 0xffff)
+        struct.array = [0xFFFF]
+        self.assertEqual(struct.array[0], 0xFFFF)
 
 
 if __name__ == "__main__":

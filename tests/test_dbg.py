@@ -4,6 +4,7 @@
 import os
 import sys
 import unittest
+
 try:
     from StringIO import StringIO
 
@@ -18,10 +19,11 @@ import pfp.dbg
 
 import utils
 
+
 class TestDebug(utils.PfpTestCase):
     def setUp(self):
         pass
-    
+
     def tearDown(self):
         pass
 
@@ -37,8 +39,9 @@ class TestDebug(utils.PfpTestCase):
             string greeting;
             unsigned char length;
             char str[length];
-            """
+            """,
         )
+
 
 if __name__ == "__main__":
     unittest.main()

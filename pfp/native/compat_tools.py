@@ -20,7 +20,8 @@ import zlib
 
 # http://www.sweetscape.com/010editor/manual/FuncTools.htm
 
-predefine("""
+predefine(
+    """
     const int CHECKSUM_BYTE = 0; // Treats the file as a set of unsigned bytes
     const int CHECKSUM_SHORT_LE = 1; // Treats the file as a set of unsigned little-endian shorts
     const int CHECKSUM_SHORT_BE = 2; // Treats the file as a set of unsigned big-endian shorts
@@ -36,12 +37,13 @@ predefine("""
     const int CHECKSUM_CRCCCITT = 12;
     const int CHECKSUM_CRC32 = 13;
     const int CHECKSUM_ADLER32 = 14;
-""")
-#int64 Checksum( 
-#    int algorithm, 
-#    int64 start=0, 
-#    int64 size=0, 
-#    int64 crcPolynomial=-1, 
+"""
+)
+# int64 Checksum(
+#    int algorithm,
+#    int64 start=0,
+#    int64 size=0,
+#    int64 crcPolynomial=-1,
 #    int64 crcInitValue=-1 )
 @native(name="Checksum", ret=pfp.fields.Int64)
 def Checksum(params, ctxt, scope, stream, coord):
@@ -75,46 +77,50 @@ def Checksum(params, ctxt, scope, stream, coord):
     number is returned on error.
     """
     checksum_types = {
-        0: "CHECKSUM_BYTE", # Treats the file as a set of unsigned bytes
-        1: "CHECKSUM_SHORT_LE", # Treats the file as a set of unsigned little-endian shorts
-        2: "CHECKSUM_SHORT_BE", # Treats the file as a set of unsigned big-endian shorts
-        3: "CHECKSUM_INT_LE", # Treats the file as a set of unsigned little-endian ints
-        4: "CHECKSUM_INT_BE", # Treats the file as a set of unsigned big-endian ints
-        5: "CHECKSUM_INT64_LE", # Treats the file as a set of unsigned little-endian int64s
-        6: "CHECKSUM_INT64_BE", # Treats the file as a set of unsigned big-endian int64s
-        7: "CHECKSUM_SUM8", # Same as CHECKSUM_BYTE except result output as 8-bits
-        8: "CHECKSUM_SUM16", # Same as CHECKSUM_BYTE except result output as 16-bits
-        9: "CHECKSUM_SUM32", # Same as CHECKSUM_BYTE except result output as 32-bits
-        10: "CHECKSUM_SUM64", # Same as CHECKSUM_BYTE
+        0: "CHECKSUM_BYTE",  # Treats the file as a set of unsigned bytes
+        1: "CHECKSUM_SHORT_LE",  # Treats the file as a set of unsigned little-endian shorts
+        2: "CHECKSUM_SHORT_BE",  # Treats the file as a set of unsigned big-endian shorts
+        3: "CHECKSUM_INT_LE",  # Treats the file as a set of unsigned little-endian ints
+        4: "CHECKSUM_INT_BE",  # Treats the file as a set of unsigned big-endian ints
+        5: "CHECKSUM_INT64_LE",  # Treats the file as a set of unsigned little-endian int64s
+        6: "CHECKSUM_INT64_BE",  # Treats the file as a set of unsigned big-endian int64s
+        7: "CHECKSUM_SUM8",  # Same as CHECKSUM_BYTE except result output as 8-bits
+        8: "CHECKSUM_SUM16",  # Same as CHECKSUM_BYTE except result output as 16-bits
+        9: "CHECKSUM_SUM32",  # Same as CHECKSUM_BYTE except result output as 32-bits
+        10: "CHECKSUM_SUM64",  # Same as CHECKSUM_BYTE
         11: "CHECKSUM_CRC16",
         12: "CHECKSUM_CRCCCITT",
         13: _crc32,
-        14: _checksum_Adler32
+        14: _checksum_Adler32,
     }
 
     if len(params) < 1:
-        raise errors.InvalidArguments(coord, "at least 1 argument", "{} args".format(len(params)))
-    
+        raise errors.InvalidArguments(
+            coord, "at least 1 argument", "{} args".format(len(params))
+        )
+
     alg = PYVAL(params[0])
     if alg not in checksum_types:
-        raise errors.InvalidArguments(coord, "checksum alg must be one of (0-14)", "{}".format(alg))
-    
+        raise errors.InvalidArguments(
+            coord, "checksum alg must be one of (0-14)", "{}".format(alg)
+        )
+
     start = 0
     if len(params) > 1:
         start = PYVAL(params[1])
-    
+
     size = 0
     if len(params) > 2:
         size = PYVAL(params[2])
-    
+
     crc_poly = -1
     if len(params) > 3:
         crc_poly = PYVAL(params[3])
-    
+
     crc_init = -1
     if len(params) > 4:
         crc_init = PYVAL(params[4])
-    
+
     stream_pos = stream.tell()
 
     if start + size == 0:
@@ -123,17 +129,19 @@ def Checksum(params, ctxt, scope, stream, coord):
     else:
         stream.seek(start, 0)
         data = stream.read(size)
-    
+
     try:
         return checksum_types[alg](data, crc_init, crc_poly)
-    
+
     finally:
         # yes, this does execute even though a return statement
         # exists within the try
         stream.seek(stream_pos, 0)
 
+
 def _checksum_Adler32(data, crc_init=-1, crc_poly=-1):
     return zlib.adler32(data)
+
 
 def _crc32(data, crc_init=-1, crc_poly=-1):
     if crc_init == -1:
@@ -141,13 +149,14 @@ def _crc32(data, crc_init=-1, crc_poly=-1):
     else:
         return binascii.crc32(data, crc_init)
 
-#int ChecksumAlgArrayStr( 
-#    int algorithm, 
-#    char result[], 
-#    uchar *buffer, 
-#    int64 size, 
-#    char ignore[]="", 
-#    int64 crcPolynomial=-1, 
+
+# int ChecksumAlgArrayStr(
+#    int algorithm,
+#    char result[],
+#    uchar *buffer,
+#    int64 size,
+#    char ignore[]="",
+#    int64 crcPolynomial=-1,
 #    int64 crcInitValue=-1 )
 @native(name="ChecksumAlgArrayStr", ret=pfp.fields.Int)
 def ChecksumAlgArrayStr(params, ctxt, scope, stream, coord):
@@ -162,13 +171,14 @@ def ChecksumAlgArrayStr(params, ctxt, scope, stream, coord):
     """
     raise NotImplementedError()
 
-#int ChecksumAlgArrayBytes( 
-#    int algorithm, 
-#    uchar result[], 
-#    uchar *buffer, 
-#    int64 size, 
-#    char ignore[]="", 
-#    int64 crcPolynomial=-1, 
+
+# int ChecksumAlgArrayBytes(
+#    int algorithm,
+#    uchar result[],
+#    uchar *buffer,
+#    int64 size,
+#    char ignore[]="",
+#    int64 crcPolynomial=-1,
 #    int64 crcInitValue=-1 )
 @native(name="ChecksumAlgArrayBytes", ret=pfp.fields.Int)
 def ChecksumAlgArrayBytes(params, ctxt, scope, stream, coord):
@@ -185,13 +195,14 @@ def ChecksumAlgArrayBytes(params, ctxt, scope, stream, coord):
     """
     raise NotImplementedError()
 
-#int ChecksumAlgStr(
-#    int algorithm, 
-#    char result[], 
-#    int64 start=0, 
-#    int64 size=0, 
-#    char ignore[]="", 
-#    int64 crcPolynomial=-1, 
+
+# int ChecksumAlgStr(
+#    int algorithm,
+#    char result[],
+#    int64 start=0,
+#    int64 size=0,
+#    char ignore[]="",
+#    int64 crcPolynomial=-1,
 #    int64 crcInitValue=-1 )
 @native(name="ChecksumAlgStr", ret=pfp.fields.Int)
 def ChecksumAlgStr(params, ctxt, scope, stream, coord):
@@ -236,13 +247,14 @@ def ChecksumAlgStr(params, ctxt, scope, stream, coord):
     """
     raise NotImplementedError()
 
-#int ChecksumAlgBytes( 
-#    int algorithm, 
-#    uchar result[], 
-#    int64 start=0, 
-#    int64 size=0, 
-#    char ignore[]="", 
-#    int64 crcPolynomial=-1, 
+
+# int ChecksumAlgBytes(
+#    int algorithm,
+#    uchar result[],
+#    int64 start=0,
+#    int64 size=0,
+#    char ignore[]="",
+#    int64 crcPolynomial=-1,
 #    int64 crcInitValue=-1 )
 @native(name="ChecksumAlgBytes", ret=pfp.fields.Int)
 def ChecksumAlgBytes(params, ctxt, scope, stream, coord):
@@ -253,17 +265,18 @@ def ChecksumAlgBytes(params, ctxt, scope, stream, coord):
     """
     raise NotImplementedError()
 
-#TCompareResults Compare( 
-#    int type, 
-#    int fileNumA, 
-#    int fileNumB, 
-#    int64 startA=0, 
-#    int64 sizeA=0, 
-#    int64 startB=0, 
-#    int64 sizeB=0, 
-#    int matchcase=true, 
-#    int64 maxlookahead=10000, 
-#    int64 minmatchlength=8, 
+
+# TCompareResults Compare(
+#    int type,
+#    int fileNumA,
+#    int fileNumB,
+#    int64 startA=0,
+#    int64 sizeA=0,
+#    int64 startB=0,
+#    int64 sizeB=0,
+#    int matchcase=true,
+#    int64 maxlookahead=10000,
+#    int64 minmatchlength=8,
 #    int64 quickmatch=512 )
 @native(name="Compare", ret=pfp.fields.Void)
 def Compare(params, ctxt, scope, stream, coord):
@@ -295,7 +308,8 @@ def Compare(params, ctxt, scope, stream, coord):
     """
     raise NotImplementedError()
 
-#char ConvertASCIIToEBCDIC( char ascii )
+
+# char ConvertASCIIToEBCDIC( char ascii )
 @native(name="ConvertASCIIToEBCDIC", ret=pfp.fields.Char)
 def ConvertASCIIToEBCDIC(params, ctxt, scope, stream, coord):
     """
@@ -303,10 +317,11 @@ def ConvertASCIIToEBCDIC(params, ctxt, scope, stream, coord):
     """
     raise NotImplementedError()
 
-#void ConvertASCIIToUNICODE( 
-#    int len, 
-#    const char ascii[], 
-#    ubyte unicode[], 
+
+# void ConvertASCIIToUNICODE(
+#    int len,
+#    const char ascii[],
+#    ubyte unicode[],
 #    int bigendian=false )
 @native(name="ConvertASCIIToUNICODE", ret=pfp.fields.Void)
 def ConvertASCIIToUNICODE(params, ctxt, scope, stream, coord):
@@ -319,9 +334,10 @@ def ConvertASCIIToUNICODE(params, ctxt, scope, stream, coord):
     """
     raise NotImplementedError()
 
-#void ConvertASCIIToUNICODEW( 
-#    int len, 
-#    const char ascii[], 
+
+# void ConvertASCIIToUNICODEW(
+#    int len,
+#    const char ascii[],
 #    ushort unicode[] )
 @native(name="ConvertASCIIToUNICODEW", ret=pfp.fields.Void)
 def ConvertASCIIToUNICODEW(params, ctxt, scope, stream, coord):
@@ -332,7 +348,8 @@ def ConvertASCIIToUNICODEW(params, ctxt, scope, stream, coord):
     """
     raise NotImplementedError()
 
-#char ConvertEBCDICToASCII( char ebcdic )
+
+# char ConvertEBCDICToASCII( char ebcdic )
 @native(name="ConvertEBCDICToASCII", ret=pfp.fields.Char)
 def ConvertEBCDICToASCII(params, ctxt, scope, stream, coord):
     """
@@ -340,10 +357,11 @@ def ConvertEBCDICToASCII(params, ctxt, scope, stream, coord):
     """
     raise NotImplementedError()
 
-#void ConvertUNICODEToASCII( 
-#    int len, 
-#    const ubyte unicode[], 
-#    char ascii[], 
+
+# void ConvertUNICODEToASCII(
+#    int len,
+#    const ubyte unicode[],
+#    char ascii[],
 #    int bigendian=false )
 @native(name="ConvertUNICODEToASCII", ret=pfp.fields.Void)
 def ConvertUNICODEToASCII(params, ctxt, scope, stream, coord):
@@ -357,9 +375,10 @@ def ConvertUNICODEToASCII(params, ctxt, scope, stream, coord):
     """
     raise NotImplementedError()
 
-#void ConvertUNICODEToASCIIW( 
-#    int len, 
-#    const ushort unicode[], 
+
+# void ConvertUNICODEToASCIIW(
+#    int len,
+#    const ushort unicode[],
 #    char ascii[] )
 @native(name="ConvertUNICODEToASCIIW", ret=pfp.fields.Void)
 def ConvertUNICODEToASCIIW(params, ctxt, scope, stream, coord):
@@ -370,13 +389,14 @@ def ConvertUNICODEToASCIIW(params, ctxt, scope, stream, coord):
     """
     raise NotImplementedError()
 
-#int ExportFile( 
-#    int type, 
-#    char filename[], 
-#    int64 start=0, 
-#    int64 size=0, 
-#    int64 startaddress=0, 
-#    int bytesperrow=16, 
+
+# int ExportFile(
+#    int type,
+#    char filename[],
+#    int64 start=0,
+#    int64 size=0,
+#    int64 startaddress=0,
+#    int bytesperrow=16,
 #    int wordaddresses=0 )
 @native(name="ExportFile", ret=pfp.fields.Int)
 def ExportFile(params, ctxt, scope, stream, coord):
@@ -412,13 +432,15 @@ def ExportFile(params, ctxt, scope, stream, coord):
     """
     raise NotImplementedError()
 
+
 FIND_MATCHES_ITER = None
 FIND_MATCHES_START_OFFSET = 0
 
 FINDMETHOD_NORMAL = 0
 FINDMETHOD_WILDCARDS = 1
 FINDMETHOD_REGEX = 2
-predefine("""
+predefine(
+    """
 const int FINDMETHOD_NORMAL        = 0; // a normal search
 const int FINDMETHOD_WILDCARDS    = 1; // when searching for strings use wildcards '*' or '?'
 const int FINDMETHOD_REGEX        = 2; // when searching for strings use Regular Expressions
@@ -433,62 +455,70 @@ typedef struct {
     unsigned int start[];
     unsigned int size[];
 } TFindResults;
-""")
+"""
+)
+
+
 def _find_helper(params, ctxt, scope, stream, coord, interp):
     global FIND_MATCHES_START_OFFSET
 
     if len(params) == 0:
-        raise errors.InvalidArguments(coord, "at least 1 argument", "{} args".format(len(params)))
+        raise errors.InvalidArguments(
+            coord, "at least 1 argument", "{} args".format(len(params))
+        )
 
-    if (isinstance(params[0], pfp.fields.Array) and params[0].is_stringable()) \
-            or isinstance(params[0], pfp.fields.String):
-        data = PYSTR(params[0]) # should correctly do null termination
+    if (
+        isinstance(params[0], pfp.fields.Array) and params[0].is_stringable()
+    ) or isinstance(params[0], pfp.fields.String):
+        data = PYSTR(params[0])  # should correctly do null termination
     else:
-        data = params[0]._pfp__build();
-    
+        data = params[0]._pfp__build()
+
     if len(params) > 1:
         match_case = not not PYVAL(params[1])
     else:
         match_case = True
-    
+
     if len(params) > 2:
         wholeword = not not PYVAL(params[2])
     else:
         wholeword = False
-    
+
     if len(params) > 3:
         method = PYVAL(params[3])
     else:
         method = FINDMETHOD_NORMAL
-    
+
     if len(params) > 4:
         tolerance = PYVAL(params[4])
         if tolerance != 0.0:
-            raise NotImplementedError("tolerance in FindAll is not fully implemented")
+            raise NotImplementedError(
+                "tolerance in FindAll is not fully implemented"
+            )
     else:
         tolerance = 0.0
-    
+
     if len(params) > 5:
         direction = PYVAL(params[5])
     else:
         direction = 1
-    
+
     if len(params) > 6:
         start = PYVAL(params[6])
     else:
         start = 0
     FIND_MATCHES_START_OFFSET = start
-    
+
     if len(params) > 7:
         size = PYVAL(params[7])
     else:
         size = 0
-    
+
     if len(params) > 8:
         wildcard_match_length = PYVAL(params[8])
     else:
         wildcard_match_length = 24
-    
+
     regex = re.escape(data)
 
     if method == FINDMETHOD_WILDCARDS:
@@ -499,7 +529,7 @@ def _find_helper(params, ctxt, scope, stream, coord, interp):
         regex = regex.replace(r"\?", ".")
     if method == FINDMETHOD_REGEX:
         regex = data
-    
+
     if wholeword:
         regex = "\\b" + regex + "\\b"
 
@@ -513,7 +543,7 @@ def _find_helper(params, ctxt, scope, stream, coord, interp):
         search_data = stream.read(stream.size())
     else:
         search_data = stream.read(size)
-    
+
     stream.seek(stream_pos)
     stream._bits = stream_bits
 
@@ -523,15 +553,16 @@ def _find_helper(params, ctxt, scope, stream, coord, interp):
 
     return re.finditer(regex, search_data, flags)
 
-#TFindResults FindAll( 
-#    <datatype> data, 
-#    int matchcase=true, 
-#    int wholeword=false, 
-#    int method=0, 
-#    double tolerance=0.0, 
-#    int dir=1, 
-#    int64 start=0, 
-#    int64 size=0, 
+
+# TFindResults FindAll(
+#    <datatype> data,
+#    int matchcase=true,
+#    int wholeword=false,
+#    int method=0,
+#    double tolerance=0.0,
+#    int dir=1,
+#    int64 start=0,
+#    int64 size=0,
 #    int wildcardMatchLength=24 )
 @native(name="FindAll", ret="TFindResults", send_interp=True)
 def FindAll(params, ctxt, scope, stream, coord, interp):
@@ -564,26 +595,29 @@ def FindAll(params, ctxt, scope, stream, coord, interp):
     res.count = len(matches)
 
     # python3 map doesn't return a list
-    starts = list(map(lambda m: m.start()+FIND_MATCHES_START_OFFSET, matches))
+    starts = list(
+        map(lambda m: m.start() + FIND_MATCHES_START_OFFSET, matches)
+    )
 
     res.start = starts
 
     # python3 map doesn't return a list
-    sizes = list(map(lambda m: m.end()-m.start(), matches))
+    sizes = list(map(lambda m: m.end() - m.start(), matches))
     res.size = sizes
 
     return res
 
+
 """Used to keep track of the current matches"""
-#int64 FindFirst( 
-#    <datatype> data, 
-#    int matchcase=true, 
-#    int wholeword=false, 
-#    int method=0, 
-#    double tolerance=0.0, 
-#    int dir=1, 
-#    int64 start=0, 
-#    int64 size=0, 
+# int64 FindFirst(
+#    <datatype> data,
+#    int matchcase=true,
+#    int wholeword=false,
+#    int method=0,
+#    double tolerance=0.0,
+#    int dir=1,
+#    int64 start=0,
+#    int64 size=0,
 #    int wildcardMatchLength=24 )
 @native(name="FindFirst", ret=pfp.fields.Int64, send_interp=True)
 def FindFirst(params, ctxt, scope, stream, coord, interp):
@@ -593,7 +627,9 @@ def FindFirst(params, ctxt, scope, stream, coord, interp):
     found. A negative number is returned if the value could not be found.
     """
     global FIND_MATCHES_ITER
-    FIND_MATCHES_ITER = _find_helper(params, ctxt, scope, stream, coord, interp)
+    FIND_MATCHES_ITER = _find_helper(
+        params, ctxt, scope, stream, coord, interp
+    )
 
     try:
         first = six.next(FIND_MATCHES_ITER)
@@ -601,7 +637,8 @@ def FindFirst(params, ctxt, scope, stream, coord, interp):
     except StopIteration as e:
         return -1
 
-#int64 FindNext( int dir=1 )
+
+# int64 FindNext( int dir=1 )
 @native(name="FindNext", ret=pfp.fields.Int64)
 def FindNext(params, ctxt, scope, stream, coord):
     """
@@ -613,11 +650,11 @@ def FindNext(params, ctxt, scope, stream, coord):
     """
     if FIND_MATCHES_ITER is None:
         raise errors.InvalidState()
-    
+
     direction = 1
     if len(params) > 0:
         direction = PYVAL(params[0])
-    
+
     if direction != 1:
         # TODO maybe instead of storing the iterator in FIND_MATCHES_ITER,
         # we should go ahead and find _all the matches in the file and store them
@@ -625,23 +662,24 @@ def FindNext(params, ctxt, scope, stream, coord):
         #
         # This would be highly inefficient on large files though.
         raise NotImplementedError("Reverse searching is not yet implemented")
-    
+
     try:
         next_match = six.next(FIND_MATCHES_ITER)
         return next_match.start() + FIND_MATCHES_START_OFFSET
     except StopIteration as e:
         return -1
 
-#TFindInFilesResults FindInFiles( 
-#    <datatype> data, 
-#    char dir[], 
-#    char mask[], 
-#    int subdirs=true, 
-#    int openfiles=false, 
-#    int matchcase=true, 
-#    int wholeword=false, 
-#    int method=0, 
-#    double tolerance=0.0, 
+
+# TFindInFilesResults FindInFiles(
+#    <datatype> data,
+#    char dir[],
+#    char mask[],
+#    int subdirs=true,
+#    int openfiles=false,
+#    int matchcase=true,
+#    int wholeword=false,
+#    int method=0,
+#    double tolerance=0.0,
 #    int wildcardMatchLength=24 )
 @native(name="FindInFiles", ret=pfp.fields.Void)
 def FindInFiles(params, ctxt, scope, stream, coord):
@@ -661,13 +699,14 @@ def FindInFiles(params, ctxt, scope, stream, coord):
     """
     raise NotImplementedError()
 
-#TFindStringsResults FindStrings( 
-#    int minStringLength, 
-#    int type, 
-#    int matchingCharTypes, 
-#    wstring customChars="", 
-#    int64 start=0, 
-#    int64 size=0, 
+
+# TFindStringsResults FindStrings(
+#    int minStringLength,
+#    int type,
+#    int matchingCharTypes,
+#    wstring customChars="",
+#    int64 start=0,
+#    int64 size=0,
 #    int requireNull=false )
 @native(name="FindStrings", ret=pfp.fields.Void)
 def FindStrings(params, ctxt, scope, stream, coord):
@@ -713,7 +752,8 @@ def FindStrings(params, ctxt, scope, stream, coord):
     """
     raise NotImplementedError()
 
-#int GetSectorSize()
+
+# int GetSectorSize()
 @native(name="GetSectorSize", ret=pfp.fields.Int)
 def GetSectorSize(params, ctxt, scope, stream, coord):
     """
@@ -723,12 +763,13 @@ def GetSectorSize(params, ctxt, scope, stream, coord):
     """
     raise NotImplementedError()
 
-#int HexOperation( 
-#    int operation, 
-#    int64 start, 
-#    int64 size, 
-#    operand, 
-#    step=0, 
+
+# int HexOperation(
+#    int operation,
+#    int64 start,
+#    int64 size,
+#    operand,
+#    step=0,
 #    int64 skip=0 )
 @native(name="HexOperation", ret=pfp.fields.Int)
 def HexOperation(params, ctxt, scope, stream, coord):
@@ -777,7 +818,8 @@ def HexOperation(params, ctxt, scope, stream, coord):
     """
     raise NotImplementedError()
 
-#int64 Histogram( int64 start, int64 size, int64 result[256] )
+
+# int64 Histogram( int64 start, int64 size, int64 result[256] )
 @native(name="Histogram", ret=pfp.fields.Int64)
 def Histogram(params, ctxt, scope, stream, coord):
     """
@@ -790,7 +832,8 @@ def Histogram(params, ctxt, scope, stream, coord):
     """
     raise NotImplementedError()
 
-#int ImportFile( int type, char filename[], int wordaddresses=false, int defaultByteValue=-1 , coord)
+
+# int ImportFile( int type, char filename[], int wordaddresses=false, int defaultByteValue=-1 , coord)
 @native(name="ImportFile", ret=pfp.fields.Int)
 def ImportFile(params, ctxt, scope, stream, coord):
     """
@@ -819,7 +862,8 @@ def ImportFile(params, ctxt, scope, stream, coord):
     """
     raise NotImplementedError()
 
-#int IsDrive()
+
+# int IsDrive()
 @native(name="IsDrive", ret=pfp.fields.Int)
 def IsDrive(params, ctxt, scope, stream, coord):
     """
@@ -828,7 +872,8 @@ def IsDrive(params, ctxt, scope, stream, coord):
     """
     raise NotImplementedError()
 
-#int IsLogicalDrive()
+
+# int IsLogicalDrive()
 @native(name="IsLogicalDrive", ret=pfp.fields.Int)
 def IsLogicalDrive(params, ctxt, scope, stream, coord):
     """
@@ -837,7 +882,8 @@ def IsLogicalDrive(params, ctxt, scope, stream, coord):
     """
     raise NotImplementedError()
 
-#int IsPhysicalDrive()
+
+# int IsPhysicalDrive()
 @native(name="IsPhysicalDrive", ret=pfp.fields.Int)
 def IsPhysicalDrive(params, ctxt, scope, stream, coord):
     """
@@ -846,7 +892,8 @@ def IsPhysicalDrive(params, ctxt, scope, stream, coord):
     """
     raise NotImplementedError()
 
-#int IsProcess()
+
+# int IsProcess()
 @native(name="IsProcess", ret=pfp.fields.Int)
 def IsProcess(params, ctxt, scope, stream, coord):
     """
@@ -855,7 +902,8 @@ def IsProcess(params, ctxt, scope, stream, coord):
     """
     raise NotImplementedError()
 
-#int OpenLogicalDrive( char driveletter )
+
+# int OpenLogicalDrive( char driveletter )
 @native(name="OpenLogicalDrive", ret=pfp.fields.Int)
 def OpenLogicalDrive(params, ctxt, scope, stream, coord):
     """
@@ -866,7 +914,8 @@ def OpenLogicalDrive(params, ctxt, scope, stream, coord):
     """
     raise NotImplementedError()
 
-#int OpenPhysicalDrive( int physicalID )
+
+# int OpenPhysicalDrive( int physicalID )
 @native(name="OpenPhysicalDrive", ret=pfp.fields.Int)
 def OpenPhysicalDrive(params, ctxt, scope, stream, coord):
     """
@@ -876,7 +925,8 @@ def OpenPhysicalDrive(params, ctxt, scope, stream, coord):
     """
     raise NotImplementedError()
 
-#int OpenProcessById( int processID, int openwriteable=true )
+
+# int OpenProcessById( int processID, int openwriteable=true )
 @native(name="OpenProcessById", ret=pfp.fields.Int)
 def OpenProcessById(params, ctxt, scope, stream, coord):
     """
@@ -887,7 +937,8 @@ def OpenProcessById(params, ctxt, scope, stream, coord):
     """
     raise NotImplementedError()
 
-#int OpenProcessByName( char processname[], int openwriteable=true )
+
+# int OpenProcessByName( char processname[], int openwriteable=true )
 @native(name="OpenProcessByName", ret=pfp.fields.Int)
 def OpenProcessByName(params, ctxt, scope, stream, coord):
     """
@@ -899,17 +950,18 @@ def OpenProcessByName(params, ctxt, scope, stream, coord):
     """
     raise NotImplementedError()
 
-#int ReplaceAll( 
-#    <datatype> finddata, 
-#    <datatype> replacedata, 
-#    int matchcase=true, 
-#    int wholeword=false, 
-#    int method=0, 
-#    double tolerance=0.0, 
-#    int dir=1, 
-#    int64 start=0, 
-#    int64 size=0, 
-#    int padwithzeros=false, 
+
+# int ReplaceAll(
+#    <datatype> finddata,
+#    <datatype> replacedata,
+#    int matchcase=true,
+#    int wholeword=false,
+#    int method=0,
+#    double tolerance=0.0,
+#    int dir=1,
+#    int64 start=0,
+#    int64 size=0,
+#    int padwithzeros=false,
 #    int wildcardMatchLength=24 )
 @native(name="ReplaceAll", ret=pfp.fields.Int)
 def ReplaceAll(params, ctxt, scope, stream, coord):

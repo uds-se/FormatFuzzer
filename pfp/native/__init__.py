@@ -2,6 +2,7 @@ import functools
 
 import pfp.interp
 
+
 def native(name, ret, interp=None, send_interp=False):
     """Used as a decorator to add the decorated function to the
     pfp interpreter so that it can be used from within scripts.
@@ -37,14 +38,19 @@ def native(name, ret, interp=None, send_interp=False):
                     interp.debugger = PfpDbg(interp)
                     interp.debugger.cmdloop()
     """
+
     def native_decorator(func):
         @functools.wraps(func)
         def native_wrapper(*args, **kwargs):
             return func(*args, **kwargs)
 
-        pfp.interp.PfpInterp.add_native(name, func, ret, interp=interp, send_interp=send_interp)
+        pfp.interp.PfpInterp.add_native(
+            name, func, ret, interp=interp, send_interp=send_interp
+        )
         return native_wrapper
+
     return native_decorator
+
 
 def predefine(template):
     pfp.interp.PfpInterp.add_predefine(template)

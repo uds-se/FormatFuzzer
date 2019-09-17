@@ -9,11 +9,12 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import pfp
 import pfp.fields
-from pfp.fields import PYVAL,PYSTR
+from pfp.fields import PYVAL, PYSTR
 import pfp.interp
 import pfp.utils
 
 import utils
+
 
 class TestTypeCreation(utils.PfpTestCase):
     def setUp(self):
@@ -21,18 +22,18 @@ class TestTypeCreation(utils.PfpTestCase):
 
     def tearDown(self):
         pass
-    
+
     def test_atomic(self):
         dom = self._test_parse_build(
             "",
             """
                 typedef unsigned int BLAH;
-            """
+            """,
         )
         res = dom.BLAH()
         self.assertTrue(isinstance(res, pfp.fields.UInt))
         self.assertEqual(res, 0)
-    
+
     def test_struct(self):
         dom = self._test_parse_build(
             "",
@@ -43,7 +44,7 @@ class TestTypeCreation(utils.PfpTestCase):
                     char b;
                     uint c;
                 } TEST_STRUCT;
-            """
+            """,
         )
         res = dom.TEST_STRUCT()
 

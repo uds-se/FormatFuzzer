@@ -11,7 +11,7 @@ import contextlib
 
 class PfpTestMeta(type):
     def __init__(cls, name, bases, dict_):
-        for attr_name,attr_val in six.iteritems(dict_):
+        for attr_name, attr_val in six.iteritems(dict_):
             if not attr_name.startswith("test_"):
                 continue
 
@@ -29,6 +29,7 @@ class PfpTestMeta(type):
         to use _stream=False as the default in order to test string data
         as input to pfp.parse
         """
+
         @contextlib.wraps(method)
         def new_method(self, *args, **kwargs):
             self._test_parse_build = self._test_parse_build_with_string
@@ -52,16 +53,16 @@ class PfpTestCase(unittest.TestCase):
         return self._test_parse_build_orig(*args, **kwargs)
 
     def _test_parse_build(
-            self,
-            data,
-            template,
-            stdout     = None,
-            debug      = False,
-            predefines = False,
-            verify     = True,
-            _stream    = True,
-            printf     = True,
-        ):
+        self,
+        data,
+        template,
+        stdout=None,
+        debug=False,
+        predefines=False,
+        verify=True,
+        _stream=True,
+        printf=True,
+    ):
         if stdout is not None:
             fake_stdout = sys.stdout = six.StringIO()
 
@@ -69,11 +70,7 @@ class PfpTestCase(unittest.TestCase):
             data = six.StringIO(data)
 
         dom = pfp.parse(
-            data,
-            template,
-            debug      = debug,
-            predefines = predefines,
-            printf     = printf
+            data, template, debug=debug, predefines=predefines, printf=printf
         )
 
         if stdout is not None:
