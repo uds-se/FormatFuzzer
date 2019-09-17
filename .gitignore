@@ -1,5 +1,17 @@
+# editors
+.*.sw[mnop]
+tags
+
+# python
+*.pyc
+.tox
+pfp.egg-info
+venv*
+__pycache__
+.pycache
+.cache
+.coverage
+
+# project related
 docs/build
 docs/source/generated
-*.pyc
-.*.sw*
-*~
