@@ -6,8 +6,8 @@ from setuptools import setup
 
 setup(
     # metadata
-    name='pfp',
-    description='An 010 template interpreter for Python',
+    name="pfp",
+    description="An 010 template interpreter for Python",
     long_description="""
         pfp is an 010 template interpreter for Python. It accepts an
         input data stream and an 010 template and returns a modifiable
@@ -16,17 +16,22 @@ setup(
         length calculations, etc), sub structures in compressed data,
         etc.
     """,
-    license='MIT',
-    version='0.2.3',
-    author='James Johnson',
-    maintainer='James Johnson',
-    author_email='d0c.s4vage@gmail.com',
-    url='https://github.com/d0c-s4vage/pfp',
-    platforms='Cross Platform',
-    download_url="https://github.com/d0c-s4vage/pfp/tarball/v0.2.3",
-    install_requires = open(os.path.join(os.path.dirname(__file__), "requirements.txt")).read().split("\n"),
-    classifiers = [
-        'Programming Language :: Python :: 2',
-        'Programming Language :: Python :: 3',],
-    packages=['pfp', 'pfp.native', 'pfp.fuzz'],
+    license="MIT",
+    version="{{VERSION}}",
+    author="James Johnson",
+    maintainer="James Johnson",
+    author_email="d0c.s4vage@gmail.com",
+    url="https://github.com/d0c-s4vage/pfp",
+    platforms="Cross Platform",
+    download_url="https://github.com/d0c-s4vage/pfp/tarball/v{{VERSION}}",
+    install_requires=open(
+        os.path.join(os.path.dirname(__file__), "requirements.txt")
+    )
+    .read()
+    .split("\n"),
+    classifiers=[
+        "Programming Language :: Python :: 2",
+        "Programming Language :: Python :: 3",
+    ],
+    packages=["pfp", "pfp.native", "pfp.fuzz"],
 )
