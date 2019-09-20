@@ -1,6 +1,7 @@
-* [![Master Build Status](https://travis-ci.org/d0c-s4vage/pfp.svg?branch=master)](https://travis-ci.org/d0c-s4vage/pfp) - master
-* [![Develop Build Status](https://travis-ci.org/d0c-s4vage/pfp.svg?branch=develop)](https://travis-ci.org/d0c-s4vage/pfp) - develop
-* [![Documentation Status](https://readthedocs.org/projects/pfp/badge/?version=latest)](https://readthedocs.org/projects/pfp/?badge=latest)
+[![Master Build Status](https://travis-ci.org/d0c-s4vage/pfp.svg?branch=master)](https://travis-ci.org/d0c-s4vage/pfp) [![
+[![PyPI Statistics](https://img.shields.io/pypi/dm/pfp)](https://pypistats.org/packages/pfp)
+[![Latest Release](https://img.shields.io/pypi/v/pfp)](https://pypi.python.org/pypi/pfp/)
+[![Documentation Status](https://readthedocs.org/projects/pfp/badge/?version=latest)](https://pfp.readthedocs.io/en/latest/)
 
 # pfp
 
