@@ -8,3 +8,10 @@ python:
 install:
     - pip install -r requirements.txt
 script: bin/run_tests
+deploy:
+  provider: pypi
+  password:
+    secure: wMAlxKm7TkKVwbHs2ZimwQ6FYoxsmN7i/NpkfdgewMQ/UlwtUjs4PdUux8KUBMzwFOfuscb9jFDGvpoElxHQuZ+cW3Cbdpf2zYLU0eoDsV2H5oaR87QjCvdp09fK8GPVaE5UhSfXQTuD8PB42RaC+VweZDBINvtuImtkzqmtE8A=
+  user: d0c.s4vage
+  on:
+    tags: true
