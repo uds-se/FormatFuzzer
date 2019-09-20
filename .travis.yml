@@ -11,7 +11,7 @@ script: bin/run_tests
 deploy:
   provider: pypi
   password:
-    secure: wMAlxKm7TkKVwbHs2ZimwQ6FYoxsmN7i/NpkfdgewMQ/UlwtUjs4PdUux8KUBMzwFOfuscb9jFDGvpoElxHQuZ+cW3Cbdpf2zYLU0eoDsV2H5oaR87QjCvdp09fK8GPVaE5UhSfXQTuD8PB42RaC+VweZDBINvtuImtkzqmtE8A=
+    secure: "MlhilHXHs+bSXZcOHEuVE+jaioTq5vQAKi7FJmEzVq93WCfl78O0RkDVF4xwLxBmyGeRXvhkP36rCWwDj/PcKAfSfURk+kpgvA1SuEU+7wuigpUXeLIH2wrVntQ7z7TeVChF5Uvm3RZI/OyuzQHMO52wNnSv1ypNf7C5zE2OxvE="
   user: d0c.s4vage
   on:
     tags: true
