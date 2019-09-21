@@ -69,6 +69,22 @@ class TestCompatInterface(utils.PfpTestCase):
     def tearDown(self):
         pass
 
+    def test_boolean_constants(self):
+        dom = self._test_parse_build(
+            "",
+            """
+            local int bool_val;
+            bool_val = true;
+            bool_val = True;
+            bool_val = TRUE;
+
+            bool_val = false;
+            bool_val = False;
+            bool_val = FALSE;
+            """,
+            predefines=True,
+        )
+
     def test_color_constants(self):
         # shouldn't error
         dom = self._test_parse_build(
