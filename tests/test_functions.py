@@ -41,6 +41,17 @@ class TestFunctions(utils.PfpTestCase):
             """,
         )
 
+    def test_declaration_order(self):
+        dom = self._test_parse_build(
+            "",
+            """
+                hello();
+                void hello() {
+                    Printf("Hello World");
+                }
+            """,
+        )
+
     def test_builtin(self):
         dom = self._test_parse_build(
             "",
