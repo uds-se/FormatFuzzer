@@ -1055,14 +1055,11 @@ class PfpInterp(object):
                 continue
             self._handle_node(child, scope, ctxt, stream)
 
-        __import__('pdb').set_trace()
-
         for child in children:
             if type(child) is tuple:
                 child = child[1]
             print(child)
             if isinstance(child, AST.FuncDef):
-                __import__('pdb').set_trace()
                 continue
             self._handle_node(child, scope, ctxt, stream)
 
