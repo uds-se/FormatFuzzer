@@ -149,10 +149,10 @@ class TestEnums(utils.PfpTestCase):
         self.assertEqual(dom.M_TAG2, 0xff02)
         self.assertEqual(dom.M_TAG3, 0xff03)
 
-        self.assertEqual(dom.M_TAG0.__class__.__name__, "UShort")
-        self.assertEqual(dom.M_TAG1.__class__.__name__, "UShort")
-        self.assertEqual(dom.M_TAG2.__class__.__name__, "UShort")
-        self.assertEqual(dom.M_TAG3.__class__.__name__, "UShort")
+        self.assertTrue(isinstance(dom.M_TAG0, UShort))
+        self.assertTrue(isinstance(dom.M_TAG1, UShort))
+        self.assertTrue(isinstance(dom.M_TAG2, UShort))
+        self.assertTrue(isinstance(dom.M_TAG3, UShort))
 
     def test_enum_with_bitfield(self):
         dom = self._test_parse_build(
