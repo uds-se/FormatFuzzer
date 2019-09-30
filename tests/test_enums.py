@@ -132,6 +132,28 @@ class TestEnums(utils.PfpTestCase):
         self.assertEqual(dom.test, 1)
         self.assertEqual(dom.test.enum_name, "BLAH2")
 
+    def test_enum_word_type(self):
+        dom = self._test_parse_build(
+            "",
+            """
+                enum <WORD> tagID {
+                    M_TAG0, // should be 0
+                    M_TAG1 = 0xff01,
+                    M_TAG2,
+                    M_TAG3,
+                };
+            """,
+        )
+        self.assertEqual(dom.M_TAG0, 0)
+        self.assertEqual(dom.M_TAG1, 0xff01)
+        self.assertEqual(dom.M_TAG2, 0xff02)
+        self.assertEqual(dom.M_TAG3, 0xff03)
+
+        self.assertTrue(isinstance(dom.M_TAG0, UShort))
+        self.assertTrue(isinstance(dom.M_TAG1, UShort))
+        self.assertTrue(isinstance(dom.M_TAG2, UShort))
+        self.assertTrue(isinstance(dom.M_TAG3, UShort))
+
     def test_enum_with_bitfield(self):
         dom = self._test_parse_build(
             "\x31",
