@@ -613,7 +613,7 @@ class PfpInterp(object):
             setattr(mod, "PYVAL", fields.get_value)
             setattr(mod, "PYSTR", fields.get_str)
 
-    def __init__(self, debug=True, parser=None, int3=True):
+    def __init__(self, debug=False, parser=None, int3=True):
         """Create a new instance of the ``PfpInterp`` class.
 
         :param bool debug: if debug output should be used (default=``False``)
@@ -1051,15 +1051,14 @@ class PfpInterp(object):
         for child in children:
             if type(child) is tuple:
                 child = child[1]
-            if not isinstance(child, AST.FuncDef):
+            if not isinstance(child, (AST.FuncDef, AST.Typedef)):
                 continue
             self._handle_node(child, scope, ctxt, stream)
 
         for child in children:
             if type(child) is tuple:
                 child = child[1]
-            print(child)
-            if isinstance(child, AST.FuncDef):
+            if isinstance(child, (AST.FuncDef, AST.Typedef)):
                 continue
             self._handle_node(child, scope, ctxt, stream)
 

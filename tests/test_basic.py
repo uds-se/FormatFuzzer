@@ -347,6 +347,7 @@ class TestBasic(utils.PfpTestCase):
                     Printf("False");
                 }
             """,
+            # 010 verified output: FalseFalse
             stdout="FalseTrue",
         )
 
@@ -370,7 +371,8 @@ class TestBasic(utils.PfpTestCase):
                     Printf("False");
                 }
             """,
-            stdout="FalseTrue",
+            # 010 verified output: TrueTrue
+            stdout="TrueTrue",
         )
 
     def test_unary_startof(self):
@@ -494,7 +496,7 @@ class TestByRef(utils.PfpTestCase):
                 some_struct_t blah;
                 test_func(blah);
             """,
-            #stdout="a: 97b: 98c: 99d: 100",
+            stdout="a: 97b: 98c: 99d: 100",
         )
 
 

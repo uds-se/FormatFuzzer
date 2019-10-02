@@ -44,12 +44,28 @@ class TestFunctions(utils.PfpTestCase):
     def test_declaration_order(self):
         dom = self._test_parse_build(
             "",
+            # this has been tested in 010 to work
             """
                 hello();
                 void hello() {
                     Printf("Hello World");
                 }
             """,
+            stdout="Hello World",
+        )
+
+    def test_declaration_order2(self):
+        dom = self._test_parse_build(
+            "",
+            # this has been tested in 010 to work
+            r"""
+                hello(10);
+                typedef unsigned short custom_ushort;
+                void hello(custom_ushort test) {
+                    Printf("Hello World %d", test);
+                }
+            """,
+            stdout="Hello World 10",
         )
 
     def test_builtin(self):
