@@ -2141,9 +2141,11 @@ class PfpInterp(object):
         curr_val._pfp__value = -1
         for enumerator in node.values.enumerators:
             if enumerator.value is not None:
-                curr_val = self._handle_node(
+                curr_val_parsed = self._handle_node(
                     enumerator.value, scope, ctxt, stream
                 )
+                curr_val = enum_cls()
+                curr_val._pfp__set_value(curr_val_parsed._pfp__value)
             else:
                 curr_val = curr_val + 1
             curr_val._pfp__freeze()
