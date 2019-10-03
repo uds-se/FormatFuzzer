@@ -22,6 +22,18 @@ Interpreted Functions
 Interpreted functions can declared as you normally would in
 an 010 template (basically c-style syntax).
 
+Functions are hoisted to the top of the scope they are declared in. E.g. the
+following script is valid:
+
+.. code-block:: c
+
+    HelloWorld(10);
+
+    typedef unsigned short custom_short;
+    void HelloWorld(custom_short arg1) {
+        Printf("Hello World, %d", arg1);
+    }
+
 Functions Reference Documentation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

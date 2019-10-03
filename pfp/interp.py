@@ -1043,7 +1043,23 @@ class PfpInterp(object):
             "handling file AST with {} children".format(len(node.children()))
         )
 
-        for child in node.children():
+        children = list(node.children())
+
+        # one pass to define all functions. Functions may only live at the
+        # top-level (functions may not be nested or contained within structs,
+        # if/else statements, or other code block types).
+        for child in children:
+            if type(child) is tuple:
+                child = child[1]
+            if not isinstance(child, (AST.FuncDef, AST.Typedef)):
+                continue
+            self._handle_node(child, scope, ctxt, stream)
+
+        for child in children:
+            if type(child) is tuple:
+                child = child[1]
+            if isinstance(child, (AST.FuncDef, AST.Typedef)):
+                continue
             self._handle_node(child, scope, ctxt, stream)
 
         ctxt._pfp__process_fields_metadata()

@@ -347,6 +347,8 @@ class TestBasic(utils.PfpTestCase):
                     Printf("False");
                 }
             """,
+            # 010 verified output: FalseFalse
+            # this output will change when #87 is fixed
             stdout="FalseTrue",
         )
 
@@ -370,7 +372,9 @@ class TestBasic(utils.PfpTestCase):
                     Printf("False");
                 }
             """,
-            stdout="FalseTrue",
+            # 010 verified output: TrueTrue
+            # this output will change when #87 is fixed
+            stdout="TrueTrue",
         )
 
     def test_unary_startof(self):
