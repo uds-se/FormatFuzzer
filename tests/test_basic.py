@@ -348,6 +348,7 @@ class TestBasic(utils.PfpTestCase):
                 }
             """,
             # 010 verified output: FalseFalse
+            # this output will change when #87 is fixed
             stdout="FalseTrue",
         )
 
@@ -372,6 +373,7 @@ class TestBasic(utils.PfpTestCase):
                 }
             """,
             # 010 verified output: TrueTrue
+            # this output will change when #87 is fixed
             stdout="TrueTrue",
         )
 
