@@ -1670,7 +1670,6 @@ class PfpInterp(object):
         :ctxt: TODO
         :stream: TODO
         :returns: TODO
-
         """
         self._dlog("handling constant type {}".format(node.type))
         switch = {
@@ -1916,7 +1915,6 @@ class PfpInterp(object):
         :ctxt: TODO
         :stream: TODO
         :returns: TODO
-
         """
 
         def add_op(x, y):

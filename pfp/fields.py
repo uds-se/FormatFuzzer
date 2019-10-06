@@ -37,6 +37,20 @@ def get_value(field):
         return field
 
 
+def get_width(field):
+    if isinstance(field, Field):
+        return field.width
+    elif isinstance(field, int):
+        if field == 0:
+            return 1
+        if field > 0:
+            return int(math.ceil(field.bit_length() / 8.0))
+        else:
+            return int(math.ceil(((~field).bit_length() + 1) / 8.0))
+    else:
+        __import__('pdb').set_trace()
+
+
 def get_str(field):
     if isinstance(field, Array):
         res = field._array_to_str()
@@ -572,7 +586,7 @@ class Field(object):
         :returns: 
         """
         val = get_value(other)
-        return self._pfp__value == val
+        return self._pfp__value == other
 
     # see #49 - needed for some fuzzing functionality changes (python3
     # was complaining about Fields not being hashable)
@@ -594,6 +608,11 @@ class Field(object):
         :param bool include_offset: Include the parsed offsets of this field
         """
         return repr(self)
+    
+    def _pfp__promote(self, other):
+        """Noop promotion on the base NumberBase class
+        """
+        return other
 
 
 class Void(Field):
@@ -1106,7 +1125,7 @@ class NumberBase(Field):
         """Used for the not operator"""
         return self._pfp__value != 0
 
-    def _pfp__parse(self, stream, save_offset=False):
+    def _pfp__parse(self, stream, save_offset=False, set_val=True):
         """Parse the IO stream for this numeric field
 
         :stream: An IO stream that can be read from
@@ -1142,12 +1161,16 @@ class NumberBase(Field):
         if len(data) < self.width:
             raise errors.PrematureEOF()
 
-        self._pfp__data = data
-        self._pfp__value = struct.unpack(
+        val = struct.unpack(
             "{}{}".format(self.endian, self.format), data
         )[0]
 
-        return self.width
+        if set_val:
+            self._pfp__data = data
+            self._pfp__value = val
+            return self.width
+        else:
+            return val
 
     def _pfp__build(self, stream=None, save_offset=False):
         """Build the field and write the result into the stream
@@ -1206,7 +1229,8 @@ class NumberBase(Field):
             return Float
 
     def __iadd__(self, other):
-        self._pfp__value += self._pfp__get_root_value(other)
+        root = self._pfp__get_root_value(other)
+        self._pfp__set_value(self._pfp__value + root)
         return self
 
     def __isub__(self, other):
@@ -1368,16 +1392,32 @@ class IntBase(NumberBase):
 
     signed = True
 
-    def _pfp__set_value(self, new_val):
-        """Set the value, potentially converting an unsigned
-        value to a signed one (and visa versa)"""
-        if self._pfp__frozen:
-            raise errors.UnmodifiableConst()
+    def _pfp__maybe_promote(self, val1, val2):
+        """Determine if val1 or val2 is larger - if one is larger, then the
+        smaller will be promoted to the larger size. If val1 and val2 are the
+        same size, val2 will be promoted to val1.
 
-        if isinstance(new_val, IntBase):
+        :returns: tuple of new (maybe_promoted_val1, maybe_promoted_val2)
+        """
+        w_val1 = get_width(val1)
+        w_val2 = get_width(val2)
+
+        if w_val1 > w_val2:
+            res = (val1, val1._pfp__promote(val2))
+        elif w_val2 > w_val1:
+            res = (val2._pfp__promote(val1), val2)
+        else:
+            res = (val1, val1._pfp__promote(val2))
+
+        return (get_value(res[0]), get_value(res[1]))
+
+    def _pfp__promote(self, val):
+        """Promote the provided value to the current class
+        """
+        if isinstance(val, IntBase):
             # will automatically convert correctly between ints of
             # different sizes, unsigned/signed, etc
-            raw = new_val._pfp__build()
+            raw = val._pfp__build()
             while len(raw) < self.width:
                 if self.endian == BIG_ENDIAN:
                     raw = b"\x00" + raw
@@ -1390,7 +1430,11 @@ class IntBase(NumberBase):
                 else:
                     raw = raw[:-1]
 
-            self._pfp__parse(six.BytesIO(raw))
+            val = self._pfp__parse(
+                six.BytesIO(raw),
+                save_offset=False,
+                set_val=False,
+            )
         else:
             mask = 1 << (8 * self.width)
 
@@ -1401,14 +1445,23 @@ class IntBase(NumberBase):
                 max_val = mask - 1
                 min_val = 0
 
-            if new_val < min_val:
-                new_val += -(min_val)
-                new_val &= mask - 1
-                new_val -= -(min_val)
-            elif new_val > max_val:
-                new_val &= mask - 1
+            if val < min_val:
+                val += -(min_val)
+                val &= mask - 1
+                val -= -(min_val)
+            elif val > max_val:
+                val &= mask - 1
 
-            self._pfp__value = new_val
+        return val
+
+    def _pfp__set_value(self, new_val):
+        """Set the value, potentially converting an unsigned
+        value to a signed one (and visa versa)"""
+        if self._pfp__frozen:
+            raise errors.UnmodifiableConst()
+
+        promoted = self._pfp__promote(new_val)
+        self._pfp__value = promoted
 
         self._pfp__notify_parent()
 
@@ -1431,6 +1484,26 @@ class IntBase(NumberBase):
         true div behavior). So force floordiv
         """
         return self // other
+
+    def __cmp__(self, other):
+        """Compare the Field to something else, either another
+        Field or something else
+
+        :other: Another Field instance or something else
+        :returns: result of cmp()
+
+        """
+        cmp_self, cmp_other = self._pfp__maybe_promote(self, other)
+        return cmp(cmp_self, cmp_other)
+
+    def __eq__(self, other):
+        """See if the two items are equal (True/False)
+
+        :other: 
+        :returns: 
+        """
+        cmp_self, cmp_other = self._pfp__maybe_promote(self, other)
+        return cmp_self == cmp_other
 
 
 class Char(IntBase):
