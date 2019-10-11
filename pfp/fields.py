@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # encoding: utf-8
 
+import contextlib
 from intervaltree import IntervalTree, Interval
 import json
 import math
@@ -48,7 +49,7 @@ def get_width(field):
         else:
             return int(math.ceil(((~field).bit_length() + 1) / 8.0))
     else:
-        __import__('pdb').set_trace()
+        raise Exception("Unexpected type: {}".format(field))
 
 
 def get_str(field):
@@ -60,6 +61,11 @@ def get_str(field):
         res = get_value(field)
 
     return utils.string(res)
+
+
+def inherit_hash(cls):
+    cls.__hash__ = Field.__hash__
+    return cls
 
 
 PYVAL = get_value
@@ -485,7 +491,7 @@ class Field(object):
         """
         if self._pfp__frozen:
             raise errors.UnmodifiableConst()
-        self._pfp__value = self._pfp__get_root_value(new_val)
+        self._pfp__value = get_value(new_val)
         self._pfp__notify_parent()
 
     def _pfp__notify_parent(self):
@@ -590,6 +596,9 @@ class Field(object):
 
     # see #49 - needed for some fuzzing functionality changes (python3
     # was complaining about Fields not being hashable)
+    #
+    # Also note - this is not inheritable in python3 and MUST be explicitly
+    # set: https://stackoverflow.com/a/1608907
     def __hash__(self):
         return self._pfp__value.__hash__()
 
@@ -615,12 +624,13 @@ class Field(object):
         return other
 
 
+@inherit_hash
 class Void(Field):
     """The void field - used for return value of a function"""
-
     pass
 
 
+@inherit_hash
 class Struct(Field):
     """The struct field"""
 
@@ -903,6 +913,7 @@ class Struct(Field):
         return "\n".join(res)
 
 
+@inherit_hash
 class Union(Struct):
     """A union field, where each member is an alternate
     view of the data"""
@@ -1033,6 +1044,7 @@ class Union(Struct):
         return res
 
 
+@inherit_hash
 class Dom(Struct):
     """The main container struct for a template"""
 
@@ -1074,6 +1086,7 @@ class Dom(Struct):
             )
 
 
+@inherit_hash
 class NumberBase(Field):
     """The base field for all numeric fields"""
 
@@ -1172,7 +1185,9 @@ class NumberBase(Field):
         else:
             return val
 
-    def _pfp__build(self, stream=None, save_offset=False):
+    def _pfp__build(
+            self, stream=None, save_offset=False, ignore_bitfields=False,
+        ):
         """Build the field and write the result into the stream
 
         :stream: An IO stream that can be written to
@@ -1182,7 +1197,7 @@ class NumberBase(Field):
         if stream is not None and save_offset:
             self._pfp__offset = stream.tell()
 
-        if self.bitsize is None:
+        if ignore_bitfields or self.bitsize is None:
             data = struct.pack(
                 "{}{}".format(self.endian, self.format), self._pfp__value
             )
@@ -1229,72 +1244,72 @@ class NumberBase(Field):
             return Float
 
     def __iadd__(self, other):
-        root = self._pfp__get_root_value(other)
+        root = get_value(other)
         self._pfp__set_value(self._pfp__value + root)
         return self
 
     def __isub__(self, other):
-        self._pfp__value -= self._pfp__get_root_value(other)
+        self._pfp__value -= get_value(other)
         return self
 
     def __imul__(self, other):
-        self._pfp__value *= self._pfp__get_root_value(other)
+        self._pfp__value *= get_value(other)
         return self
 
     def __idiv__(self, other):
-        self._pfp__value /= self._pfp__get_root_value(other)
+        self._pfp__value /= get_value(other)
         return self
 
     def __iand__(self, other):
-        self._pfp__value &= self._pfp__get_root_value(other)
+        self._pfp__value &= get_value(other)
         return self
 
     def __ixor__(self, other):
-        self._pfp__value ^= self._pfp__get_root_value(other)
+        self._pfp__value ^= get_value(other)
         return self
 
     def __ior__(self, other):
-        self._pfp__value |= self._pfp__get_root_value(other)
+        self._pfp__value |= get_value(other)
         return self
 
     def __ifloordiv__(self, other):
-        self._pfp__value //= self._pfp__get_root_value(other)
+        self._pfp__value //= get_value(other)
         return self
 
     def __imod__(self, other):
-        self._pfp__value %= self._pfp__get_root_value(other)
+        self._pfp__value %= get_value(other)
         return self
 
     def __ipow__(self, other):
-        self._pfp__value **= self._pfp__get_root_value(other)
+        self._pfp__value **= get_value(other)
         return self
 
     def __ilshift__(self, other):
-        self._pfp__value <<= self._pfp__get_root_value(other)
+        self._pfp__value <<= get_value(other)
         return self
 
     def __irshift__(self, other):
-        self._pfp__value >>= self._pfp__get_root_value(other)
+        self._pfp__value >>= get_value(other)
         return self
 
     def __add__(self, other):
         res = self.__class__()
         res._pfp__set_value(
-            self._pfp__value + self._pfp__get_root_value(other)
+            self._pfp__value + get_value(other)
         )
         return res
 
     def __sub__(self, other):
         res = self.__class__()
         res._pfp__set_value(
-            self._pfp__value - self._pfp__get_root_value(other)
+            self._pfp__value - get_value(other)
         )
         return res
 
     def __mul__(self, other):
         res = self.__class__()
         res._pfp__set_value(
-            self._pfp__value * self._pfp__get_root_value(other)
+            self._pfp__value * get_value(other)
         )
         return res
 
@@ -1304,70 +1319,70 @@ class NumberBase(Field):
         # truediv (2/3 == 0.6666 instead of 0 [classic division])
         # the default in python 3 is truediv
         res._pfp__set_value(
-            self._pfp__value / self._pfp__get_root_value(other)
+            self._pfp__value / get_value(other)
         )
         return res
 
     def __div__(self, other):
         res = self.__class__()
         res._pfp__set_value(
-            self._pfp__value / self._pfp__get_root_value(other)
+            self._pfp__value / get_value(other)
         )
         return res
 
     def __and__(self, other):
         res = self.__class__()
         res._pfp__set_value(
-            self._pfp__value & self._pfp__get_root_value(other)
+            self._pfp__value & get_value(other)
         )
         return res
 
     def __xor__(self, other):
         res = self.__class__()
         res._pfp__set_value(
-            self._pfp__value ^ self._pfp__get_root_value(other)
+            self._pfp__value ^ get_value(other)
         )
         return res
 
     def __or__(self, other):
         res = self.__class__()
         res._pfp__set_value(
-            self._pfp__value | self._pfp__get_root_value(other)
+            self._pfp__value | get_value(other)
         )
         return res
 
     def __floordiv__(self, other):
         res = self.__class__()
         res._pfp__set_value(
-            self._pfp__value // self._pfp__get_root_value(other)
+            self._pfp__value // get_value(other)
         )
         return res
 
     def __mod__(self, other):
         res = self.__class__()
         res._pfp__set_value(
-            self._pfp__value % self._pfp__get_root_value(other)
+            self._pfp__value % get_value(other)
         )
         return res
 
     def __pow__(self, other):
         res = self.__class__()
         res._pfp__set_value(
-            self._pfp__value ** self._pfp__get_root_value(other)
+            self._pfp__value ** get_value(other)
         )
         return res
 
     def __lshift__(self, other):
         res = self.__class__()
         res._pfp__set_value(
-            self._pfp__value << self._pfp__get_root_value(other)
+            self._pfp__value << get_value(other)
         )
         return res
 
     def __rshift__(self, other):
         res = self.__class__()
         res._pfp__set_value(
-            self._pfp__value >> self._pfp__get_root_value(other)
+            self._pfp__value >> get_value(other)
         )
         return res
 
@@ -1387,6 +1402,7 @@ class NumberBase(Field):
         raise AttributeError(val)
 
 
+@inherit_hash
 class IntBase(NumberBase):
     """The base class for all integers"""
 
@@ -1411,13 +1427,40 @@ class IntBase(NumberBase):
 
         return (get_value(res[0]), get_value(res[1]))
 
+    # from https://wiki.sei.cmu.edu/confluence/display/c/INT02-C.%2BUnderstand%2Binteger%2Bconversion%2Brules
+    #
+    # Integer Conversion Rank
+    #
+    # Every integer type has an integer conversion rank that determines how conversions are performed. The ranking is based on the concept that each integer type contains at least as many bits as the types ranked below it. The following rules for determining integer conversion rank are defined in the C Standard, subclause 6.3.1.1 [ISO/IEC 9899:2011]:
+    # 
+    # No two signed integer types shall have the same rank, even if they have the same representation.
+    # The rank of a signed integer type shall be greater than the rank of any signed integer type with less precision.
+    # The rank of long long int shall be greater than the rank of long int, which shall be greater than the rank of int, which shall be greater than the rank of short int, which shall be greater than the rank of signed char.
+    # The rank of any unsigned integer type shall equal the rank of the corresponding signed integer type, if any.
+    # The rank of any standard integer type shall be greater than the rank of any extended integer type with the same width.
+    # The rank of char shall equal the rank of signed char and unsigned char.
+    # The rank of _Bool shall be less than the rank of all other standard integer types.
+    # The rank of any enumerated type shall equal the rank of the compatible integer type.
+    # The rank of any extended signed integer type relative to another extended signed integer type with the same precision is implementation-defined but still subject to the other rules for determining the integer conversion rank.
+    # For all integer types T1, T2, and T3, if T1 has greater rank than T2 and T2 has greater rank than T3, then T1 has greater rank than T3.
+    # The integer conversion rank is used in the usual arithmetic conversions to determine what conversions need to take place to support an operation on mixed integer types.
+    # 
+    # Usual Arithmetic Conversions
+    #
+    # The usual arithmetic conversions are rules that provide a mechanism to yield a common type when both operands of a binary operator are balanced to a common type or the second and third operands of the conditional operator ( ? : ) are balanced to a common type. Conversions involve two operands of different types, and one or both operands may be converted. Many operators that accept arithmetic operands perform conversions using the usual arithmetic conversions. After integer promotions are performed on both operands, the following rules are applied to the promoted operands:
+    # 
+    # If both operands have the same type, no further conversion is needed.
+    # If both operands are of the same integer type (signed or unsigned), the operand with the type of lesser integer conversion rank is converted to the type of the operand with greater rank.
+    # If the operand that has unsigned integer type has rank greater than or equal to the rank of the type of the other operand, the operand with signed integer type is converted to the type of the operand with unsigned integer type.
+    # If the type of the operand with signed integer type can represent all of the values of the type of the operand with unsigned integer type, the operand with unsigned integer type is converted to the type of the operand with signed integer type.
+    # Otherwise, both operands are converted to the unsigned integer type corresponding to the type of the operand with signed integer type.
     def _pfp__promote(self, val):
         """Promote the provided value to the current class
         """
         if isinstance(val, IntBase):
             # will automatically convert correctly between ints of
             # different sizes, unsigned/signed, etc
-            raw = val._pfp__build()
+            raw = val._pfp__build(ignore_bitfields=True)
             while len(raw) < self.width:
                 if self.endian == BIG_ENDIAN:
                     raw = b"\x00" + raw
@@ -1496,6 +1539,38 @@ class IntBase(NumberBase):
         cmp_self, cmp_other = self._pfp__maybe_promote(self, other)
         return cmp(cmp_self, cmp_other)
 
+    def __lt__(self, other):
+        """Compare the Field to something else, either another
+        Field or something else
+
+        :other: The other field
+        :returns: True if equal
+        """
+        cmp_self, cmp_other = self._pfp__maybe_promote(self, other)
+        return cmp_self < cmp_other
+
+    def __le__(self, other):
+        cmp_self, cmp_other = self._pfp__maybe_promote(self, other)
+        return cmp_self <= cmp_other
+
+    def __gt__(self, other):
+        """Compare the Field to something else, either another
+        Field or something else
+
+        :other: The other field
+        :returns: True if equal
+        """
+        cmp_self, cmp_other = self._pfp__maybe_promote(self, other)
+        return cmp_self > cmp_other
+
+    def __ge__(self, other):
+        cmp_self, cmp_other = self._pfp__maybe_promote(self, other)
+        return cmp_self >= cmp_other
+
+    def __ne__(self, other):
+        cmp_self, cmp_other = self._pfp__maybe_promote(self, other)
+        return cmp_self != cmp_other
+
     def __eq__(self, other):
         """See if the two items are equal (True/False)
 
@@ -1505,7 +1580,162 @@ class IntBase(NumberBase):
         cmp_self, cmp_other = self._pfp__maybe_promote(self, other)
         return cmp_self == cmp_other
 
+    def __iadd__(self, other):
+        other = self._pfp__promote(other)
+        root = get_value(other)
+        self._pfp__set_value(self._pfp__value + root)
+        return self
 
+    def __isub__(self, other):
+        self._pfp__value -= get_value(other)
+        return self
+
+    def __imul__(self, other):
+        self._pfp__value *= get_value(other)
+        return self
+
+    def __idiv__(self, other):
+        self._pfp__value /= get_value(other)
+        return self
+
+    def __iand__(self, other):
+        self._pfp__value &= get_value(other)
+        return self
+
+    def __ixor__(self, other):
+        self._pfp__value ^= get_value(other)
+        return self
+
+    def __ior__(self, other):
+        self._pfp__value |= get_value(other)
+        return self
+
+    def __ifloordiv__(self, other):
+        self._pfp__value //= get_value(other)
+        return self
+
+    def __imod__(self, other):
+        self._pfp__value %= get_value(other)
+        return self
+
+    def __ipow__(self, other):
+        self._pfp__value **= get_value(other)
+        return self
+
+    def __ilshift__(self, other):
+        self._pfp__value <<= get_value(other)
+        return self
+
+    def __irshift__(self, other):
+        self._pfp__value >>= get_value(other)
+        return self
+
+    def __add__(self, other):
+        res = self.__class__()
+        res._pfp__set_value(self)
+        # takes care of promotion already
+        res += other
+        return res
+
+    def __sub__(self, other):
+        res = self.__class__()
+        res._pfp__set_value(
+            self._pfp__value - get_value(other)
+        )
+        return res
+
+    def __mul__(self, other):
+        res = self.__class__()
+        res._pfp__set_value(
+            self._pfp__value * get_value(other)
+        )
+        return res
+
+    def __truediv__(self, other):
+        res = self.__class__()
+        # if truediv is being called, then / should also behave like
+        # truediv (2/3 == 0.6666 instead of 0 [classic division])
+        # the default in python 3 is truediv
+        res._pfp__set_value(
+            self._pfp__value / get_value(other)
+        )
+        return res
+
+    def __div__(self, other):
+        res = self.__class__()
+        res._pfp__set_value(
+            self._pfp__value / get_value(other)
+        )
+        return res
+
+    def __and__(self, other):
+        res = self.__class__()
+        res._pfp__set_value(
+            self._pfp__value & get_value(other)
+        )
+        return res
+
+    def __xor__(self, other):
+        res = self.__class__()
+        res._pfp__set_value(
+            self._pfp__value ^ get_value(other)
+        )
+        return res
+
+    def __or__(self, other):
+        res = self.__class__()
+        res._pfp__set_value(
+            self._pfp__value | get_value(other)
+        )
+        return res
+
+    def __floordiv__(self, other):
+        res = self.__class__()
+        res._pfp__set_value(
+            self._pfp__value // get_value(other)
+        )
+        return res
+
+    def __mod__(self, other):
+        res = self.__class__()
+        res._pfp__set_value(
+            self._pfp__value % get_value(other)
+        )
+        return res
+
+    def __pow__(self, other):
+        res = self.__class__()
+        res._pfp__set_value(
+            self._pfp__value ** get_value(other)
+        )
+        return res
+
+    def __lshift__(self, other):
+        res = self.__class__()
+        res._pfp__set_value(
+            self._pfp__value << get_value(other)
+        )
+        return res
+
+    def __rshift__(self, other):
+        res = self.__class__()
+        res._pfp__set_value(
+            self._pfp__value >> get_value(other)
+        )
+        return res
+
+    def __invert__(self):
+        res = self.__class__()
+        res._pfp__set_value(~self._pfp__value)
+        return res
+
+    def __neg__(self):
+        res = self.__class__()
+        res._pfp__set_value(-self._pfp__value)
+        return res
+
+
+@inherit_hash
 class Char(IntBase):
     """A field representing a signed char"""
 
@@ -1513,6 +1743,7 @@ class Char(IntBase):
     format = "b"
 
 
+@inherit_hash
 class UChar(Char):
     """A field representing an unsigned char"""
 
@@ -1520,6 +1751,7 @@ class UChar(Char):
     signed = False
 
 
+@inherit_hash
 class Short(IntBase):
     """A field representing a signed short"""
 
@@ -1527,6 +1759,7 @@ class Short(IntBase):
     format = "h"
 
 
+@inherit_hash
 class UShort(Short):
     """A field representing an unsigned short"""
 
@@ -1534,18 +1767,21 @@ class UShort(Short):
     signed = False
 
 
+@inherit_hash
 class WChar(Short):
     """A field representing a signed wchar (aka short)"""
 
     pass
 
 
+@inherit_hash
 class WUChar(UShort):
     """A field representing an unsigned wuchar (aka ushort)"""
 
     signed = False
 
 
+@inherit_hash
 class Int(IntBase):
     """A field representing a signed int"""
 
@@ -1553,6 +1789,7 @@ class Int(IntBase):
     format = "i"
 
 
+@inherit_hash
 class UInt(Int):
     """A field representing an unsigned int"""
 
@@ -1560,6 +1797,7 @@ class UInt(Int):
     signed = False
 
 
+@inherit_hash
 class Int64(IntBase):
     """A field representing a signed int64"""
 
@@ -1567,6 +1805,7 @@ class Int64(IntBase):
     format = "q"
 
 
+@inherit_hash
 class UInt64(Int64):
     """A field representing an unsigned int64"""
 
@@ -1574,6 +1813,7 @@ class UInt64(Int64):
     signed = False
 
 
+@inherit_hash
 class Float(NumberBase):
     """A field representing a float"""
 
@@ -1581,6 +1821,7 @@ class Float(NumberBase):
     format = "f"
 
 
+@inherit_hash
 class Double(NumberBase):
     """A field representing a double"""
 
@@ -1588,6 +1829,7 @@ class Double(NumberBase):
     format = "d"
 
 
+@inherit_hash
 class Enum(IntBase):
     """The enum field class"""
 
@@ -1659,6 +1901,7 @@ class Enum(IntBase):
 # --------------------------------
 
 
+@inherit_hash
 class Array(Field):
     """The array field"""
 
@@ -1958,6 +2201,7 @@ class Array(Field):
 
 
 # http://www.sweetscape.com/010editor/manual/ArraysStrings.htm
+@inherit_hash
 class String(Field):
     """A null-terminated string. String fields should be interchangeable
     with char arrays"""
@@ -2075,6 +2319,7 @@ class String(Field):
         return self
 
 
+@inherit_hash
 class WString(String):
     width = -1
     read_size = 2
