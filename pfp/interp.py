@@ -1670,7 +1670,6 @@ class PfpInterp(object):
         :ctxt: TODO
         :stream: TODO
         :returns: TODO
-
         """
         self._dlog("handling constant type {}".format(node.type))
         switch = {
@@ -1916,7 +1915,6 @@ class PfpInterp(object):
         :ctxt: TODO
         :stream: TODO
         :returns: TODO
-
         """
 
         def add_op(x, y):
@@ -1926,7 +1924,7 @@ class PfpInterp(object):
             x -= y
 
         def div_op(x, y):
-            x /= y
+            x.__idiv__(y)
 
         def mod_op(x, y):
             x %= y
@@ -2137,7 +2135,8 @@ class PfpInterp(object):
 
         enum_vals = {}
         curr_val = enum_cls()
-        curr_val._pfp__value = -1
+        curr_val._pfp__value = 0
+        prev_val = None
         for enumerator in node.values.enumerators:
             if enumerator.value is not None:
                 curr_val_parsed = self._handle_node(
@@ -2145,12 +2144,13 @@ class PfpInterp(object):
                 )
                 curr_val = enum_cls()
                 curr_val._pfp__set_value(curr_val_parsed._pfp__value)
-            else:
-                curr_val = curr_val + 1
+            elif prev_val is not None:
+                curr_val = prev_val + 1
             curr_val._pfp__freeze()
             enum_vals[enumerator.name] = curr_val
             enum_vals[fields.PYVAL(curr_val)] = enumerator.name
             scope.add_local(enumerator.name, curr_val)
+            prev_val = curr_val
 
         if node.name is not None:
             enum_cls = EnumDef(node.name, enum_cls, enum_vals)
