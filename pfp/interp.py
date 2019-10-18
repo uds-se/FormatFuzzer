@@ -1924,7 +1924,7 @@ class PfpInterp(object):
             x -= y
 
         def div_op(x, y):
-            x /= y
+            x.__idiv__(y)
 
         def mod_op(x, y):
             x %= y

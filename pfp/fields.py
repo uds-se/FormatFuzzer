@@ -1669,20 +1669,14 @@ class IntBase(NumberBase):
         return res
 
     def __truediv__(self, other):
-        res = self.__class__()
-        # if truediv is being called, then / should also behave like
-        # truediv (2/3 == 0.6666 instead of 0 [classic division])
-        # the default in python 3 is truediv
-        res._pfp__set_value(
-            self._pfp__value / get_value(other)
-        )
-        return res
+        # no truediv for pfp fields - only classic division
+        return self.__div__(other)
 
     def __div__(self, other):
         res = self.__class__()
         res._pfp__set_value(self)
         # takes care of promotion already
-        res /= other
+        res.__idiv__(other)
         return res
 
     def __and__(self, other):
