@@ -1249,7 +1249,8 @@ class NumberBase(Field):
         return self
 
     def __isub__(self, other):
-        self._pfp__value -= get_value(other)
+        root = get_value(other)
+        self._pfp__set_value(self._pfp__value - root)
         return self
 
     def __imul__(self, other):
@@ -1587,34 +1588,50 @@ class IntBase(NumberBase):
         return self
 
     def __isub__(self, other):
-        self._pfp__value -= get_value(other)
+        other = self._pfp__promote(other)
+        root = get_value(other)
+        self._pfp__set_value(self._pfp__value - root)
         return self
 
     def __imul__(self, other):
-        self._pfp__value *= get_value(other)
+        other = self._pfp__promote(other)
+        root = get_value(other)
+        self._pfp__set_value(self._pfp__value * root)
         return self
 
     def __idiv__(self, other):
-        self._pfp__value /= get_value(other)
+        other = self._pfp__promote(other)
+        root = get_value(other)
+        self._pfp__set_value(int(self._pfp__value / root))
         return self
 
     def __iand__(self, other):
-        self._pfp__value &= get_value(other)
+        other = self._pfp__promote(other)
+        root = get_value(other)
+        self._pfp__set_value(self._pfp__value & root)
         return self
 
     def __ixor__(self, other):
-        self._pfp__value ^= get_value(other)
+        other = self._pfp__promote(other)
+        root = get_value(other)
+        self._pfp__set_value(self._pfp__value ^ root)
         return self
 
     def __ior__(self, other):
-        self._pfp__value |= get_value(other)
+        other = self._pfp__promote(other)
+        root = get_value(other)
+        self._pfp__set_value(self._pfp__value | root)
         return self
 
     def __ifloordiv__(self, other):
-        self._pfp__value //= get_value(other)
-        return self
+        # will always be floordiv with IntBase numbers
+        return self.__idiv__(self, other)
 
     def __imod__(self, other):
+        # NOTE: We are not doing the same style of integer promotion here.
+        # this current implementation matches the C implementation.
+        #
+        # See the test_imod function in test_integer_promotion.py
         self._pfp__value %= get_value(other)
         return self
 
@@ -1639,16 +1656,16 @@ class IntBase(NumberBase):
 
     def __sub__(self, other):
         res = self.__class__()
-        res._pfp__set_value(
-            self._pfp__value - get_value(other)
-        )
+        res._pfp__set_value(self)
+        # takes care of promotion already
+        res -= other
         return res
 
     def __mul__(self, other):
         res = self.__class__()
-        res._pfp__set_value(
-            self._pfp__value * get_value(other)
-        )
+        res._pfp__set_value(self)
+        # takes care of promotion already
+        res *= other
         return res
 
     def __truediv__(self, other):
@@ -1663,38 +1680,34 @@ class IntBase(NumberBase):
 
     def __div__(self, other):
         res = self.__class__()
-        res._pfp__set_value(
-            self._pfp__value / get_value(other)
-        )
+        res._pfp__set_value(self)
+        # takes care of promotion already
+        res /= other
         return res
 
     def __and__(self, other):
         res = self.__class__()
-        res._pfp__set_value(
-            self._pfp__value & get_value(other)
-        )
+        res._pfp__set_value(self)
+        # takes care of promotion already
+        res &= other
         return res
 
     def __xor__(self, other):
         res = self.__class__()
-        res._pfp__set_value(
-            self._pfp__value ^ get_value(other)
-        )
+        res._pfp__set_value(self)
+        # takes care of promotion already
+        res ^= other
         return res
 
     def __or__(self, other):
         res = self.__class__()
-        res._pfp__set_value(
-            self._pfp__value | get_value(other)
-        )
+        res._pfp__set_value(self)
+        # takes care of promotion already
+        res |= other
         return res
 
     def __floordiv__(self, other):
-        res = self.__class__()
-        res._pfp__set_value(
-            self._pfp__value // get_value(other)
-        )
-        return res
+        return self.__div__(self, other)
 
     def __mod__(self, other):
         res = self.__class__()
