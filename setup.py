@@ -33,5 +33,8 @@ setup(
         "Programming Language :: Python :: 2",
         "Programming Language :: Python :: 3",
     ],
+    entry_points={
+        "console_scripts": ["pfp = pfp.__main__:main"]
+    },
     packages=["pfp", "pfp.native", "pfp.fuzz"],
 )
