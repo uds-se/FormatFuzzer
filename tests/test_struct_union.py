@@ -22,6 +22,34 @@ class TestStructUnion(utils.PfpTestCase):
     def tearDown(self):
         pass
 
+    def test_field_path(self):
+        dom = self._test_parse_build(
+            "Abbbb4141414142424242",
+            """
+                struct {
+                    struct {
+                        struct {
+                            char inner;
+                            char array[4];
+                        } nested2;
+                        int some_int;
+                    } nested1;
+                    int some_int2;
+                } root;
+            """,
+        )
+        self.assertEqual(dom.root._pfp__path(), "root")
+        self.assertEqual(dom.root.some_int2._pfp__path(), "root.some_int2")
+        self.assertEqual(dom.root.nested1._pfp__path(), "root.nested1")
+        self.assertEqual(dom.root.nested1.some_int._pfp__path(), "root.nested1.some_int")
+        self.assertEqual(dom.root.nested1.nested2._pfp__path(), "root.nested1.nested2")
+        self.assertEqual(dom.root.nested1.nested2.inner._pfp__path(), "root.nested1.nested2.inner")
+        self.assertEqual(dom.root.nested1.nested2.array._pfp__path(), "root.nested1.nested2.array")
+        self.assertEqual(dom.root.nested1.nested2.array[0]._pfp__path(), "root.nested1.nested2.array[0]")
+        self.assertEqual(dom.root.nested1.nested2.array[1]._pfp__path(), "root.nested1.nested2.array[1]")
+        self.assertEqual(dom.root.nested1.nested2.array[2]._pfp__path(), "root.nested1.nested2.array[2]")
+        self.assertEqual(dom.root.nested1.nested2.array[3]._pfp__path(), "root.nested1.nested2.array[3]")
+    
     def test_struct(self):
         dom = self._test_parse_build(
             "abcddcba",

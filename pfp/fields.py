@@ -260,6 +260,36 @@ class Field(object):
         if stream is not None:
             self._pfp__parse(stream, save_offset=True)
 
+    # see #51 - fields should have a method of returning the full path of its name
+    def _pfp__path(self):
+        """Return the full pathname of this field. E.g. given
+        the template below, the ``a`` field would have a full
+        path of ``root.nested.a``
+
+        .. code-block:: c
+
+            struct {
+                struct {
+                    char a;
+                } nested;
+            } root;
+        """
+        curr = self
+        res = []
+        while curr is not None:
+            # don't show the meta __root name in the path
+            if curr._pfp__name == "__root" and curr._pfp__parent is None:
+                break
+
+            res.append(curr._pfp__name)
+
+            if isinstance(curr._pfp__parent, Array):
+                curr = curr._pfp__parent._pfp__parent
+            else:
+                curr = curr._pfp__parent
+
+        return ".".join(reversed(res))
+
     def _pfp__snapshot(self, recurse=True):
         """Save off the current value of the field
         """
