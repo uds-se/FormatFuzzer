@@ -27,8 +27,29 @@ until the main dom is built again.
 Printing
 """"""""
 
-Use the :any:`pfp.fields.Field._pfp__show()` method to return a
+Use the :any:`pfp.fields.Field._pfp__show` method to return a
 pretty-printed representation of the field.
+
+Full Field Paths
+""""""""""""""""
+
+Use the :any:`pfp.fields.Field._pfp__path` method to fetch the full path
+of the field. E.g. in the template below, the ``inner`` field would have
+a full path of ``root.nested1.nested2.inner``, and the second element of
+the ``array`` field would have a full path of ``root.nested1.nested2.array[1]``:
+
+.. code-block:: c
+
+    struct {
+        struct {
+            struct {
+                char inner;
+                char array[4];
+            } nested2;
+            int some_int;
+        } nested1;
+        int some_int2;
+    } root;
 
 Structs
 ^^^^^^^
@@ -40,7 +61,7 @@ Field Reference Documentation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. autoclass:: pfp.fields.Field
-   :members: _pfp__name, _pfp__parent, _pfp__build, _pfp__parse, _pfp__watchers, _pfp__watch_fields, _pfp__width, _pfp__set_value, _pfp__show
+   :members: _pfp__name, _pfp__parent, _pfp__build, _pfp__parse, _pfp__watchers, _pfp__watch_fields, _pfp__width, _pfp__set_value, _pfp__show, _pfp__path
 
 .. autoclass:: pfp.fields.Array
    :members: width, field_cls, raw_data
