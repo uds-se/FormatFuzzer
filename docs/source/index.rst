@@ -17,15 +17,55 @@ individual fields of the defined data structure.
 Please read the :doc:`getting_started` section for a better introduction.
 
 TL;DR
-^^^^^
+-----
 
-You lazy bum. RTFM!
+Installation
+^^^^^^^^^^^^
+
+.. code-block:: bash
+
+    pip install pfp
+
+Console Script
+^^^^^^^^^^^^^^
+
+Pfp comes with a console script that will print parsed data:
+
+.. code-block:: text
+
+    $> pfp --help
+    usage: pfp [-h] -t TEMPLATE [-k] input
+
+    Run pfp on input data using a specified 010 Editor template for parsing
+
+    positional arguments:
+      input                 The input data stream or file to parse. Use '-' for
+                            piped data
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      -t TEMPLATE, --template TEMPLATE
+                            The template to parse with
+      -k, --keep            Keep successfully parsed data on error
+
+Example usages:
+
+.. code-block:: bash
+
+    pfp --keep -t png.bt test.png
+
+    cat test.png | pfp --keep -t png.bt -
+
+    pfp --keep -t png.bt - <test.png
+
+
+PNG Parsing Example
+^^^^^^^^^^^^^^^^^^^
 
 Below is a simple PNG template that will parse the PNG image into chunks.
 The ``tEXt`` chunk of the PNG image will also specifically be parsed:
 
-.. highlight:: c
-::
+.. code-block:: c
 
     typedef struct {
         // null-terminated
