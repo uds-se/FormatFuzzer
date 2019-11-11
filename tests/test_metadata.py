@@ -145,6 +145,7 @@ class TestMetadata(utils.PfpTestCase):
         dom = self._test_parse_build(
             "TYPA\x41\x410000TYPB\x42\x420000",
             """
+                BigEndian();
                 typedef struct {
                     uchar a;
                     uchar b;
@@ -187,6 +188,7 @@ class TestMetadata(utils.PfpTestCase):
         dom = self._test_parse_build(
             "yoyoyo\x00\x10x\x9cc```d```\x02\x00\x00\x0f\x00\x04",
             """
+                BigEndian();
                 typedef struct {
                     int a;
                     int b;

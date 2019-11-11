@@ -1047,18 +1047,20 @@ class PfpInterp(object):
 
         # one pass to define all functions. Functions may only live at the
         # top-level (functions may not be nested or contained within structs,
-        # if/else statements, or other code block types).
+        # if/else statements, or other code block types). aka hoisting
         for child in children:
             if type(child) is tuple:
                 child = child[1]
-            if not isinstance(child, (AST.FuncDef, AST.Typedef)):
+            if not isinstance(child, (AST.FuncDef, AST.Typedef)) \
+                    and not  is_forward_declared_struct(child):
                 continue
             self._handle_node(child, scope, ctxt, stream)
 
         for child in children:
             if type(child) is tuple:
                 child = child[1]
-            if isinstance(child, (AST.FuncDef, AST.Typedef)):
+            if isinstance(child, (AST.FuncDef, AST.Typedef)) or \
+                    is_forward_declared_struct(child):
                 continue
             self._handle_node(child, scope, ctxt, stream)
 
@@ -1151,6 +1153,7 @@ class PfpInterp(object):
         field = self._handle_node(node.type, scope, ctxt, stream)
         bitsize = None
         bitfield_rw = None
+
         if getattr(node, "bitsize", None) is not None:
             bitsize = self._handle_node(node.bitsize, scope, ctxt, stream)
             has_prev = len(ctxt._pfp__children) > 0
@@ -1181,7 +1184,10 @@ class PfpInterp(object):
                 bitfield_rw = fields.BitfieldRW(self, field)
                 bitfield_rw.reserve_bits(bitsize, stream)
 
-        if getattr(node, "is_func_param", False):
+        if is_forward_declared_struct(node):
+            scope.add_type_class(node.type.name, field)
+
+        elif getattr(node, "is_func_param", False):
             # we want to keep this as a class and not instantiate it
             # instantiation will be done in functions.ParamListDef.instantiate
             field = (field_name, field)
@@ -1551,19 +1557,19 @@ class PfpInterp(object):
             for param in node.args.params:
                 param.is_func_param = True
 
-        # it's actually being defined
         if node.decls is not None:
             struct_cls = StructUnionDef("struct", self, node)
-
             if node.name is not None:
                 scope.add_type_class(node.name, struct_cls)
-
             return struct_cls
 
         # it's declaring a struct field. E.g.
         #    struct IFD subDir;
         else:
-            return scope.get_type(node.name)
+            res = scope.get_type(node.name)
+            if res is None:
+                res = StructUnionDef(node.name, self, node)
+            return res
 
     def _handle_struct_decls(self, node, scope, ctxt, stream):
         self._dlog("handling struct decls")
@@ -2565,3 +2571,12 @@ class PfpInterp(object):
 
         cls = getattr(fields, res)
         return cls
+
+def is_forward_declared_struct(node):
+    return (
+        isinstance(node, AST.Decl)
+        and node.init is None
+        and isinstance(node.type, AST.Struct)
+        and node.type.decls is None
+    )
+

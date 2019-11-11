@@ -223,6 +223,7 @@ class TestControlFlow(utils.PfpTestCase):
         dom = self._test_parse_build(
             "\x00\x00\x00\x01\x00\x00\x00\x02",
             """
+                BigEndian();
                 local int a = 5;
                 switch(a) {
                     case 0:

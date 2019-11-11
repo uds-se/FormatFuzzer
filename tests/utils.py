@@ -69,6 +69,9 @@ class PfpTestCase(unittest.TestCase):
         if _stream:
             data = six.StringIO(data)
 
+        # defaults to LittleEndian
+        template = "LittleEndian();" + template
+
         dom = pfp.parse(
             data, template, debug=debug, predefines=predefines, printf=printf
         )

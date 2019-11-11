@@ -21,6 +21,24 @@ class TestStructUnion(utils.PfpTestCase):
 
     def tearDown(self):
         pass
+    
+    def test_basic_struct(self):
+        dom = self._test_parse_build(
+            "\x00\x01\x02\x03",
+            """
+                struct SomeStruct {
+                    byte a;
+                    byte b;
+                    byte c;
+                    byte d;
+                };
+                struct SomeStruct test;
+            """
+        )
+        assert dom.test.a == 0
+        assert dom.test.b == 1
+        assert dom.test.c == 2
+        assert dom.test.d == 3
 
     def test_field_path(self):
         dom = self._test_parse_build(
@@ -61,6 +79,25 @@ class TestStructUnion(utils.PfpTestCase):
                 blah some_struct;
                 blah some_struct2;
             """,
+        )
+    
+    def test_forward_declared_struct(self):
+        dom = self._test_parse_build(
+            "\x00\x01",
+            """
+                struct fp16;
+                void ReadFP16(fp16& f)
+                {
+                    Printf("%d", f.value);
+                }
+                typedef struct
+                {
+                    int16 value;
+                } fp16;
+                fp16 preferred_volume;
+                ReadFP16(preferred_volume);
+            """,
+            stdout="256",
         )
 
     def test_struct_with_parameters(self):
