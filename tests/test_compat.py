@@ -132,6 +132,7 @@ class TestCompatIO(utils.PfpTestCase):
         dom = self._test_parse_build(
             "\x80\x01",
             """
+                BigEndian();
                 local ushort blah = ReadUShort();
                 Printf("%d|", blah);
                 Printf("%d", FTell());

@@ -27,6 +27,7 @@ class TestEnums(utils.PfpTestCase):
         dom = self._test_parse_build(
             "\x00\x00\x00\x01",
             """
+                BigEndian();
                 enum TEST_ENUM {
                     BLAH1,
                     BLAH2,
@@ -158,6 +159,7 @@ class TestEnums(utils.PfpTestCase):
         dom = self._test_parse_build(
             "\x31",
             """
+                BigEndian();
                 enum <uchar> BLAHS {
                     BLAH1,
                     BLAH2,
@@ -198,6 +200,7 @@ class TestEnums(utils.PfpTestCase):
         dom = self._test_parse_build(
             "\x31",
             """
+                BigEndian();
                 enum <uchar> {
                     BLAH1,
                     BLAH2,

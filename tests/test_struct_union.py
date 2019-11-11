@@ -85,7 +85,6 @@ class TestStructUnion(utils.PfpTestCase):
         dom = self._test_parse_build(
             "\x00\x01",
             """
-                LittleEndian();
                 struct fp16;
                 void ReadFP16(fp16& f)
                 {
