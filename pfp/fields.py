@@ -33,6 +33,8 @@ def false():
 
 def get_value(field):
     if isinstance(field, Field):
+        if isinstance(field, Array):
+            return field._array_to_str()
         return field._pfp__value
     else:
         return field
@@ -2028,7 +2030,7 @@ class Array(Field):
         return res
 
     def __eq__(self, other):
-        if self.is_stringable() and other.__class__ in [String, WString, str]:
+        if self.is_stringable() and other.__class__ in [String, WString, str, bytes]:
             res = self._array_to_str()
             return utils.binary(res) == utils.binary(PYSTR(other))
         else:

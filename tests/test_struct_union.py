@@ -21,6 +21,24 @@ class TestStructUnion(utils.PfpTestCase):
 
     def tearDown(self):
         pass
+    
+    def test_basic_struct(self):
+        dom = self._test_parse_build(
+            "\x00\x01\x02\x03",
+            """
+                struct SomeStruct {
+                    byte a;
+                    byte b;
+                    byte c;
+                    byte d;
+                };
+                struct SomeStruct test;
+            """
+        )
+        assert dom.test.a == 0
+        assert dom.test.b == 1
+        assert dom.test.c == 2
+        assert dom.test.d == 3
 
     def test_field_path(self):
         dom = self._test_parse_build(
