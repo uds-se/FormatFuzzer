@@ -62,6 +62,25 @@ class TestStructUnion(utils.PfpTestCase):
                 blah some_struct2;
             """,
         )
+    
+    def test_forward_declared_struct(self):
+        dom = self._test_parse_build(
+            "\x00\x01",
+            """
+                struct fp16;
+                void ReadFP16(fp16& f)
+                {
+                    Printf("%d", f.value);
+                }
+                typedef struct
+                {
+                    int16 value;
+                } fp16;
+                fp16 preferred_volume;
+                ReadFP16(preferred_volume);
+            """,
+            stdout="256",
+        )
 
     def test_struct_with_parameters(self):
         dom = self._test_parse_build(

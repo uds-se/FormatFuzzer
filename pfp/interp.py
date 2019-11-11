@@ -1047,18 +1047,20 @@ class PfpInterp(object):
 
         # one pass to define all functions. Functions may only live at the
         # top-level (functions may not be nested or contained within structs,
-        # if/else statements, or other code block types).
+        # if/else statements, or other code block types). aka hoisting
         for child in children:
             if type(child) is tuple:
                 child = child[1]
-            if not isinstance(child, (AST.FuncDef, AST.Typedef)):
+            if not isinstance(child, (AST.FuncDef, AST.Typedef)) \
+                    and not  is_forward_declared_struct(child):
                 continue
             self._handle_node(child, scope, ctxt, stream)
 
         for child in children:
             if type(child) is tuple:
                 child = child[1]
-            if isinstance(child, (AST.FuncDef, AST.Typedef)):
+            if isinstance(child, (AST.FuncDef, AST.Typedef)) or \
+                    is_forward_declared_struct(child):
                 continue
             self._handle_node(child, scope, ctxt, stream)
 
@@ -1552,12 +1554,10 @@ class PfpInterp(object):
                 param.is_func_param = True
 
         # it's actually being defined
-        if node.decls is not None:
+
+        if node.name is not None:
             struct_cls = StructUnionDef("struct", self, node)
-
-            if node.name is not None:
-                scope.add_type_class(node.name, struct_cls)
-
+            scope.add_type_class(node.name, struct_cls)
             return struct_cls
 
         # it's declaring a struct field. E.g.
@@ -2565,3 +2565,12 @@ class PfpInterp(object):
 
         cls = getattr(fields, res)
         return cls
+
+def is_forward_declared_struct(node):
+    return (
+        isinstance(node, AST.Decl)
+        and node.init is None
+        and isinstance(node.type, AST.Struct)
+        and node.type.decls is None
+    )
+
