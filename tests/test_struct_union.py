@@ -21,6 +21,83 @@ class TestStructUnion(utils.PfpTestCase):
 
     def tearDown(self):
         pass
+
+    def test_struct_vit9696_1(self):
+        dom = self._test_parse_build(
+            "\x00\x01\x02\x03\x00\x01\x02\x03",
+            """
+                typedef struct MY_STRUCT_S {
+                    char magic[4];
+                    unsigned int filesize;
+                } MY_STRUCT;
+                LittleEndian();
+                MY_STRUCT s;
+            """
+        )
+        assert dom.s.magic == "\x00\x01\x02\x03"
+        assert dom.s.filesize == 0x03020100
+
+    def test_struct_vit9696_2(self):
+        dom = self._test_parse_build(
+            "\x00\x01\x02\x03\x00\x01\x02\x03",
+            """
+                struct MY_STRUCT {
+                    char magic[4];
+                    unsigned int filesize;
+                };
+                LittleEndian();
+                MY_STRUCT s;
+            """
+        )
+        assert dom.s.magic == "\x00\x01\x02\x03"
+        assert dom.s.filesize == 0x03020100
+
+    def test_struct_vit9696_3(self):
+        dom = self._test_parse_build(
+            "\x00\x01\x02\x03\x00\x01\x02\x03",
+            """
+                typedef struct MY_STRUCT {
+                    char magic[4];
+                    unsigned int filesize;
+                };
+                LittleEndian();
+                MY_STRUCT s;
+            """
+        )
+        assert dom.s.magic == "\x00\x01\x02\x03"
+        assert dom.s.filesize == 0x03020100
+
+    def test_struct_vit9696_4(self):
+        dom = self._test_parse_build(
+            "\x00\x01\x02\x03\x00\x01\x02\x03",
+            """
+                struct MY_STRUCT {
+                    char magic[4];
+                    unsigned int filesize;
+                };
+                LittleEndian();
+                struct MY_STRUCT s;
+            """
+        )
+        assert dom.s.magic == "\x00\x01\x02\x03"
+        assert dom.s.filesize == 0x03020100
+
+    def test_struct_vit9696_5(self):
+        dom = self._test_parse_build(
+            "\x00\x01\x02\x03\x00\x01\x02\x03",
+            """
+                struct MY_STRUCT {
+                    char magic[4];
+                    unsigned int filesize;
+                };
+                typedef struct MY_STRUCT ME;
+                LittleEndian();
+                ME s;
+            """,
+            debug=True,
+        )
+        assert dom.s.magic == "\x00\x01\x02\x03"
+        assert dom.s.filesize == 0x03020100
     
     def test_basic_struct(self):
         dom = self._test_parse_build(
