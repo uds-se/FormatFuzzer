@@ -9,6 +9,10 @@
 
 See the main documentation on [Read the Docs](http://pfp.readthedocs.org/en/latest/)
 
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md)
+
 ## Installation
 
 Install pfp with
