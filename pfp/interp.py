@@ -60,6 +60,49 @@ def StructDeclWithParams(scope, struct_cls, struct_args):
     return new_class
 
 
+def StructUnionTypeRef(curr_scope, typedef_name, refd_name, interp, node):
+    """Create a typedef that resolves itself dynamically. This is needed in
+    situations like:
+
+    .. code-block:: c
+
+        struct MY_STRUCT {
+            char magic[4];
+            unsigned int filesize;
+        };
+        typedef struct MY_STRUCT ME;
+        LittleEndian();
+        ME s;
+
+    The typedef ``ME`` is handled before the ``MY_STRUCT`` declaration actually
+    occurs. The typedef value for ``ME`` should not the empty struct that is
+    resolved, but should be a dynamically-looked up struct definition when
+    a ``ME`` instance is actually declared.
+    """
+    if isinstance(node, AST.Struct):
+        cls = fields.Struct
+    elif isinstance(node, AST.Union):
+        cls = fields.Union
+
+    def __new__(self, *args, **kwargs):
+        refd_type = curr_scope.get_type(refd_name)
+        if refd_type is None:
+            refd_node = node
+        else:
+            refd_node = refd_type._pfp__node
+        return StructUnionDef(typedef_name, interp, refd_node)(*args, **kwargs)
+
+    new_class = type(
+        typedef_name,
+        (cls,),
+        {
+            "__new__": __new__,
+        },
+    )
+    return new_class
+
+
+
 def StructUnionDef(typedef_name, interp, node):
     if isinstance(node, AST.Struct):
         cls = fields.Struct
@@ -412,6 +455,15 @@ class Scope(object):
         """Store the class with the name
         """
         self._curr_scope["types"][name] = cls
+
+    def add_refd_struct_or_union(self, name, refd_name, interp, node):
+        """Add a lazily-looked up typedef struct or union
+
+        :name: name of the typedefd struct/union
+        :node: the typedef node
+        :interp: the 010 interpreter
+        """
+        self.add_type_class(name, StructUnionTypeRef(self, name, refd_name, interp, node))
 
     def add_type_struct_or_union(self, name, interp, node):
         """Store the node with the name. When it is instantiated,
@@ -1624,7 +1676,10 @@ class PfpInterp(object):
 
         if is_union_or_struct:
             self._dlog("handling typedef struct/union '{}'".format(node.name))
-            scope.add_type_struct_or_union(node.name, self, node.type.type)
+            if node.type.type.name is None:
+                scope.add_type_struct_or_union(node.name, self, node.type.type)
+            else:
+                scope.add_refd_struct_or_union(node.name, node.type.type.name, self, node.type.type)
         elif is_enum:
             enum_cls = self._handle_node(node.type, scope, ctxt, stream)
             scope.add_type_class(node.name, enum_cls)
