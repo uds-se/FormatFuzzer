@@ -94,7 +94,10 @@ def StructUnionTypeRef(curr_scope, typedef_name, refd_name, interp, node):
             refd_node = refd_type._pfp__node
 
         def merged_init(self, stream):
-            cls_._pfp__init(self, stream)
+            if six.PY3:
+                cls_._pfp__init(self, stream)
+            else:
+                cls_._pfp__init.__func__(self, stream)
             self._pfp__init_orig(stream)
 
         overrides = {}
