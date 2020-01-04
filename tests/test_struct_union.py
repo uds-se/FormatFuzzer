@@ -94,7 +94,7 @@ class TestStructUnion(utils.PfpTestCase):
                 LittleEndian();
                 ME s;
             """,
-            debug=True,
+            debug=False,
         )
         assert dom.s.magic == "\x00\x01\x02\x03"
         assert dom.s.filesize == 0x03020100
@@ -227,6 +227,30 @@ class TestStructUnion(utils.PfpTestCase):
 
                 local int bytes = 4;
                 descr_length l(bytes, 3);
+            """,
+        )
+        self.assertEqual(len(dom.l.b), 4)
+        self.assertEqual(dom.l.b[0], 1)
+        self.assertEqual(dom.l.b[1], 2)
+        self.assertEqual(dom.l.b[2], 3)
+        self.assertEqual(dom.l.b[3], 4)
+        self.assertEqual(len(dom.l.c), 3)
+        self.assertEqual(dom.l.c[0], 1)
+        self.assertEqual(dom.l.c[1], 2)
+        self.assertEqual(dom.l.c[2], 3)
+
+    def test_typedefd_struct_with_parameters(self):
+        dom = self._test_parse_build(
+            "\x01\x02\x03\x04\x01\x02\x03",
+            """
+                struct TEST_STRUCT(int arraySize, int arraySize2)
+                {
+                    uchar b[arraySize];
+                    uchar c[arraySize2];
+                };
+                local int bytes = 4;
+                typedef struct TEST_STRUCT NEW_STRUCT;
+                NEW_STRUCT l(bytes, 3);
             """,
         )
         self.assertEqual(len(dom.l.b), 4)

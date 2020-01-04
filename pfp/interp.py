@@ -52,7 +52,9 @@ def StructDeclWithParams(scope, struct_cls, struct_args):
             self._pfp__node.args, scope, self, None
         )
         param_list = params.instantiate(scope, struct_args, self._pfp__interp)
-        super(self.__class__, self)._pfp__init(stream)
+
+        if hasattr(super(self.__class__, self), "_pfp__init"):
+            super(self.__class__, self)._pfp__init(stream)
 
     new_class = type(
         struct_cls.__name__ + "_", (struct_cls,), {"_pfp__init": _pfp__init}
@@ -84,13 +86,28 @@ def StructUnionTypeRef(curr_scope, typedef_name, refd_name, interp, node):
     elif isinstance(node, AST.Union):
         cls = fields.Union
 
-    def __new__(self, *args, **kwargs):
+    def __new__(cls_, *args, **kwargs):
         refd_type = curr_scope.get_type(refd_name)
         if refd_type is None:
             refd_node = node
         else:
             refd_node = refd_type._pfp__node
-        return StructUnionDef(typedef_name, interp, refd_node)(*args, **kwargs)
+
+        def merged_init(self, stream):
+            if six.PY3:
+                cls_._pfp__init(self, stream)
+            else:
+                cls_._pfp__init.__func__(self, stream)
+            self._pfp__init_orig(stream)
+
+        overrides = {}
+        if hasattr(cls_, "_pfp__init"):
+            overrides["_pfp__init"] = merged_init
+
+        res = base_cls = StructUnionDef(
+            typedef_name, interp, refd_node, overrides=overrides,
+        )
+        return res(*args, **kwargs)
 
     new_class = type(
         typedef_name,
@@ -102,13 +119,16 @@ def StructUnionTypeRef(curr_scope, typedef_name, refd_name, interp, node):
     return new_class
 
 
-
-def StructUnionDef(typedef_name, interp, node):
+def StructUnionDef(typedef_name, interp, node, overrides=None, cls=None):
+    if overrides is None:
+        overrides = {}
     if isinstance(node, AST.Struct):
-        cls = fields.Struct
+        if cls is None:
+            cls = fields.Struct
         decls = StructDecls(node.decls, node.coord)
     elif isinstance(node, AST.Union):
-        cls = fields.Union
+        if cls is None:
+            cls = fields.Union
         decls = UnionDecls(node.decls, node.coord)
 
     # this is so that we can have all nested structs added to
@@ -117,7 +137,11 @@ def StructUnionDef(typedef_name, interp, node):
     # the new struct to not be added to its parent, and the user would
     # not be able to see how far the script got
     def __init__(self, stream=None, metadata_processor=None, do_init=True):
-        cls.__init__(self, stream, metadata_processor=metadata_processor)
+        cls.__init__(
+            self,
+            stream,
+            metadata_processor=metadata_processor,
+        )
 
         if do_init:
             self._pfp__init(stream)
@@ -125,15 +149,22 @@ def StructUnionDef(typedef_name, interp, node):
     def _pfp__init(self, stream):
         self._pfp__interp._handle_node(decls, ctxt=self, stream=stream)
 
+    cls_members = {
+        "__init__": __init__,
+        "_pfp__init": _pfp__init,
+        "_pfp__node": node,
+        "_pfp__interp": interp,
+    }
+
+    for k, v in six.iteritems(overrides or {}):
+        if k in cls_members:
+            cls_members[k + "_orig"] = cls_members[k]
+        cls_members[k] = v
+
     new_class = type(
         typedef_name,
         (cls,),
-        {
-            "__init__": __init__,
-            "_pfp__init": _pfp__init,
-            "_pfp__node": node,
-            "_pfp__interp": interp,
-        },
+        cls_members,
     )
     return new_class
 
