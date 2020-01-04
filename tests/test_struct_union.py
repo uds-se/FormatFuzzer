@@ -94,7 +94,7 @@ class TestStructUnion(utils.PfpTestCase):
                 LittleEndian();
                 ME s;
             """,
-            debug=True,
+            debug=False,
         )
         assert dom.s.magic == "\x00\x01\x02\x03"
         assert dom.s.filesize == 0x03020100
