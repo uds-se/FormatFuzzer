@@ -501,6 +501,23 @@ class TestCompatString(utils.PfpTestCase):
             stdout="-1",
         )
 
+    def test_memcmp(self):
+        dom = self._test_parse_build(
+            "",
+            r"""
+            local string a = "hellothere";
+            local string b = "helloblah";
+            Printf("%d\n", Memcmp(a, b, 1));
+            Printf("%d\n", Memcmp(a, b, 2));
+            Printf("%d\n", Memcmp(a, b, 3));
+            Printf("%d\n", Memcmp(a, b, 4));
+            Printf("%d\n", Memcmp(a, b, 5));
+            Printf("%d\n", Memcmp(a, b, 6));
+            Printf("%d\n", Memcmp(b, a, 6));
+            """,
+            stdout="0\n0\n0\n0\n0\n1\n-1\n",
+        )
+
 
 class TestCompatTools(utils.PfpTestCase):
     def setUp(self):
