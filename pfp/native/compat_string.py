@@ -137,7 +137,25 @@ def IntToBinaryStr(params, ctxt, scope, stream, coord):
 # int Memcmp( const uchar s1[], const uchar s2[], int n )
 @native(name="Memcmp", ret=pfp.fields.Int)
 def Memcmp(params, ctxt, scope, stream, coord):
-    raise NotImplementedError()
+    """
+    int Memcmp( const uchar s1[], const uchar s2[], int n )
+
+    Compares the first n bytes of s1 and s2. Returns a value less than zero if
+    s1 is less than s2, zero if they are equal, or a value greater than zero if
+    s1 is greater than s2.
+    """
+    if len(params) < 3:
+        raise errors.InvalidArguments(
+            coord, "{} args".format(len(params)), "3 arguments",
+        )
+    s1 = PYSTR(params[0])
+    s2 = PYSTR(params[1])
+    n = PYVAL(params[2])
+
+    s1_sub = s1[:n]
+    s2_sub = s2[:n]
+
+    return _cmp(s1_sub, s2_sub)
 
 
 # void Memcpy( uchar dest[], const uchar src[], int n, int destOffset=0, int srcOffset=0 )
