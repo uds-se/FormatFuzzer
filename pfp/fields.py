@@ -663,6 +663,38 @@ class Void(Field):
 
 
 @inherit_hash
+class ImplicitArrayWrapper(Field):
+    """
+    """
+
+    last_field = None
+    implicit_array = None
+
+    def __init__(self, last_field, implicit_array):
+        """Redirect all attribute accesses to the ``last_field``, except for
+        array indexing. Array indexing is forwarded on to the
+        ``implicit_array``.
+        """
+        super(Field, self).__setattr__("last_field", last_field)
+        super(Field, self).__setattr__("implicit_array", implicit_array)
+
+    def __setattr__(self, name, value):
+        """Custom setattr that forwards all sets to the last_field
+        """
+        return setattr(self.last_field, name, value)
+
+    def __getattr__(self, name):
+        """Custom getattr that forwards all gets to last_field.
+        """
+        return getattr(self.last_field, name)
+    
+    def __getitem__(self, key):
+        """Let this ImplicitArrayWrapper act like an array
+        """
+        return self.implicit_array[key]
+
+
+@inherit_hash
 class Struct(Field):
     """The struct field"""
 
@@ -670,6 +702,10 @@ class Struct(Field):
 
     _pfp__children = []
     """All children of the struct, in order added"""
+
+    _pfp__implicit_arrays = {}
+    """Mapping of all implicit arrays in this struct. All implicit arrays will
+    be resolved to a concrete array after parsing is complete"""
 
     _pfp__name_collisions = {}
     """Counters for any naming collisions"""
@@ -679,6 +715,8 @@ class Struct(Field):
     def __init__(self, stream=None, metadata_processor=None):
         # ordered list of children
         super(Struct, self).__setattr__("_pfp__children", [])
+        # initialize implicit arrays for this struct instance
+        super(Struct, self).__setattr__("_pfp__implicit_arrays", {})
         # for quick child access
         super(Struct, self).__setattr__("_pfp__children_map", {})
 
@@ -747,7 +785,25 @@ class Struct(Field):
         ):
             return self._pfp__handle_non_consecutive_duplicate(name, child)
         elif not overwrite and name in self._pfp__children_map:
-            return self._pfp__handle_implicit_array(name, child)
+            implicit_array = self._pfp__handle_implicit_array(name, child)
+
+            # see #110 (https://github.com/d0c-s4vage/pfp/issues/110)
+            # during parsing, duplicate (implicit) arrays should always
+            # reference the last parsed variable of ``name``. However, if the
+            # variable ``name`` is indexed, then the nth duplicate array item
+            # should be returned.
+            #
+            # E.g.
+            #
+            #    int x;
+            #    int x;
+            #    int x;
+            #    Printf("%d\n", x);    // prints the latest x value
+            #    Printf("%d\n", x[0]); // prints the first x value
+            #
+            self._pfp__implicit_arrays[name] = implicit_array
+            self._pfp__children_map[name] = ImplicitArrayWrapper(child, implicit_array)
+            return child
         else:
             child._pfp__parent = self
             self._pfp__children.append(child)
