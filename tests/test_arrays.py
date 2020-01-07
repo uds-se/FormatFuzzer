@@ -96,7 +96,8 @@ class TestArrays(utils.PfpTestCase):
             """,
             stdout="ABCD",
         )
-        __import__('pdb').set_trace()
+        self.assertIsInstance(dom.x, Array)
+        self.assertEqual(dom.x, b"ABCD")
 
     def test_array_length1(self):
         dom = self._test_parse_build(

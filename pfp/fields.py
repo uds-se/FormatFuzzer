@@ -728,6 +728,23 @@ class Struct(Field):
         if stream is not None:
             self._pfp__offset = stream.tell()
 
+    def _pfp__finalize(self):
+        """Finalize the results of parsing the data. Currently this involves:
+
+          * resolving implicit arrays to concrete arrays
+        """
+        to_swap = []
+        for child_name, child in six.iteritems(self._pfp__children_map):
+            if isinstance(child, Struct):
+                child._pfp__finalize()
+                continue
+            if child_name not in self._pfp__implicit_arrays:
+                continue
+            to_swap.append((child_name, child))
+
+        for child_name, child in to_swap:
+            self._pfp__children_map[child_name] = self._pfp__implicit_arrays[child_name]
+            
     def _pfp__snapshot(self, recurse=True):
         """Save off the current value of the field
         """
@@ -868,13 +885,14 @@ class Struct(Field):
         """Handle inserting implicit array elements
         """
         existing_child = self._pfp__children_map[name]
-        if isinstance(existing_child, Array):
+        existing_implicit_array = self._pfp__implicit_arrays.get(name, None)
+        if isinstance(existing_implicit_array, Array):
             # I don't think we should check this
             #
             # if existing_child.field_cls != child.__class__:
             #    raise errors.PfpError("implicit arrays must be sequential!")
-            existing_child.append(child)
-            return existing_child
+            existing_implicit_array.append(child)
+            return existing_implicit_array
         else:
             cls = (
                 child._pfp__class
