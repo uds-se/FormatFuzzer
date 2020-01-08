@@ -1983,13 +1983,13 @@ class Enum(IntBase):
             bitfield_left_right=bitfield_left_right,
         )
 
-    def _pfp__parse(self, stream, save_offset=False):
+    def _pfp__parse(self, stream, save_offset=False, set_val=True):
         """Parse the IO stream for this enum
 
         :stream: An IO stream that can be read from
         :returns: The number of bytes parsed
         """
-        res = super(Enum, self)._pfp__parse(stream, save_offset)
+        res = super(Enum, self)._pfp__parse(stream, save_offset, set_val=set_val)
 
         if self._pfp__value in self.enum_vals:
             self.enum_name = self.enum_vals[self._pfp__value]

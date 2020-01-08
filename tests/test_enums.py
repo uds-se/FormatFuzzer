@@ -221,6 +221,22 @@ class TestEnums(utils.PfpTestCase):
         self.assertEqual(dom.test2, 1)
         self.assertEqual(dom.test2.enum_name, "BLAH2")
 
+    def test_enum_compared_to_enum(self):
+        dom = self._test_parse_build(
+            "\x00\x00\x00\x01",
+            """
+                BigEndian();
+                enum <uchar> TEST_ENUM {
+                    BLAH1,
+                };
+
+                do {
+                    TEST_ENUM test = BLAH1;
+                } while (test == BLAH1);
+            """,
+        )
+        self.assertEqual(len(dom.test), 4)
+
 
 if __name__ == "__main__":
     unittest.main()

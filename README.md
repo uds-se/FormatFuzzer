@@ -2,6 +2,7 @@
 [![PyPI Statistics](https://img.shields.io/pypi/dm/pfp)](https://pypistats.org/packages/pfp)
 [![Latest Release](https://img.shields.io/pypi/v/pfp)](https://pypi.python.org/pypi/pfp/)
 [![Documentation Status](https://readthedocs.org/projects/pfp/badge/?version=latest)](https://pfp.readthedocs.io/en/latest/)
+[![Coverage Status](https://coveralls.io/repos/github/d0c-s4vage/pfp/badge.svg?branch=master)](https://coveralls.io/github/d0c-s4vage/pfp?branch=master)
 
 # pfp
 
