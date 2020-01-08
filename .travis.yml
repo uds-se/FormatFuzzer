@@ -13,8 +13,11 @@ install:
     - pip install pytest
     - pip install pytest-cov
     - pip install pytest-xdist
+    - pip install coveralls
 
-script: bin/run_tests
+script:
+  - bin/run_tests
+  - bash -c "coveralls || true"
 deploy:
   provider: pypi
   password:
