@@ -85,6 +85,20 @@ class TestArrays(utils.PfpTestCase):
         self.assertEqual(dom.chars[2], ord("C"))
         self.assertEqual(dom.chars[3], ord("D"))
 
+    def test_implicit_array_same_behavior_as_010(self):
+        dom = self._test_parse_build(
+            "ABCD",
+            """
+                while(!FEof()) {
+                    char x;
+                    Printf("%c", x);
+                }
+            """,
+            stdout="ABCD",
+        )
+        self.assertIsInstance(dom.x, Array)
+        self.assertEqual(dom.x, b"ABCD")
+
     def test_array_length1(self):
         dom = self._test_parse_build(
             "abcd",

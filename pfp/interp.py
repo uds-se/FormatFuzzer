@@ -817,6 +817,7 @@ class PfpInterp(object):
         self._dlog("parsed template into ast")
 
         res = self._run(keep_successful)
+        res._pfp__finalize()
         return res
 
     def step_over(self):
