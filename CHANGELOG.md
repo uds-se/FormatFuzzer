@@ -1,8 +1,17 @@
 # Changelog
 
+- [v0.4.6](#v046)
 - [v0.4.5](#v045)
 - [v0.4.4](#v044)
 - [v0.4.3](#v043)
+
+## v0.4.6
+
+Consecutive duplicate arrays are now fully supported
+
+| type | ticket                                               | description                                   |
+|-----:|------------------------------------------------------|-----------------------------------------------|
+|  bug | [#110](https://github.com/d0c-s4vage/pfp/issues/110) | Adds support for consecutive duplicate arrays |
 
 ## v0.4.5
 
