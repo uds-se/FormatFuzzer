@@ -106,6 +106,12 @@ find the ``tEXt`` chunk, and change the comment: ::
             chunk.data.tEXt.comment = "NEW COMMENT"
             print("Comment after: {}".format(chunk.data.tEXt.comment))
 
+Notes
+-----
+
+A few differences do exist between 010 Editor and pfp. See the
+:ref:`differences` section for specific, documented differences.
+
 
 Contents:
 
@@ -120,6 +126,7 @@ Contents:
    interpreter
    functions
    bitstream
+   differences
 
 .. automodule:: pfp
    :members:
