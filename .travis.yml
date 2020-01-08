@@ -17,7 +17,7 @@ install:
 
 script:
   - bin/run_tests
-  - bash -c "coveralls || true"
+  - bash -c "coveralls debug || true"
 deploy:
   provider: pypi
   password:
