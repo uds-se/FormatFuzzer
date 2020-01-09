@@ -2070,6 +2070,7 @@ class PfpInterp(object):
             if node.op not in switch:
                 raise errors.UnsupportedAssignmentOperator(node.coord, node.op)
             switch[node.op](field, value)
+        return field
 
     def _handle_func_def(self, node, scope, ctxt, stream):
         """Handle FuncDef nodes

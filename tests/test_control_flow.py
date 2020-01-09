@@ -322,6 +322,21 @@ class TestControlFlow(utils.PfpTestCase):
             """,
         )
 
+    def test_chained_assignment(self):
+        dom = self._test_parse_build(
+            "",
+            """
+                local int b = 10;
+                local int c;
+                local int d;
+
+                c = d = b;
+            """,
+        )
+        self.assertEqual(dom.b is dom.c, False)
+        self.assertEqual(dom.b is dom.d, False)
+        self.assertEqual(dom.c is dom.d, False)
+
 
 if __name__ == "__main__":
     unittest.main()
