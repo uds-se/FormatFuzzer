@@ -317,7 +317,22 @@ class TestBasic(utils.PfpTestCase):
                 local int k = j || i;
                 Printf("%d", k);
             """,
-            stdout="0",
+            stdout="1",
+        )
+
+    def test_logical_or_operator2(self):
+        dom = self._test_parse_build(
+            "",
+            """
+                Printf(
+                    "%d,%d,%d,%d",
+                    0 || 0,
+                    0 || 1,
+                    1 || 0,
+                    1 || 1
+                );
+            """,
+            stdout="0,1,1,1",
         )
 
     def test_logical_and_operator(self):
@@ -329,7 +344,22 @@ class TestBasic(utils.PfpTestCase):
                 local int k = j && i;
                 Printf("%d", k);
             """,
-            stdout="1",
+            stdout="0",
+        )
+
+    def test_logical_and_operator2(self):
+        dom = self._test_parse_build(
+            "",
+            """
+                Printf(
+                    "%d,%d,%d,%d",
+                    0 && 0,
+                    0 && 1,
+                    1 && 0,
+                    1 && 1
+                );
+            """,
+            stdout="0,0,0,1",
         )
 
     def test_logical_shl_operator(self):
