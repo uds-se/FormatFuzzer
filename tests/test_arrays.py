@@ -287,7 +287,6 @@ class TestArrays(utils.PfpTestCase):
                     uint array[1];
                 } TestStruct;
             """,
-            verify=False,
         )
         struct = dom.TestStruct()
         struct.array = [0xFFFF]

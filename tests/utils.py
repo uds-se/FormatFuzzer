@@ -59,7 +59,6 @@ class PfpTestCase(unittest.TestCase):
         stdout=None,
         debug=False,
         predefines=False,
-        verify=True,
         _stream=True,
         printf=True,
     ):

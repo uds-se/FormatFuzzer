@@ -121,7 +121,6 @@ class TestStrings(utils.PfpTestCase):
                              Printf("%s", temp_expected);
                      """,
             stdout="0102030405",
-            verify=False,
         )
 
     def test_add_strings_simple(self):
@@ -136,7 +135,6 @@ class TestStrings(utils.PfpTestCase):
                                  Printf("%s", test);
                          """,
             stdout="testtesttesttesttest",
-            verify=False,
         )
 
 

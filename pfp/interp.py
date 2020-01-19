@@ -398,7 +398,7 @@ class Scope(object):
 
         """
         if new_scope is None:
-            new_scope = {"types": {}, "vars": {}}
+            new_scope = {"types": {}, "vars": {}, "meta": {}}
         self._curr_scope = new_scope
         self._dlog("pushing new scope, scope level = {}".format(self.level()))
         self._scope_stack.append(self._curr_scope)
@@ -428,6 +428,34 @@ class Scope(object):
         self._dlog("popping scope, scope level = {}".format(self.level()))
         self._curr_scope = self._scope_stack[-1]
         return res
+    
+    def clear_meta(self):
+        """Clear metadata about the current statement
+        """
+        self._curr_scope["meta"] = {}
+    
+    def push_meta(self, meta_name, meta_value):
+        """Push metadata about the current statement onto the metadata stack
+        for the current statement. Mostly used for tracking integer promotion
+        and casting types
+        """
+        self._dlog("adding metadata '{}'".format(meta_name))
+        self._curr_scope["meta"].setdefault(meta_name, []).append(meta_value)
+
+    def get_meta(self, meta_name):
+        """Get the current meta value named ``meta_name``
+        """
+        self._dlog("getting metadata '{}'".format(meta_name))
+        return self._curr_scope["meta"].get(meta_name, [None])[-1]
+
+    def pop_meta(self, name):
+        """Pop metadata about the current statement from the metadata stack
+        for the current statement.
+
+        :name: The name of the metadata
+        """
+        self._dlog("getting meta '{}'".format(name))
+        return self._curr_scope["meta"][name].pop()
 
     def add_var(self, field_name, field, root=False):
         """Add a var to the current scope (vars are fields that
@@ -455,7 +483,6 @@ class Scope(object):
         :name: The name of the id
         :recurse: Whether parent scopes should also be searched (defaults to True)
         :returns: TODO
-
         """
         self._dlog("getting var '{}'".format(name))
         return self._search("vars", name, recurse)
@@ -853,7 +880,7 @@ class PfpInterp(object):
             res = None
             for child in ast.children():
                 res = self._handle_node(
-                    child, self._scope, self._ctxt, self._stream
+                    child, self._scope, self._ctxt, self._stream,
                 )
             return res
         except errors.InterpReturn as e:
@@ -1139,6 +1166,7 @@ class PfpInterp(object):
                     and not  is_forward_declared_struct(child):
                 continue
             self._handle_node(child, scope, ctxt, stream)
+            scope.clear_meta()
 
         for child in children:
             if type(child) is tuple:
@@ -1176,9 +1204,13 @@ class PfpInterp(object):
         """
         self._dlog("handling cast")
         to_type = self._handle_node(node.to_type, scope, ctxt, stream)
+
+        scope.push_meta("dest_type", to_type)
         val_to_cast = self._handle_node(node.expr, scope, ctxt, stream)
+        scope.pop_meta("dest_type")
 
         res = to_type()
+
         res._pfp__set_value(val_to_cast)
         return res
 
@@ -1584,6 +1616,7 @@ class PfpInterp(object):
             max_pos = 0
             for decl in node.decls:
                 self._handle_node(decl, scope, ctxt, stream)
+                scope.clear_meta()
 
         finally:
             # the union will have reset the stream
@@ -1666,6 +1699,7 @@ class PfpInterp(object):
             for decl in node.decls:
                 # new context! (struct)
                 self._handle_node(decl, scope, ctxt, stream)
+                scope.clear_meta()
 
             ctxt._pfp__process_fields_metadata()
 
@@ -1821,18 +1855,29 @@ class PfpInterp(object):
             "%": lambda x, y: x % y,
             ">": lambda x, y: x > y,
             "<": lambda x, y: x < y,
-            "||": lambda x, y: x or y,
+            "||": lambda x, y: 0 if x or y else 1,
             ">=": lambda x, y: x >= y,
             "<=": lambda x, y: x <= y,
             "==": lambda x, y: x == y,
             "!=": lambda x, y: x != y,
-            "&&": lambda x, y: x and y,
+            "&&": lambda x, y: 0 if x and y else 1,
             ">>": lambda x, y: x >> y,
             "<<": lambda x, y: x << y,
         }
 
+        dest_type = scope.get_meta("dest_type")
+
         left_val = self._handle_node(node.left, scope, ctxt, stream)
+        if dest_type is not None and not isinstance(left_val, dest_type):
+            new_left_val = dest_type()
+            new_left_val._pfp__set_value(left_val)
+            left_val = new_left_val
+
         right_val = self._handle_node(node.right, scope, ctxt, stream)
+        if dest_type is not None and not isinstance(right_val, dest_type):
+            new_right_val = dest_type()
+            new_right_val._pfp__set_value(right_val)
+            right_val = new_right_val
 
         if node.op not in switch:
             raise errors.UnsupportedBinaryOperator(node.coord, node.op)
@@ -2057,10 +2102,20 @@ class PfpInterp(object):
             "=": assign_op,
         }
 
+        scope.clear_meta()
+
         self._dlog("handling assignment")
         field = self._handle_node(node.lvalue, scope, ctxt, stream)
         self._dlog("field = {}".format(field))
-        value = self._handle_node(node.rvalue, scope, ctxt, stream)
+
+        scope.push_meta("dest_type", field._pfp__get_class())
+
+        value = self._handle_node(
+            node.rvalue,
+            scope,
+            ctxt,
+            stream,
+        )
 
         if node.op is None:
             self._dlog("value = {}".format(value))
@@ -2185,6 +2240,7 @@ class PfpInterp(object):
 
         try:
             for child in node.children():
+                scope.clear_meta()
                 self._handle_node(child, scope, ctxt, stream)
 
         # in case a return occurs, be sure to pop the scope
@@ -2398,7 +2454,7 @@ class PfpInterp(object):
                 except errors.InterpContinue as e:
                     pass
             if node.cond is not None and not self._handle_node(
-                node.cond, scope, ctxt, stream
+                node.cond, scope, ctxt, stream,
             ):
                 break
 
@@ -2594,7 +2650,6 @@ class PfpInterp(object):
         :returns: TODO
 
         """
-
         res = self._handle_node(node, scope, ctxt, stream)
 
         if isinstance(res, fields.Field):

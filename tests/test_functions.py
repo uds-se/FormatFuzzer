@@ -155,7 +155,6 @@ class TestFunctions(utils.PfpTestCase):
                     Printf("false");
                 }
             """,
-            verify=False,
             stdout="true",
         )
 
