@@ -262,6 +262,12 @@ class Field(object):
         if stream is not None:
             self._pfp__parse(stream, save_offset=True)
 
+    def _pfp__get_class(self):
+        """Return the class for this field. This would be used for things like
+        integer promotion and type casting.
+        """
+        return self.__class__
+
     # see #51 - fields should have a method of returning the full path of its name
     def _pfp__path(self):
         """Return the full pathname of this field. E.g. given
@@ -677,6 +683,12 @@ class ImplicitArrayWrapper(Field):
         """
         super(Field, self).__setattr__("last_field", last_field)
         super(Field, self).__setattr__("implicit_array", implicit_array)
+
+    def _pfp__get_class(self):
+        """Return the last field class type and not the array type. Overrides
+        :any:`Field._pfp__get_class`.
+        """
+        return self.last_field._pfp__get_class()
 
     def __setattr__(self, name, value):
         """Custom setattr that forwards all sets to the last_field

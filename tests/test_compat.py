@@ -137,7 +137,6 @@ class TestCompatIO(utils.PfpTestCase):
                 Printf("%d|", blah);
                 Printf("%d", FTell());
             """,
-            verify=False,
             stdout="32769|0",
         )
 
@@ -153,7 +152,6 @@ class TestCompatIO(utils.PfpTestCase):
                 uchar b;
                 Printf("%d%d", a, b);
             """,
-            verify=False,
             stdout="ab9798",
         )
 
@@ -204,7 +202,6 @@ class TestCompatIO(utils.PfpTestCase):
                 Printf("%d", FSeek(FTell() + 4));
                 Printf("%d", FSeek(FTell() + 2));
             """,
-            verify=False,
             stdout="0-1",
         )
 
@@ -226,7 +223,6 @@ class TestCompatIO(utils.PfpTestCase):
                 local int rv6 = FSeek(0);
                 local int pos7 = FTell();
             """,
-            verify=False,
         )
         self.assertEqual(dom.pos1, 0)
         self.assertEqual(dom.rv1, 0)
@@ -293,7 +289,6 @@ class TestCompatIO(utils.PfpTestCase):
                 local int fskip_rv2 = FSkip(3);
                 local int pos2 = FTell();
             """,
-            verify=False,
         )
         self.assertEqual(dom.fskip_rv1, 0)
         self.assertEqual(dom.pos1, 1)
@@ -542,7 +537,6 @@ class TestCompatTools(utils.PfpTestCase):
                 }
             """,
             stdout="count:3start-size:5-5start-size:17-5start-size:28-5",
-            verify=False,
             predefines=True,
         )
 
@@ -562,7 +556,6 @@ class TestCompatTools(utils.PfpTestCase):
                 }
             """,
             stdout="count:3start-size:5-5start-size:17-5start-size:28-5",
-            verify=False,
             predefines=True,
         )
 
@@ -582,7 +575,6 @@ class TestCompatTools(utils.PfpTestCase):
                 }
             """,
             stdout="count:3start-size:5-5start-size:17-5start-size:28-5",
-            verify=False,
             predefines=True,
         )
 
@@ -602,7 +594,6 @@ class TestCompatTools(utils.PfpTestCase):
                 }
             """,
             stdout="count:3start-size:5-5start-size:22-5start-size:33-5",
-            verify=False,
             predefines=True,
         )
 
@@ -627,7 +618,6 @@ class TestCompatTools(utils.PfpTestCase):
                 }
             """,
             stdout="count:3start-size:5-5start-size:22-5start-size:33-5",
-            verify=False,
             predefines=True,
         )
 
@@ -652,7 +642,6 @@ class TestCompatTools(utils.PfpTestCase):
                 }
             """,
             stdout="count:3start-size:5-5start-size:16-5start-size:27-5",
-            verify=False,
             predefines=True,
         )
 
@@ -681,7 +670,6 @@ class TestCompatTools(utils.PfpTestCase):
                 }
             """,
             stdout="count:2start-size:5-5start-size:16-5",
-            verify=False,
             predefines=True,
         )
 
@@ -696,7 +684,6 @@ class TestCompatTools(utils.PfpTestCase):
                 index = FindNext();
                 Printf("%d", index);
             """,
-            verify=False,
             stdout="5,16,27",
         )
 

@@ -212,6 +212,180 @@ class TestBasic(utils.PfpTestCase):
             """,
         )
 
+    def test_add_operator(self):
+        dom = self._test_parse_build(
+            "",
+            """
+                local int i = 2;
+                local int j = 3;
+                local int k = i + j;
+                Printf("%d", k);
+            """,
+            stdout="5",
+        )
+
+    def test_minus_operator(self):
+        dom = self._test_parse_build(
+            "",
+            """
+                local int i = 2;
+                local int j = 3;
+                local int k = i - j;
+                Printf("%d", k);
+            """,
+            stdout="-1",
+        )
+
+    def test_mul_operator(self):
+        dom = self._test_parse_build(
+            "",
+            """
+                local int i = 2;
+                local int j = 3;
+                local int k = i * j;
+                Printf("%d", k);
+            """,
+            stdout="6",
+        )
+
+    def test_div_operator(self):
+        dom = self._test_parse_build(
+            "",
+            """
+                local int i = 2;
+                local int j = 6;
+                local int k = j / i;
+                Printf("%d", k);
+            """,
+            stdout="3",
+        )
+
+    def test_mod_operator(self):
+        dom = self._test_parse_build(
+            "",
+            """
+                local int i = 5;
+                local int j = 7;
+                local int k = j % i;
+                Printf("%d", k);
+            """,
+            stdout="2",
+        )
+
+    def test_xor_operator(self):
+        dom = self._test_parse_build(
+            "",
+            """
+                local int i = 6;
+                local int j = 3;
+                local int k = j ^ i;
+                Printf("%d", k);
+            """,
+            stdout="5",
+        )
+
+    def test_and_operator(self):
+        dom = self._test_parse_build(
+            "",
+            """
+                local int i = 56; // 0b111000
+                local int j = 25; // 0b011001
+                local int k = j & i;
+                Printf("%d", k);
+            """,
+            stdout=str(int("011000", 2)),
+        )
+
+    def test_or_operator(self):
+        dom = self._test_parse_build(
+            "",
+            """
+                local int i = 56; // 0b111000
+                local int j = 25; // 0b011001
+                local int k = j | i;
+                Printf("%d", k);
+            """,
+            stdout=str(int("111001", 2)),
+        )
+
+    def test_logical_or_operator(self):
+        dom = self._test_parse_build(
+            "",
+            """
+                local int i = 0;
+                local int j = 25;
+                local int k = j || i;
+                Printf("%d", k);
+            """,
+            stdout="1",
+        )
+
+    def test_logical_or_operator2(self):
+        dom = self._test_parse_build(
+            "",
+            """
+                Printf(
+                    "%d,%d,%d,%d",
+                    0 || 0,
+                    0 || 1,
+                    1 || 0,
+                    1 || 1
+                );
+            """,
+            stdout="0,1,1,1",
+        )
+
+    def test_logical_and_operator(self):
+        dom = self._test_parse_build(
+            "",
+            """
+                local int i = 0;
+                local int j = 25;
+                local int k = j && i;
+                Printf("%d", k);
+            """,
+            stdout="0",
+        )
+
+    def test_logical_and_operator2(self):
+        dom = self._test_parse_build(
+            "",
+            """
+                Printf(
+                    "%d,%d,%d,%d",
+                    0 && 0,
+                    0 && 1,
+                    1 && 0,
+                    1 && 1
+                );
+            """,
+            stdout="0,0,0,1",
+        )
+
+    def test_logical_shl_operator(self):
+        dom = self._test_parse_build(
+            "",
+            """
+                local int i = 3;
+                local int j = 4;
+                local int k = i << j;
+                Printf("%d", k);
+            """,
+            stdout="48",
+        )
+
+    def test_logical_shr_operator(self):
+        dom = self._test_parse_build(
+            "",
+            """
+                local int i = 0x17000;
+                local int j = 4;
+                local int k = i >> j;
+                Printf("%d", k);
+            """,
+            stdout="5888",
+        )
+
     def test_local_accessible_via_this(self):
         dom = self._test_parse_build(
             "\x01\x02\x03\x04",
@@ -222,7 +396,6 @@ class TestBasic(utils.PfpTestCase):
                     Printf("%d", test);
                 } blah;
             """,
-            verify=False,
             stdout="{a},{a}".format(a=str(0x04030201)),
         )
 
@@ -240,7 +413,6 @@ class TestBasic(utils.PfpTestCase):
                     Printf("%d", test);
                 } blah;
             """,
-            verify=False,
             stdout="{a},{a}".format(a=str(0x04030201)),
         )
 
