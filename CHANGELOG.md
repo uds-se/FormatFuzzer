@@ -1,9 +1,21 @@
 # Changelog
 
+- [v0.4.7](#v047)
 - [v0.4.6](#v046)
 - [v0.4.5](#v045)
 - [v0.4.4](#v044)
 - [v0.4.3](#v043)
+
+## v0.4.7
+
+Pretty big fixes, should make pfp a *lot* more compatible with existing
+010 Editor templates (DEX.bt works now for parsing!)
+
+| type | ticket                                               | description                                      |
+|------|------------------------------------------------------|--------------------------------------------------|
+| bug  | [#120](https://github.com/d0c-s4vage/pfp/issues/120) | Fixes integer promotion problems, part deux      |
+| bug  | [#115](https://github.com/d0c-s4vage/pfp/issues/115) | Fixes problem with chained assignments           |
+| bug  | [#113](https://github.com/d0c-s4vage/pfp/issues/113) | Error with `_pfp__parse` and `set_val` parameter |
 
 ## v0.4.6
 
