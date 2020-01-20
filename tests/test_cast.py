@@ -46,19 +46,6 @@ class TestArrays(utils.PfpTestCase):
             stdout="10,896",
         )
 
-    def test_nested_casts(self):
-        dom = self._test_parse_build(
-            "",
-            """
-                local ubyte a_byte = 0x99;
-                local ushort a_short = 0x88ff;
-                local uint a_int = 0x1234ffff;
-                local int final = (uint)(a_int + a_short + (ushort)(a_byte << 4));
-                Printf("%u", final);
-            """,
-            stdout="305498510", # taken directly from 010 editor
-        )
-
 
 if __name__ == "__main__":
     unittest.main()
