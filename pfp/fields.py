@@ -832,7 +832,7 @@ class Struct(Field):
             #
             self._pfp__implicit_arrays[name] = implicit_array
             self._pfp__children_map[name] = ImplicitArrayWrapper(child, implicit_array)
-            return child
+            return implicit_array
         else:
             child._pfp__parent = self
             self._pfp__children.append(child)
