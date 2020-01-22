@@ -443,6 +443,26 @@ class TestStructUnion(utils.PfpTestCase):
             stdout="3",
         )
 
+    def test_struct_iter(self):
+        """Test struct children iteration.
+        """
+        dom = self._test_parse_build(
+            "ABC",
+            """
+                typedef struct {
+                    char first;
+                    char second;
+                    char third;
+                } three_bytes;
+
+                three_bytes bytes;
+            """,
+        )
+        chars = [x for x in dom.bytes]
+        self.assertEquals(chars[0], 0x41)
+        self.assertEquals(chars[1], 0x42)
+        self.assertEquals(chars[2], 0x43)
+
 
 if __name__ == "__main__":
     unittest.main()
