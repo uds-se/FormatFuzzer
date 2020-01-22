@@ -1029,6 +1029,11 @@ class Struct(Field):
             )
         res.append("{}}}".format("    " * level))
         return "\n".join(res)
+    
+    def __iter__(self):
+        """Iterate over this struct's children
+        """
+        return self._pfp__children.__iter__()
 
 
 @inherit_hash
@@ -2323,6 +2328,11 @@ class Array(Field):
             return int(len(self.raw_data) / self.field_cls.width)
         else:
             return len(self.items)
+
+    def __iter__(self):
+        """Iterate over all items in this array
+        """
+        return self.items.__iter__()
 
 
 # http://www.sweetscape.com/010editor/manual/ArraysStrings.htm

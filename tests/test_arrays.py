@@ -292,6 +292,32 @@ class TestArrays(utils.PfpTestCase):
         struct.array = [0xFFFF]
         self.assertEqual(struct.array[0], 0xFFFF)
 
+    def test_array_iter(self):
+        """Test array item iteration.
+        """
+        dom = self._test_parse_build(
+            "ABCDEFGHI",
+            """
+                typedef struct {
+                    char first;
+                    char second;
+                    char third;
+                } three_bytes;
+
+                three_bytes three_three_bytes[3];
+            """,
+        )
+        items = [x for x in dom.three_three_bytes]
+        self.assertEqual(items[0].first, 0x41)
+        self.assertEqual(items[0].second, 0x42)
+        self.assertEqual(items[0].third, 0x43)
+        self.assertEqual(items[1].first, 0x44)
+        self.assertEqual(items[1].second, 0x45)
+        self.assertEqual(items[1].third, 0x46)
+        self.assertEqual(items[2].first, 0x47)
+        self.assertEqual(items[2].second, 0x48)
+        self.assertEqual(items[2].third, 0x49)
+
 
 if __name__ == "__main__":
     unittest.main()
