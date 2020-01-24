@@ -318,6 +318,22 @@ class TestArrays(utils.PfpTestCase):
         self.assertEqual(items[2].second, 0x48)
         self.assertEqual(items[2].third, 0x49)
 
+    def test_array_with_root_scope(self):
+        dom = self._test_parse_build(
+            "\x00\x01\x02\x03",
+            """
+                typedef struct {
+                    char a_byte;
+                    Printf("%02x|", item[0].a_byte);
+                } simple_struct;
+
+                while (!FEof()) {
+                    simple_struct item;
+                }
+            """,
+            stdout="00|00|00|00|",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
