@@ -324,7 +324,7 @@ class TestArrays(utils.PfpTestCase):
             """
                 typedef struct {
                     char a_byte;
-                    Printf("%02x|", __root.item[0].a_byte);
+                    Printf("%02x|", item[0].a_byte);
                 } simple_struct;
 
                 while (!FEof()) {
@@ -333,7 +333,6 @@ class TestArrays(utils.PfpTestCase):
             """,
             stdout="00|00|00|00|",
         )
-
 
 
 if __name__ == "__main__":

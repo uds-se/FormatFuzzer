@@ -755,7 +755,9 @@ class Struct(Field):
             to_swap.append((child_name, child))
 
         for child_name, child in to_swap:
-            self._pfp__children_map[child_name] = self._pfp__implicit_arrays[child_name]
+            implicit_array = self._pfp__implicit_arrays[child_name]
+            self._pfp__children_map[child_name] = implicit_array
+            self._pfp__scope.add_var(child_name, implicit_array)
             
     def _pfp__snapshot(self, recurse=True):
         """Save off the current value of the field
@@ -831,8 +833,8 @@ class Struct(Field):
             #    Printf("%d\n", x[0]); // prints the first x value
             #
             self._pfp__implicit_arrays[name] = implicit_array
-            self._pfp__children_map[name] = ImplicitArrayWrapper(child, implicit_array)
-            return implicit_array
+            wrapper = self._pfp__children_map[name] = ImplicitArrayWrapper(child, implicit_array)
+            return wrapper
         else:
             child._pfp__parent = self
             self._pfp__children.append(child)
