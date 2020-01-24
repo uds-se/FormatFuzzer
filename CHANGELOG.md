@@ -1,10 +1,20 @@
 # Changelog
 
+- [v0.4.8](#v048)
 - [v0.4.7](#v047)
 - [v0.4.6](#v046)
 - [v0.4.5](#v045)
 - [v0.4.4](#v044)
 - [v0.4.3](#v043)
+
+## v0.4.8
+
+One fix and one feature suggestion from @bannsec about iterate child elements
+
+| type    | ticket                                               | description                                     |
+|---------|------------------------------------------------------|-------------------------------------------------|
+| bug     | [#125](https://github.com/d0c-s4vage/pfp/issues/125) | Fixes implicit arrays invalid behavior          |
+| feature | [#123](https://github.com/d0c-s4vage/pfp/issues/123) | Adds `__iter__` for Structs, Unions, and Arrays |
 
 ## v0.4.7
 
