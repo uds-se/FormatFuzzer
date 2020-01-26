@@ -1,11 +1,21 @@
 # Changelog
 
+- [v0.4.9](#v049)
 - [v0.4.8](#v048)
 - [v0.4.7](#v047)
 - [v0.4.6](#v046)
 - [v0.4.5](#v045)
 - [v0.4.4](#v044)
 - [v0.4.3](#v043)
+
+## v0.4.9
+
+Added `--show-offsets` CLI argument, fixed 
+
+| type    | ticket                                               | description                                   |
+|---------|------------------------------------------------------|-----------------------------------------------|
+| feature | [#129](https://github.com/d0c-s4vage/pfp/issues/129) | Show offsets via CLI with parsed fields       |
+| bug     | [#127](https://github.com/d0c-s4vage/pfp/issues/127) | Made short circuiting with logical ORs lazier |
 
 ## v0.4.8
 
