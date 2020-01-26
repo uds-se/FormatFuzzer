@@ -23,6 +23,13 @@ def parse_args(argv):
     )
 
     parser.add_argument(
+        "--show-offsets",
+        action="store_true",
+        default=False,
+        help="Show offsets in the parsed data of parsed fields",
+    )
+
+    parser.add_argument(
         "-k", "--keep",
         default=False,
         action="store_true",
@@ -54,7 +61,7 @@ def main(argv=None):
         data=args.input,
         keep_successful=args.keep,
     )
-    print(dom._pfp__show())
+    print(dom._pfp__show(include_offset=args.show_offsets))
 
 
 if __name__ == "__main__":

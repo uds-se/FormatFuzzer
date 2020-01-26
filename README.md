@@ -22,8 +22,34 @@ Install pfp with
 
 ## Tl;DR
 
-You don't feel like going to read the docs? This should get you
-started parsing something using 010 templates:
+### CLI
+
+```bash
+pfp -t path/to/template input_file
+```
+
+All available options for the pfp CLI:
+
+```
+usage: pfp [-h] -t TEMPLATE [--show-offsets] [-k] input
+
+Run pfp on input data using a specified 010 Editor template for parsing
+
+positional arguments:
+  input                 The input data stream or file to parse. Use '-' for
+                        piped data
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -t TEMPLATE, --template TEMPLATE
+                        The template to parse with
+  --show-offsets        Show offsets in the parsed data of parsed fields
+  -k, --keep            Keep successfully parsed data on error
+```
+
+### Python Library
+
+This should get you started parsing something using 010 templates:
 
 ```python
 import pfp
