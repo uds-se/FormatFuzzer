@@ -34,7 +34,7 @@ Pfp comes with a console script that will print parsed data:
 .. code-block:: text
 
     $> pfp --help
-    usage: pfp [-h] -t TEMPLATE [-k] input
+    usage: pfp [-h] -t TEMPLATE [--show-offsets] [-k] input
 
     Run pfp on input data using a specified 010 Editor template for parsing
 
@@ -46,6 +46,7 @@ Pfp comes with a console script that will print parsed data:
       -h, --help            show this help message and exit
       -t TEMPLATE, --template TEMPLATE
                             The template to parse with
+      --show-offsets        Show offsets in the parsed data of parsed fields
       -k, --keep            Keep successfully parsed data on error
 
 Example usages:
