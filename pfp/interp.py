@@ -1283,6 +1283,8 @@ class PfpInterp(object):
                 #     char a: 8, b:8;
                 #    char c: 8, d:8;
                 if (
+                    isinstance(prev, fields.NumberBase)
+                    and
                     (
                         (
                             self._padded_bitfield
@@ -1873,16 +1875,20 @@ class PfpInterp(object):
             new_left_val._pfp__set_value(left_val)
             left_val = new_left_val
 
-        right_val = self._handle_node(node.right, scope, ctxt, stream)
-        if dest_type is not None and not isinstance(right_val, dest_type):
-            new_right_val = dest_type()
-            new_right_val._pfp__set_value(right_val)
-            right_val = new_right_val
+        # short circuit power!
+        if node.op == "||" and left_val:
+            res = 1
+        else:
+            right_val = self._handle_node(node.right, scope, ctxt, stream)
+            if dest_type is not None and not isinstance(right_val, dest_type):
+                new_right_val = dest_type()
+                new_right_val._pfp__set_value(right_val)
+                right_val = new_right_val
 
-        if node.op not in switch:
-            raise errors.UnsupportedBinaryOperator(node.coord, node.op)
+            if node.op not in switch:
+                raise errors.UnsupportedBinaryOperator(node.coord, node.op)
 
-        res = switch[node.op](left_val, right_val)
+            res = switch[node.op](left_val, right_val)
 
         if type(res) is bool:
             new_res = fields.Int()

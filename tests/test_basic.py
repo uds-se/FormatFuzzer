@@ -335,6 +335,20 @@ class TestBasic(utils.PfpTestCase):
             stdout="0,1,1,1",
         )
 
+    def test_logical_or_operator_lazy_resolve(self):
+        """Test that logic or operations are lazily resolved
+        """
+        dom = self._test_parse_build(
+            "",
+            """
+                local int a = 1;
+                if (a || DOES_NOT_EXIST) {
+                    Printf("Short circuit power!");
+                }
+            """,
+            stdout="Short circuit power!",
+        )
+
     def test_logical_and_operator(self):
         dom = self._test_parse_build(
             "",
