@@ -4,6 +4,8 @@
 [![Documentation Status](https://readthedocs.org/projects/pfp/badge/?version=latest)](https://pfp.readthedocs.io/en/latest/)
 [![Coverage Status](https://coveralls.io/repos/github/d0c-s4vage/pfp/badge.svg?branch=master)](https://coveralls.io/github/d0c-s4vage/pfp?branch=master)
 
+[![Twitter Follow](https://img.shields.io/twitter/follow/d0c_s4vage?style=plastic)](https://twitter.com/d0c_s4vage)
+
 # pfp
 
 `pfp` is a python-based interpreter for 010 template scripts.
