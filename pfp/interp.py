@@ -746,6 +746,7 @@ class PfpInterp(object):
         self._bitfield_direction = self.BITFIELD_DIR_DEFAULT
         # whether or not debugging is allowed (ie Int3())
         self._int3 = int3
+        self._ast_frozen = False
 
         self._ctxt = None
         self._scope = None
@@ -814,10 +815,20 @@ class PfpInterp(object):
     # PUBLIC
     # --------------------
 
+    def load_template(self, template):
+        """Load a template and all required predefines into this interpreter.
+        Future calls to ``parse`` will not require the template to be parsed.
+        """
+        self._template = template
+        self._template_lines = self._template.split("\n")
+        self._ast = self._parse_string(template, predefines=True)
+        self._dlog("parsed template into ast")
+        self._ast_frozen = True
+
     def parse(
         self,
         stream,
-        template,
+        template=None,
         predefines=True,
         orig_filename=None,
         keep_successful=False,
@@ -835,13 +846,21 @@ class PfpInterp(object):
         """
         self._dlog("parsing")
 
+        if not isinstance(stream, bitwrap.BitwrappedStream):
+            stream = bitwrap.BitwrappedStream(stream)
+
+        if template is None and not self._ast_frozen:
+            raise errors.InterpError("A template must be provided")
+
         self._printf = printf
         self._orig_filename = orig_filename
         self._stream = stream
-        self._template = template
-        self._template_lines = self._template.split("\n")
-        self._ast = self._parse_string(template, predefines)
-        self._dlog("parsed template into ast")
+
+        if not self._ast_frozen:
+            self._template = template
+            self._template_lines = self._template.split("\n")
+            self._ast = self._parse_string(template, predefines)
+            self._dlog("parsed template into ast")
 
         res = self._run(keep_successful)
         res._pfp__finalize()

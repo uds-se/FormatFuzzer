@@ -96,3 +96,32 @@ def parse(
         data.close()
 
     return dom
+
+
+def create_interp(template_file=None, template=None):
+    """Create an Interp instance with the template preloaded
+
+    :template: template contents (str)
+    :template_file: template file path
+    :returns: Interp
+    """
+    if template is None and template_file is None:
+        raise Exception("No template specified!")
+
+    if template is not None and template_file is not None:
+        raise Exception("Only one template may be specified!")
+
+    orig_filename = "string"
+    if template_file is not None:
+        orig_filename = template_file
+        try:
+            with open(os.path.expanduser(template_file), "r") as f:
+                template = f.read()
+        except Exception as e:
+            raise Exception(
+                "Could not open template file '{}'".format(template_file)
+            )
+
+    interp = pfp.interp.PfpInterp(parser=PARSER)
+    interp.load_template(template)
+    return interp

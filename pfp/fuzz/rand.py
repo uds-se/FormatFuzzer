@@ -2,6 +2,7 @@
 # encoding: utf-8
 
 import random as r
+import six
 
 RANDOM = r.Random()
 _randint = RANDOM.randint
@@ -34,4 +35,4 @@ def maybe(prob=0.5):
 
 
 def data(length, charset):
-    return "".join(_choice(charset) for x in xrange(length))
+    return b"".join(_choice(charset) for x in six.moves.range(length))

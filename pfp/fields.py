@@ -638,7 +638,8 @@ class Field(object):
     # Also note - this is not inheritable in python3 and MUST be explicitly
     # set: https://stackoverflow.com/a/1608907
     def __hash__(self):
-        return self._pfp__value.__hash__()
+        #return self._pfp__value.__hash__()
+        return self._pfp__build().__hash__()
 
     def __repr__(self):
         return "{}({!r})".format(self.__class__.__name__, self._pfp__value)
@@ -1082,7 +1083,10 @@ class Union(Struct):
             self._pfp__union_update_other_children = False
 
             new_data = child._pfp__build()
-            new_stream = bitwrap.BitwrappedStream(six.BytesIO(new_data))
+            try:
+                new_stream = bitwrap.BitwrappedStream(six.BytesIO(new_data))
+            except Exception as e:
+                __import__('pdb').set_trace()
             for other_child in self._pfp__children:
                 if other_child is child:
                     continue
@@ -2127,6 +2131,7 @@ class Array(Field):
             res = self._array_to_str()
             return utils.binary(res) == utils.binary(PYSTR(other))
         else:
+            __import__('pdb').set_trace()
             raise Exception("TODO")
 
     def __ne__(self, other):

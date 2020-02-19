@@ -11,6 +11,7 @@ import six
 
 import pfp.fuzz as fuzz
 import pfp.fields as fields
+import pfp.utils as utils
 
 
 class BasicStrat(fuzz.StratGroup):
@@ -85,7 +86,7 @@ class BasicStrat(fuzz.StratGroup):
         def prob(self, field):
             # treat it the same as ints, with the addition of the actual (valid)
             # enum values
-            res = super(Enum, self).prob(field)
+            res = super(BasicStrat.Enum, self).prob(field)
 
             # add in the new enum values
             prob_percent = 1.0 / float(len(res) + 1)
@@ -103,7 +104,7 @@ class BasicStrat(fuzz.StratGroup):
                 fuzz.rand.randint(0, 0x100) * field.field_cls.width
             )
             return fuzz.rand.data(
-                rand_data_size, [chr(x) for x in six.moves.range(0x100)]
+                rand_data_size, [utils.binary(chr(x)) for x in six.moves.range(0x100)]
             )
 
     class String(fuzz.FieldStrat):
@@ -112,10 +113,10 @@ class BasicStrat(fuzz.StratGroup):
         def next_val(self, field):
             rand_data_size = fuzz.rand.randint(0, 0x100)
             res = fuzz.rand.data(
-                rand_data_size, [chr(x) for x in six.moves.range(0x100)]
+                rand_data_size, [utils.binary(chr(x)) for x in six.moves.range(0x100)]
             )
 
             if fuzz.rand.maybe():
-                res += "\x00"
+                res += utils.binary("\x00")
 
             return res
