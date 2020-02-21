@@ -174,6 +174,7 @@ def EnumDef(typedef_name, base_cls, enum_vals):
         typedef_name,
         (fields.Enum,),
         {
+            "signed": base_cls.signed,
             "width": base_cls.width,
             "endian": base_cls.endian,
             "format": base_cls.format,
@@ -2321,6 +2322,7 @@ class PfpInterp(object):
                 curr_val._pfp__set_value(curr_val_parsed._pfp__value)
             elif prev_val is not None:
                 curr_val = prev_val + 1
+            curr_val.signed = enum_cls.signed
             curr_val._pfp__freeze()
             enum_vals[enumerator.name] = curr_val
             enum_vals[fields.PYVAL(curr_val)] = enumerator.name

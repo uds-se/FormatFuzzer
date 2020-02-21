@@ -71,35 +71,35 @@ def mutate(field, strat_name_or_cls, num=100, at_once=1, yield_changed=False):
     # we don't need these ones anymore
     del to_mutate
 
-    # save the current value of all subfields without
-    # triggering events
-    field._pfp__snapshot(recurse=True)
-
     count = 0
     for x in six.moves.range(num):
-
-        chosen_fields = set()
-        idx_pool = set([x for x in six.moves.xrange(len(with_strats))])
-
-        # modify `at_once` number of fields OR len(with_strats) number of fields,
-        # whichever is lower
-        for at_onces in six.moves.xrange(min(len(with_strats), at_once)):
-            # we'll never pull the same idx from idx_pool more than once
-            # since we're removing the idx after choosing it
-            rand_idx = rand.sample(idx_pool, 1)[0]
-            idx_pool.remove(rand_idx)
-
-            rand_field, field_strat = with_strats[rand_idx]
-            chosen_fields.add(rand_field)
-
-            field_strat.mutate(rand_field)
-
-        if yield_changed:
-            yield field, chosen_fields
-        else:
-            # yield back the original field
-            yield field
-
-        # restore the saved value of all subfields without
+        # save the current value of all subfields without
         # triggering events
-        field._pfp__restore_snapshot(recurse=True)
+        field._pfp__snapshot(recurse=True)
+
+        try:
+            chosen_fields = set()
+            idx_pool = set([x for x in six.moves.xrange(len(with_strats))])
+
+            # modify `at_once` number of fields OR len(with_strats) number of fields,
+            # whichever is lower
+            for at_onces in six.moves.xrange(min(len(with_strats), at_once)):
+                # we'll never pull the same idx from idx_pool more than once
+                # since we're removing the idx after choosing it
+                rand_idx = rand.sample(idx_pool, 1)[0]
+                idx_pool.remove(rand_idx)
+
+                rand_field, field_strat = with_strats[rand_idx]
+                chosen_fields.add(rand_field)
+
+                field_strat.mutate(rand_field)
+
+            if yield_changed:
+                yield field, chosen_fields
+            else:
+                # yield back the original field
+                yield field
+        finally:
+            # restore the saved value of all subfields without
+            # triggering events
+            field._pfp__restore_snapshot(recurse=True)
