@@ -1,5 +1,6 @@
 # Changelog
 
+- [v0.4.10](#v0410)
 - [v0.4.9](#v049)
 - [v0.4.8](#v048)
 - [v0.4.7](#v047)
@@ -7,6 +8,14 @@
 - [v0.4.5](#v045)
 - [v0.4.4](#v044)
 - [v0.4.3](#v043)
+
+## v0.4.10
+
+Random fuzzing fixes
+
+| type | ticket                                               | description                  |
+|------|------------------------------------------------------|------------------------------|
+| bug  | [#131](https://github.com/d0c-s4vage/pfp/issues/131) | Random fuzzing-related fixes |
 
 ## v0.4.9
 
