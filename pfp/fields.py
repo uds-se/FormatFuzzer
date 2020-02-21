@@ -257,7 +257,7 @@ class Field(object):
 
         self._pfp__array_idx = None
 
-        self._pfp__snapshot_value = None
+        self._pfp__snapshot_stack = []
 
         if stream is not None:
             self._pfp__parse(stream, save_offset=True)
@@ -302,12 +302,13 @@ class Field(object):
         """Save off the current value of the field
         """
         if hasattr(self, "_pfp__value"):
-            self._pfp__snapshot_value = self._pfp__value
+            self._pfp__snapshot_stack.append(self._pfp__value)
 
     def _pfp__restore_snapshot(self, recurse=True):
         """Restore a saved value snapshot
         """
-        self._pfp__value = self._pfp__snapshot_value
+        if hasattr(self, "_pfp__value"):
+            self._pfp__value = self._pfp__snapshot_stack.pop()
 
     def _pfp__process_metadata(self):
         """Process the metadata once the entire struct has been
@@ -638,7 +639,12 @@ class Field(object):
     # Also note - this is not inheritable in python3 and MUST be explicitly
     # set: https://stackoverflow.com/a/1608907
     def __hash__(self):
-        return self._pfp__value.__hash__()
+        #return self._pfp__value.__hash__()
+        res = self._pfp__build()
+        # bit fields return an array, not bytes
+        if isinstance(res, list):
+            return str(res).__hash__()
+        return res.__hash__()
 
     def __repr__(self):
         return "{}({!r})".format(self.__class__.__name__, self._pfp__value)
@@ -2063,6 +2069,8 @@ class Array(Field):
         self.raw_data = None
         self.implicit = False
 
+        self._pfp__snapshot_raw_stack = []
+
         if stream is not None:
             self._pfp__parse(stream, save_offset=True)
         else:
@@ -2074,7 +2082,7 @@ class Array(Field):
         """Save off the current value of the field
         """
         super(Array, self)._pfp__snapshot(recurse=recurse)
-        self.snapshot_raw_data = self.raw_data
+        self._pfp__snapshot_raw_stack.append(self.raw_data)
 
         if recurse:
             for item in self.items:
@@ -2084,7 +2092,7 @@ class Array(Field):
         """Restore the snapshotted value without triggering any events
         """
         super(Array, self)._pfp__restore_snapshot(recurse=recurse)
-        self.raw_data = self.snapshot_raw_data
+        self.raw_data = self._pfp__snapshot_raw_stack.pop()
 
         if recurse:
             for item in self.items:
