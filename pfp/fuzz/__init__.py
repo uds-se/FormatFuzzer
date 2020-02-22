@@ -17,6 +17,42 @@ StratGroup = None
 FieldStrat = None
 
 
+class Changer(object):
+    """
+    """
+    def __init__(self, orig_data):
+        self._orig_data = orig_data
+        self._change_set_stack = []
+
+    def push_changes(self, field_set):
+        """Push a new changeset onto the changeset stack for the provided
+        set of fields.
+        """
+        new_change_set = []
+        new_data = []
+        for field in field_set:
+            offset = field._pfp__offset
+            new_data = field._pfp__build()
+            new_change_set.append((offset, new_data))
+        self._change_set_stack.append(new_change_set)
+
+    def pop_changes(self):
+        """Return a version of the original data after popping the latest 
+        """
+        self._change_set_stack.pop()
+
+    def build(self):
+        """Apply all changesets to the original data
+        """
+        new_data = self._orig_data
+        for change_set in self._change_set_stack:
+            for offset, new_field_data in change_set:
+                new_data = (new_data[:offset]
+                                + new_field_data
+                                + new_data[offset+len(new_field_data):])
+        return new_data
+
+
 def init():
     global get_strategy
     global StratGroup
@@ -38,7 +74,8 @@ def init():
         __import__("pfp.fuzz." + mod_name)
 
 
-def mutate(field, strat_name_or_cls, num=100, at_once=1, yield_changed=False):
+def mutate(field, strat_name_or_cls, num=100, at_once=1, yield_changed=False,
+           use_changesets=False):
     """Mutate the provided field (probably a Dom or struct instance) using the
     strategy specified with ``strat_name_or_class``, yielding ``num`` mutations
     that affect up to ``at_once`` fields at once.
@@ -53,6 +90,9 @@ def mutate(field, strat_name_or_cls, num=100, at_once=1, yield_changed=False):
     :param int num: The number of mutations to yield
     :param int at_once: The number of fields to mutate at once
     :param bool yield_changed: Yield a list of fields changed along with the mutated dom
+    :param bool use_changesets: If a performance optimization should be used that builds the full
+       output once, and then replaced only the changed fields, including watchers, etc. **NOTE**
+       this does not yet work fully with packed structures (https://pfp.readthedocs.io/en/latest/metadata.html#packer-metadata)
     :returns: generator
     """
     import pfp.fuzz.rand as rand
@@ -71,6 +111,9 @@ def mutate(field, strat_name_or_cls, num=100, at_once=1, yield_changed=False):
     # we don't need these ones anymore
     del to_mutate
 
+    # build it once at the beginning
+    changer = Changer(field._pfp__build())
+
     count = 0
     for x in six.moves.range(num):
         # save the current value of all subfields without
@@ -80,6 +123,7 @@ def mutate(field, strat_name_or_cls, num=100, at_once=1, yield_changed=False):
         try:
             chosen_fields = set()
             idx_pool = set([x for x in six.moves.xrange(len(with_strats))])
+            modified_fields = set()
 
             # modify `at_once` number of fields OR len(with_strats) number of fields,
             # whichever is lower
@@ -92,13 +136,16 @@ def mutate(field, strat_name_or_cls, num=100, at_once=1, yield_changed=False):
                 rand_field, field_strat = with_strats[rand_idx]
                 chosen_fields.add(rand_field)
 
-                field_strat.mutate(rand_field)
+                mutated_fields = field_strat.mutate(rand_field)
+                modified_fields.add(rand_field)
+                modified_fields.update(mutated_fields)
+
+            changer.push_changes(modified_fields)
 
             if yield_changed:
-                yield field, chosen_fields
+                yield changer.build(), modified_fields
             else:
-                # yield back the original field
-                yield field
+                yield changer.build()
         finally:
             # restore the saved value of all subfields without
             # triggering events

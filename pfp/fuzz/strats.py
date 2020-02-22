@@ -204,8 +204,7 @@ class FieldStrat(object):
         :field: The pfp.fields.Field instance that will receive the new value
         """
         new_val = self.next_val(field)
-        field._pfp__set_value(new_val)
-        return field
+        return field._pfp__set_value(new_val)
 
     def next_val(self, field):
         """Return a new value to mutate a field with. Do not modify the field directly

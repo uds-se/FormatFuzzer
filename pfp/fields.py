@@ -465,12 +465,6 @@ class Field(object):
 
         self._._pfp__watch(self)
 
-    def _pfp__offset(self):
-        """Get the offset of the field into the stream
-        """
-        if self._pfp__parent is not None:
-            self._pfp__parent
-
     def _pfp__handle_updated(self, watched_field):
         """Handle the watched field that was updated
         """
@@ -531,16 +525,20 @@ class Field(object):
         if self._pfp__frozen:
             raise errors.UnmodifiableConst()
         self._pfp__value = get_value(new_val)
-        self._pfp__notify_parent()
+        return self._pfp__notify_parent()
 
     def _pfp__notify_parent(self):
         if self._pfp__no_notify:
             return
 
+        notified_watchers = []
         for watcher in self._pfp__watchers:
             watcher._pfp__handle_updated(self)
+            notified_watches.append(watcher)
+
         if self._pfp__parent is not None:
             self._pfp__parent._pfp__notify_update(self)
+        return notified_watchers
 
     def _pfp__build(self, output_stream=None, save_offset=False):
         """Pack this field into a string. If output_stream is specified,
@@ -803,8 +801,10 @@ class Struct(Field):
                 "struct initialization has wrong number of members"
             )
 
+        modified_watchers = []
         for x in six.moves.range(len(self._pfp__children)):
-            self._pfp__children[x]._pfp__set_value(value[x])
+            modified_watchers += self._pfp__children[x]._pfp__set_value(value[x])
+        return modified_watches
 
     def _pfp__add_child(self, name, child, stream=None, overwrite=False):
         """Add a child to the Struct field. If multiple consecutive fields are
@@ -1638,7 +1638,7 @@ class IntBase(NumberBase):
         promoted = self._pfp__promote(new_val)
         self._pfp__value = promoted
 
-        self._pfp__notify_parent()
+        return self._pfp__notify_parent()
 
     def __repr__(self):
         f = ":0{}x".format(self.width * 2)
@@ -2156,8 +2156,7 @@ class Array(Field):
         if is_string_type and self.is_stringable():
             self.raw_data = value
             self.width = len(value)
-            self._pfp__notify_parent()
-            return
+            return self._pfp__notify_parent()
 
         if value.__class__ not in [list, tuple]:
             raise Exception("Error, invalid value for array")
@@ -2189,7 +2188,7 @@ class Array(Field):
         # a new array/list/set/tuple
         self.raw_data = None
 
-        self._pfp__notify_parent()
+        return self._pfp__notify_parent()
 
     def _pfp__parse(self, stream, save_offset=False):
         start_offset = stream.tell()
@@ -2370,7 +2369,7 @@ class String(Field):
         """
         if not isinstance(new_val, Field):
             new_val = utils.binary(utils.string_escape(new_val))
-        super(String, self)._pfp__set_value(new_val)
+        return super(String, self)._pfp__set_value(new_val)
 
     def _pfp__parse(self, stream, save_offset=False):
         """Read from the stream until the string is null-terminated
