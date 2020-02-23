@@ -171,6 +171,28 @@ class TestBitwrap(unittest.TestCase):
 
         self.assertEqual(len(uranges), 0)
 
+    def test_tell_bits(self):
+        stream = six.BytesIO(pfp.utils.binary("\x41" + chr(0b11001100)))
+        bitwrapped = BitwrappedStream(stream)
+
+        res = bitwrapped.read(1)
+        self.assertEqual(res, b"\x41")
+
+        self.assertEqual(bitwrapped.tell(), 1)
+        self.assertEqual(bitwrapped.tell_bits(), 0)
+
+        bits = bitwrapped.read_bits(1)
+        self.assertEqual(bits, [1])
+        self.assertEqual(bitwrapped.tell_bits(), 1)
+
+        bits = bitwrapped.read_bits(1)
+        self.assertEqual(bits, [1])
+        self.assertEqual(bitwrapped.tell_bits(), 2)
+
+        bits = bitwrapped.read_bits(1)
+        self.assertEqual(bits, [0])
+        self.assertEqual(bitwrapped.tell_bits(), 3)
+
 
 if __name__ == "__main__":
     unittest.main()

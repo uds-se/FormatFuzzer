@@ -92,6 +92,9 @@ class BitfieldRW(object):
         self.max_bits = self.cls.width * 8
         self.reserved_bits = 0
 
+        self.offset = None
+        self.total_bits_read = 0
+
         # only used with padding is enabled
         self._cls_bits = None
 
@@ -131,17 +134,27 @@ class BitfieldRW(object):
             # read what's missing
             diff = len(self._cls_bits) - num_bits
             if diff < 0:
-                self._cls_bits += stream.read_bits(-diff)
+                self._cls_bits += self._do_read_bits(stream, -diff)
 
         self.reserved_bits += num_bits
         return True
+
+    def tell(self, stream):
+        if self.offset is None:
+            return stream.tell()
+        else:
+            bytes_offset = self.total_bits_read // 8
+            return self.offset + bytes_offset
+
+    def tell_bits(self):
+        return 8 - (self.total_bits_read % 8)
 
     def read_bits(self, stream, num_bits, padded, left_right, endian):
         """Return ``num_bits`` bits, taking into account endianness and 
         left-right bit directions
         """
         if self._cls_bits is None and padded:
-            raw_bits = stream.read_bits(self.cls.width * 8)
+            raw_bits = self._do_read_bits(stream, self.cls.width * 8)
             self._cls_bits = self._endian_transform(raw_bits, endian)
 
         if self._cls_bits is not None:
@@ -154,11 +167,11 @@ class BitfieldRW(object):
             else:
                 res = self._cls_bits[-num_bits:]
                 self._cls_bits = self._cls_bits[:-num_bits]
-
-            return res
-
         else:
-            return stream.read_bits(num_bits)
+            res = self._do_read_bits(stream, num_bits)
+
+        self.total_bits_read += len(res)
+        return res
 
     def write_bits(self, stream, raw_bits, padded, left_right, endian):
         """Write the bits. Once the size of the written bits is equal
@@ -209,6 +222,13 @@ class BitfieldRW(object):
             res += bits[curr_byte_idx * 8 : (curr_byte_idx + 1) * 8]
 
         return res
+    
+    def _do_read_bits(self, stream, num):
+        """Read ``num`` number of bits from the stream
+        """
+        if self.offset is None:
+            self.offset = stream.tell()
+        return stream.read_bits(num)
 
 
 class Field(object):
@@ -227,6 +247,12 @@ class Field(object):
     _pfp__parent = None
     """The parent of the field"""
 
+    _pfp__prev_sibling = None
+    """The previous field in this scope"""
+
+    _pfp__next_sibling = None
+    """The next field in this scope"""
+
     _pfp__watchers = []
     """All fields that are watching this field"""
 
@@ -239,6 +265,7 @@ class Field(object):
         self._pfp__frozen = False
 
         self._pfp__offset = -1
+        self._pfp__offset_bits = None
 
         # watchers to update when something changes
         self._pfp__watchers = []
@@ -529,12 +556,12 @@ class Field(object):
 
     def _pfp__notify_parent(self):
         if self._pfp__no_notify:
-            return
+            return []
 
         notified_watchers = []
         for watcher in self._pfp__watchers:
             watcher._pfp__handle_updated(self)
-            notified_watches.append(watcher)
+            notified_watchers.append(watcher)
 
         if self._pfp__parent is not None:
             self._pfp__parent._pfp__notify_update(self)
@@ -817,10 +844,11 @@ class Struct(Field):
         :param pfp.bitwrap.BitwrappedStream stream: unused, but her for compatability with Union._pfp__add_child
         :returns: The resulting field added
         """
+        res = None
         if not overwrite and self._pfp__is_non_consecutive_duplicate(
             name, child
         ):
-            return self._pfp__handle_non_consecutive_duplicate(name, child)
+            res = self._pfp__handle_non_consecutive_duplicate(name, child)
         elif not overwrite and name in self._pfp__children_map:
             implicit_array = self._pfp__handle_implicit_array(name, child)
 
@@ -840,13 +868,19 @@ class Struct(Field):
             #
             self._pfp__implicit_arrays[name] = implicit_array
             wrapper = self._pfp__children_map[name] = ImplicitArrayWrapper(child, implicit_array)
-            return wrapper
+            res = wrapper
         else:
             child._pfp__parent = self
             self._pfp__children.append(child)
             child._pfp__name = name
             self._pfp__children_map[name] = child
-            return child
+            res = child
+
+        if len(self._pfp__children) > 1:
+            res._pfp__prev_sibling = self._pfp__children[-2]
+            self._pfp__children[-2]._pfp__next_sibling = res
+
+        return res
 
     def _pfp__handle_non_consecutive_duplicate(self, name, child, insert=True):
         """This new child, and potentially one already existing child, need to
@@ -1283,6 +1317,9 @@ class NumberBase(Field):
             data = utils.binary(raw_data)
 
         else:
+            self._pfp__offset = self.bitfield_rw.tell(stream)
+            self._pfp__offset_bits = self.bitfield_rw.tell_bits()
+
             bits = self.bitfield_rw.read_bits(
                 stream,
                 self.bitsize,
@@ -1290,6 +1327,7 @@ class NumberBase(Field):
                 self.bitfield_left_right,
                 self.endian,
             )
+
             width_diff = self.width - (len(bits) // 8) - 1
             bits_diff = 8 - (len(bits) % 8)
 
@@ -2159,6 +2197,7 @@ class Array(Field):
             return self._pfp__notify_parent()
 
         if value.__class__ not in [list, tuple]:
+            __import__('pdb').set_trace()
             raise Exception("Error, invalid value for array")
 
         # this shouldn't be enforced
@@ -2368,7 +2407,7 @@ class String(Field):
         escaping and such as well
         """
         if not isinstance(new_val, Field):
-            new_val = utils.binary(utils.string_escape(new_val))
+            new_val = utils.binary(new_val)
         return super(String, self)._pfp__set_value(new_val)
 
     def _pfp__parse(self, stream, save_offset=False):

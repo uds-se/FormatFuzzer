@@ -194,6 +194,16 @@ class BitwrappedStream(object):
             res -= 1
         return res
 
+    def tell_bits(self):
+        """Return the number of bits into the stream since the last whole
+        byte.
+
+        :returns: int
+        """
+        if len(self._bits) == 0:
+            return 0
+        return 8 - len(self._bits)
+
     def seek(self, pos, seek_type=0):
         """Seek to the specified position in the stream with seek_type.
         Unflushed bits will be discarded in the case of a seek.
