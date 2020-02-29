@@ -10,6 +10,7 @@ import pfp.interp
 from pfp.bitwrap import BitwrappedStream
 import pfp.fuzz
 
+
 pfp.fuzz.init()
 
 

@@ -21,16 +21,8 @@ class BasicStrat(fuzz.StratGroup):
 
     name = "basic"
 
-    class Char(fuzz.FieldStrat):
-        klass = fields.Char
-        choices = six.moves.range(0x100)
-
-    class UChar(fuzz.FieldStrat):
-        klass = fields.UChar
-        choices = six.moves.range(-0x7F, 0x7F)
-
-    class Ints(fuzz.FieldStrat):
-        klass = [fields.Short, fields.Int, fields.Int64]
+    class Int(fuzz.FieldStrat):
+        klass = [fields.IntBase]
 
         def prob(self, field):
             # generate the probabilities table
@@ -39,8 +31,8 @@ class BasicStrat(fuzz.StratGroup):
             max_val = 1 << (field.width * 8)
 
             if field.signed:
-                min_val = -max_val / 2
-                max_val = max_val / 2 - 1
+                min_val = int(-max_val / 2)
+                max_val = int(max_val / 2) - 1
                 vals = [min_val, max_val, 0]
                 vals += [1 << (x * 8) for x in six.moves.range(field.width)]
                 vals += [-x for x in vals]
@@ -66,7 +58,7 @@ class BasicStrat(fuzz.StratGroup):
             pv = 1.0 / 3.0
             res = [
                 (pv, vals),
-                (pv, six.moves.range(0, 0x100)),
+                (pv, six.moves.xrange(0, min(max_val, 0x100))),
                 (pv, {"min": min_val, "max": max_val}),
             ]
 
@@ -80,7 +72,7 @@ class BasicStrat(fuzz.StratGroup):
         klass = fields.Double
         prob = [(1.0, lambda: fuzz.rand.randfloat(-0x10000000, 0x10000000))]
 
-    class Enum(Ints):
+    class Enum(Int):
         klass = fields.Enum
 
         def prob(self, field):
@@ -91,21 +83,24 @@ class BasicStrat(fuzz.StratGroup):
             # add in the new enum values
             prob_percent = 1.0 / float(len(res) + 1)
             res = [(prob_percent, x[1]) for x in res]
-            res.append(field.enum_vals.keys())
+            res.append((prob_percent, list(filter(
+                lambda x: not isinstance(x, six.string_types),
+                field.enum_vals.keys(),
+            ))))
 
             return res
 
-    class Array(fuzz.FieldStrat):
-        klass = fields.Array
-
-        # set the raw data to be a random string
-        def next_val(self, field):
-            rand_data_size = (
-                fuzz.rand.randint(0, 0x100) * field.field_cls.width
-            )
-            return fuzz.rand.data(
-                rand_data_size, [utils.binary(chr(x)) for x in six.moves.range(0x100)]
-            )
+#     class Array(fuzz.FieldStrat):
+#         klass = fields.Array
+# 
+#         # set the raw data to be a random string
+#         def next_val(self, field):
+#             rand_data_size = (
+#                 fuzz.rand.randint(0, 0x100) * field.field_cls.width
+#             )
+#             return fuzz.rand.data(
+#                 rand_data_size, [utils.binary(chr(x)) for x in six.moves.range(0x100)]
+#             )
 
     class String(fuzz.FieldStrat):
         klass = fields.String

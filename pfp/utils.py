@@ -1,8 +1,21 @@
 #!/usr/bin/env python
 # encoding: utf-8
 
+import contextlib
 import six
 import sys
+import time
+
+
+@contextlib.contextmanager
+def timeit(msg, num=None):
+    start = time.time()
+    yield
+    end = time.time()
+    if num is None:
+        print("{} took {:.04f}s".format(msg, end - start))
+    else:
+        print("{} with {:.04f}/s".format(msg, (num / (end - start))))
 
 
 def is_str(s):

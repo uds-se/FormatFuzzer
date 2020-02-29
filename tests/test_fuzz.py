@@ -48,8 +48,10 @@ class TestPfpFuzz(unittest.TestCase):
         """
         data = "abc"
         dom = pfp.parse(template=template, data=data)
+        pfp.fuzz.rand.seed(1)
 
-        for at_once in [1, 2, 3]:
+        #for at_once in [1, 2, 3]:
+        for at_once in [2]:
             for mutated, changed_fields in pfp.fuzz.mutate(
                 dom, "basic", num=100, at_once=at_once, yield_changed=True
             ):

@@ -118,11 +118,15 @@ class StratGroup(object):
         """Return a list of leaf fields that should be mutated. If the field
         passed in is a leaf field, it will be returned in a list.
         """
-        if (
-            not isinstance(field, (pfp.fields.Struct, pfp.fields.Array))
-            and field._ is None
-        ):
-            return [field]
+        try:
+            if (
+                not isinstance(field, (pfp.fields.Struct, pfp.fields.Array))
+                and field._ is None
+            ):
+                return [field]
+        except Exception as e:
+            print(field)
+            print(field.__class__)
 
         iter_fields = []
 
@@ -204,8 +208,7 @@ class FieldStrat(object):
         :field: The pfp.fields.Field instance that will receive the new value
         """
         new_val = self.next_val(field)
-        field._pfp__set_value(new_val)
-        return field
+        return field._pfp__set_value(new_val)
 
     def next_val(self, field):
         """Return a new value to mutate a field with. Do not modify the field directly
