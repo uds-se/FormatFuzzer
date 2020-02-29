@@ -2198,7 +2198,6 @@ class Array(Field):
             return self._pfp__notify_parent()
 
         if value.__class__ not in [list, tuple]:
-            __import__('pdb').set_trace()
             raise Exception("Error, invalid value for array")
 
         # this shouldn't be enforced
