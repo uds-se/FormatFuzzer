@@ -29,23 +29,23 @@ def test_changeset():
 
     changer = Changer(orig_data)
     changer.push_changes([dom.data.a])
-    assert changer.build() == binary("AAbbccddeeee")
+    assert changer.build() == bytearray(b"AAbbccddeeee")
     changer.pop_changes()
-    assert changer.build() == binary(data)
+    assert changer.build() == bytearray(binary(data))
 
     changer.push_changes([dom.data.a, dom.data.d])
-    assert changer.build() == binary("AAbbccDDeeee")
+    assert changer.build() == bytearray(b"AAbbccDDeeee")
     changer.push_changes([dom.data.b, dom.data.c])
-    assert changer.build() == binary("AABBCCDDeeee")
+    assert changer.build() == bytearray(b"AABBCCDDeeee")
     changer.push_changes([dom.data.e])
-    assert changer.build() == binary("AABBCCDDEEEE")
+    assert changer.build() == bytearray(b"AABBCCDDEEEE")
 
     changer.pop_changes()
-    assert changer.build() == binary("AABBCCDDeeee")
+    assert changer.build() == bytearray(b"AABBCCDDeeee")
     changer.pop_changes()
-    assert changer.build() == binary("AAbbccDDeeee")
+    assert changer.build() == bytearray(b"AAbbccDDeeee")
     changer.pop_changes()
-    assert changer.build() == binary(data)
+    assert changer.build() == bytearray(binary(data))
 
 
 def test_changeset_with_bitfields():

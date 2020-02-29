@@ -65,7 +65,7 @@ class Changer(object):
     def build(self):
         """Apply all changesets to the original data
         """
-        new_data = self._orig_data
+        new_data = bytearray(self._orig_data)
         for change_set in self._change_set_stack:
             for offset, new_field_data in change_set:
                 new_data[offset:offset+len(new_field_data)] = new_field_data
