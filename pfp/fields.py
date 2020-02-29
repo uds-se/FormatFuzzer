@@ -316,7 +316,8 @@ class Field(object):
             if curr._pfp__name == "__root" and curr._pfp__parent is None:
                 break
 
-            res.append(curr._pfp__name)
+            if curr._pfp__name is not None:
+                res.append(curr._pfp__name)
 
             if isinstance(curr._pfp__parent, Array):
                 curr = curr._pfp__parent._pfp__parent
@@ -2500,6 +2501,9 @@ class String(Field):
         else:
             self._pfp__value += PYSTR(other)
         return self
+
+    def __len__(self):
+        return len(self._pfp__value)
 
 
 @inherit_hash

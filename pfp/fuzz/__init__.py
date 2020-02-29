@@ -15,6 +15,7 @@ import six
 
 from pfp.fields import BitfieldRW, NumberBase
 from pfp.bitwrap import BitwrappedStream
+from pfp.utils import timeit
 
 
 get_strategy = None
@@ -26,7 +27,7 @@ class Changer(object):
     """
     """
     def __init__(self, orig_data):
-        self._orig_data = orig_data
+        self._orig_data = bytearray(orig_data)
         self._change_set_stack = []
 
     @contextlib.contextmanager
@@ -67,9 +68,7 @@ class Changer(object):
         new_data = self._orig_data
         for change_set in self._change_set_stack:
             for offset, new_field_data in change_set:
-                new_data = (new_data[:offset]
-                                + new_field_data
-                                + new_data[offset+len(new_field_data):])
+                new_data[offset:offset+len(new_field_data)] = new_field_data
         return new_data
     
     def _handle_bitfield(self, field):
@@ -144,8 +143,7 @@ def init():
         __import__("pfp.fuzz." + mod_name)
 
 
-def mutate(field, strat_name_or_cls, num=100, at_once=1, yield_changed=False,
-           use_changesets=False):
+def changeset_mutate(field, strat_name_or_cls, num=100, at_once=1, yield_changed=False, fields_to_modify=None, base_data=None):
     """Mutate the provided field (probably a Dom or struct instance) using the
     strategy specified with ``strat_name_or_class``, yielding ``num`` mutations
     that affect up to ``at_once`` fields at once.
@@ -170,8 +168,11 @@ def mutate(field, strat_name_or_cls, num=100, at_once=1, yield_changed=False,
     init()
 
     strat = get_strategy(strat_name_or_cls)
-    to_mutate = strat.which(field)
 
+    if fields_to_modify is not None:
+        to_mutate = fields_to_modify
+    else:
+        to_mutate = strat.which(field)
 
     with_strats = []
     for to_mutate_field in to_mutate:
@@ -183,16 +184,14 @@ def mutate(field, strat_name_or_cls, num=100, at_once=1, yield_changed=False,
     del to_mutate
 
     # build it once at the beginning
-    changer = Changer(field._pfp__build())
+    if base_data is not None:
+        changer = Changer(base_data)
+    else:
+        changer = Changer(field._pfp__build())
 
     count = 0
     for x in six.moves.range(num):
-        # save the current value of all subfields without
-        # triggering events
-        field._pfp__snapshot(recurse=True)
-
         try:
-            chosen_fields = set()
             idx_pool = set([x for x in six.moves.xrange(len(with_strats))])
             modified_fields = []
 
@@ -207,8 +206,8 @@ def mutate(field, strat_name_or_cls, num=100, at_once=1, yield_changed=False,
                 idx_pool.remove(rand_idx)
 
                 rand_field, field_strat = with_strats[rand_idx]
-                chosen_fields.add(rand_field)
 
+                rand_field._pfp__snapshot()
                 mutated_fields = field_strat.mutate(rand_field)
                 modified_fields.append(rand_field)
                 modified_fields += mutated_fields
@@ -218,6 +217,70 @@ def mutate(field, strat_name_or_cls, num=100, at_once=1, yield_changed=False,
                     yield modified_data, modified_fields
                 else:
                     yield modified_data
+        finally:
+            for rand_field in modified_fields:
+                rand_field._pfp__restore_snapshot()
+
+
+def mutate(field, strat_name_or_cls, num=100, at_once=1, yield_changed=False):
+    """Mutate the provided field (probably a Dom or struct instance) using the
+    strategy specified with ``strat_name_or_class``, yielding ``num`` mutations
+    that affect up to ``at_once`` fields at once.
+    This function will yield back the field after each mutation, optionally
+    also yielding a ``set`` of fields that were mutated in that iteration (if ``yield_changed`` is
+    ``True``). It should also be noted that the yielded set of changed fields *can*
+    be modified and is no longer needed by the mutate() function.
+    :param pfp.fields.Field field: The field to mutate (can be anything, not just Dom/Structs)
+    :param strat_name_or_class: Can be the name of a strategy, or the actual strategy class (not an instance)
+    :param int num: The number of mutations to yield
+    :param int at_once: The number of fields to mutate at once
+    :param bool yield_changed: Yield a list of fields changed along with the mutated dom
+    :returns: generator
+    """
+    import pfp.fuzz.rand as rand
+
+    init()
+
+    strat = get_strategy(strat_name_or_cls)
+    to_mutate = strat.which(field)
+
+    with_strats = []
+    for to_mutate_field in to_mutate:
+        field_strat = strat.get_field_strat(to_mutate_field)
+        if field_strat is not None:
+            with_strats.append((to_mutate_field, field_strat))
+
+    # we don't need these ones anymore
+    del to_mutate
+
+    count = 0
+    for x in six.moves.range(num):
+        # save the current value of all subfields without
+        # triggering events
+        field._pfp__snapshot(recurse=True)
+
+        try:
+            chosen_fields = set()
+            idx_pool = set([x for x in six.moves.xrange(len(with_strats))])
+
+            # modify `at_once` number of fields OR len(with_strats) number of fields,
+            # whichever is lower
+            for at_onces in six.moves.xrange(min(len(with_strats), at_once)):
+                # we'll never pull the same idx from idx_pool more than once
+                # since we're removing the idx after choosing it
+                rand_idx = rand.sample(idx_pool, 1)[0]
+                idx_pool.remove(rand_idx)
+
+                rand_field, field_strat = with_strats[rand_idx]
+                chosen_fields.add(rand_field)
+
+                field_strat.mutate(rand_field)
+
+            if yield_changed:
+                yield field, chosen_fields
+            else:
+                # yield back the original field
+                yield field
         finally:
             # restore the saved value of all subfields without
             # triggering events

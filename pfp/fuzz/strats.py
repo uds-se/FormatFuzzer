@@ -118,11 +118,15 @@ class StratGroup(object):
         """Return a list of leaf fields that should be mutated. If the field
         passed in is a leaf field, it will be returned in a list.
         """
-        if (
-            not isinstance(field, (pfp.fields.Struct, pfp.fields.Array))
-            and field._ is None
-        ):
-            return [field]
+        try:
+            if (
+                not isinstance(field, (pfp.fields.Struct, pfp.fields.Array))
+                and field._ is None
+            ):
+                return [field]
+        except Exception as e:
+            print(field)
+            print(field.__class__)
 
         iter_fields = []
 
