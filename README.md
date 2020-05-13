@@ -7,9 +7,11 @@
 
 ### Usage
 
-```python3 create.py PNG.bt 2>png-generator.cpp
+```
+python3 create.py PNG.bt 2>png-generator.cpp
 ```
 
-```g++ -g -O3 -Wall png-generator.cpp -o png-generator
+```
+g++ -g -O3 -Wall png-generator.cpp -o png-generator
 ./png-generator output.png
 ```
