@@ -412,8 +412,13 @@ def ReadBytes(params, ctxt, scope, stream, coord):
     bits = stream._bits
     curr_pos = stream.tell()
 
+    num_bytes = PYVAL(params[2])
+    if params[0]._pfp__interp._generate:
+        if num_bytes > 100:
+            num_bytes = 100
+
     vals = [
-        params[0].field_cls(stream) for x in six.moves.range(PYVAL(params[2]))
+        params[0].field_cls(stream) for x in six.moves.range(num_bytes)
     ]
 
     stream.seek(curr_pos, 0)

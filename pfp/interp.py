@@ -187,6 +187,8 @@ def EnumDef(typedef_name, base_cls, enum_vals):
 
 def ArrayDecl(item_cls, item_count):
     width = fields.PYVAL(item_count)
+    if item_count is None:
+        width = 1
 
     def __init__(self, stream=None, metadata_processor=None):
         fields.Array.__init__(
@@ -644,6 +646,327 @@ class PfpInterp(object):
 
     _natives = {}
     _predefines = []
+    _cpp = []
+    _generates_cpp = ""
+    _known_values = {}
+    _defined = {"time" : None}
+    _declared = set()
+    _to_define = {}
+    _to_replace = []
+    _is_substructunion = False
+    _call_stack = []
+
+
+    def add_decl(self, classname, classnode, node, is_union):
+        if classname in self._defined:
+            if node.name not in self._defined:
+                self._defined[node.name] = classname
+                self._cpp.append((node.name, classname + " " + node.name + ";\n"))
+            name = node.name
+            if hasattr(node, "originalname"):
+                name = node.originalname
+            node.cpp = ""
+            if name == node.name:
+                node.cpp = name + "_var = "
+            node.cpp += "::" + node.name + ".generate("
+            arg_num = 0
+            if hasattr(node.type, "args") and node.type.args:
+                for arg in node.type.args.exprs:
+                    arg_num += 1
+                    node.cpp += arg.cpp + ", "
+            if classnode.args is not None:
+                for i in range(arg_num, len(classnode.args.params)):
+                    arg_num += 1
+                    node.cpp += classnode.args.params[i].name + ", "
+            if arg_num > 0:
+                node.cpp = node.cpp[:-2]
+            node.cpp += ")"
+            if name == node.name and len(self._incomplete_stack) > 1:
+                node.cpp += ";\n" + name + "_exists = true"
+            node.type.cpp = classname
+        else:
+            if classname not in self._to_define:
+                self._to_define[classname] = []
+            self._to_define[classname].append((node.name, node))
+            node.cpp = "/*TODO field " + node.name + "*/"
+            node.type.cpp = classname
+            if not self._incomplete:
+                self.add_class(classname, classnode, is_union)
+                self.add_class_generate(classname, classnode, is_union)
+            elif classname not in self._declared:
+                self._declared.add(classname)
+                self._cpp.append((classname, "\nclass " + classname + ";\n\n"))
+
+    def add_string_class(self, classname):
+        if classname not in self._defined:
+            self._defined[classname] = None
+            cpp = "\n\nclass " + classname + " {\n"
+            cpp += "\tstd::vector<std::string> known_values;\n"
+            cpp += "\tstd::string value;\n"
+            cpp += "public:\n"
+            cpp += "\tint64 _startof;\n"
+            cpp += "\tstd::size_t _sizeof;\n"
+            cpp += "\tstd::string operator () () { return value; }\n"
+            cpp += "\t" + classname + "(std::vector<std::string> known_values = {}) : known_values(known_values) {}\n"
+            cpp += "\n\tstd::string generate() {\n"
+            cpp += "\t\t_startof = FTell();\n"
+            cpp += "\t\tif (known_values.empty()) {\n"
+            cpp += "\t\t\tvalue = file_acc.file_string();\n"
+            cpp += "\t\t} else {\n"
+            cpp += "\t\t\tvalue = file_acc.file_string(known_values);\n"
+            cpp += "\t\t}\n"
+            cpp += "\t\t_sizeof = value.length() + 1;\n"
+            cpp += "\t\treturn value;\n"
+            cpp += "\t}\n};\n\n"
+            self._cpp.append((classname, cpp))
+
+    def add_native_class(self, classname, classtype):
+        if classname not in self._defined:
+            self._defined[classname] = None
+            cpp = "\n\nclass " + classname + " {\n"
+            cpp += "\tbool small;\n"
+            cpp += "\tstd::vector<" + classtype + "> known_values;\n"
+            cpp += "\t" + classtype + " value;\n"
+            cpp += "public:\n"
+            cpp += "\tint64 _startof;\n"
+            cpp += "\tstd::size_t _sizeof = sizeof(" + classtype + ");\n"
+            cpp += "\t" + classtype + " operator () () { return value; }\n"
+            cpp += "\t" + classname + "(bool small, std::vector<" + classtype + "> known_values = {}) : small(small), known_values(known_values) {}\n"
+            cpp += "\n\t" + classtype + " generate() {\n"
+            cpp += "\t\t_startof = FTell();\n"
+            cpp += "\t\tif (known_values.empty()) {\n"
+            cpp += "\t\t\tvalue = file_acc.file_integer(sizeof(" + classtype + "), small);\n"
+            cpp += "\t\t} else {\n"
+            cpp += "\t\t\tvalue = file_acc.file_integer(sizeof(" + classtype + "), known_values);\n"
+            cpp += "\t\t}\n"
+            cpp += "\t\treturn value;\n"
+            cpp += "\t}\n"
+            cpp += "\n\t" + classtype + " generate(std::vector<" + classtype + "> new_known_values) {\n"
+            cpp += "\t\t_startof = FTell();\n"
+            cpp += "\t\tfor (auto& known : known_values) {\n"
+            cpp += "\t\t\tnew_known_values.push_back(known);\n"
+            cpp += "\t\t}\n"
+            cpp += "\t\tvalue = file_acc.file_integer(sizeof(" + classtype + "), new_known_values);\n"
+            cpp += "\t\treturn value;\n"
+            cpp += "\t}\n"
+            cpp += "};\n\n"
+            self._cpp.append((classname, cpp))
+
+    def get_decls(self, node):
+        decls = []
+        if isinstance(node, AST.Decl):
+            return [node]
+        elif isinstance(node, list):
+            for child in node:
+                decls += self.get_decls(child)
+            return decls
+        elif isinstance(node, AST.Compound):
+            return self.get_decls(node.block_items)
+        elif isinstance(node, AST.Switch):
+            if hasattr(node, "pfp_cases"):
+                decls += self.get_decls(node.pfp_cases)
+            else:
+                decls += self.get_decls(node.stmt)
+            return decls
+        elif isinstance(node, AST.Case):
+            decls += self.get_decls(node.stmts)
+            return decls
+        elif isinstance(node, AST.Default):
+            decls += self.get_decls(node.stmts)
+            return decls
+        elif isinstance(node, AST.If):
+            decls += self.get_decls(node.iftrue)
+            decls += self.get_decls(node.iffalse)
+            return decls
+        elif isinstance(node, AST.While):
+            decls += self.get_decls(node.stmt)
+            return decls
+        elif isinstance(node, AST.For):
+            decls += self.get_decls(node.stmt)
+            return decls
+        elif node is None or node.__class__ in [AST.UnaryOp, AST.Break, AST.Continue, AST.FuncCall, AST.Return, AST.Assignment, AST.EmptyStatement]:
+            return []
+        raise errors.PfpError("unhandled get_decls " + str(node.__class__))
+
+
+    def add_class(self, classname, classnode, is_union=False):
+        if classname in self._defined:
+            return
+        self._defined[classname] = None
+        self._struct_locals = []
+        cpp = "\n\nclass " + classname + " {\n"
+        cpp += "\tstatic std::vector<" + classname + "*> instances;\n"
+        cpp += "\tbool generated = false;\n\n"
+        decls = []
+        for node in classnode.decls:
+            decls += self.get_decls(node)
+        variables = []
+        defined = set()
+        for decl in decls:
+            name = decl.name
+            if hasattr(decl, "originalname"):
+                name = decl.originalname
+            if "local" in decl.quals:
+                self._struct_locals.append(decl)
+            if "local" not in decl.quals and name not in defined:
+                defined.add(name)
+                variables.append((name, decl))
+                if not hasattr(decl.type, "cpp"):
+                    if hasattr(decl.type.type, "name"):
+                        decl.type.cpp = decl.type.type.name
+                    elif hasattr(decl.type.type, "names"):
+                        decl.type.cpp = " ".join(decl.type.type.names)
+
+        if is_union:
+            cpp += "union {\n"
+        for name, decl in variables:
+            if hasattr(decl, "is_structunion"):
+                cpp += "\t" + decl.type.cpp + "* " + name + "_var;\n"
+            elif is_union and decl.type.cpp == "std::string" and decl.type.__class__ == AST.ArrayDecl:
+                cpp += "\t" + " ".join(decl.type.type.type.names) + " " + name + "_var[" + decl.type.dim.cpp + "];\n"
+            else:
+                cpp += "\t" + decl.type.cpp + " " + name + "_var;\n"
+        if is_union:
+            cpp += "};\n"
+        cpp += "\n"
+        for name, decl in variables:
+            cpp += "\tbool " + name + "_exists = false;\n"
+        cpp += "\npublic:\n"
+        for name, decl in variables:
+            if hasattr(decl, "is_structunion"):
+                if decl.type.cpp in self._defined:
+                    cpp += "\t" + decl.type.cpp + " " + name + "() {\n\t\tif (!" + name + "_exists) abort();\n\t\treturn *" + name + "_var;\n\t}\n"
+                else:
+                    cpp += "\t" + decl.type.cpp + " " + name + "();\n"
+                    self._to_define[decl.type.cpp].append((decl.type.cpp + " " + classname + "::" + name + "() {\n\tif (!" + name + "_exists) abort();\n\treturn *" + name + "_var;\n}\n", decl))
+            elif is_union and decl.type.cpp == "std::string" and decl.type.__class__ == AST.ArrayDecl:
+                cpp += "\tstd::string " + name + "() {\n\t\tif (!" + name + "_exists) abort();\n\t\treturn std::string(" + name + "_var, " + decl.type.dim.cpp + ");\n\t}\n"
+            else:
+                cpp += "\t" + decl.type.cpp + " " + name + "() {\n\t\tif (!" + name + "_exists) abort();\n\t\treturn " + name + "_var;\n\t}\n"
+
+        locals_cpp = ""
+        for decl in decls:
+            name = decl.name
+            if hasattr(decl, "originalname"):
+                name = decl.originalname
+            if "local" in decl.quals and name not in defined:
+                defined.add(name)
+                if not hasattr(decl.type, "cpp"):
+                    if hasattr(decl.type.type, "name"):
+                        decl.type.cpp = decl.type.type.name
+                    elif hasattr(decl.type.type, "names"):
+                        decl.type.cpp = " ".join(decl.type.type.names)
+                locals_cpp += "\t" + decl.type.cpp + " " + name + ";\n"
+        if locals_cpp:
+            cpp += "\n\t/* locals */\n" + locals_cpp
+
+        local_args = []
+        for frame in self._locals_stack[1:]:
+            for local in frame:
+                if local in self._struct_locals:
+                    continue
+                used = False
+                for decl in classnode.decls:
+                    if hasattr(decl, "cpp") and "/**/" + local.name + "()" in decl.cpp:
+                        used = True
+                        break
+                if used:
+                    local_args.append(local)
+        for local in local_args:
+            if not hasattr(classnode, "args") or classnode.args is None:
+                classnode.args = AST.ParamList([])
+            classnode.args.params.append(local)
+        cpp += "\n\tint64 _startof;\n"
+        cpp += "\tstd::size_t _sizeof;\n"
+        cpp += "\t" + classname + " operator () () { return *instances.back(); }\n"
+        cpp += "\t" + classname + "* operator [] (int index) { return instances[index]; }\n"
+        cpp += "\t" + classname + "() { instances.push_back(this); }\n"
+        cpp += "\t" + classname + "* generate("
+        if hasattr(classnode, "args") and classnode.args is not None:
+            for param in classnode.args.params:
+                cpp += " ".join(param.type.type.names)
+                if not hasattr(param, "is_func_param") or not param.is_func_param:
+                    cpp += "&"
+                cpp += " " + param.name + ", "
+            cpp = cpp[:-2]
+        cpp += ");\n};\n\n"
+        cpp += "std::vector<" + classname + "*> " + classname + "::instances;\n\n"
+        self._cpp.append((classname, cpp))
+        if classname in self._to_define:
+            for field_name, node in self._to_define[classname]:
+                if "::" in field_name:
+                    self._cpp.append((node.name, field_name))
+                    continue
+                if field_name not in self._defined:
+                    self._defined[field_name] = classname
+                    self._cpp.append((field_name, classname + " " + node.name + ";\n"))
+                name = field_name
+                if hasattr(node, "originalname"):
+                    name = node.originalname
+                node.cpp = ""
+                if name == field_name:
+                    node.cpp = name + "_var = "
+                node.cpp += "::" + field_name + ".generate("
+                arg_num = 0
+                if hasattr(node.type, "args") and node.type.args:
+                    for arg in node.type.args.exprs:
+                        arg_num += 1
+                        node.cpp += arg.cpp + ", "
+                if hasattr(classnode, "args") and classnode.args is not None:
+                    for i in range(arg_num, len(classnode.args.params)):
+                        arg_num += 1
+                        node.cpp += classnode.args.params[i].name + ", "
+                if arg_num > 0:
+                    node.cpp = node.cpp[:-2]
+                node.cpp += ")"
+                if name == field_name and len(self._incomplete_stack) > 1:
+                    node.cpp += ";\n" + name + "_exists = true"
+                for decl in classnode.decls:
+                    decl.cpp = decl.cpp.replace("/*TODO field " + field_name + "*/", node.cpp)
+                self._to_replace.append(("/*TODO field " + field_name + "*/", node.cpp))
+                node.type.cpp = classname
+
+    def add_class_generate(self, classname, classnode, is_union=False):
+        if classname + "::generate" in self._defined:
+            return
+        self._defined[classname + "::generate"] = None
+        cpp = ""
+        cpp += "\n" + classname + "* " + classname + "::generate("
+        params = []
+        if hasattr(classnode, "args") and classnode.args is not None:
+            for param in classnode.args.params:
+                params.append(param)
+                cpp += " ".join(param.type.type.names)
+                if not hasattr(param, "is_func_param") or not param.is_func_param:
+                    cpp += "&"
+                cpp += " " + param.name + ", "
+            cpp = cpp[:-2]
+        cpp += ") {\n"
+        body = "\tif (generated) {\n"
+        body += "\t\t" + classname + "* new_instance = new " + classname + "();\n"
+        body += "\t\treturn new_instance->generate("
+        if hasattr(classnode, "args") and classnode.args is not None:
+            for param in classnode.args.params:
+                body += param.name + ", "
+            body = body[:-2]
+        body += ");\n"
+        body += "\t}\n"
+        body += "\tgenerated = true;\n"
+        first = True
+        for decl in classnode.decls:
+            for local in self._struct_locals + params:
+                decl.cpp = decl.cpp.replace("/**/" + local.name + "()", local.name)
+            if is_union and not first:
+                body += "//"
+            if decl.cpp:
+                body += "\t" + decl.cpp.replace("\n", "\n\t") + ";\n"
+            first = False
+        if classname[-7:] == "_struct" and "break;" in body:
+            body = "do {\n" + body + "} while (false);\n"
+        cpp += body
+        cpp += "\treturn this;\n"
+        cpp += "}\n\n"
+        self._generates_cpp += cpp
 
     @classmethod
     def add_native(cls, name, func, ret, interp=None, send_interp=False):
@@ -724,13 +1047,20 @@ class PfpInterp(object):
             setattr(mod, "PYVAL", fields.get_value)
             setattr(mod, "PYSTR", fields.get_str)
 
-    def __init__(self, debug=False, parser=None, int3=True):
+    def __init__(self, debug=False, parser=None, int3=True, generate=True):
         """Create a new instance of the ``PfpInterp`` class.
 
         :param bool debug: if debug output should be used (default=``False``)
         :param :any:`py010parser.c_parser.CParser` parser: The ``py010parser.c_parser.CParser`` to use (default=``None``)
         :param bool int3: If debug breakpoints (calls to :any:`pfp.native.dbg.int3` ``Int3()``) are active (default=``True``)
         """
+        sys.setrecursionlimit(100000)
+        self._generate = generate
+        self._global_locals = []
+        self._locals_stack = [[]]
+        self._incomplete_stack = [False]
+        self._incomplete = False
+        self._structs = set()
         self.__class__.define_natives()
 
         self._log = DebugLogger(debug)
@@ -1166,6 +1496,7 @@ class PfpInterp(object):
         :returns: TODO
 
         """
+        node.cpp = "#include <cstdlib>\n#include <cstdio>\n#include <string>\n#include <vector>\n#include <unordered_map>\n#include \"bt.h\"\n"
         self._root = ctxt = fields.Dom(stream)
         ctxt._pfp__scope = scope
         self._root._pfp__name = "__root"
@@ -1186,8 +1517,11 @@ class PfpInterp(object):
                     and not  is_forward_declared_struct(child):
                 continue
             self._handle_node(child, scope, ctxt, stream)
+            if child.cpp:
+                node.cpp += child.cpp + ";\n"
             scope.clear_meta()
 
+        node.cpp1 = ""
         for child in children:
             if type(child) is tuple:
                 child = child[1]
@@ -1195,6 +1529,33 @@ class PfpInterp(object):
                     is_forward_declared_struct(child):
                 continue
             self._handle_node(child, scope, ctxt, stream)
+            if child.cpp:
+                if isinstance(child, AST.Decl) and "local" in child.quals:
+                    self._cpp.append((child.name, child.cpp + ";\n"))
+                    self._global_locals.append(child.name)
+                else:
+                    node.cpp1 += "\t" + child.cpp.replace("\n", "\n\t") + ";\n"
+
+        node.cpp1 = re.sub("[^\t]*_var = ::", "::", node.cpp1)
+
+        for n, c in self._cpp:
+            #node.cpp += "/*" + n + "*/\n"
+            node.cpp += c
+        node.cpp += self._generates_cpp
+        node.cpp += "\n\nint main(int argc, char** argv) {\n\tsetup_generation(argv[1]);\n"
+        node.cpp += node.cpp1
+        node.cpp += "\tfinalize_generation();\n}\n"
+
+        for a, b in self._to_replace:
+            node.cpp = node.cpp.replace(a, b)
+        for local in self._global_locals:
+            node.cpp = node.cpp.replace("/**/" + local + "()", local)
+        node.cpp = node.cpp.replace("/**/", "")
+
+        print(node.cpp, file=sys.stderr)
+        if self._generate:
+            print("Finished creating cpp generator.")
+            sys.exit(0)
 
         ctxt._pfp__process_fields_metadata()
 
@@ -1210,6 +1571,7 @@ class PfpInterp(object):
         :returns: TODO
 
         """
+        node.cpp = ""
         self._dlog("handling empty statement")
 
     def _handle_cast(self, node, scope, ctxt, stream):
@@ -1232,6 +1594,7 @@ class PfpInterp(object):
         res = to_type()
 
         res._pfp__set_value(val_to_cast)
+        node.cpp = "(" + " ".join(node.to_type.type.type.names) + ")" + node.expr.cpp
         return res
 
     def _handle_typename(self, node, scope, ctxt, stream):
@@ -1276,6 +1639,7 @@ class PfpInterp(object):
 
         metadata_processor = None
         if node.metadata is not None:
+            #print("decl:metadata")
             # metadata_info = self._handle_metadata(node, scope, ctxt, stream)
             def process_metadata():
                 metadata_info = self._handle_metadata(
@@ -1286,11 +1650,14 @@ class PfpInterp(object):
             metadata_processor = process_metadata
 
         field_name = self._get_node_name(node)
+        #print("handling decl")
+        #print(field_name)
         field = self._handle_node(node.type, scope, ctxt, stream)
         bitsize = None
         bitfield_rw = None
 
         if getattr(node, "bitsize", None) is not None:
+            #print("decl:bitsize")
             bitsize = self._handle_node(node.bitsize, scope, ctxt, stream)
             has_prev = len(ctxt._pfp__children) > 0
 
@@ -1323,9 +1690,12 @@ class PfpInterp(object):
                 bitfield_rw.reserve_bits(bitsize, stream)
 
         if is_forward_declared_struct(node):
+            #print("decl:forward")
+            node.cpp = ""
             scope.add_type_class(node.type.name, field)
 
         elif getattr(node, "is_func_param", False):
+            #print("decl:func_param")
             # we want to keep this as a class and not instantiate it
             # instantiation will be done in functions.ParamListDef.instantiate
             field = (field_name, field)
@@ -1333,6 +1703,7 @@ class PfpInterp(object):
         # locals and consts still get a field instance, but DON'T parse the
         # stream!
         elif "local" in node.quals or "const" in node.quals:
+            #print("decl:local/const")
             is_struct = issubclass(field, fields.Struct)
             if not isinstance(field, fields.Field) and not is_struct:
                 field = field()
@@ -1348,25 +1719,78 @@ class PfpInterp(object):
                 else:
                     field._pfp__set_value(val)
 
+            field.is_local = True
+            node.type.cpp = ""
             if "const" in node.quals:
                 field._pfp__freeze()
+                node.type.cpp += "const "
+            if "local" in node.quals:
+                self._locals_stack[-1].append(node)
 
+            in_struct = "local" in node.quals and len(self._incomplete_stack) > 1 and not self._call_stack
             field._pfp__interp = self
+            if isinstance(node.type, AST.ArrayDecl):
+                classname = " ".join(node.type.type.type.names)
+                if classname in ["uchar", "char"]:
+                    node.type.cpp += "std::string"
+                else:
+                    node.type.cpp += "std::vector<" + classname + ">"
+
+                if in_struct:
+                    node.cpp = node.name
+                else:
+                    node.cpp = node.type.cpp + " " + node.name
+                if node.init is not None:
+                    node.cpp += " = { "
+                    for expr in node.init.exprs:
+                        node.cpp += expr.cpp + ", "
+                    node.cpp = node.cpp[:-2]
+                    node.cpp += " }"
+                elif in_struct:
+                    node.cpp = ""
+            else:
+                names = node.type.type.names
+                for name in names:
+                    if name == "string":
+                        name = "std::string"
+                    node.type.cpp += name + " "
+                node.type.cpp = node.type.cpp[:-1]
+                if in_struct:
+                    node.cpp = node.name
+                else:
+                    node.cpp = node.type.cpp + " " + node.name
+                if node.name in ["true", "false"]:
+                    node.cpp = ""
+                elif node.init is not None:
+                    if "const" in node.quals:
+                        node.cpp += " = " + node.init.cpp + ";\n"
+                        self._global_locals.append(node.name)
+                        if node.name not in ["CHECKSUM_BYTE", "CHECKSUM_SHORT_LE", "CHECKSUM_SHORT_BE", "CHECKSUM_INT_LE", "CHECKSUM_INT_BE", "CHECKSUM_INT64_LE", "CHECKSUM_INT64_BE", "CHECKSUM_SUM8", "CHECKSUM_SUM16", "CHECKSUM_SUM32", "CHECKSUM_SUM64", "CHECKSUM_CRC16", "CHECKSUM_CRCCCITT", "CHECKSUM_CRC32", "CHECKSUM_ADLER32", "FINDMETHOD_NORMAL", "FINDMETHOD_WILDCARDS", "FINDMETHOD_REGEX", "cBlack", "cRed", "cDkRed", "cLtRed", "cGreen", "cDkGreen", "cLtGreen", "cBlue", "cDkBlue", "cLtBlue", "cPurple", "cDkPurple", "cLtPurple", "cAqua", "cDkAqua", "cLtAqua", "cYellow", "cDkYellow", "cLtYellow", "cDkGray", "cGray", "cSilver", "cLtGray", "cWhite", "cNone", "True", "TRUE", "False", "FALSE"]:
+                            self._cpp.append((node.name, node.cpp))
+                        node.cpp = ""
+                    else:
+                        node.cpp += " = " + node.init.cpp
+                elif in_struct:
+                    node.cpp = ""
 
         elif isinstance(field, functions.Function):
+            #print("decl:function")
             # eh, just add it as a local...
             # maybe the whole local/vars thinking needs to change...
             # and we should only have ONE map TODO
             field.name = field_name
             scope.add_local(field_name, field)
+            node.cpp = field_name + "()"
 
         elif field_name is not None:
+            #print("decl:field")
             added_child = False
 
             # by this point, structs are already instantiated (they need to be
             # in order to set the new context)
             if not isinstance(field, fields.Field):
                 if issubclass(field, fields.NumberBase):
+                    #print("decl:NumberBase")
                     # use the default bitfield direction
                     if self._bitfield_direction is self.BITFIELD_DIR_DEFAULT:
                         bitfield_left_right = (
@@ -1402,6 +1826,7 @@ class PfpInterp(object):
                     and not isinstance(ctxt, fields.Union)
                     and hasattr(field, "_pfp__init")
                 ):
+                    #print("decl:substructunion")
 
                     # this is so that we can have all nested structs added to
                     # the root DOM, even if there's an error in parsing the data.
@@ -1422,17 +1847,23 @@ class PfpInterp(object):
                     scope.add_var(field_name, field_res, root=True)
 
                     field_res._pfp__interp = self
+                    #self._is_substructunion = True
                     field._pfp__init(stream)
+                    self._is_substructunion = False
                     added_child = True
                 else:
+                    #print("decl:fieldfield")
                     field = field(
                         stream, metadata_processor=metadata_processor
                     )
 
             if not added_child:
+                #print("decl:not added_child")
                 field._pfp__interp = self
                 field_res = ctxt._pfp__add_child(field_name, field, stream)
                 field_res._pfp__interp = self
+                #field_res._pfp__scope = scope
+                #print(field_res)
 
                 # when adding a new field to a struct/union/fileast, add it to the
                 # root of the ctxt's scope so that it doesn't get lost by being declared
@@ -1443,6 +1874,239 @@ class PfpInterp(object):
                 # this flag
                 added_child = True
 
+            if isinstance(node.type, AST.ArrayDecl):
+                if hasattr(node.type.type.type, "name"):
+                    classname = node.type.type.type.name
+                else:
+                    classname = " ".join(node.type.type.type.names)
+                nodetype = scope.get_type(classname)
+                if classname == field_name + "_struct" and ctxt._pfp__node.name is not None:
+                    classname = ctxt._pfp__node.name + "_" + field_name + "_struct"
+                if classname == field_name + "_union" and ctxt._pfp__node.name is not None:
+                    classname = ctxt._pfp__node.name + "_" + field_name + "_union"
+                node.originalname = node.name
+                while node.name in self._defined and self._defined[node.name] != classname + "_array_class":
+                    node.name += "_"
+                is_char_array = False
+                is_string = False
+                if classname in ["char", "uchar", "unsigned char", "CHAR", "UCHAR"]:
+                    node.type.cpp = "std::string"
+                    is_char_array = True
+                else:
+                    node.type.cpp = "std::vector<" + classname + ">"
+                if classname == "string":
+                    classname = "std::string"
+                    is_string = True
+
+                element_classname = classname
+
+                is_pointer = ""
+                is_native = False
+                if nodetype is None or isinstance(nodetype, list):
+                    element_classname = classname + "_class"
+                    if is_string:
+                        self.add_string_class(element_classname)
+                    else:
+                        self.add_native_class(element_classname, classname)
+                    is_native = True
+                elif issubclass(nodetype, fields.Enum) or issubclass(nodetype, fields.Union):
+                    pass
+                else:
+                    node.type.cpp = "std::vector<" + classname + "*>"
+                    is_pointer = "*"
+                    if hasattr(nodetype, "_pfp__node"):
+                        classnode = nodetype._pfp__node
+                    else:
+                        classnode = field.items[0]._pfp__node
+                    is_union = classnode.__class__ == AST.Union
+                    if classname not in self._defined and not self._incomplete:
+                        self.add_class(classname, classnode, is_union)
+
+                if node.name + "_element" not in self._defined:
+                    self._defined[node.name + "_element"] = classname + "_class"
+                    if is_native:
+                        self._cpp.append((node.name + "_element", element_classname + " " + node.name + "_element(false);\n"))
+                    else:
+                        self._cpp.append((node.name + "_element", element_classname + " " + node.name + "_element;\n"))
+
+                cpp = ""
+                if classname + "_array_class" not in self._defined:
+                    self._defined[classname + "_array_class"] = None
+                    cpp += "\n\nclass " + classname + "_array_class {\n"
+                    cpp += "\t" + element_classname + "& " + "element;\n"
+                    if is_char_array:
+                        cpp += "\tstd::vector<std::string> known_values;\n"
+                    if is_native:
+                        cpp += "\tstd::unordered_map<int, std::vector<" + classname + ">> element_known_values;\n"
+                    cpp += "\t" + node.type.cpp + " " + "value;\n"
+                    cpp += "public:\n"
+                    cpp += "\tint64 _startof;\n"
+                    cpp += "\tstd::size_t _sizeof;\n"
+                    cpp += "\t" + node.type.cpp + " operator () () { return value; }\n"
+                    cpp += "\t" + classname + " operator [] (int index) { return " + is_pointer + "value[index]; }\n"
+                    if is_native:
+                        cpp += "\t" + classname + "_array_class(" + element_classname + "& element, std::unordered_map<int, std::vector<" + classname + ">> element_known_values = {})\n\t\t: element(element), element_known_values(element_known_values) {}\n"
+                    else:
+                        cpp += "\t" + classname + "_array_class(" + element_classname + "& element) : element(element) {}\n"
+                    if is_char_array:
+                        cpp += "\t" + classname + "_array_class(" + element_classname + "& element, std::vector<std::string> known_values)\n\t\t: element(element), known_values(known_values) {}\n"
+
+                    cpp += "\n\t" + node.type.cpp + " generate(unsigned size) {\n"
+                    cpp += "\t\tcheck_array_length(size);\n"
+                    cpp += "\t\t_startof = FTell();\n"
+                    cpp += "\t\t_sizeof = 0;\n"
+                    if is_char_array:
+                        cpp += "\t\tif (known_values.size()) {\n"
+                        cpp += "\t\t\tstd::string res = file_acc.file_string(known_values);\n"
+                        cpp += "\t\t\tassert(res.length() == size);\n"
+                        cpp += "\t\t\tfor (unsigned i = 0; i < size; ++i) {\n"
+                        cpp += "\t\t\t\tvalue.push_back(res[i]);\n"
+                        cpp += "\t\t\t}\n"
+                        cpp += "\t\t\t_sizeof = size;\n"
+                        cpp += "\t\t\treturn value;\n"
+                        cpp += "\t\t}\n"
+                    cpp += "\t\tfor (unsigned i = 0; i < size; ++i) {\n"
+                    if is_native:
+                        cpp += "\t\t\tauto known = element_known_values.find(i);\n"
+                        cpp += "\t\t\tif (known == element_known_values.end()) {\n"
+                        cpp += "\t\t\t\tvalue.push_back(element.generate());\n"
+                        cpp += "\t\t\t\t_sizeof += element._sizeof;\n"
+                        cpp += "\t\t\t} else {\n"
+                        cpp += "\t\t\t\tvalue.push_back(file_acc.file_integer(sizeof(" + classname + "), known->second));\n"
+                        cpp += "\t\t\t\t_sizeof += sizeof(" + classname + ");\n"
+                        cpp += "\t\t\t}\n"
+                    else:
+                        cpp += "\t\t\tvalue.push_back(element.generate());\n"
+                        cpp += "\t\t\t_sizeof += element._sizeof;\n"
+                    cpp += "\t\t}\n"
+                    cpp += "\t\treturn value;\n"
+                    cpp += "\t}\n};\n\n"
+                nodecpp = ""
+                if node.name not in self._defined:
+                    self._defined[node.name] = classname + "_array_class"
+                    nodecpp = classname + "_array_class " + node.name + "(" + node.name + "_element);\n"
+                if nodetype is None or isinstance(nodetype, list) or issubclass(nodetype, fields.Enum) or issubclass(nodetype, fields.Union):
+                    self._cpp.append((classname + "_array_class", cpp))
+                    self._cpp.append((node.name, nodecpp))
+                else:
+                    if classname in self._defined:
+                        self._cpp.append((classname + "_array_class", cpp))
+                        self._cpp.append((node.name, nodecpp))
+                        self.add_class_generate(classname, classnode, is_union)
+                    else:
+                        if classname not in self._to_define:
+                            self._to_define[classname] = []
+                        self._to_define[classname].append((cpp, node))
+                        if classname not in self._declared:
+                            self._declared.add(classname)
+                            self._cpp.append((classname, "\nclass " + classname + ";\n\n"))
+
+                node.cpp = ""
+                if node.originalname == node.name:
+                    node.cpp = node.originalname + "_var = "
+                node.cpp += "::" + node.name + ".generate("
+                if node.type.dim is not None:
+                    node.cpp += node.type.dim.cpp
+                node.cpp += ")"
+                if node.originalname == node.name and len(self._incomplete_stack) > 1:
+                    node.cpp += ";\n" + node.originalname + "_exists = true"
+            elif isinstance(node.type.type, AST.Enum):
+                classname = " ".join(node.type.type.names)
+                #node.originalname = node.name
+                while node.name in self._defined and self._defined[node.name] != classname:
+                    node.name += "_"
+                self._defined[node.name] = classname
+                node.cpp = node.name + "_var = " + classname + "_generate()"
+                if len(self._incomplete_stack) > 1:
+                    node.cpp += ";\n" + node.name + "_exists = true"
+                node.type.cpp = " ".join(node.type.type.type.names)
+                if classname not in self._defined:
+                    self._defined[classname] = None
+                    cpp = "\nenum "
+                    if node.type.type.name is None:
+                        cpp += classname
+                    else:
+                        cpp += node.type.type.name
+                    cpp += " : " + " ".join(node.type.type.type.names) + " {\n"
+                    for enumerator in node.type.type.values.enumerators:
+                        cpp += "\t" + enumerator.name
+                        if enumerator.value is not None:
+                            cpp += " = " + enumerator.value.value
+                        cpp += ",\n"
+                    cpp += "};\n"
+                    self._cpp.append((classname, cpp))
+                if classname + "_generate" not in self._defined:
+                    self._defined[classname + "_generate"] = None
+                    cpp = "\n" + classname + " " + classname + "_generate() {\n\treturn (" + classname + ") file_acc.file_integer(sizeof(" + " ".join(node.type.type.type.names) + "), " + classname + "_values);\n}\n"
+                    self._cpp.append((classname + "_generate", cpp))
+            elif isinstance(node.type.type, AST.Union) or isinstance(node.type.type, AST.Struct):
+                if hasattr(node.type.type, "name"):
+                    classname = node.type.type.name
+                else:
+                    classname = " ".join(node.type.type.names)
+                if classname == field_name + "_struct" and ctxt._pfp__node.name is not None:
+                    classname = ctxt._pfp__node.name + "_" + field_name + "_struct"
+                if classname == field_name + "_union" and ctxt._pfp__node.name is not None:
+                    classname = ctxt._pfp__node.name + "_" + field_name + "_union"
+                classnode = field._pfp__node
+                node.originalname = node.name
+                while node.name in self._defined and self._defined[node.name] != classname:
+                    node.name += "_"
+                is_union = isinstance(node.type.type, AST.Union)
+                node.is_structunion = True
+                self.add_decl(classname, classnode, node, is_union)
+            else:
+                if hasattr(node.type.type, "name"):
+                    classname = node.type.type.name
+                else:
+                    classname = " ".join(node.type.type.names)
+                nodetype = scope.get_type(classname)
+                if nodetype is None or isinstance(nodetype, list):
+                    classname = "_".join(node.type.type.names) + "_class"
+                    node.originalname = node.name
+                    while node.name in self._defined and self._defined[node.name] != classname:
+                        node.name += "_"
+                    node.type.cpp = " ".join(node.type.type.names)
+                    is_string = False
+                    if node.type.cpp == "string":
+                        node.type.cpp = "std::string"
+                        self.add_string_class(classname)
+                        is_string = True
+                    else:
+                        self.add_native_class(classname, node.type.cpp)
+                    node.cpp = ""
+                    if node.originalname == node.name:
+                        node.cpp = node.originalname + "_var = "
+                    node.cpp += "::" + node.name + ".generate()"
+                    if node.originalname == node.name and len(self._incomplete_stack) > 1:
+                        node.cpp += ";\n" + node.originalname + "_exists = true"
+                    if node.name not in self._defined:
+                        self._defined[node.name] = classname
+                        if is_string:
+                            self._cpp.append((node.name, classname + " " + node.name + ";\n"))
+                        else:
+                            self._cpp.append((node.name, classname + " " + node.name + "(true);\n"))
+                elif issubclass(nodetype, fields.Enum):
+                    node.cpp = node.name + "_var = " + classname + "_generate()"
+                    if len(self._incomplete_stack) > 1:
+                        node.cpp += ";\n" + node.name + "_exists = true"
+                    node.type.cpp = nodetype.typename
+                    if classname + "_generate" not in self._defined:
+                        self._defined[classname + "_generate"] = None
+                        cpp = "\n" + classname + " " + classname + "_generate() {\n\treturn (" + classname + ") file_acc.file_integer(sizeof(" + nodetype.typename + "), " + classname + "_values);\n}\n"
+                        self._cpp.append((classname + "_generate", cpp))
+                else:
+                    if hasattr(nodetype, "_pfp__node"):
+                        classnode = nodetype._pfp__node
+                    else:
+                        classnode = field._pfp__node
+                    node.originalname = node.name
+                    while node.name in self._defined and self._defined[node.name] != classname:
+                        node.name += "_"
+                    is_union = issubclass(nodetype, fields.Union)
+                    node.is_structunion = True
+                    self.add_decl(classname, classnode, node, is_union)
+
         # enums will get here. If there is no name, then no
         # field is being declared (but the enum values _will_
         # get defined). E.g.:
@@ -1452,8 +2116,12 @@ class PfpInterp(object):
         #        BLAH3
         #     };
         elif field_name is None:
+            #print("decl:none")
+            node.cpp = ""
             pass
 
+        #print("handled decl")
+        #print(field_name)
         return field
 
     def _handle_metadata(self, node, scope, ctxt, stream):
@@ -1572,6 +2240,12 @@ class PfpInterp(object):
         :returns: TODO
 
         """
+        if self._generate and node.type.__class__ is AST.Enum and node.type.name is None:
+            node.type.names = [node.declname + "_enum"]
+        if self._generate and node.type.__class__ is AST.Struct and node.type.name is None:
+            node.type.name = node.declname + "_struct"
+        if self._generate and node.type.__class__ is AST.Union and node.type.name is None:
+            node.type.name = node.declname + "_union"
         self._dlog("handling type decl")
         decl = self._handle_node(node.type, scope, ctxt, stream)
         return decl
@@ -1592,6 +2266,11 @@ class PfpInterp(object):
         # field
         struct = self._handle_node(node.name, scope, ctxt, stream)
 
+        if node.name.__class__ == AST.ArrayRef:
+            node.cpp = node.name.cpp + "->" + node.field.name + "()"
+        else:
+            node.cpp = node.name.cpp + "." + node.field.name + "()"
+
         try:
             sub_field = getattr(struct, node.field.name)
         except AttributeError as e:
@@ -1609,6 +2288,8 @@ class PfpInterp(object):
                 last_item = struct[-1]
                 sub_field = getattr(last_item, node.field.name)
             else:
+                if self._generate:
+                    return None
                 raise
 
         return sub_field
@@ -1630,6 +2311,14 @@ class PfpInterp(object):
 
     def _handle_union_decls(self, node, scope, ctxt, stream):
         self._dlog("handling union decls")
+        for decl in node.decls:
+            decl.type.cpp = "/* TODO union decl*/"
+        self._locals_stack.append([])
+        if node.decls[0] in self._structs:
+            self._incomplete_stack.append(True)
+        else:
+            self._structs.add(node.decls[0])
+            self._incomplete_stack.append(False)
 
         # new scope
         scope = ctxt._pfp__scope = Scope(self._log, parent=scope)
@@ -1637,13 +2326,19 @@ class PfpInterp(object):
         try:
             max_pos = 0
             for decl in node.decls:
-                self._handle_node(decl, scope, ctxt, stream)
+                try:
+                    self._handle_node(decl, scope, ctxt, stream)
+                except errors.InterpReturn as e:
+                    if not self._generate:
+                        raise e
                 scope.clear_meta()
 
         finally:
             # the union will have reset the stream
             stream.seek(stream.tell() + ctxt._pfp__width(), 0)
             self._scope = scope._parent
+            self._locals_stack.pop()
+            self._incomplete = self._incomplete_stack.pop()
 
     def _handle_init_list(self, node, scope, ctxt, stream):
         """Handle InitList nodes (e.g. when initializing a struct)
@@ -1712,15 +2407,26 @@ class PfpInterp(object):
 
     def _handle_struct_decls(self, node, scope, ctxt, stream):
         self._dlog("handling struct decls")
+        self._locals_stack.append([])
+        if node.decls[0] in self._structs:
+            self._incomplete_stack.append(True)
+        else:
+            self._structs.add(node.decls[0])
+            self._incomplete_stack.append(False)
 
         # new scope
-        scope = ctxt._pfp__scope = Scope(self._log, parent=scope)
-        self._scope = scope
+        if not self._is_substructunion:
+            scope = ctxt._pfp__scope = Scope(self._log, parent=scope)
+            self._scope = scope
 
         try:
             for decl in node.decls:
                 # new context! (struct)
-                self._handle_node(decl, scope, ctxt, stream)
+                try:
+                    self._handle_node(decl, scope, ctxt, stream)
+                except errors.InterpReturn as e:
+                    if not self._generate:
+                        raise e
                 scope.clear_meta()
 
             ctxt._pfp__process_fields_metadata()
@@ -1729,7 +2435,10 @@ class PfpInterp(object):
         # happen, we'll still pop scope
         finally:
             # need to pop the scope!
-            self._scope = scope._parent
+            if not self._is_substructunion:
+                self._scope = scope._parent
+            self._locals_stack.pop()
+            self._incomplete = self._incomplete_stack.pop()
 
     def _handle_identifier_type(self, node, scope, ctxt, stream):
         """TODO: Docstring for _handle_identifier_type.
@@ -1742,6 +2451,7 @@ class PfpInterp(object):
 
         """
         self._dlog("handling identifier")
+        node.cpp = ""
 
         cls = self._resolve_to_field_class(node.names, scope)
         return cls
@@ -1768,9 +2478,24 @@ class PfpInterp(object):
                 scope.add_type_struct_or_union(node.name, self, node.type.type)
             else:
                 scope.add_refd_struct_or_union(node.name, node.type.type.name, self, node.type.type)
+            node.cpp = ""
         elif is_enum:
             enum_cls = self._handle_node(node.type, scope, ctxt, stream)
             scope.add_type_class(node.name, enum_cls)
+            node.cpp = "\ntypedef enum "
+            if node.type.type.name is None:
+                name = " ".join(node.type.type.names)
+            else:
+                name = node.type.type.name
+            node.cpp += name
+            node.cpp += " " + node.name
+            cpp = "std::vector<" + " ".join(node.type.type.type.names) + "> " + node.name + "_values = { "
+            for enumerator in node.type.type.values.enumerators:
+                cpp += enumerator.name + ", "
+            cpp = cpp[:-2]
+            cpp += " };\n"
+            self._cpp.append((node.name, node.cpp + ";\n" + cpp))
+            node.cpp = ""
         elif isinstance(node.type, AST.ArrayDecl):
             # this does not parse data, just creates the ArrayDecl class
             array_cls = self._handle_node(node.type, scope, ctxt, stream)
@@ -1787,6 +2512,20 @@ class PfpInterp(object):
             #            IdentifierType: ['unsigned', 'char']
             #
             scope.add_type(node.name, names)
+            if node.name == 'wchar_t':
+                node.cpp = ""
+                return
+            node.cpp = "typedef"
+            for name in names:
+                realnames = scope.get_type(name)
+                if realnames:
+                    for n in realnames:
+                        node.cpp += " " + n
+                else:
+                    node.cpp += " " + name
+            node.cpp += " " + node.name
+        if node.name in ["UINT", "byte", "CHAR", "BYTE", "uchar", "ubyte", "UCHAR", "UBYTE", "int16", "SHORT", "INT16", "uint16", "ushort", "USHORT", "UINT16", "WORD", "int32", "INT", "INT32", "LONG", "uint", "uint32", "ulong", "UINT", "UINT32", "ULONG", "DWORD", "int64", "quad", "QUAD", "INT64", "__int64", "uint64", "uquad", "UQUAD", "UINT64", "QWORD", "__uint64", "FLOAT", "DOUBLE", "hfloat", "HFLOAT", "OLETIME", "time_t"]:
+            node.cpp = ""
 
     def _str_to_int(self, string):
         """Check for the hex
@@ -1845,6 +2584,7 @@ class PfpInterp(object):
             # return switch[node.type](node.value)
             conversion, field_cls = switch[node.type]
             val = conversion(node.value)
+            node.cpp = node.value
 
             if hasattr(field_cls, "__call__") and not type(field_cls) is type:
                 field_cls = field_cls(val)
@@ -1896,7 +2636,7 @@ class PfpInterp(object):
             left_val = new_left_val
 
         # short circuit power!
-        if node.op == "||" and left_val:
+        if node.op == "||" and left_val and not self._generate:
             res = 1
         else:
             right_val = self._handle_node(node.right, scope, ctxt, stream)
@@ -1908,7 +2648,78 @@ class PfpInterp(object):
             if node.op not in switch:
                 raise errors.UnsupportedBinaryOperator(node.coord, node.op)
 
-            res = switch[node.op](left_val, right_val)
+            if node.op in ["==", "!="]:
+                exp = None
+                if node.right.__class__ == AST.Constant:
+                    exp = node.left
+                    const = node.right
+                elif node.left.__class__ == AST.Constant:
+                    exp = node.right
+                    const = node.left
+                
+                if exp is not None and exp.__class__ == AST.ArrayRef:
+                    if exp.name.__class__ == AST.StructRef:
+                        name = exp.name.field.name
+                        index = exp.subscript.value
+                        value = const.cpp
+                        if name not in self._known_values:
+                            self._known_values[name] = {}
+                        if index not in self._known_values[name]:
+                            self._known_values[name][index] = []
+                        self._known_values[name][index].append(value)
+                        cpp = "_element, { "
+                        for index in self._known_values[name]:
+                            cpp += "{ " + index + ", {"
+                            for value in self._known_values[name][index]:
+                                cpp += value + ", "
+                            cpp = cpp[:-2]
+                            cpp += "} }, "
+                        cpp = cpp[:-2]
+                        cpp += " });\n"
+                        for i, (n, c) in enumerate(self._cpp):
+                            if n == name:
+                                self._cpp[i] = (n, re.sub("_element.*", cpp, c))
+
+                if exp is not None and exp.__class__ == AST.StructRef or exp.__class__ == AST.ID:
+                    if exp.__class__ == AST.StructRef:
+                        name = exp.field.name
+                    else:
+                        name = exp.name
+                    value = const.cpp
+                    if name not in self._known_values:
+                        self._known_values[name] = []
+                    self._known_values[name].append(value)
+                    if len(set(self._known_values[name])) == 1:
+                        self._known_values[name] = self._known_values[name][:1]
+                    if name in self._defined and not hasattr(scope.get_id(name), "is_local"):
+                        classname = self._defined[name]
+                        if classname[-12:] == "_array_class":
+                            cpp = "_element, { "
+                            for value in self._known_values[name]:
+                                cpp += value + ", "
+                            cpp = cpp[:-2]
+                            cpp += " });\n"
+                            for i, (n, c) in enumerate(self._cpp):
+                                if n == name:
+                                    self._cpp[i] = (n, re.sub("_element.*", cpp, c))
+                        else:
+                            cpp = "(true, { "
+                            for value in self._known_values[name]:
+                                cpp += value + ", "
+                            cpp = cpp[:-2]
+                            cpp += " });\n"
+                            for i, (n, c) in enumerate(self._cpp):
+                                if n == name:
+                                    self._cpp[i] = (n, re.sub("\(true.*", cpp, c))
+
+            res = None
+            try:
+                res = switch[node.op](left_val, right_val)
+            except:
+                print("* EXCEPTION IN BINARY OP " + str(left_val) + " " + node.op + " " + str(right_val) + ", in line " + str(node.coord.line))
+                pass
+
+        node.cpp = "(" + node.left.cpp + " " + node.op + " " + node.right.cpp + ")"
 
         if type(res) is bool:
             new_res = fields.Int()
@@ -1954,16 +2765,31 @@ class PfpInterp(object):
         if node.op not in switch and node.op not in special_switch:
             raise errors.UnsupportedUnaryOperator(node.coord, node.op)
 
+        if node.op == "exists" and node.expr.__class__ == AST.StructRef:
+            node.cpp = "EXISTS(" + node.expr.name.name + ", " + node.expr.field.name + ")"
+
         if node.op in special_switch:
             return special_switch[node.op](node, scope, ctxt, stream)
 
         field = self._handle_node(node.expr, scope, ctxt, stream)
+        if node.op == "sizeof":
+            node.cpp = node.expr.cpp + "._sizeof"
+        elif node.op == "startof":
+            if node.expr.name == "this":
+                node.cpp = "_startof"
+            else:
+                node.cpp = "::" + node.expr.name + "._startof"
+        else:
+            node.cpp = node.op + node.expr.cpp
         if type(field) is type:
             field = field()
         res = switch[node.op](field, 1)
         if type(res) is bool:
             new_res = field.__class__()
-            new_res._pfp__set_value(1 if res == True else 0)
+            if type(new_res) == int:
+                new_res = 1 if res == True else 0
+            else:
+                new_res._pfp__set_value(1 if res == True else 0)
             res = new_res
         return res
 
@@ -1972,6 +2798,7 @@ class PfpInterp(object):
         clone = field.__class__()
         clone._pfp__set_value(field)
         field += 1
+        node.cpp = node.expr.cpp + "++"
         return clone
 
     def _handle_post_minus_minus(self, node, scope, ctxt, stream):
@@ -1979,6 +2806,7 @@ class PfpInterp(object):
         clone = field.__class__()
         clone._pfp__set_value(field)
         field -= 1
+        node.cpp = node.expr.cpp + "--"
         return clone
 
     def _handle_parentof(self, node, scope, ctxt, stream):
@@ -2065,10 +2893,15 @@ class PfpInterp(object):
         is_lazy = getattr(node, "is_lazy", False)
 
         if field is None and not is_lazy:
-            raise errors.UnresolvedID(node.coord, node.name)
+            if not self._generate:
+                raise errors.UnresolvedID(node.coord, node.name)
         elif is_lazy:
             return LazyField(node.name, scope)
 
+        if node.name in ["false", "true"]:
+            node.cpp = node.name
+        else:
+            node.cpp = "/**/" + node.name + "()"
         return field
 
     def _handle_assignment(self, node, scope, ctxt, stream):
@@ -2134,6 +2967,8 @@ class PfpInterp(object):
         field = self._handle_node(node.lvalue, scope, ctxt, stream)
         self._dlog("field = {}".format(field))
 
+        if type(field) is type:
+            field = field()
         scope.push_meta("dest_type", field._pfp__get_class())
 
         value = self._handle_node(
@@ -2146,11 +2981,17 @@ class PfpInterp(object):
         if node.op is None:
             self._dlog("value = {}".format(value))
             field._pfp__set_value(value)
+            node.cpp = node.lvalue.cpp + " = " + node.rvalue.cpp
         else:
             self._dlog("value {}= {}".format(node.op, value))
             if node.op not in switch:
                 raise errors.UnsupportedAssignmentOperator(node.coord, node.op)
-            switch[node.op](field, value)
+            try:
+                switch[node.op](field, value)
+            except:
+                print("* EXCEPTION IN ASSIGNMENT " + str(field) + " " + node.op + " " + str(value) + ", in line " + str(node.coord.line))
+                pass
+            node.cpp = node.lvalue.cpp + " " + node.op + " " + node.rvalue.cpp
         return field
 
     def _handle_func_def(self, node, scope, ctxt, stream):
@@ -2166,6 +3007,8 @@ class PfpInterp(object):
         self._dlog("handling function definition")
         func = self._handle_node(node.decl, scope, ctxt, stream)
         func.body = node.body
+        node.cpp = ""
+        func.node = node
 
     def _handle_param_list(self, node, scope, ctxt, stream):
         """Handle ParamList nodes
@@ -2231,9 +3074,51 @@ class PfpInterp(object):
         if node.args is None:
             func_args = []
         else:
+            scope.clear_meta()
             func_args = self._handle_node(node.args, scope, ctxt, stream)
         func = self._handle_node(node.name, scope, ctxt, stream)
-        return func.call(func_args, ctxt, scope, stream, self, node.coord)
+        node.cpp = "" + node.name.name + "("
+        if node.args:
+            first = True
+            for arg in node.args.exprs:
+                if first:
+                    first = False
+                else:
+                    node.cpp += ", "
+                node.cpp += arg.cpp
+        node.cpp += ")"
+        self._locals_stack.append([])
+        self._call_stack.append(None)
+        ret = func.call(func_args, ctxt, scope, stream, self, node.coord)
+        self._call_stack.pop()
+        self._locals_stack.pop()
+        if hasattr(func, "node") and func.node.cpp == "":
+            for name in func.node.decl.type.type.type.names:
+                if name == "string":
+                    name = "std::string"
+                func.node.cpp += name + " "
+            func.node.cpp += func.name + "("
+            for param in func.node.decl.type.args.params:
+                if hasattr(param.type.type, "names"):
+                    names = param.type.type.names
+                else:
+                    names = param.type.type.type.names
+                for name in names:
+                    if name == "string":
+                        name = "std::string"
+                    func.node.cpp += name + " "
+                func.node.cpp += param.name + ", "
+                func.body.cpp = func.body.cpp.replace("/**/" + param.name + "()", param.name)
+            decls = self.get_decls(func.body)
+            for decl in decls:
+                if "local" in decl.quals:
+                    func.body.cpp = func.body.cpp.replace("/**/" + decl.name + "()", decl.name)
+            func.node.cpp = func.node.cpp[:-2]
+            func.node.cpp += ") {\n"
+            func.node.cpp += func.body.cpp
+            func.node.cpp += "}\n"
+            self._cpp.append((func.name, func.node.cpp))
+        return ret
 
     def _handle_expr_list(self, node, scope, ctxt, stream):
         """Handle ExprList nodes
@@ -2264,16 +3149,31 @@ class PfpInterp(object):
         self._dlog("handling compound statement")
         # scope.push()
 
+        node.cpp = ""
         try:
+            ret = None
             for child in node.children():
                 scope.clear_meta()
-                self._handle_node(child, scope, ctxt, stream)
+                try:
+                    self._handle_node(child, scope, ctxt, stream)
+                except errors.InterpReturn as e:
+                    if not self._generate:
+                        raise e
+                    elif ret is None:
+                        ret = e
+                if child[1].cpp:
+                    node.cpp += "\t" + child[1].cpp.replace("\n", "\n\t") + ";\n"
+            if ret is not None:
+                if self._call_stack:
+                    raise ret
+                else:
+                    node.cpp = node.cpp.replace("return ", "exit_template")
 
         # in case a return occurs, be sure to pop the scope
         # (returns are implemented by raising an exception)
         finally:
             # scope.pop()
-            pass
+            scope.clear_meta()
 
     def _handle_return(self, node, scope, ctxt, stream):
         """Handle Return nodes
@@ -2286,10 +3186,12 @@ class PfpInterp(object):
 
         """
         self._dlog("handling return")
+        node.cpp = "return"
         if node.expr is None:
             ret_val = None
         else:
             ret_val = self._handle_node(node.expr, scope, ctxt, stream)
+            node.cpp += " (" + node.expr.cpp + ")"
         self._dlog("return value = {}".format(ret_val))
         raise errors.InterpReturn(ret_val)
 
@@ -2338,6 +3240,42 @@ class PfpInterp(object):
                 "enum_" + enum_cls.__name__, enum_cls, enum_vals
             )
             # don't add to scope if we don't have a name
+        node.cpp = "\nenum "
+        if node.name is None:
+            if hasattr(node, "names"):
+                name = " ".join(node.names)
+            else:
+                node.name = "unnamed_enum"
+                name = node.name
+        else:
+            name = node.name
+        node.cpp += name
+        if node.type is not None:
+            node.cpp += " : " + " ".join(node.type.names)
+        node.cpp += " {\n"
+        for enumerator in node.values.enumerators:
+            self._global_locals.append(enumerator.name)
+            self._defined[enumerator.name] = "enum value"
+            node.cpp += "\t" + enumerator.name
+            if enumerator.value:
+                node.cpp += " = " + enumerator.value.value
+            node.cpp += ",\n"
+        node.cpp += "}"
+        if name in self._defined:
+            node.cpp = ""
+        else:
+            self._defined[name] = "enum"
+            if node.type is not None:
+                cpp = "std::vector<" + " ".join(node.type.names) + "> " + name + "_values = { "
+                for enumerator in node.values.enumerators:
+                    cpp += enumerator.name + ", "
+                cpp = cpp[:-2]
+                cpp += " };\n"
+                self._cpp.append((name, node.cpp + ";\n" + cpp))
+            else:
+                self._cpp.append((name, node.cpp + ";\n"))
+        if node.type is not None:
+            enum_cls.typename = " ".join(node.type.names)
 
         return enum_cls
 
@@ -2360,6 +3298,8 @@ class PfpInterp(object):
             array_size = None
         else:
             array_size = self._handle_node(node.dim, scope, ctxt, stream)
+        if self._generate:
+            array_size = None
         self._dlog("array size = {}".format(array_size))
         # TODO node.dim_quals
         # node.type
@@ -2383,7 +3323,11 @@ class PfpInterp(object):
         """
         ary = self._handle_node(node.name, scope, ctxt, stream)
         subscript = self._handle_node(node.subscript, scope, ctxt, stream)
-        return ary[fields.PYVAL(subscript)]
+        node.cpp = node.name.cpp + "[" + node.subscript.cpp + "]"
+        index = fields.PYVAL(subscript)
+        if self._generate:
+            index = 0
+        return ary[index]
 
     def _handle_if(self, node, scope, ctxt, stream):
         """Handle If nodes
@@ -2395,8 +3339,65 @@ class PfpInterp(object):
         :returns: TODO
 
         """
+        if self._generate and node.__class__ == AST.If and self._incomplete_stack[-1]:
+            return
+        node.cpp = ""
         self._dlog("handling if/ternary_op")
         cond = self._handle_node(node.cond, scope, ctxt, stream)
+        if self._generate:
+            ret = None
+            try:
+                true_branch = self._handle_node(node.iftrue, scope, ctxt, stream)
+            except errors.InterpReturn as e:
+                if not self._generate:
+                    raise e
+                elif ret is None:
+                    ret = e
+            #except:
+            #    print("exception on if true")
+            #    true_branch = None
+            if node.iffalse is not None:
+                try:
+                    false_branch = self._handle_node(node.iffalse, scope, ctxt, stream)
+                except errors.InterpReturn as e:
+                    if not self._generate:
+                        raise e
+                    elif ret is None:
+                        ret = e
+                #except:
+                #    print("exception on if false")
+                #    false_branch = None
+            if node.__class__ == AST.TernaryOp:
+                node.cpp = "(" + node.cond.cpp + " ? " + node.iftrue.cpp + " : " + node.iffalse.cpp + ")"
+            if node.__class__ == AST.If:
+                node.cpp = "if (" + node.cond.cpp + ") {\n"
+                if isinstance(node.iftrue, list):
+                    for e in node.iftrue:
+                        node.cpp += "\t" + e.cpp.replace("\n", "\n\t") + ";\n"
+                else:
+                    node.cpp += node.iftrue.cpp
+                    if not hasattr(node.iftrue, "block_items") or node.iftrue.block_items is None:
+                        node.cpp += ";\n"
+                node.cpp += "}"
+                if node.iffalse is not None:
+                    node.cpp += " else {\n"
+                    if isinstance(node.iffalse, list):
+                        for e in node.iffalse:
+                            node.cpp += "\t" + e.cpp.replace("\n", "\n\t") + ";\n"
+                    else:
+                        node.cpp += node.iffalse.cpp
+                        if not hasattr(node.iffalse, "block_items") or node.iffalse.block_items is None:
+                            node.cpp += ";\n"
+                    node.cpp += "}"
+            if ret is not None:
+                if self._call_stack:
+                    raise ret
+                else:
+                    node.cpp = node.cpp.replace("return ", "exit_template")
+            if node.iffalse is not None and not cond:
+                return false_branch
+            else:
+                return true_branch
         if cond:
             # there should always be an iftrue
             return self._handle_node(node.iftrue, scope, ctxt, stream)
@@ -2414,6 +3415,9 @@ class PfpInterp(object):
         :returns: TODO
 
         """
+        if self._generate and self._incomplete_stack[-1]:
+            return
+        node.cpp = ""
         self._dlog("handling for")
         if node.init is not None:
             # perform the init
@@ -2421,7 +3425,7 @@ class PfpInterp(object):
 
         while node.cond is None or self._handle_node(
             node.cond, scope, ctxt, stream
-        ):
+        ) or self._generate:
             if node.stmt is not None:
                 try:
                     # do the for body
@@ -2437,6 +3441,26 @@ class PfpInterp(object):
             if node.next is not None:
                 # do the next statement
                 self._handle_node(node.next, scope, ctxt, stream)
+            if self._generate:
+                break
+        node.cpp = "for ("
+        if node.init is not None:
+            node.cpp += node.init.cpp
+        else:
+            node.cpp += " "
+        node.cpp += "; "
+        if node.cond is not None:
+            node.cpp += node.cond.cpp
+        node.cpp += "; "
+        if node.next is not None:
+            node.cpp += node.next.cpp
+        node.cpp += ") {\n"
+        if isinstance(node.stmt, list):
+            for stmt in node.stmt:
+                node.cpp += "\t" + stmt.cpp + ";\n"
+        elif node.stmt is not None:
+            node.cpp += node.stmt.cpp
+        node.cpp += "}"
 
     def _handle_while(self, node, scope, ctxt, stream):
         """Handle break node
@@ -2448,10 +3472,13 @@ class PfpInterp(object):
         :returns: TODO
 
         """
+        if self._generate and self._incomplete_stack[-1]:
+            return
+        node.cpp = ""
         self._dlog("handling while")
         while node.cond is None or self._handle_node(
             node.cond, scope, ctxt, stream
-        ):
+        ) or self._generate:
             if node.stmt is not None:
                 try:
                     self._handle_node(node.stmt, scope, ctxt, stream)
@@ -2459,6 +3486,14 @@ class PfpInterp(object):
                     break
                 except errors.InterpContinue as e:
                     pass
+            if self._generate:
+                break
+        node.cpp = "while (" + node.cond.cpp + ") {\n"
+        if node.stmt.__class__ == AST.Compound:
+            node.cpp += node.stmt.cpp
+        else:
+            node.cpp += "\t" + node.stmt.cpp + ";\n"
+        node.cpp += "}"
 
     def _handle_do_while(self, node, scope, ctxt, stream):
         """Handle break node
@@ -2470,6 +3505,9 @@ class PfpInterp(object):
         :returns: TODO
 
         """
+        if self._generate and self._incomplete_stack[-1]:
+            return
+        node.cpp = ""
         self._dlog("handling do while")
 
         while True:
@@ -2483,6 +3521,8 @@ class PfpInterp(object):
             if node.cond is not None and not self._handle_node(
                 node.cond, scope, ctxt, stream,
             ):
+                break
+            if self._generate:
                 break
 
     def _flatten_list(self, l):
@@ -2503,17 +3543,32 @@ class PfpInterp(object):
         :returns: TODO
 
         """
+        if self._generate and self._incomplete_stack[-1]:
+            return
+        node.cpp = ""
 
         def exec_case(idx, cases):
             # keep executing cases until a break is found,
             # or they've all been executed
+            ret = None
             for case in cases[idx:]:
                 stmts = case.stmts
+
+                if self._generate:
+                    for stmt in stmts:
+                        try:
+                            self._handle_node(stmt, scope, ctxt, stream)
+                        except errors.InterpReturn as e:
+                            if ret is None:
+                                ret = e
+                    continue
+
                 try:
                     for stmt in stmts:
                         self._handle_node(stmt, scope, ctxt, stream)
                 except errors.InterpBreak as e:
                     break
+            return ret
 
         def get_stmts(stmts, res=None):
             if res is None:
@@ -2545,6 +3600,8 @@ class PfpInterp(object):
             return cases
 
         cond = self._handle_node(node.cond, scope, ctxt, stream)
+        if cond is None:
+            cond = 0
 
         default_idx = None
         found_match = False
@@ -2560,13 +3617,34 @@ class PfpInterp(object):
                 continue
             elif child.__class__ == AST.Case:
                 expr = self._handle_node(child.expr, scope, ctxt, stream)
-                if expr == cond:
+                if expr == cond and not self._generate:
                     found_match = True
                     exec_case(idx, cases)
                     break
 
-        if default_idx is not None and not found_match:
+        if default_idx is not None and not found_match and not self._generate:
             exec_case(default_idx, cases)
+
+        if self._generate:
+            ret = exec_case(0, cases)
+            node.cpp = "switch ("
+            node.cpp += node.cond.cpp
+            node.cpp += ") {\n"
+            for child in cases:
+                if child.__class__ == AST.Case:
+                    node.cpp += "case " + child.expr.cpp + ":\n"
+                    for stmt in child.stmts:
+                        node.cpp += "\t" + stmt.cpp.replace("\n", "\n\t") + ";\n"
+                elif child.__class__ == AST.Default:
+                    node.cpp += "default:\n"
+                    for stmt in child.stmts:
+                        node.cpp += "\t" + stmt.cpp.replace("\n", "\n\t") + ";\n"
+            node.cpp += "}"
+            if ret is not None:
+                if self._call_stack:
+                    raise ret
+                else:
+                    node.cpp = node.cpp.replace("return ", "exit_template")
 
     def _handle_break(self, node, scope, ctxt, stream):
         """Handle break node
@@ -2578,8 +3656,10 @@ class PfpInterp(object):
         :returns: TODO
 
         """
+        node.cpp = "break"
         self._dlog("handling break")
-        raise errors.InterpBreak()
+        if not self._generate:
+            raise errors.InterpBreak()
 
     def _handle_continue(self, node, scope, ctxt, stream):
         """Handle continue node
@@ -2591,8 +3671,10 @@ class PfpInterp(object):
         :returns: TODO
 
         """
+        node.cpp = "continue"
         self._dlog("handling continue")
-        raise errors.InterpContinue()
+        if not self._generate:
+            raise errors.InterpContinue()
 
     def _handle_decl_list(self, node, scope, ctxt, stream):
         """Handle For nodes

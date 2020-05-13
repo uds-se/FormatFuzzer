@@ -161,6 +161,8 @@ def Memcmp(params, ctxt, scope, stream, coord):
 # void Memcpy( uchar dest[], const uchar src[], int n, int destOffset=0, int srcOffset=0 )
 @native(name="Memcpy", ret=pfp.fields.Void)
 def Memcpy(params, ctxt, scope, stream, coord):
+    if params[0]._pfp__interp._generate:
+        return
     if len(params) < 3:
         raise errors.InvalidArguments(
             coord, "{} args".format(len(params)), "at least 3 args"

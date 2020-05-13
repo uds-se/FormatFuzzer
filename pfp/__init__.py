@@ -30,6 +30,7 @@ def parse(
     int3=True,
     keep_successful=False,
     printf=True,
+    generate=True,
 ):
     """Parse the data stream using the supplied template. The data stream
     WILL NOT be automatically closed.
@@ -78,10 +79,10 @@ def parse(
     # the user may specify their own instance of PfpInterp to be
     # used
     if interp is None:
-        interp = pfp.interp.PfpInterp(debug=debug, parser=PARSER, int3=int3)
+        interp = pfp.interp.PfpInterp(debug=debug, parser=PARSER, int3=int3, generate=generate)
 
     # so we can consume single bits at a time
-    data = BitwrappedStream(data)
+    data = BitwrappedStream(data, generate=generate)
 
     dom = interp.parse(
         data,

@@ -55,14 +55,20 @@ class BitwrappedStream(object):
     access"""
 
     closed = True
+    exc_count = 0
 
-    def __init__(self, stream):
+    def error(self):
+        self.exc_count += 1
+
+
+    def __init__(self, stream, generate=True):
         """Init the bit-wrapped stream
 
         :stream: The normal byte stream
         """
         self._stream = stream
         self._bits = collections.deque()
+        self._generate = generate
 
         self.closed = False
 
@@ -79,6 +85,8 @@ class BitwrappedStream(object):
 
         :returns: True/False
         """
+        if self._generate:
+            self.error()
         pos = self._stream.tell()
         byte = self._stream.read(1)
         self._stream.seek(pos, 0)
@@ -112,6 +120,13 @@ class BitwrappedStream(object):
         :num: number of bytes to read
         :returns: the read bytes, or empty string if EOF has been reached
         """
+        if self._generate:
+            self.error()
+            if num < -1:
+                num = 1
+            if num > 100:
+                num = 100
+            return ('\x00' * num).encode()
         start_pos = self.tell()
 
         if self.padded:
@@ -134,6 +149,9 @@ class BitwrappedStream(object):
         :num: number of bits to read
         :returns: a list of ``num`` bits, or an empty list if EOF has been reached
         """
+        if self._generate:
+            self.error()
+            return [0] * num
         if num > len(self._bits):
             needed = num - len(self._bits)
             num_bytes = int(math.ceil(needed / 8.0))
@@ -189,6 +207,9 @@ class BitwrappedStream(object):
 
         :returns: int for the position in the stream
         """
+        if self._generate:
+            self.exc_count += 1
+            return self.exc_count
         res = self._stream.tell()
         if len(self._bits) > 0:
             res -= 1
@@ -218,6 +239,8 @@ class BitwrappedStream(object):
 
         """
         self._bits.clear()
+        if self._generate:
+            return 10
         return self._stream.seek(pos, seek_type)
 
     def size(self):

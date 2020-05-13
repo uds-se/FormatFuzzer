@@ -1016,7 +1016,9 @@ class Struct(Field):
         if name in children_map:
             return children_map[name]
         else:
-            res = self._pfp__scope.get_var(name, recurse=False)
+            res = None
+            if self._pfp__scope is not None:
+                res = self._pfp__scope.get_var(name, recurse=False)
             if res is not None:
                 return res
 
@@ -1568,7 +1570,7 @@ class NumberBase(Field):
         return res
 
     def __getattr__(self, val):
-        if val.startswith("__") and attr.endswith("__"):
+        if val.startswith("__") and val.endswith("__"):
             return getattr(self._pfp__value, val)
         raise AttributeError(val)
 
@@ -2498,7 +2500,7 @@ class String(Field):
         if isinstance(other, String):
             self._pfp__value += other._pfp__value
         else:
-            self._pfp__value += PYSTR(other)
+            self._pfp__value += utils.binary(PYSTR(other))
         return self
 
     def __len__(self):

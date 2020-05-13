@@ -131,6 +131,8 @@ class ParamListDef(object):
         BYREF = "byref"
 
         # TODO are default values for function parameters allowed in 010?
+        if len(self._params) == 1 and type(self._params[0]) is type:
+            return ParamList([])
         for param_name, param_cls in self._params:
             # we don't instantiate a copy of byref params
             if getattr(param_cls, "byref", False):
