@@ -1,4 +1,5 @@
 #include <cassert>
+#include <zlib.h>
 
 bool is_big_endian = false;
 
@@ -12,6 +13,7 @@ class file_accessor {
 		return rand_int(128) == 0;
 	}
 
+public:
 	long long rand_int(unsigned long long x) {
 		unsigned long long max = x-1;
 		if (!(max>>8)) {
@@ -40,7 +42,15 @@ class file_accessor {
 		return (*p) % x;
 	}
 
-public:
+	std::string rand_bytes(int size) {
+		std::string result;
+		for (int i = 0; i < size; ++i) {
+			unsigned char byte = rand_int(256);
+			result += byte;
+		}
+		return result;
+	}
+
 	void set_fd(int file_fd) {
 		this->file_fd = file_fd;
 		srand(time(NULL));
@@ -58,9 +68,9 @@ public:
 
 	template<typename T>
 	long long file_integer(int size, std::vector<T>& known) {
-		if (known.size() == 1 && rand_int(4) == 0) {
+		/*if (known.size() == 1 && known[0] == 0 && rand_int(4) == 0) {
 			return file_integer(size);
-		}
+		}*/
 		if (evil()) {
 			return file_integer(size);
 		}
@@ -108,7 +118,7 @@ public:
 		return value;
 	}
 	
-	std::string file_string(std::vector<std::string>& known) {
+	std::string file_string(std::vector<std::string> known) {
 		if (evil()) {
 			return file_string(known[0].length());
 		}

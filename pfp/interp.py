@@ -1552,7 +1552,9 @@ class PfpInterp(object):
             node.cpp = node.cpp.replace("/**/" + local + "()", local)
         node.cpp = node.cpp.replace("/**/", "")
 
-        print(node.cpp, file=sys.stderr)
+        outfile = open(sys.argv[2], "w")
+        print(node.cpp, file=outfile)
+        outfile.close()
         if self._generate:
             print("Finished creating cpp generator.")
             sys.exit(0)
@@ -1950,14 +1952,19 @@ class PfpInterp(object):
                         cpp += "\t" + classname + "_array_class(" + element_classname + "& element) : element(element) {}\n"
                     if is_char_array:
                         cpp += "\t" + classname + "_array_class(" + element_classname + "& element, std::vector<std::string> known_values)\n\t\t: element(element), known_values(known_values) {}\n"
-
-                    cpp += "\n\t" + node.type.cpp + " generate(unsigned size) {\n"
+                        cpp += "\n\t" + node.type.cpp + " generate(unsigned size, std::vector<std::string> new_known_values = {}) {\n"
+                    else:
+                        cpp += "\n\t" + node.type.cpp + " generate(unsigned size) {\n"
                     cpp += "\t\tcheck_array_length(size);\n"
                     cpp += "\t\t_startof = FTell();\n"
                     cpp += "\t\t_sizeof = 0;\n"
                     if is_char_array:
-                        cpp += "\t\tif (known_values.size()) {\n"
-                        cpp += "\t\t\tstd::string res = file_acc.file_string(known_values);\n"
+                        cpp += "\t\tvalue = \"\";\n"
+                        cpp += "\t\tfor (auto& known : known_values) {\n"
+                        cpp += "\t\t\tnew_known_values.push_back(known);\n"
+                        cpp += "\t\t}\n"
+                        cpp += "\t\tif (new_known_values.size()) {\n"
+                        cpp += "\t\t\tstd::string res = file_acc.file_string(new_known_values);\n"
                         cpp += "\t\t\tassert(res.length() == size);\n"
                         cpp += "\t\t\tfor (unsigned i = 0; i < size; ++i) {\n"
                         cpp += "\t\t\t\tvalue.push_back(res[i]);\n"
@@ -1965,6 +1972,8 @@ class PfpInterp(object):
                         cpp += "\t\t\t_sizeof = size;\n"
                         cpp += "\t\t\treturn value;\n"
                         cpp += "\t\t}\n"
+                    else:
+                        cpp += "\t\tvalue = {};\n"
                     cpp += "\t\tfor (unsigned i = 0; i < size; ++i) {\n"
                     if is_native:
                         cpp += "\t\t\tauto known = element_known_values.find(i);\n"

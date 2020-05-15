@@ -5,13 +5,23 @@
 
 
 
-### Usage
+### How to support new binary file formats
 
+Run the compiler to compile the binary template into C++ code.
 ```
-python3 create.py PNG.bt 2>png-generator.cpp
+python3 create.py PNG.bt png-generator.cpp
 ```
+Fix any issues that may prevent the python compiler from finishing by fixing bugs in the python compiler or modifying the original binary template for easier compilation.
 
+
+After successfully generating the C++ code, try compiling the code.
 ```
-g++ -g -O3 -Wall png-generator.cpp -o png-generator
+g++ -g -O3 -Wall png-generator.cpp -o png-generator -lz
+```
+Fix any issues that may prevent the C++ code from compiling.
+
+After the code compiles, try out running the generator.
+```
 ./png-generator output.png
 ```
+You can edit the C++ code to improve the generator until it successfully generates well-formated files with high probability.

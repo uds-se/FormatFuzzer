@@ -154,11 +154,12 @@ void exit_template(int status) {
 	exit(status);
 }
 
-void check_array_length(unsigned size) {
+void check_array_length(unsigned& size) {
 	if (size > MAX_FILE_SIZE) {
-		fprintf(stderr, "Array length too large: %u\n", size);
-		abort();
-		exit(-1);
+		unsigned new_size = file_acc.rand_int(16);
+		fprintf(stderr, "Array length too large: %d, replaced with %u\n", (signed)size, new_size);
+		// abort();
+		size = new_size;
 	}
 }
 
@@ -198,7 +199,11 @@ void ReadBytes(std::string& s, int64 pos, int n) {abort();}
 void ReadBytes(char* s, int64 pos, int n) {abort();}
 void ReadBytes(std::vector<uchar> s, int64 pos, int n) {abort();}
 int ReadInt(int64 pos) {abort();}
-int FSeek(int64 pos) {abort();}
+int FSeek(int64 pos) {
+	if (lseek(file_fd, pos, SEEK_SET) >= 0)
+		return 0;
+	return -1;
+}
 int Strncmp(std::string s1, std::string s2, int n) {abort();}
 std::string SubStr(std::string s, int start, int count=-1) {abort();}
 void Memcpy(char* dest, std::string src, int n) {abort();}
