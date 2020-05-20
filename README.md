@@ -4,6 +4,13 @@
 `pfpg` compiles binary templates into C++ code that can be used for generating (or parsing) files that that conform to the template specification.
 
 
+### Requirements
+
+Supported Operating System : Linux (tested on Ubuntu 20.04)
+
+```
+sudo apt install libboost1.71-dev
+```
 
 ### How to support new binary file formats
 

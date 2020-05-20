@@ -118,47 +118,88 @@ const int FALSE = 0;
 
 char* file_data;
 int file_fd;
+bool debug_print = true;
 
 unsigned char rand_init[65536];
 file_accessor file_acc;
 
 extern bool is_big_endian;
+void generate_file();
 
 
-void setup_generation(char* filename) {
+void setup_generation(const char* filename, bool random = true) {
 	file_fd = open(filename, O_CREAT|O_RDWR|O_TRUNC, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH);
 	if (file_fd == -1) {
 		perror("Failed to open file");
 		exit(1);
 	}
-	file_data = (char*) mmap(NULL, 4096, PROT_READ|PROT_WRITE, MAP_SHARED_VALIDATE, file_fd, 0);
+	file_data = (char*) mmap(NULL, MAX_FILE_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED_VALIDATE, file_fd, 0);
 	if (file_data == MAP_FAILED) {
 		perror("Failed to open file");
 		exit(1);
 	}
 	file_acc.set_fd(file_fd);
-	
-	srand(time(NULL));
+
+	if (!random)
+		return;
+	struct timespec tp;
+	clock_gettime(CLOCK_REALTIME, &tp);
+	std::random_device r;
+	unsigned seed = tp.tv_sec ^ tp.tv_nsec ^ getpid() ^ r();
+	if (debug_print)
+		fprintf(stderr, "Seed %u\n", seed);
+	srand(seed);
+
 	for (int i = 0; i < 65536; ++i)
 		rand_init[i] = rand();
 	
 	file_acc.seed(rand_init, 65536);
 }
 
-void finalize_generation() {
-	fprintf(stderr, "Generation finished\n");
+void delete_globals();
+
+extern "C" const unsigned char* afl_postprocess(const unsigned char* in_buf, unsigned int* len) {
+	static bool setup_done = false;
+	if (!setup_done) {
+		std::string filename = "/dev/shm/afltmp" + std::to_string(getpid());
+		setup_generation(filename.c_str(), false);
+		debug_print = false;
+		setup_done = true;
+	}
+	file_acc.seed(in_buf, *len);
+	try {
+		generate_file();
+	} catch (...) {
+		delete_globals();
+		return NULL;
+	}
+	unsigned file_len = lseek(file_fd, 0, SEEK_END);
+	if (file_len > MAX_FILE_SIZE)
+		return NULL;
+	*len = file_len;
+	return (const unsigned char*) file_data;
 }
 
 void exit_template(int status) {
-	fprintf(stderr, "Template exited with code %d\n", status);
-	exit(status);
+	if (debug_print)
+		fprintf(stderr, "Template exited with code %d\n", status);
+	throw status;
+}
+
+void check_exists(bool exists) {
+	if (exists)
+		return;
+	if (debug_print)
+		fprintf(stderr, "Struct field does not exist\n");
+	throw 0;
 }
 
 void check_array_length(unsigned& size) {
 	if (size > MAX_FILE_SIZE) {
 		unsigned new_size = file_acc.rand_int(16);
-		fprintf(stderr, "Array length too large: %d, replaced with %u\n", (signed)size, new_size);
-		// abort();
+		if (debug_print)
+			fprintf(stderr, "Array length too large: %d, replaced with %u\n", (signed)size, new_size);
+		// throw 0;
 		size = new_size;
 	}
 }
@@ -167,6 +208,8 @@ void BigEndian() { is_big_endian = true; }
 void LittleEndian() { is_big_endian = false; }
 void SetBackColor(int color) { }
 uint32 Checksum(int checksum_type, int64 start, int64 size) {
+	if (start + size > MAX_FILE_SIZE)
+		throw 0;
 	switch(checksum_type) {
 	case CHECKSUM_CRC32: {
 		boost::crc_32_type res;
@@ -177,8 +220,13 @@ uint32 Checksum(int checksum_type, int64 start, int64 size) {
 		abort();
 	}
 }
-void Warning(std::string s) { fprintf(stderr, "Warning: %s\n", s.c_str()); }
-void Printf(const std::string& fmt, ...) {
+void Warning(std::string s) {
+	if (debug_print)
+		fprintf(stderr, "Warning: %s\n", s.c_str());
+}
+void Printf(const std::string fmt, ...) {
+	if (!debug_print)
+		return;
 	va_list args;
 	va_start(args,fmt);
 	vprintf(fmt.c_str(),args);
