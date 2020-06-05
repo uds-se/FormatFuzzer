@@ -112,72 +112,139 @@ const int TRUE = 1;
 const int False = 0;
 const int FALSE = 0;
 
-#define EXISTS(a, b) 1
+#define GENERATE_VAR(name, value) do { \
+	start_generation(#name);       \
+	name ## _var = (value);        \
+	name ## _exists = true;        \
+	end_generation();              \
+	} while (0)
 
-#define MAX_FILE_SIZE 4096
+#define GENERATE(name, value) do {     \
+	start_generation(#name);       \
+	(value);                       \
+	end_generation();              \
+	} while (0)
 
-char* file_data;
-int file_fd;
-bool debug_print = true;
+#define GENERATE_EXISTS(name, value)   \
+	name ## _exists = true
 
-unsigned char rand_init[65536];
+
+unsigned char rand_buffer[MAX_RAND_SIZE];
 file_accessor file_acc;
 
 extern bool is_big_endian;
 void generate_file();
 
 
-void setup_generation(const char* filename, bool random = true) {
-	file_fd = open(filename, O_CREAT|O_RDWR|O_TRUNC, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH);
-	if (file_fd == -1) {
-		perror("Failed to open file");
-		exit(1);
-	}
-	file_data = (char*) mmap(NULL, MAX_FILE_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED_VALIDATE, file_fd, 0);
-	if (file_data == MAP_FAILED) {
-		perror("Failed to open file");
-		exit(1);
-	}
-	file_acc.set_fd(file_fd);
-
-	if (!random)
+void start_generation(const char* name) {
+	if (!get_parse_tree)
 		return;
-	struct timespec tp;
-	clock_gettime(CLOCK_REALTIME, &tp);
-	std::random_device r;
-	unsigned seed = tp.tv_sec ^ tp.tv_nsec ^ getpid() ^ r();
-	if (debug_print)
-		fprintf(stderr, "Seed %u\n", seed);
-	srand(seed);
+	generator_stack.emplace_back(name);
+}
 
-	for (int i = 0; i < 65536; ++i)
-		rand_init[i] = rand();
-	
-	file_acc.seed(rand_init, 65536);
+void end_generation() {
+	if (!get_parse_tree)
+		return;
+	stack_cell& back = generator_stack.back();
+	stack_cell& prev = generator_stack[generator_stack.size() - 2];
+	printf("%u,%u,", back.min, back.max);
+	bool first = true;
+	stack_cell* parent = NULL;
+	for (auto& cell : generator_stack) {
+		if (first) {
+			printf("%s", cell.name);
+			first = false;
+		} else {
+			printf("~%s", cell.name);
+			if (parent->counts[cell.name])
+				printf("_%u", parent->counts[cell.name]);
+		}
+		parent = &cell;
+	}
+	printf(",Enabled\n");
+	if (back.min < prev.min)
+		prev.min = back.min;
+	if (back.max > prev.max)
+		prev.max = back.max;
+	++prev.counts[back.name];
+	generator_stack.pop_back();
+}
+
+
+char* get_bin_name(char* arg) {
+	char* bin = strrchr(arg, '/');
+	if (bin)
+		return bin+1;
+	return arg;
+}
+
+
+void setup_input(const char* filename) {
+	debug_print = true;
+	int file_fd = open(filename, O_RDONLY);
+	if (file_fd == -1) {
+		perror("Failed to open seed file");
+		exit(1);
+	}
+	if (file_acc.generate) {
+		ssize_t size = read(file_fd, rand_buffer, MAX_RAND_SIZE);
+		if (size < 0) {
+			perror("Failed to read seed file");
+			exit(1);
+		}
+		file_acc.seed(rand_buffer, size, 0);
+	} else {
+		get_parse_tree = true;
+		struct stat st;
+		if (fstat(file_fd, &st)) {
+			perror("Failed to stat input file");
+			exit(1);
+		}
+		if (st.st_size > MAX_FILE_SIZE) {
+			fprintf(stderr, "File size exceeds MAX_FILE_SIZE\n");
+			exit(1);
+		}
+		ssize_t size = read(file_fd, file_acc.file_buffer, st.st_size);
+		if (size != st.st_size) {
+			perror("Failed to read input file");
+			exit(1);
+		}
+		file_acc.seed(rand_buffer, MAX_RAND_SIZE, st.st_size);
+	}
+	close(file_fd);
+}
+
+void save_output(const char* filename) {
+	int file_fd = open(filename, O_CREAT|O_WRONLY|O_TRUNC, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH);
+	if (file_fd == -1) {
+		perror("Failed to open output file");
+		exit(1);
+	}
+	if (file_acc.generate) {
+		ssize_t res = write(file_fd, file_acc.file_buffer, file_acc.file_size);
+		if (res != file_acc.file_size)
+			fprintf(stderr, "Failed to write file\n");
+	} else {
+		ssize_t res = write(file_fd, rand_buffer, file_acc.rand_pos);
+		if (res != file_acc.rand_pos)
+			fprintf(stderr, "Failed to write file\n");
+	}
+	close(file_fd);
 }
 
 void delete_globals();
 
-extern "C" const unsigned char* afl_postprocess(const unsigned char* in_buf, unsigned int* len) {
-	static bool setup_done = false;
-	if (!setup_done) {
-		std::string filename = "/dev/shm/afltmp" + std::to_string(getpid());
-		setup_generation(filename.c_str(), false);
-		debug_print = false;
-		setup_done = true;
-	}
-	file_acc.seed(in_buf, *len);
+extern "C" size_t afl_pre_save_handler(unsigned char* data, size_t size, unsigned char** new_data) {
+	file_acc.seed(data, size, 0);
 	try {
 		generate_file();
 	} catch (...) {
 		delete_globals();
-		return NULL;
+		*new_data = NULL;
+		return 0;
 	}
-	unsigned file_len = lseek(file_fd, 0, SEEK_END);
-	if (file_len > MAX_FILE_SIZE)
-		return NULL;
-	*len = file_len;
-	return (const unsigned char*) file_data;
+	*new_data = file_acc.file_buffer;
+	return file_acc.file_size;
 }
 
 void exit_template(int status) {
@@ -186,17 +253,9 @@ void exit_template(int status) {
 	throw status;
 }
 
-void check_exists(bool exists) {
-	if (exists)
-		return;
-	if (debug_print)
-		fprintf(stderr, "Struct field does not exist\n");
-	throw 0;
-}
-
 void check_array_length(unsigned& size) {
-	if (size > MAX_FILE_SIZE) {
-		unsigned new_size = file_acc.rand_int(16);
+	if (size > MAX_FILE_SIZE && file_acc.generate) {
+		unsigned new_size = file_acc.rand_int(16, NULL);
 		if (debug_print)
 			fprintf(stderr, "Array length too large: %d, replaced with %u\n", (signed)size, new_size);
 		// throw 0;
@@ -208,12 +267,11 @@ void BigEndian() { is_big_endian = true; }
 void LittleEndian() { is_big_endian = false; }
 void SetBackColor(int color) { }
 uint32 Checksum(int checksum_type, int64 start, int64 size) {
-	if (start + size > MAX_FILE_SIZE)
-		throw 0;
+	assert_cond(start + size <= file_acc.file_size, "checksum range invalid");
 	switch(checksum_type) {
 	case CHECKSUM_CRC32: {
 		boost::crc_32_type res;
-		res.process_bytes(file_data + start, size);
+		res.process_bytes(file_acc.file_buffer + start, size);
 		return res.checksum();
 	}
 	default:
@@ -242,15 +300,15 @@ void SPrintf(std::string& s, const char* fmt, ...) {
 }
 std::string::size_type Strlen(std::string s) { return s.size(); }
 int FEof() { return file_acc.feof(); }
-int64 FTell() { return lseek(file_fd, 0, SEEK_CUR); }
+int64 FTell() { return file_acc.file_pos; }
 void ReadBytes(std::string& s, int64 pos, int n) {abort();}
 void ReadBytes(char* s, int64 pos, int n) {abort();}
 void ReadBytes(std::vector<uchar> s, int64 pos, int n) {abort();}
 int ReadInt(int64 pos) {abort();}
 int FSeek(int64 pos) {
-	if (lseek(file_fd, pos, SEEK_SET) >= 0)
-		return 0;
-	return -1;
+	assert_cond(0 <= pos && pos < MAX_FILE_SIZE, "FSeek: invalid position");
+	file_acc.file_pos = pos;
+	return 0;
 }
 int Strncmp(std::string s1, std::string s2, int n) {abort();}
 std::string SubStr(std::string s, int start, int count=-1) {abort();}

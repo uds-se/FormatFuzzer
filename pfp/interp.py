@@ -665,10 +665,10 @@ class PfpInterp(object):
             name = node.name
             if hasattr(node, "originalname"):
                 name = node.originalname
-            node.cpp = ""
-            if name == node.name:
-                node.cpp = name + "_var = "
-            node.cpp += "::g->" + node.name + ".generate("
+            node.cpp = "GENERATE"
+            if name == node.name and len(self._incomplete_stack) > 1:
+                node.cpp += "_VAR"
+            node.cpp += "(" + name + ", ::g->" + node.name + ".generate("
             arg_num = 0
             if hasattr(node.type, "args") and node.type.args:
                 for arg in node.type.args.exprs:
@@ -680,9 +680,7 @@ class PfpInterp(object):
                     node.cpp += classnode.args.params[i].name + ", "
             if arg_num > 0:
                 node.cpp = node.cpp[:-2]
-            node.cpp += ")"
-            if name == node.name and len(self._incomplete_stack) > 1:
-                node.cpp += ";\n" + name + "_exists = true"
+            node.cpp += "))"
             node.type.cpp = classname
         else:
             if classname not in self._to_define:
@@ -834,14 +832,14 @@ class PfpInterp(object):
         for name, decl in variables:
             if hasattr(decl, "is_structunion"):
                 if decl.type.cpp in self._defined:
-                    cpp += "\t" + decl.type.cpp + "& " + name + "() {\n\t\tcheck_exists(" + name + "_exists);\n\t\treturn *" + name + "_var;\n\t}\n"
+                    cpp += "\t" + decl.type.cpp + "& " + name + "() {\n\t\tassert_cond(" + name + "_exists, \"struct field " + name + " does not exist\");\n\t\treturn *" + name + "_var;\n\t}\n"
                 else:
                     cpp += "\t" + decl.type.cpp + "& " + name + "();\n"
-                    self._to_define[decl.type.cpp].append((decl.type.cpp + "& " + classname + "::" + name + "() {\n\tcheck_exists(" + name + "_exists);\n\treturn *" + name + "_var;\n}\n", decl))
+                    self._to_define[decl.type.cpp].append((decl.type.cpp + "& " + classname + "::" + name + "() {\n\tassert_cond(" + name + "_exists, \"struct field " + name + " does not exist\");\n\treturn *" + name + "_var;\n}\n", decl))
             elif is_union and decl.type.cpp == "std::string" and decl.type.__class__ == AST.ArrayDecl:
-                cpp += "\tstd::string " + name + "() {\n\t\tcheck_exists(" + name + "_exists);\n\t\treturn std::string(" + name + "_var, " + decl.type.dim.cpp + ");\n\t}\n"
+                cpp += "\tstd::string " + name + "() {\n\t\tassert_cond(" + name + "_exists, \"struct field " + name + " does not exist\");\n\t\treturn std::string(" + name + "_var, " + decl.type.dim.cpp + ");\n\t}\n"
             else:
-                cpp += "\t" + decl.type.cpp + " " + name + "() {\n\t\tcheck_exists(" + name + "_exists);\n\t\treturn " + name + "_var;\n\t}\n"
+                cpp += "\t" + decl.type.cpp + " " + name + "() {\n\t\tassert_cond(" + name + "_exists, \"struct field " + name + " does not exist\");\n\t\treturn " + name + "_var;\n\t}\n"
 
         locals_cpp = ""
         for decl in decls:
@@ -913,10 +911,10 @@ class PfpInterp(object):
                 name = field_name
                 if hasattr(node, "originalname"):
                     name = node.originalname
-                node.cpp = ""
-                if name == field_name:
-                    node.cpp = name + "_var = "
-                node.cpp += "::g->" + field_name + ".generate("
+                node.cpp = "GENERATE"
+                if name == field_name and len(self._incomplete_stack) > 1:
+                    node.cpp += "_VAR"
+                node.cpp += "(" + name + ", ::g->" + field_name + ".generate("
                 arg_num = 0
                 if hasattr(node.type, "args") and node.type.args:
                     for arg in node.type.args.exprs:
@@ -928,9 +926,7 @@ class PfpInterp(object):
                         node.cpp += classnode.args.params[i].name + ", "
                 if arg_num > 0:
                     node.cpp = node.cpp[:-2]
-                node.cpp += ")"
-                if name == field_name and len(self._incomplete_stack) > 1:
-                    node.cpp += ";\n" + name + "_exists = true"
+                node.cpp += "))"
                 for decl in classnode.decls:
                     decl.cpp = decl.cpp.replace("/*TODO field " + field_name + "*/", node.cpp)
                 self._to_replace.append(("/*TODO field " + field_name + "*/", node.cpp))
@@ -969,7 +965,7 @@ class PfpInterp(object):
             for local in self._struct_locals + params:
                 decl.cpp = decl.cpp.replace("/**/" + local.name + "()", local.name)
             if is_union and not first:
-                body += "//"
+                decl.cpp = decl.cpp.replace("GENERATE_VAR", "GENERATE_EXISTS")
             if decl.cpp:
                 body += "\t" + decl.cpp.replace("\n", "\n\t") + ";\n"
             first = False
@@ -1550,8 +1546,6 @@ class PfpInterp(object):
                 else:
                     node.cpp1 += "\t" + child.cpp.replace("\n", "\n\t") + ";\n"
 
-        node.cpp1 = re.sub("[^\t]*_var = ::", "::", node.cpp1)
-
         for n, c in self._cpp:
             #node.cpp += "/*" + n + "*/\n"
             node.cpp += c
@@ -1574,15 +1568,25 @@ class PfpInterp(object):
         node.cpp += "\tdelete_globals();\n"
         node.cpp += "}\n"
         node.cpp += "\nvoid delete_globals() { delete ::g; }\n"
-        node.cpp += "\nint main(int argc, char** argv) {\n\tsetup_generation(argv[1]);\n"
-        node.cpp += "\ttry {\n"
-        node.cpp += "\t\tgenerate_file();\n"
-        node.cpp += "\t} catch (...) {\n"
-        node.cpp += "\t\tdelete_globals();\n"
-        node.cpp += "\t\tfprintf(stderr, \"Generation failed\\n\");\n"
-        node.cpp += "\t\treturn -1;\n"
-        node.cpp += "\t}\n"
-        node.cpp += "\tfprintf(stderr, \"Generation finished\\n\");\n}\n"
+        node.cpp += """
+int main(int argc, char** argv) {
+	assert(argc == 3);
+	if (strcmp(argv[0] + strlen(argv[0]) - 6, "parser") == 0)
+		file_acc.generate = false;
+	setup_input(argv[1]);
+	try {
+		generate_file();
+	} catch (...) {
+		delete_globals();
+		fprintf(stderr, "%s failed\\n", get_bin_name(argv[0]));
+		save_output(argv[2]);
+		return -1;
+	}
+	save_output(argv[2]);
+	fprintf(stderr, "%s finished\\n", get_bin_name(argv[0]));
+	return 0;
+}
+"""
 
         for a, b in self._to_replace:
             node.cpp = node.cpp.replace(a, b)
@@ -2053,24 +2057,23 @@ class PfpInterp(object):
                             self._declared.add(classname)
                             self._cpp.append((classname, "\nclass " + classname + ";\n\n"))
 
-                node.cpp = ""
-                if node.originalname == node.name:
-                    node.cpp = node.originalname + "_var = "
-                node.cpp += "::g->" + node.name + ".generate("
+                node.cpp = "GENERATE"
+                if node.originalname == node.name and len(self._incomplete_stack) > 1:
+                    node.cpp += "_VAR"
+                node.cpp += "(" + node.originalname + ", ::g->" + node.name + ".generate("
                 if node.type.dim is not None:
                     node.cpp += node.type.dim.cpp
-                node.cpp += ")"
-                if node.originalname == node.name and len(self._incomplete_stack) > 1:
-                    node.cpp += ";\n" + node.originalname + "_exists = true"
+                node.cpp += "))"
             elif isinstance(node.type.type, AST.Enum):
                 classname = " ".join(node.type.type.names)
                 #node.originalname = node.name
                 while node.name in self._defined and self._defined[node.name] != classname:
                     node.name += "_"
                 self._defined[node.name] = classname
-                node.cpp = node.name + "_var = " + classname + "_generate()"
+                node.cpp = "GENERATE"
                 if len(self._incomplete_stack) > 1:
-                    node.cpp += ";\n" + node.name + "_exists = true"
+                    node.cpp += "_VAR"
+                node.cpp += "(" + node.name + ", " + classname + "_generate())"
                 node.type.cpp = " ".join(node.type.type.type.names)
                 if classname not in self._defined:
                     self._defined[classname] = None
@@ -2126,12 +2129,10 @@ class PfpInterp(object):
                         is_string = True
                     else:
                         self.add_native_class(classname, node.type.cpp)
-                    node.cpp = ""
-                    if node.originalname == node.name:
-                        node.cpp = node.originalname + "_var = "
-                    node.cpp += "::g->" + node.name + ".generate()"
+                    node.cpp = "GENERATE"
                     if node.originalname == node.name and len(self._incomplete_stack) > 1:
-                        node.cpp += ";\n" + node.originalname + "_exists = true"
+                        node.cpp += "_VAR"
+                    node.cpp += "(" + node.originalname + ", ::g->" + node.name + ".generate())"
                     if node.name not in self._defined:
                         self._defined[node.name] = classname
                         if is_string:
@@ -2139,9 +2140,10 @@ class PfpInterp(object):
                         else:
                             self._globals.append((node.name, classname + " " + node.name + "(true);\n"))
                 elif issubclass(nodetype, fields.Enum):
-                    node.cpp = node.name + "_var = " + classname + "_generate()"
+                    node.cpp = "GENERATE"
                     if len(self._incomplete_stack) > 1:
-                        node.cpp += ";\n" + node.name + "_exists = true"
+                        node.cpp += "_VAR"
+                    node.cpp += "(" + node.name + ", " + classname + "_generate())"
                     node.type.cpp = nodetype.typename
                     if classname + "_generate" not in self._defined:
                         self._defined[classname + "_generate"] = None
