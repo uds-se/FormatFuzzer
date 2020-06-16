@@ -718,33 +718,50 @@ class PfpInterp(object):
             cpp += "\t}\n};\n\n"
             self._cpp.append((classname, cpp))
 
-    def add_native_class(self, classname, classtype):
+    def add_native_class(self, classname, classtype, is_bitfield=False):
         if classname not in self._defined:
             self._defined[classname] = None
             cpp = "\n\nclass " + classname + " {\n"
+            if is_bitfield:
+                cpp += "\tunsigned bits;\n"
             cpp += "\tbool small;\n"
             cpp += "\tstd::vector<" + classtype + "> known_values;\n"
             cpp += "\t" + classtype + " value;\n"
             cpp += "public:\n"
-            cpp += "\tint64 _startof;\n"
-            cpp += "\tstd::size_t _sizeof = sizeof(" + classtype + ");\n"
+            if not is_bitfield:
+                cpp += "\tint64 _startof;\n"
+                cpp += "\tstd::size_t _sizeof = sizeof(" + classtype + ");\n"
             cpp += "\t" + classtype + " operator () () { return value; }\n"
-            cpp += "\t" + classname + "(bool small, std::vector<" + classtype + "> known_values = {}) : small(small), known_values(known_values) {}\n"
+            if is_bitfield:
+                cpp += "\t" + classname + "(unsigned bits, bool small, std::vector<" + classtype + "> known_values = {}) : bits(bits), small(small), known_values(known_values) {}\n"
+            else:
+                cpp += "\t" + classname + "(bool small, std::vector<" + classtype + "> known_values = {}) : small(small), known_values(known_values) {}\n"
             cpp += "\n\t" + classtype + " generate() {\n"
-            cpp += "\t\t_startof = FTell();\n"
+            if not is_bitfield:
+                cpp += "\t\t_startof = FTell();\n"
             cpp += "\t\tif (known_values.empty()) {\n"
-            cpp += "\t\t\tvalue = file_acc.file_integer(sizeof(" + classtype + "), small);\n"
+            if is_bitfield:
+                cpp += "\t\t\tvalue = file_acc.file_integer(sizeof(" + classtype + "), bits, small);\n"
+            else:
+                cpp += "\t\t\tvalue = file_acc.file_integer(sizeof(" + classtype + "), 0, small);\n"
             cpp += "\t\t} else {\n"
-            cpp += "\t\t\tvalue = file_acc.file_integer(sizeof(" + classtype + "), known_values);\n"
+            if is_bitfield:
+                cpp += "\t\t\tvalue = file_acc.file_integer(sizeof(" + classtype + "), bits, known_values);\n"
+            else:
+                cpp += "\t\t\tvalue = file_acc.file_integer(sizeof(" + classtype + "), 0, known_values);\n"
             cpp += "\t\t}\n"
             cpp += "\t\treturn value;\n"
             cpp += "\t}\n"
             cpp += "\n\t" + classtype + " generate(std::vector<" + classtype + "> new_known_values) {\n"
-            cpp += "\t\t_startof = FTell();\n"
+            if not is_bitfield:
+                cpp += "\t\t_startof = FTell();\n"
             cpp += "\t\tfor (auto& known : known_values) {\n"
             cpp += "\t\t\tnew_known_values.push_back(known);\n"
             cpp += "\t\t}\n"
-            cpp += "\t\tvalue = file_acc.file_integer(sizeof(" + classtype + "), new_known_values);\n"
+            if is_bitfield:
+                cpp += "\t\tvalue = file_acc.file_integer(sizeof(" + classtype + "), bits, new_known_values);\n"
+            else:
+                cpp += "\t\tvalue = file_acc.file_integer(sizeof(" + classtype + "), 0, new_known_values);\n"
             cpp += "\t\treturn value;\n"
             cpp += "\t}\n"
             cpp += "};\n\n"
@@ -821,6 +838,8 @@ class PfpInterp(object):
                 cpp += "\t" + decl.type.cpp + "* " + name + "_var;\n"
             elif is_union and decl.type.cpp == "std::string" and decl.type.__class__ == AST.ArrayDecl:
                 cpp += "\t" + " ".join(decl.type.type.type.names) + " " + name + "_var[" + decl.type.dim.cpp + "];\n"
+            elif decl.bitsize is not None:
+                cpp += "\t" + decl.type.cpp + " " + name + "_var : " + decl.bitsize.cpp + ";\n"
             else:
                 cpp += "\t" + decl.type.cpp + " " + name + "_var;\n"
         if is_union:
@@ -1549,6 +1568,21 @@ class PfpInterp(object):
         for n, c in self._cpp:
             #node.cpp += "/*" + n + "*/\n"
             node.cpp += c
+        readfunctions = [["char", "Byte"],
+                         ["double", "Double"],
+                         ["float", "Float"],
+                         ["hfloat", "HFloat"],
+                         ["int", "Int"],
+                         ["int64", "Int64"],
+                         ["int64", "Quad"],
+                         ["short", "Short"],
+                         ["uchar", "UByte"],
+                         ["uint", "UInt"],
+                         ["uint64", "UInt64"],
+                         ["uint64", "UQuad"],
+                         ["ushort", "UShort"]]
+        for t, n in readfunctions:
+            node.cpp += "std::vector<" + t + "> Read" + n + "_values;\n"
         node.cpp += "\n\nclass globals_class {\npublic:\n"
         for n, c in self._globals:
             node.cpp += "\t" + re.sub("\(.*\)", "", c)
@@ -2028,7 +2062,7 @@ int main(int argc, char** argv) {
                         cpp += "\t\t\t\tvalue.push_back(element.generate());\n"
                         cpp += "\t\t\t\t_sizeof += element._sizeof;\n"
                         cpp += "\t\t\t} else {\n"
-                        cpp += "\t\t\t\tvalue.push_back(file_acc.file_integer(sizeof(" + classname + "), known->second));\n"
+                        cpp += "\t\t\t\tvalue.push_back(file_acc.file_integer(sizeof(" + classname + "), 0, known->second));\n"
                         cpp += "\t\t\t\t_sizeof += sizeof(" + classname + ");\n"
                         cpp += "\t\t\t}\n"
                     else:
@@ -2092,7 +2126,7 @@ int main(int argc, char** argv) {
                     self._cpp.append((classname, cpp))
                 if classname + "_generate" not in self._defined:
                     self._defined[classname + "_generate"] = None
-                    cpp = "\n" + classname + " " + classname + "_generate() {\n\treturn (" + classname + ") file_acc.file_integer(sizeof(" + " ".join(node.type.type.type.names) + "), " + classname + "_values);\n}\n"
+                    cpp = "\n" + classname + " " + classname + "_generate() {\n\treturn (" + classname + ") file_acc.file_integer(sizeof(" + " ".join(node.type.type.type.names) + "), 0, " + classname + "_values);\n}\n"
                     self._cpp.append((classname + "_generate", cpp))
             elif isinstance(node.type.type, AST.Union) or isinstance(node.type.type, AST.Struct):
                 if hasattr(node.type.type, "name"):
@@ -2117,7 +2151,11 @@ int main(int argc, char** argv) {
                     classname = " ".join(node.type.type.names)
                 nodetype = scope.get_type(classname)
                 if nodetype is None or isinstance(nodetype, list):
-                    classname = "_".join(node.type.type.names) + "_class"
+                    is_bitfield = node.bitsize is not None
+                    if is_bitfield:
+                        classname = "_".join(node.type.type.names) + "_bitfield"
+                    else:
+                        classname = "_".join(node.type.type.names) + "_class"
                     node.originalname = node.name
                     while node.name in self._defined and self._defined[node.name] != classname:
                         node.name += "_"
@@ -2128,7 +2166,7 @@ int main(int argc, char** argv) {
                         self.add_string_class(classname)
                         is_string = True
                     else:
-                        self.add_native_class(classname, node.type.cpp)
+                        self.add_native_class(classname, node.type.cpp, is_bitfield)
                     node.cpp = "GENERATE"
                     if node.originalname == node.name and len(self._incomplete_stack) > 1:
                         node.cpp += "_VAR"
@@ -2137,6 +2175,8 @@ int main(int argc, char** argv) {
                         self._defined[node.name] = classname
                         if is_string:
                             self._globals.append((node.name, classname + " " + node.name + ";\n"))
+                        elif is_bitfield:
+                            self._globals.append((node.name, classname + " " + node.name + "(" + node.bitsize.cpp + ", true);\n"))
                         else:
                             self._globals.append((node.name, classname + " " + node.name + "(true);\n"))
                 elif issubclass(nodetype, fields.Enum):
@@ -2147,7 +2187,7 @@ int main(int argc, char** argv) {
                     node.type.cpp = nodetype.typename
                     if classname + "_generate" not in self._defined:
                         self._defined[classname + "_generate"] = None
-                        cpp = "\n" + classname + " " + classname + "_generate() {\n\treturn (" + classname + ") file_acc.file_integer(sizeof(" + nodetype.typename + "), " + classname + "_values);\n}\n"
+                        cpp = "\n" + classname + " " + classname + "_generate() {\n\treturn (" + classname + ") file_acc.file_integer(sizeof(" + nodetype.typename + "), 0, " + classname + "_values);\n}\n"
                         self._cpp.append((classname + "_generate", cpp))
                 else:
                     if hasattr(nodetype, "_pfp__node"):

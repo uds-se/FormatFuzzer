@@ -315,11 +315,41 @@ std::string SubStr(std::string s, int start, int count=-1) {abort();}
 void Memcpy(char* dest, std::string src, int n) {abort();}
 void Memcpy(std::string dest, std::string src, int n) {abort();}
 int IsBigEndian() {abort();}
-ushort ReadUShort(int64 pos) {abort();}
 int FSkip(int64 offset) {abort();}
 int64 FindFirst(WORD data, int matchcase=true, int wholeword=false, int method=0, double tolerance=0.0, int dir=1, int64 start=0) {abort();}
-uchar ReadUByte(int64 pos) {abort();}
-void BitfieldLeftToRight() {abort();}
+extern std::vector<uchar> ReadUByte_values;
+uchar ReadUByte(int64 pos = FTell(), std::vector<uchar> new_known_values = {}) {
+	int64 original_pos = FTell();
+	FSeek(pos);
+	uchar value;
+	for (auto& known : ReadUByte_values) {
+		new_known_values.push_back(known);
+	}
+	if (new_known_values.size())
+		value = file_acc.file_integer(sizeof(uchar), 0, new_known_values);
+	else
+		value = file_acc.file_integer(sizeof(uchar), 0);
+	FSeek(original_pos);
+	return value;
+}
+extern std::vector<ushort> ReadUShort_values;
+ushort ReadUShort(int64 pos = FTell(), std::vector<ushort> new_known_values = {}) {
+	int64 original_pos = FTell();
+	FSeek(pos);
+	ushort value;
+	for (auto& known : ReadUShort_values) {
+		new_known_values.push_back(known);
+	}
+	if (new_known_values.size())
+		value = file_acc.file_integer(sizeof(ushort), 0, new_known_values);
+	else
+		value = file_acc.file_integer(sizeof(ushort), 0);
+	FSeek(original_pos);
+	return value;
+}
+void BitfieldLeftToRight() {
+	is_bitfield_left_to_right[is_big_endian] = true;
+}
 int64 FileSize() {abort();}
 
 #endif

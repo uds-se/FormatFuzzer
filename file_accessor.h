@@ -9,13 +9,14 @@
 #define MAX_FILE_SIZE 4096
 
 bool is_big_endian = false;
+bool is_bitfield_left_to_right[2] = {false, true};
 
 
-void swap_bytes(void* b, int size) {
+void swap_bytes(void* b, unsigned size) {
 	char* buf = (char*) b;
 	char newbuf[8];
 	if (is_big_endian) {
-		for (int i = 0; i < size; ++i)
+		for (unsigned i = 0; i < size; ++i)
 			newbuf[i] = buf[size-1-i];
 		memcpy(buf, newbuf, size);
 	}
@@ -46,27 +47,148 @@ void assert_cond(bool cond, const char* error_msg) {
 
 class file_accessor {
 	bool allow_evil_values = true;
+	unsigned bitfield_size = 0;
+	unsigned bitfield_bits = 0;
 
 	bool evil(std::function<bool (unsigned char*)> parse) {
 		return rand_int(127 + allow_evil_values, [&parse](unsigned char* file_buf) -> long long { return parse(file_buf) ? 127 : 0; } ) == 127;
 	}
 
-	void write_file(const void *buf, size_t count) {
-		unsigned pos = file_pos;
-		file_pos += count;
-		assert_cond(file_pos <= MAX_FILE_SIZE, "file size exceeded MAX_FILE_SIZE");
-		if (generate) {
-			memcpy(file_buffer + pos, buf, count);
-		} else {
-			assert_cond(file_pos <= file_size, "reading past the end of file");
-			assert_cond(memcmp(file_buffer + pos, buf, count) == 0, "parsed wrong file contents");
+	unsigned long long parse_integer(unsigned char* file_buf, unsigned size, unsigned bits = 0) {
+		unsigned long long value = 0;
+		if (bits) {
+			unsigned new_pos = 0;
+			unsigned new_bitfield_bits = bitfield_bits;
+			if (bitfield_bits + bits > 8 * bitfield_size || size != bitfield_size) {
+				new_pos += bitfield_size;
+				new_bitfield_bits = 0;
+			}
+
+			unsigned new_bits = bits;
+			while (new_bits) {
+				unsigned byte_pos = new_bitfield_bits / 8;
+				unsigned bits_pos = new_bitfield_bits % 8;
+				unsigned write_bits = 8 - bits_pos;
+				if (new_bits < write_bits)
+					write_bits = new_bits;
+				unsigned b1;
+				unsigned b2;
+				if (is_big_endian) {
+					b2 = bits - write_bits - (new_bitfield_bits - bitfield_bits);
+				} else {
+					b2 = new_bitfield_bits - bitfield_bits;
+				}
+				if (is_bitfield_left_to_right[is_big_endian]) {
+					b1 = (8 - bits_pos - write_bits);
+				} else {
+					b1 = bits_pos;
+				}
+				unsigned long long c = file_buf[new_pos + byte_pos] >> b1;
+				c &= (1 << write_bits) - 1;
+				c <<= b2;
+				value |= c;
+
+				new_bits -= write_bits;
+				new_bitfield_bits += write_bits;
+			}
+
+			return value;
 		}
+		if (is_big_endian) {
+			unsigned char* dest = (unsigned char*) &value;
+			for (unsigned i = 0; i < size; ++i)
+				dest[i] = file_buf[size-1-i];
+		} else {
+			memcpy(&value, file_buf, size);
+		}
+		return value;
+	}
+
+	void write_file_bits(unsigned long long value, size_t size, unsigned bits) {
+		if (bitfield_bits + bits > 8 * bitfield_size || size != bitfield_size) {
+			file_pos += bitfield_size;
+			bitfield_size = 0;
+			bitfield_bits = 0;
+		}
+		unsigned start_pos = file_pos;
+		assert_cond(file_pos + size <= MAX_FILE_SIZE, "file size exceeded MAX_FILE_SIZE");
+		if (!generate)
+			assert_cond(file_pos + size <= file_size, "reading past the end of file");
+		value &= (1LLU << bits) - 1LLU;
+		unsigned new_bits = bits;
+		while (new_bits) {
+			unsigned byte_pos = bitfield_bits / 8;
+			unsigned bits_pos = bitfield_bits % 8;
+			unsigned write_bits = 8 - bits_pos;
+			if (new_bits < write_bits)
+				write_bits = new_bits;
+			unsigned char c;
+			int index;
+			unsigned char mask = (1 << write_bits) - 1;
+			if (is_big_endian) {
+				c = value >> (bits - write_bits);
+				value <<= write_bits;
+				value &= (1LLU << bits) - 1LLU;
+				index = file_pos + byte_pos;
+			} else {
+				c = value & ((1 << write_bits) - 1);
+				value >>= write_bits;
+				index = file_pos + size - 1 - byte_pos;
+			}
+			if (is_bitfield_left_to_right[is_big_endian]) {
+				c <<= (8 - bits_pos - write_bits);
+				mask <<= 8 - bits_pos - write_bits;
+			} else {
+				c <<= bits_pos;
+				mask <<= bits_pos;
+			}
+			unsigned char old = file_buffer[index];
+			file_buffer[index] &= ~mask;
+			file_buffer[index] |= c;
+			if (!generate)
+				assert_cond(file_buffer[index] == old, "parsed wrong file contents");
+			new_bits -= write_bits;
+			bitfield_bits += write_bits;
+		}
+		bitfield_size = size;
+		if (bitfield_bits == bitfield_size * 8) {
+			file_pos += bitfield_size;
+			bitfield_size = 0;
+			bitfield_bits = 0;
+		}
+
 		if (file_size < file_pos)
 			file_size = file_pos;
 		if (!get_parse_tree)
 			return;
-		if (pos < generator_stack.back().min)
-			generator_stack.back().min = pos;
+		if (start_pos < generator_stack.back().min)
+			generator_stack.back().min = start_pos;
+		if (file_pos - 1 > generator_stack.back().max)
+			generator_stack.back().max = file_pos - 1;
+	}
+
+	void write_file(const void *buf, size_t size) {
+		if (bitfield_bits) {
+			file_pos += bitfield_size;
+			bitfield_size = 0;
+			bitfield_bits = 0;
+		}
+		unsigned start_pos = file_pos;
+		file_pos += size;
+		assert_cond(file_pos <= MAX_FILE_SIZE, "file size exceeded MAX_FILE_SIZE");
+		if (generate) {
+			memcpy(file_buffer + start_pos, buf, size);
+		} else {
+			assert_cond(file_pos <= file_size, "reading past the end of file");
+			assert_cond(memcmp(file_buffer + start_pos, buf, size) == 0, "parsed wrong file contents");
+		}
+
+		if (file_size < file_pos)
+			file_size = file_pos;
+		if (!get_parse_tree)
+			return;
+		if (start_pos < generator_stack.back().min)
+			generator_stack.back().min = start_pos;
 		if (file_pos - 1 > generator_stack.back().max)
 			generator_stack.back().max = file_pos - 1;
 	}
@@ -150,45 +272,40 @@ public:
 	}
 
 	template<typename T>
-	long long file_integer(int size, std::vector<T>& known) {
-		if (evil( [&size, &known](unsigned char* file_buf) -> bool {
-				T value;
-				memcpy(&value, file_buf, size);
-				swap_bytes(&value, size);
+	long long file_integer(unsigned size, unsigned bits, std::vector<T>& known) {
+		if (evil( [&size, &bits, &known, this](unsigned char* file_buf) -> bool {
+				T value = parse_integer(file_buf, size, bits);
 				return std::find(known.begin(), known.end(), value) == known.end();
 			} )) {
-			return file_integer(size);
+			return file_integer(size, bits);
 		}
 		assert_cond(0 < size && size <= 8, "sizeof integer invalid");
-		T value = known[rand_int(known.size(), [&size, &known](unsigned char* file_buf) -> long long {
-			T value;
-			memcpy(&value, file_buf, size);
-			swap_bytes(&value, size);
+		T value = known[rand_int(known.size(), [&size, &bits, &known, this](unsigned char* file_buf) -> long long {
+			T value = parse_integer(file_buf, size, bits);
 			return std::find(known.begin(), known.end(), value) - known.begin();
 		} )];
 		T newvalue = value;
-		swap_bytes(&newvalue, size);
-		write_file(&newvalue, size);
+		if (bits) {
+			write_file_bits(value, size, bits);
+		} else {
+			swap_bytes(&newvalue, size);
+			write_file(&newvalue, size);
+		}
 
 		return value;
 	}
 
-	long long file_integer(int size, bool small = true) {
+	long long file_integer(unsigned size, unsigned bits, bool small = true) {
 		assert_cond(0 < size && size <= 8, "sizeof integer invalid");
 		long long value;
-		std::function<long long (unsigned char*)> parse = [&size](unsigned char* file_buf) -> long long {
-			long long value = 0;
-			memcpy(&value, file_buf, size);
-			swap_bytes(&value, size);
-			return value;
+		std::function<long long (unsigned char*)> parse = [&size, &bits, this](unsigned char* file_buf) -> long long {
+			return parse_integer(file_buf, size, bits);
 		};
 		if (!small)
-			value = rand_int(1<<(8*size), parse);
+			value = rand_int(1<<(bits ? bits : 8*size), parse);
 		else {
-			int s = rand_int(256, [&size](unsigned char* file_buf) -> long long {
-				unsigned long long value = 0;
-				memcpy(&value, file_buf, size);
-				swap_bytes(&value, size);
+			int s = rand_int(256, [&size, &bits, this](unsigned char* file_buf) -> long long {
+				unsigned long long value = parse_integer(file_buf, size, bits);
 				if (value > 0 && value <= 1<<4)
 					return 32;
 				if (value < 1<<8)
@@ -198,23 +315,25 @@ public:
 				return 0;
 			});
 			if (s < 2)
-				value = rand_int(1<<(8*size), parse);
+				value = rand_int(1<<(bits ? bits : 8*size), parse);
 			else if (s < 8)
 				value = rand_int(1<<16, parse);
 			else if (s < 32)
 				value = rand_int(1<<8, parse);
 			else
-				value = 1+rand_int(1<<4, [&size](unsigned char* file_buf) -> long long {
-					long long value = 0;
-					memcpy(&value, file_buf, size);
-					swap_bytes(&value, size);
+				value = 1+rand_int(1<<4, [&size, &bits, this](unsigned char* file_buf) -> long long {
+					long long value = parse_integer(file_buf, size, bits);
 					--value;
 					return value;
 				});
 		}
 		long long newvalue = value;
-		swap_bytes(&newvalue, size);
-		write_file(&newvalue, size);
+		if (bits) {
+			write_file_bits(value, size, bits);
+		} else {
+			swap_bytes(&newvalue, size);
+			write_file(&newvalue, size);
+		}
 		return value;
 	}
 	
