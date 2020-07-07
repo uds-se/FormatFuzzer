@@ -49,6 +49,8 @@ class file_accessor {
 	bool allow_evil_values = true;
 	unsigned bitfield_size = 0;
 	unsigned bitfield_bits = 0;
+	bool has_bitmap = false;
+	std::vector<bool> bitmap;
 
 	bool evil(std::function<bool (unsigned char*)> parse) {
 		return rand_int(127 + allow_evil_values, [&parse](unsigned char* file_buf) -> long long { return parse(file_buf) ? 127 : 0; } ) == 127;
@@ -201,6 +203,10 @@ public:
 	unsigned file_pos = 0;
 	unsigned file_size = 0;
 	bool generate = true;
+	bool regen = false;
+	bool lookahead = false;
+
+	file_accessor() : bitmap((MAX_FILE_SIZE + 7) / 8) {}
 
 	bool set_evil_bit(bool allow) {
 		bool old = allow_evil_values;
@@ -212,6 +218,12 @@ public:
 		unsigned long long max = x-1;
 		if (!max)
 			return 0;
+		if (regen) {
+			unsigned long long value = parse(&file_buffer[file_pos]);
+			if (!x)
+				return value;
+			return value % x;
+		}
 		if (!(max>>8)) {
 			assert_cond(rand_pos + 1 <= rand_size, "random size exceeded rand_size");
 			unsigned char* p = (unsigned char*) &rand_buffer[rand_pos];
@@ -273,13 +285,28 @@ public:
 
 	template<typename T>
 	long long file_integer(unsigned size, unsigned bits, std::vector<T>& known) {
+		assert_cond(0 < size && size <= 8, "sizeof integer invalid");
+		if (has_bitmap && bitmap[file_pos] && generate) {
+			generate = false;
+			regen = true;
+		}
+		if (lookahead && generate) {
+			has_bitmap = true;
+			for (unsigned i = 0; i < size; ++i)
+				bitmap[file_pos + i] = true;
+		}
+
 		if (evil( [&size, &bits, &known, this](unsigned char* file_buf) -> bool {
 				T value = parse_integer(file_buf, size, bits);
 				return std::find(known.begin(), known.end(), value) == known.end();
 			} )) {
-			return file_integer(size, bits);
+			long long result = file_integer(size, bits);
+			if (regen) {
+				generate = true;
+				regen = false;
+			}
+			return result;
 		}
-		assert_cond(0 < size && size <= 8, "sizeof integer invalid");
 		T value = known[rand_int(known.size(), [&size, &bits, &known, this](unsigned char* file_buf) -> long long {
 			T value = parse_integer(file_buf, size, bits);
 			return std::find(known.begin(), known.end(), value) - known.begin();
@@ -291,12 +318,25 @@ public:
 			swap_bytes(&newvalue, size);
 			write_file(&newvalue, size);
 		}
-
+		if (regen) {
+			generate = true;
+			regen = false;
+		}
 		return value;
 	}
 
 	long long file_integer(unsigned size, unsigned bits, bool small = true) {
 		assert_cond(0 < size && size <= 8, "sizeof integer invalid");
+		if (has_bitmap && bitmap[file_pos] && generate) {
+			generate = false;
+			regen = true;
+		}
+		if (lookahead && generate) {
+			has_bitmap = true;
+			for (unsigned i = 0; i < size; ++i)
+				bitmap[file_pos + i] = true;
+		}
+
 		long long value;
 		std::function<long long (unsigned char*)> parse = [&size, &bits, this](unsigned char* file_buf) -> long long {
 			return parse_integer(file_buf, size, bits);
@@ -333,6 +373,10 @@ public:
 		} else {
 			swap_bytes(&newvalue, size);
 			write_file(&newvalue, size);
+		}
+		if (regen) {
+			generate = true;
+			regen = false;
 		}
 		return value;
 	}

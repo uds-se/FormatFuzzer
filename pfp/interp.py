@@ -1582,7 +1582,10 @@ class PfpInterp(object):
                          ["uint64", "UQuad"],
                          ["ushort", "UShort"]]
         for t, n in readfunctions:
-            node.cpp += "std::vector<" + t + "> Read" + n + "_values;\n"
+            node.cpp += "std::vector<" + t + "> Read" + n + "_values"
+            if "Read" + n in self._known_values:
+                node.cpp += " = { " + ", ".join(self._known_values["Read" + n]) + " }"
+            node.cpp += ";\n"
         node.cpp += "\n\nclass globals_class {\npublic:\n"
         for n, c in self._globals:
             node.cpp += "\t" + re.sub("\(.*\)", "", c)
@@ -2805,6 +2808,16 @@ int main(int argc, char** argv) {
                             for i, (n, c) in enumerate(self._globals):
                                 if n == name:
                                     self._globals[i] = (n, re.sub("\(true.*", cpp, c))
+
+                if exp is not None and exp.__class__ == AST.FuncCall:
+                    name = exp.name.name
+                    value = const.cpp
+                    if name.startswith("Read"):
+                        if name not in self._known_values:
+                            self._known_values[name] = []
+                        self._known_values[name].append(value)
+                        if len(set(self._known_values[name])) == 1:
+                            self._known_values[name] = self._known_values[name][:1]
 
             res = None
             try:

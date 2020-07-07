@@ -319,6 +319,7 @@ int FSkip(int64 offset) {abort();}
 int64 FindFirst(WORD data, int matchcase=true, int wholeword=false, int method=0, double tolerance=0.0, int dir=1, int64 start=0) {abort();}
 extern std::vector<uchar> ReadUByte_values;
 uchar ReadUByte(int64 pos = FTell(), std::vector<uchar> new_known_values = {}) {
+	file_acc.lookahead = true;
 	int64 original_pos = FTell();
 	FSeek(pos);
 	uchar value;
@@ -330,10 +331,12 @@ uchar ReadUByte(int64 pos = FTell(), std::vector<uchar> new_known_values = {}) {
 	else
 		value = file_acc.file_integer(sizeof(uchar), 0);
 	FSeek(original_pos);
+	file_acc.lookahead = false;
 	return value;
 }
 extern std::vector<ushort> ReadUShort_values;
 ushort ReadUShort(int64 pos = FTell(), std::vector<ushort> new_known_values = {}) {
+	file_acc.lookahead = true;
 	int64 original_pos = FTell();
 	FSeek(pos);
 	ushort value;
@@ -345,6 +348,7 @@ ushort ReadUShort(int64 pos = FTell(), std::vector<ushort> new_known_values = {}
 	else
 		value = file_acc.file_integer(sizeof(ushort), 0);
 	FSeek(original_pos);
+	file_acc.lookahead = false;
 	return value;
 }
 void BitfieldLeftToRight() {
