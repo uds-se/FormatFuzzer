@@ -203,10 +203,9 @@ public:
 	unsigned file_pos = 0;
 	unsigned file_size = 0;
 	bool generate = true;
-	bool regen = false;
 	bool lookahead = false;
 
-	file_accessor() : bitmap((MAX_FILE_SIZE + 7) / 8) {}
+	file_accessor() : bitmap(MAX_FILE_SIZE) {}
 
 	bool set_evil_bit(bool allow) {
 		bool old = allow_evil_values;
@@ -218,12 +217,6 @@ public:
 		unsigned long long max = x-1;
 		if (!max)
 			return 0;
-		if (regen) {
-			unsigned long long value = parse(&file_buffer[file_pos]);
-			if (!x)
-				return value;
-			return value % x;
-		}
 		if (!(max>>8)) {
 			assert_cond(rand_pos + 1 <= rand_size, "random size exceeded rand_size");
 			unsigned char* p = (unsigned char*) &rand_buffer[rand_pos];
@@ -284,32 +277,50 @@ public:
 	}
 
 	template<typename T>
+	bool is_compatible(unsigned size, T& v) {
+		unsigned char* p = (unsigned char*) &v;
+		for (unsigned i = 0; i < size; ++i) {
+			if (bitmap[file_pos + i]) {
+				unsigned index = is_big_endian ? size - 1 - i : i;
+				if (p[index] != file_buffer[file_pos + i])
+					return false;
+			}
+		}
+		return true;
+	}
+
+	template<typename T>
 	long long file_integer(unsigned size, unsigned bits, std::vector<T>& known) {
 		assert_cond(0 < size && size <= 8, "sizeof integer invalid");
-		if (has_bitmap && bitmap[file_pos] && generate) {
-			generate = false;
-			regen = true;
-		}
-		if (lookahead && generate) {
-			has_bitmap = true;
-			for (unsigned i = 0; i < size; ++i)
-				bitmap[file_pos + i] = true;
-		}
-
-		if (evil( [&size, &bits, &known, this](unsigned char* file_buf) -> bool {
-				T value = parse_integer(file_buf, size, bits);
-				return std::find(known.begin(), known.end(), value) == known.end();
-			} )) {
-			long long result = file_integer(size, bits);
-			if (regen) {
-				generate = true;
-				regen = false;
+		assert_cond(file_pos + size <= MAX_FILE_SIZE, "file size exceeded MAX_FILE_SIZE");
+		std::vector<T> compatible;
+		bool match = false;
+		if (has_bitmap) {
+			for (unsigned i = 0; i < size; ++i) {
+				if (bitmap[file_pos + i]) {
+					match = true;
+					break;
+				}
 			}
-			return result;
+			if (match) {
+				assert_cond(bits == 0, "bitfield lookahead not implemented");
+				for (T& v : known) {
+					if (is_compatible(size, v))
+						compatible.push_back(v);
+				}
+			}
 		}
-		T value = known[rand_int(known.size(), [&size, &bits, &known, this](unsigned char* file_buf) -> long long {
+		std::vector<T>& good = match ? compatible : known;
+
+		if ((match && compatible.empty()) || evil( [&size, &bits, &good, this](unsigned char* file_buf) -> bool {
+				T value = parse_integer(file_buf, size, bits);
+				return std::find(good.begin(), good.end(), value) == good.end();
+			} )) {
+			return file_integer(size, bits);
+		}
+		T value = good[rand_int(good.size(), [&size, &bits, &good, this](unsigned char* file_buf) -> long long {
 			T value = parse_integer(file_buf, size, bits);
-			return std::find(known.begin(), known.end(), value) - known.begin();
+			return std::find(good.begin(), good.end(), value) - good.begin();
 		} )];
 		T newvalue = value;
 		if (bits) {
@@ -318,24 +329,20 @@ public:
 			swap_bytes(&newvalue, size);
 			write_file(&newvalue, size);
 		}
-		if (regen) {
-			generate = true;
-			regen = false;
+
+		if (lookahead) {
+			has_bitmap = true;
+			unsigned original_pos = file_pos - size;
+			for (unsigned i = 0; i < size; ++i)
+				bitmap[original_pos + i] = true;
 		}
+
 		return value;
 	}
 
 	long long file_integer(unsigned size, unsigned bits, bool small = true) {
 		assert_cond(0 < size && size <= 8, "sizeof integer invalid");
-		if (has_bitmap && bitmap[file_pos] && generate) {
-			generate = false;
-			regen = true;
-		}
-		if (lookahead && generate) {
-			has_bitmap = true;
-			for (unsigned i = 0; i < size; ++i)
-				bitmap[file_pos + i] = true;
-		}
+		assert_cond(file_pos + size <= MAX_FILE_SIZE, "file size exceeded MAX_FILE_SIZE");
 
 		long long value;
 		std::function<long long (unsigned char*)> parse = [&size, &bits, this](unsigned char* file_buf) -> long long {
@@ -367,6 +374,16 @@ public:
 					return value;
 				});
 		}
+		if (has_bitmap) {
+			for (unsigned i = 0; i < size; ++i) {
+				if (bitmap[file_pos + i]) {
+					assert_cond(bits == 0, "bitfield lookahead not implemented");
+					unsigned char* p = (unsigned char*) &value;
+					unsigned index = is_big_endian ? size - 1 - i : i;
+					p[index] = file_buffer[file_pos + i];
+				}
+			}
+		}
 		long long newvalue = value;
 		if (bits) {
 			write_file_bits(value, size, bits);
@@ -374,10 +391,14 @@ public:
 			swap_bytes(&newvalue, size);
 			write_file(&newvalue, size);
 		}
-		if (regen) {
-			generate = true;
-			regen = false;
+
+		if (lookahead) {
+			has_bitmap = true;
+			unsigned original_pos = file_pos - size;
+			for (unsigned i = 0; i < size; ++i)
+				bitmap[original_pos + i] = true;
 		}
+
 		return value;
 	}
 	

@@ -666,7 +666,7 @@ class PfpInterp(object):
             if hasattr(node, "originalname"):
                 name = node.originalname
             node.cpp = "GENERATE"
-            if name == node.name and len(self._incomplete_stack) > 1:
+            if len(self._incomplete_stack) > 1:
                 node.cpp += "_VAR"
             node.cpp += "(" + name + ", ::g->" + node.name + ".generate("
             arg_num = 0
@@ -931,7 +931,7 @@ class PfpInterp(object):
                 if hasattr(node, "originalname"):
                     name = node.originalname
                 node.cpp = "GENERATE"
-                if name == field_name and len(self._incomplete_stack) > 1:
+                if len(self._incomplete_stack) > 1:
                     node.cpp += "_VAR"
                 node.cpp += "(" + name + ", ::g->" + field_name + ".generate("
                 arg_num = 0
@@ -2095,7 +2095,7 @@ int main(int argc, char** argv) {
                             self._cpp.append((classname, "\nclass " + classname + ";\n\n"))
 
                 node.cpp = "GENERATE"
-                if node.originalname == node.name and len(self._incomplete_stack) > 1:
+                if len(self._incomplete_stack) > 1:
                     node.cpp += "_VAR"
                 node.cpp += "(" + node.originalname + ", ::g->" + node.name + ".generate("
                 if node.type.dim is not None:
@@ -2171,7 +2171,7 @@ int main(int argc, char** argv) {
                     else:
                         self.add_native_class(classname, node.type.cpp, is_bitfield)
                     node.cpp = "GENERATE"
-                    if node.originalname == node.name and len(self._incomplete_stack) > 1:
+                    if len(self._incomplete_stack) > 1:
                         node.cpp += "_VAR"
                     node.cpp += "(" + node.originalname + ", ::g->" + node.name + ".generate())"
                     if node.name not in self._defined:
