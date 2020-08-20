@@ -324,6 +324,7 @@ public:
 		} )];
 		T newvalue = value;
 		if (bits) {
+			value &= (1LLU << bits) - 1LLU;
 			write_file_bits(value, size, bits);
 		} else {
 			swap_bytes(&newvalue, size);
@@ -386,6 +387,7 @@ public:
 		}
 		long long newvalue = value;
 		if (bits) {
+			value &= (1LLU << bits) - 1LLU;
 			write_file_bits(value, size, bits);
 		} else {
 			swap_bytes(&newvalue, size);

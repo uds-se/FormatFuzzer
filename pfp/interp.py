@@ -647,6 +647,8 @@ class PfpInterp(object):
     _natives = {}
     _predefines = []
     _cpp = []
+    _functions_cpp = []
+    _read_funcs = set()
     _generates_cpp = ""
     _known_values = {}
     _defined = {"time" : None}
@@ -661,12 +663,13 @@ class PfpInterp(object):
         if classname in self._defined:
             if node.name not in self._defined:
                 self._defined[node.name] = classname
-                self._globals.append((node.name, classname + " " + node.name + ";\n"))
+                self._globals.append((node.name, classname + " " + node.name + "(" + classname + "_" + node.name + "_instances);\n"))
+                self._instances += "std::vector<" + classname + "*> " + classname + "_" + node.name + "_instances;\n"
             name = node.name
             if hasattr(node, "originalname"):
                 name = node.originalname
             node.cpp = "GENERATE"
-            if len(self._incomplete_stack) > 1:
+            if self._defined[name] == self._defined[node.name] and len(self._incomplete_stack) > 1:
                 node.cpp += "_VAR"
             node.cpp += "(" + name + ", ::g->" + node.name + ".generate("
             arg_num = 0
@@ -809,8 +812,9 @@ class PfpInterp(object):
             return
         self._defined[classname] = None
         self._struct_locals = []
+        self._struct_vars = []
         cpp = "\n\nclass " + classname + " {\n"
-        cpp += "\tstatic std::vector<" + classname + "*> instances;\n\n"
+        cpp += "\tstd::vector<" + classname + "*>& instances;\n\n"
         decls = []
         for node in classnode.decls:
             decls += self.get_decls(node)
@@ -822,6 +826,8 @@ class PfpInterp(object):
                 name = decl.originalname
             if "local" in decl.quals:
                 self._struct_locals.append(decl)
+            else:
+                self._struct_vars.append(decl)
             if "local" not in decl.quals and name not in defined:
                 defined.add(name)
                 variables.append((name, decl))
@@ -897,7 +903,7 @@ class PfpInterp(object):
         cpp += "\tstd::size_t _sizeof;\n"
         cpp += "\t" + classname + "& operator () () { return *instances.back(); }\n"
         cpp += "\t" + classname + "* operator [] (int index) { return instances[index]; }\n"
-        cpp += "\t" + classname + "() { instances.push_back(this); }\n"
+        cpp += "\t" + classname + "(std::vector<" + classname + "*>& instances) : instances(instances) { instances.push_back(this); }\n"
         cpp += "\t~" + classname + "() {\n"
         cpp += "\t\tif (generated == 2)\n"
         cpp += "\t\t\treturn;\n"
@@ -917,21 +923,21 @@ class PfpInterp(object):
                 cpp += " " + param.name + ", "
             cpp = cpp[:-2]
         cpp += ");\n};\n\n"
-        cpp += "std::vector<" + classname + "*> " + classname + "::instances;\n\n"
         self._cpp.append((classname, cpp))
         if classname in self._to_define:
             for field_name, node in self._to_define[classname]:
                 if "::" in field_name:
-                    self._globals.append((node.name, field_name))
+                    self._generates_cpp += field_name
                     continue
                 if field_name not in self._defined:
                     self._defined[field_name] = classname
-                    self._globals.append((field_name, classname + " " + node.name + ";\n"))
+                    self._globals.append((field_name, classname + " " + node.name + "(" + classname + "_" + node.name + "_instances);\n"))
+                    self._instances += "std::vector<" + classname + "*> " + classname + "_" + node.name + "_instances;\n"
                 name = field_name
                 if hasattr(node, "originalname"):
                     name = node.originalname
                 node.cpp = "GENERATE"
-                if len(self._incomplete_stack) > 1:
+                if self._defined[name] == self._defined[field_name] and len(self._incomplete_stack) > 1:
                     node.cpp += "_VAR"
                 node.cpp += "(" + name + ", ::g->" + field_name + ".generate("
                 arg_num = 0
@@ -968,7 +974,7 @@ class PfpInterp(object):
             cpp = cpp[:-2]
         cpp += ") {\n"
         body = "\tif (generated == 1) {\n"
-        body += "\t\t" + classname + "* new_instance = new " + classname + "();\n"
+        body += "\t\t" + classname + "* new_instance = new " + classname + "(instances);\n"
         body += "\t\tnew_instance->generated = 2;\n"
         body += "\t\treturn new_instance->generate("
         if hasattr(classnode, "args") and classnode.args is not None:
@@ -983,6 +989,8 @@ class PfpInterp(object):
         for decl in classnode.decls:
             for local in self._struct_locals + params:
                 decl.cpp = decl.cpp.replace("/**/" + local.name + "()", local.name)
+            for var in self._struct_vars:
+                decl.cpp = decl.cpp.replace("/**/" + var.name + "()", var.name + "()")
             if is_union and not first:
                 decl.cpp = decl.cpp.replace("GENERATE_VAR", "GENERATE_EXISTS")
             if decl.cpp:
@@ -1086,6 +1094,7 @@ class PfpInterp(object):
         self._global_locals = []
         self._global_consts = []
         self._globals = []
+        self._instances = ""
         self._locals_stack = [[]]
         self._incomplete_stack = [False]
         self._incomplete = False
@@ -1581,14 +1590,20 @@ class PfpInterp(object):
                          ["uint64", "UInt64"],
                          ["uint64", "UQuad"],
                          ["ushort", "UShort"]]
+        lookahead = []
         for t, n in readfunctions:
             node.cpp += "std::vector<" + t + "> Read" + n + "_values"
             if "Read" + n in self._known_values:
                 node.cpp += " = { " + ", ".join(self._known_values["Read" + n]) + " }"
             node.cpp += ";\n"
+            if "Read" + n in self._read_funcs:
+                lookahead.append("Read" + n)
+        node.cpp += "\n\n" + self._instances
         node.cpp += "\n\nclass globals_class {\npublic:\n"
         for n, c in self._globals:
-            node.cpp += "\t" + re.sub("\(.*\)", "", c)
+            #node.cpp += "/*" + n + "*/\n"
+            if c:
+                node.cpp += "\t" + re.sub("\(.*\)", "", c)
         node.cpp += "\n\n\tglobals_class() :\n"
         for n, c in self._globals:
             index = c.find(" " + n + "(") + 1
@@ -1598,6 +1613,9 @@ class PfpInterp(object):
         node.cpp += "\t{}\n"
         node.cpp += "};\n\n"
         node.cpp += "globals_class* g;\n\n"
+        for n, c in self._functions_cpp:
+            #node.cpp += "/*" + n + "*/\n"
+            node.cpp += c
         node.cpp += self._generates_cpp
         node.cpp += "\n\nvoid generate_file() {\n"
         node.cpp += "\t::g = new globals_class();\n"
@@ -1640,6 +1658,14 @@ int main(int argc, char** argv) {
         outfile.close()
         if self._generate:
             print("Finished creating cpp generator.")
+            if lookahead:
+                print("\nLookahead functions found:\n")
+            for f in lookahead:
+                print(f)
+            if self._known_values:
+                print("\nMined interesting values:\n")
+            for var in sorted(self._known_values):
+                print(var + ":", self._known_values[var])
             sys.exit(0)
 
         ctxt._pfp__process_fields_metadata()
@@ -2013,7 +2039,8 @@ int main(int argc, char** argv) {
                     if is_native:
                         self._globals.append((node.name + "_element", element_classname + " " + node.name + "_element(false);\n"))
                     else:
-                        self._globals.append((node.name + "_element", element_classname + " " + node.name + "_element;\n"))
+                        self._globals.append((node.name + "_element", element_classname + " " + node.name + "_element" + "(" + element_classname + "_" + node.name + "_element_instances);\n"))
+                        self._instances += "std::vector<" + element_classname + "*> " + element_classname + "_" + node.name + "_element_instances;\n"
 
                 cpp = ""
                 if classname + "_array_class" not in self._defined:
@@ -2095,7 +2122,7 @@ int main(int argc, char** argv) {
                             self._cpp.append((classname, "\nclass " + classname + ";\n\n"))
 
                 node.cpp = "GENERATE"
-                if len(self._incomplete_stack) > 1:
+                if self._defined[node.name] == self._defined[node.originalname] and len(self._incomplete_stack) > 1:
                     node.cpp += "_VAR"
                 node.cpp += "(" + node.originalname + ", ::g->" + node.name + ".generate("
                 if node.type.dim is not None:
@@ -2170,10 +2197,6 @@ int main(int argc, char** argv) {
                         is_string = True
                     else:
                         self.add_native_class(classname, node.type.cpp, is_bitfield)
-                    node.cpp = "GENERATE"
-                    if len(self._incomplete_stack) > 1:
-                        node.cpp += "_VAR"
-                    node.cpp += "(" + node.originalname + ", ::g->" + node.name + ".generate())"
                     if node.name not in self._defined:
                         self._defined[node.name] = classname
                         if is_string:
@@ -2182,6 +2205,10 @@ int main(int argc, char** argv) {
                             self._globals.append((node.name, classname + " " + node.name + "(" + node.bitsize.cpp + ", true);\n"))
                         else:
                             self._globals.append((node.name, classname + " " + node.name + "(true);\n"))
+                    node.cpp = "GENERATE"
+                    if self._defined[node.name] == self._defined[node.originalname] and len(self._incomplete_stack) > 1:
+                        node.cpp += "_VAR"
+                    node.cpp += "(" + node.originalname + ", ::g->" + node.name + ".generate())"
                 elif issubclass(nodetype, fields.Enum):
                     node.cpp = "GENERATE"
                     if len(self._incomplete_stack) > 1:
@@ -2783,12 +2810,12 @@ int main(int argc, char** argv) {
                     else:
                         name = exp.name
                     value = const.cpp
-                    if name not in self._known_values:
-                        self._known_values[name] = []
-                    self._known_values[name].append(value)
-                    if len(set(self._known_values[name])) == 1:
-                        self._known_values[name] = self._known_values[name][:1]
                     if name in self._defined and not hasattr(scope.get_id(name), "is_local"):
+                        if name not in self._known_values:
+                            self._known_values[name] = []
+                        self._known_values[name].append(value)
+                        if len(set(self._known_values[name])) == 1:
+                            self._known_values[name] = self._known_values[name][:1]
                         classname = self._defined[name]
                         if classname[-12:] == "_array_class":
                             cpp = "_element, { "
@@ -3184,6 +3211,8 @@ int main(int argc, char** argv) {
             scope.clear_meta()
             func_args = self._handle_node(node.args, scope, ctxt, stream)
         func = self._handle_node(node.name, scope, ctxt, stream)
+        if node.name.name.startswith("Read"):
+            self._read_funcs.add(node.name.name)
         node.cpp = "" + node.name.name + "("
         if node.args:
             first = True
@@ -3224,7 +3253,7 @@ int main(int argc, char** argv) {
             func.node.cpp += ") {\n"
             func.node.cpp += func.body.cpp
             func.node.cpp += "}\n"
-            self._cpp.append((func.name, func.node.cpp))
+            self._functions_cpp.append((func.name, func.node.cpp))
         return ret
 
     def _handle_expr_list(self, node, scope, ctxt, stream):
@@ -3361,11 +3390,14 @@ int main(int argc, char** argv) {
             node.cpp += " : " + " ".join(node.type.names)
         node.cpp += " {\n"
         for enumerator in node.values.enumerators:
-            self._global_locals.append(enumerator.name)
+            self._global_consts.append(enumerator.name)
             self._defined[enumerator.name] = "enum value"
             node.cpp += "\t" + enumerator.name
             if enumerator.value:
-                node.cpp += " = " + enumerator.value.value
+                if node.type is not None:
+                    node.cpp += " = (" + " ".join(node.type.names) + ") " + enumerator.value.cpp
+                else:
+                    node.cpp += " = " + enumerator.value.cpp
             node.cpp += ",\n"
         node.cpp += "}"
         if name in self._defined:
