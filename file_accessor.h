@@ -165,8 +165,9 @@ class file_accessor {
 			return;
 		if (start_pos < generator_stack.back().min)
 			generator_stack.back().min = start_pos;
-		if (file_pos - 1 > generator_stack.back().max)
-			generator_stack.back().max = file_pos - 1;
+		unsigned end = bitfield_size ? file_pos + ((bitfield_bits - 1) / 8) : file_pos - 1;
+		if (end > generator_stack.back().max)
+			generator_stack.back().max = end;
 	}
 
 	void write_file(const void *buf, size_t size) {
