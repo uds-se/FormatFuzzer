@@ -669,7 +669,7 @@ class PfpInterp(object):
             if hasattr(node, "originalname"):
                 name = node.originalname
             node.cpp = "GENERATE"
-            if self._defined[name] == self._defined[node.name] and len(self._incomplete_stack) > 1:
+            if len(self._incomplete_stack) > 1:
                 node.cpp += "_VAR"
             node.cpp += "(" + name + ", ::g->" + node.name + ".generate("
             arg_num = 0
@@ -813,6 +813,7 @@ class PfpInterp(object):
         self._defined[classname] = None
         self._struct_locals = []
         self._struct_vars = []
+        self._struct_repeated = []
         cpp = "\n\nclass " + classname + " {\n"
         cpp += "\tstd::vector<" + classname + "*>& instances;\n\n"
         decls = []
@@ -828,14 +829,23 @@ class PfpInterp(object):
                 self._struct_locals.append(decl)
             else:
                 self._struct_vars.append(decl)
-            if "local" not in decl.quals and name not in defined:
-                defined.add(name)
-                variables.append((name, decl))
-                if not hasattr(decl.type, "cpp"):
-                    if hasattr(decl.type.type, "name"):
-                        decl.type.cpp = decl.type.type.name
-                    elif hasattr(decl.type.type, "names"):
-                        decl.type.cpp = " ".join(decl.type.type.names)
+            if "local" not in decl.quals:
+                if name in defined:
+                    sametype = True
+                    for n,d in variables:
+                        if n == name and d.type.cpp != decl.type.cpp:
+                            sametype = False
+                    if not sametype:
+                        self._struct_repeated.append(name)
+                else:
+                    defined.add(name)
+                    variables.append((name, decl))
+                    if not hasattr(decl.type, "cpp"):
+                        if hasattr(decl.type.type, "name"):
+                            decl.type.cpp = decl.type.type.name
+                        elif hasattr(decl.type.type, "names"):
+                            decl.type.cpp = " ".join(decl.type.type.names)
+        variables = [(n,d) for (n,d) in variables if n not in self._struct_repeated]
 
         if is_union:
             cpp += "union {\n"
@@ -937,7 +947,7 @@ class PfpInterp(object):
                 if hasattr(node, "originalname"):
                     name = node.originalname
                 node.cpp = "GENERATE"
-                if self._defined[name] == self._defined[field_name] and len(self._incomplete_stack) > 1:
+                if len(self._incomplete_stack) > 1:
                     node.cpp += "_VAR"
                 node.cpp += "(" + name + ", ::g->" + field_name + ".generate("
                 arg_num = 0
@@ -993,6 +1003,8 @@ class PfpInterp(object):
                 decl.cpp = decl.cpp.replace("/**/" + var.name + "()", var.name + "()")
             if is_union and not first:
                 decl.cpp = decl.cpp.replace("GENERATE_VAR", "GENERATE_EXISTS")
+            for n in self._struct_repeated:
+                decl.cpp = decl.cpp.replace("GENERATE_VAR(" + n + ",", "GENERATE(" + n + ",")
             if decl.cpp:
                 body += "\t" + decl.cpp.replace("\n", "\n\t") + ";\n"
             first = False
@@ -2122,7 +2134,7 @@ int main(int argc, char** argv) {
                             self._cpp.append((classname, "\nclass " + classname + ";\n\n"))
 
                 node.cpp = "GENERATE"
-                if self._defined[node.name] == self._defined[node.originalname] and len(self._incomplete_stack) > 1:
+                if len(self._incomplete_stack) > 1:
                     node.cpp += "_VAR"
                 node.cpp += "(" + node.originalname + ", ::g->" + node.name + ".generate("
                 if node.type.dim is not None:
@@ -2187,7 +2199,10 @@ int main(int argc, char** argv) {
                     else:
                         classname = "_".join(node.type.type.names) + "_class"
                     node.originalname = node.name
-                    while node.name in self._defined and self._defined[node.name] != classname:
+                    classnamebits = classname
+                    if is_bitfield:
+                        classnamebits += node.bitsize.cpp
+                    while node.name in self._defined and self._defined[node.name] != classnamebits:
                         node.name += "_"
                     node.type.cpp = " ".join(node.type.type.names)
                     is_string = False
@@ -2198,7 +2213,7 @@ int main(int argc, char** argv) {
                     else:
                         self.add_native_class(classname, node.type.cpp, is_bitfield)
                     if node.name not in self._defined:
-                        self._defined[node.name] = classname
+                        self._defined[node.name] = classnamebits
                         if is_string:
                             self._globals.append((node.name, classname + " " + node.name + ";\n"))
                         elif is_bitfield:
@@ -2206,7 +2221,7 @@ int main(int argc, char** argv) {
                         else:
                             self._globals.append((node.name, classname + " " + node.name + "(true);\n"))
                     node.cpp = "GENERATE"
-                    if self._defined[node.name] == self._defined[node.originalname] and len(self._incomplete_stack) > 1:
+                    if len(self._incomplete_stack) > 1:
                         node.cpp += "_VAR"
                     node.cpp += "(" + node.originalname + ", ::g->" + node.name + ".generate())"
                 elif issubclass(nodetype, fields.Enum):
