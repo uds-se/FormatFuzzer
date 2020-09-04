@@ -1635,25 +1635,6 @@ class PfpInterp(object):
         node.cpp += "\tdelete_globals();\n"
         node.cpp += "}\n"
         node.cpp += "\nvoid delete_globals() { delete ::g; }\n"
-        node.cpp += """
-int main(int argc, char** argv) {
-	assert(argc == 3);
-	if (strcmp(argv[0] + strlen(argv[0]) - 6, "parser") == 0)
-		file_acc.generate = false;
-	setup_input(argv[1]);
-	try {
-		generate_file();
-	} catch (...) {
-		delete_globals();
-		fprintf(stderr, "%s failed\\n", get_bin_name(argv[0]));
-		save_output(argv[2]);
-		return -1;
-	}
-	save_output(argv[2]);
-	fprintf(stderr, "%s finished\\n", get_bin_name(argv[0]));
-	return 0;
-}
-"""
 
         for a, b in self._to_replace:
             node.cpp = node.cpp.replace(a, b)

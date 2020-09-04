@@ -1,7 +1,10 @@
+#include <iostream>
 #include <string>
 #include <vector>
+#include <unordered_map>
 #include <random>
 #include <cassert>
+#include <algorithm>
 #include <functional>
 #include <zlib.h>
 
@@ -351,7 +354,7 @@ public:
 			return parse_integer(file_buf, size, bits);
 		};
 		if (!small)
-			value = rand_int(1<<(bits ? bits : 8*size), parse);
+			value = rand_int(1LLU<<(bits ? bits : 8*size), parse);
 		else {
 			int s = rand_int(256, [&size, &bits, this](unsigned char* file_buf) -> long long {
 				unsigned long long value = parse_integer(file_buf, size, bits);
@@ -364,7 +367,7 @@ public:
 				return 0;
 			});
 			if (s < 2)
-				value = rand_int(1<<(bits ? bits : 8*size), parse);
+				value = rand_int(1LLU<<(bits ? bits : 8*size), parse);
 			else if (s < 8)
 				value = rand_int(1<<16, parse);
 			else if (s < 32)

@@ -1,0 +1,388 @@
+//------------------------------------------------
+//--- 010 Editor Binary Template
+//
+//      File: PNG.bt
+//   Authors: Kevin O. Grover, RCS, Mister Wu
+//   Version: 2.3
+//   Purpose: Parse PNG (Portable Network Graphics) and APNG (Animated Portable Network Graphics) image files.
+//  Category: Image
+// File Mask: *.png,*.apng
+//  ID Bytes: 89 50 4E 47 //%PNG
+//   History:
+//   2.3   2018-08-17 K. Grover: Uniform type names.  Formatting/comments.
+//   2.2   2017-10-20 Mister Wu: Initial support of APNG chunks: acTL, fcTL, fdAT.
+//   2.1   2017-08-31 K. Grover: Better colors.  Alternate chunk colors.  Cleaned up messages.
+//   2.0   2016-02-10 SweetScape Software: Merged in extra chunks from PNG12Template.bt, updated header for repository submission.
+//   1.1   2009-02-23 K. Grover: Decode IHDR and tEXt chunks.
+//   1.0.1 2005-06-29 K. Grover: Fixed typos in comments.
+//   1.0   2005-05-11 K. Grover: Initial version.
+//
+// This template was written to the PNG 1.2 Specification:
+//     http://www.libpng.org/pub/png/spec/1.2/
+//
+// It includes chunks described in the APNG 1.0 Specification:
+//     https://wiki.mozilla.org/APNG_Specification
+//
+// Note however, that it does not check nor parse all chunk subdata, so it
+// should work with all future PNG specifications.
+//
+// Possible caveat: PNG encourages the chunk type to be mapped to
+// strings of the form "[a-zA-Z]{4}".  However, it's not a requirement.
+//
+// Summary of PNG Format:
+// A PNG file consists of an 8 byte ID followed by a series of chunks.
+// Each Chunk is
+//   length (4 bytes), chunk_type (4 bytes), data (length bytes), crc (4 bytes)
+//   CRC Does NOT include the length bytes.
+//------------------------------------------------
+
+BigEndian();                  // PNG files are in Network Byte order
+
+// Helper Routine
+
+void error_message(string msg) {
+    Warning(msg);
+    Printf(msg + "\n");
+}
+
+// PNG Data types
+typedef struct {
+    uint16 btPngSignature[4] <format=hex>;
+} PNG_SIGNATURE;
+
+typedef enum <byte> pngColorSpaceType {
+    GrayScale = 0,
+    TrueColor = 2,
+    Indexed = 3,
+    AlphaGrayScale = 4,
+    AlphaTrueColor = 6
+} PNG_COLOR_SPACE_TYPE;
+
+// Compression Methods
+typedef enum <byte> pngCompressionMethod {
+    Deflate = 0
+} PNG_COMPR_METHOD;
+
+// Filter Methods
+typedef enum <byte> pngFilterMethod {
+    AdaptiveFiltering = 0
+} PNG_FILTER_METHOD;
+
+// Interlace Methods
+typedef enum <byte> pngInterlaceMethod {
+    NoInterlace = 0,
+    Adam7Interlace = 1
+} PNG_INTERLACE_METHOD;
+
+typedef struct {
+    byte btRed <format=hex>;
+    byte btGreen <format=hex>;
+    byte btBlue <format=hex>;
+} PNG_PALETTE_PIXEL;
+
+typedef struct {
+    uint32 x;
+    uint32 y;
+} PNG_POINT;
+
+typedef enum <byte> {
+    Perceptual = 0,
+    RelativeColorimetric = 1,
+    Saturation = 2,
+    AbsoluteColorimetric = 3
+} PNG_SRGB_CHUNK_DATA;
+
+typedef struct {
+    string profile_name;
+    ubyte red;
+} PNG_ICCP_CHUNK_DATA;
+
+typedef enum <byte> {
+    APNG_DISPOSE_OP_NONE = 0,
+    APNG_DISPOSE_OP_BACKGROUND = 1,
+    APNG_DISPOSE_OP_PREVIOUS = 2
+} APNG_DISPOSE_OP;
+
+typedef enum <byte> {
+    APNG_BLEND_OP_SOURCE = 0,
+    APNG_BLEND_OP_OVER = 1
+} APNG_BLEND_OP;
+
+// Chunk Type
+typedef union {
+    uint32  ctype <format=hex>; // Chunk Type
+    char    cname[4];           // character representation
+} CTYPE <read=readCTYPE>;
+
+string readCTYPE(local CTYPE &t) {
+    return t.cname;
+}
+
+// -- Specific Chunks
+
+// IHDR - Image Header
+typedef struct {
+    uint32   width;
+    uint32   height;
+    ubyte    bits;
+    PNG_COLOR_SPACE_TYPE color_type;
+    PNG_COMPR_METHOD     compr_method;
+    PNG_FILTER_METHOD    filter_method;
+    PNG_INTERLACE_METHOD interlace_method;
+} PNG_CHUNK_IHDR <read=readIHDR>;
+
+string readIHDR(local PNG_CHUNK_IHDR &ihdr) {
+    local string s;
+    SPrintf(s, "%i x %i (x%i)", ihdr.width, ihdr.height, ihdr.bits);
+    return s;
+}
+
+// tEXt - Text Data
+typedef struct {
+    string label;                              // to the first NULL (including)
+    char   data[length - Strlen(label) - 1];   // rest of the data
+} PNG_CHUNK_TEXT <read=readtEXt>;
+
+string readtEXt(local PNG_CHUNK_TEXT &text) {
+    local string s;
+    SPrintf(s, "%s = %s", text.label, text.data);
+    return s;
+}
+
+struct PNG_CHUNK_PLTE (int32 chunkLen) {
+    PNG_PALETTE_PIXEL plteChunkData[chunkLen/3];
+};
+
+struct PNG_CHUNK_CHRM {
+    PNG_POINT white;
+    PNG_POINT red;
+    PNG_POINT green;
+    PNG_POINT blue;
+};
+
+struct PNG_CHUNK_SRGB {
+    PNG_SRGB_CHUNK_DATA srgbChunkData;
+};
+
+struct PNG_CHUNK_IEXT (int32 chunkLen) {
+    string iextIdChunkData;
+    byte iextCompressionFlag;
+    PNG_COMPR_METHOD iextComprMethod;
+    string iextLanguageTag;
+    string iextTranslatedKeyword;
+    char iextValChunkData[chunkLen -
+                                   Strlen(iextIdChunkData) -1 -
+                                   Strlen(iextLanguageTag) -1 -
+                                   Strlen(iextTranslatedKeyword) -1 -
+                                   2];
+};
+
+struct PNG_CHUNK_ZEXT (int32 chunkLen) {
+    string zextIdChunkData;
+    PNG_COMPR_METHOD comprMethod;
+    char zextValChunkData[chunkLen - Strlen(zextIdChunkData) -2];
+};
+
+struct PNG_CHUNK_TIME {
+    int16 timeYear  <format=decimal>;
+    byte  timeMonth <format=decimal>;
+    byte  timeDay   <format=decimal>;
+    byte  timeHour  <format=decimal>;
+    byte  timeMin   <format=decimal>;
+    byte  timeSec   <format=decimal>;
+};
+
+struct PNG_CHUNK_BKGD (int32 colorType) {
+    switch (colorType) {
+    case 3: // Indexed
+        ubyte bgColorPaletteIndex <format=hex>;
+        break;
+
+    case 0: // Grayscale
+    case 4: // Grayscale with alpha
+        uint16 bgGrayscalePixelValue <format=hex>;
+        break;
+
+    case 2: // TrueColor
+    case 6: // TrueColor with alpha
+        uint16 bgColorPixelRed <format=hex>;
+        uint16 bgColorPixelGreen <format=hex>;
+        uint16 bgColorPixelBlue <format=hex>;
+        break;
+
+    default:
+        error_message( "*WARNING: Unknown Color Model Type for background color chunk." );
+        return -4;
+    }
+};
+
+struct PNG_CHUNK_PHYS {
+    uint physPixelPerUnitX;
+    uint physPixelPerUnitY;
+    enum <byte> {
+        UnkownUnit = 0,
+        Meter = 1
+    } physUnitSpec;
+};
+
+struct PNG_CHUNK_SBIT (int32 colorType) {
+    switch (colorType) {
+    case 3: // Indexed
+        byte sbitRed;
+        byte sbitGreen;
+        byte sbitBlue;
+        break;
+
+    case 0: // Grayscale
+        byte sbitGraySource;
+        break;
+
+    case 4: // Grayscale with alpha
+        byte sbitGrayAlphaSource;
+        byte sbitGrayAlphaSourceAlpha;
+        break;
+
+    case 2: // TrueColor
+        byte sbitColorRed;
+        byte sbitColorGreen;
+        byte sbitColorBlue;
+        break;
+
+    case 6: // TrueColor with alpha
+        byte sbitColorAlphaRed;
+        byte sbitColorAlphaGreen;
+        byte sbitColorAlphaBlue;
+        byte sbitColorAlphaAlpha;
+        break;
+
+    default:
+        error_message( "*WARNING: Unknown Color Model Type for background color chunk." );
+        return -4;
+    }
+};
+
+struct PNG_CHUNK_SPLT (int32 chunkLen) {
+    string paletteName;
+    byte sampleDepth;
+    byte spltData[chunkLen - Strlen(paletteName) -2];
+};
+
+struct PNG_CHUNK_ACTL {
+    uint32 num_frames;
+    uint32 num_plays;
+};
+
+struct PNG_CHUNK_FCTL {
+    uint32 sequence_number;
+    uint32 width;
+    uint32 height;
+    uint32 x_offset;
+    uint32 y_offset;
+    int16  delay_num <format=decimal>;
+    int16  delay_den <format=decimal>;
+    APNG_DISPOSE_OP dispose_op;
+    APNG_BLEND_OP blend_op;
+};
+
+struct PNG_CHUNK_FDAT {
+    uint32 sequence_number;
+    ubyte  frame_data[length-4];
+};
+
+// -- End: Specific Chunks
+
+local uint32 CHUNK_CNT = 0;
+
+// Generic Chunks
+typedef struct {
+    uint32  length;                      // Number of data bytes (not including length,type, or crc)
+    local int64 pos_start = FTell();
+    CTYPE   type <fgcolor=cDkBlue>;        // Type of chunk
+    if (type.cname == "IHDR")
+        PNG_CHUNK_IHDR    ihdr;
+    else if (type.cname == "tEXt")
+        PNG_CHUNK_TEXT    text;
+    else if (type.cname == "PLTE")
+        PNG_CHUNK_PLTE    plte(length);
+    else if (type.cname == "cHRM")
+        PNG_CHUNK_CHRM    chrm;
+    else if (type.cname == "sRGB")
+        PNG_CHUNK_SRGB    srgb;
+    else if (type.cname == "iEXt")
+        PNG_CHUNK_IEXT    iext(length);
+    else if (type.cname == "zEXt")
+        PNG_CHUNK_ZEXT    zext(length);
+    else if (type.cname == "tIME")
+        PNG_CHUNK_TIME    time;
+    else if (type.cname == "pHYs")
+        PNG_CHUNK_PHYS    phys;
+    else if (type.cname == "bKGD")
+        PNG_CHUNK_BKGD    bkgd(chunk[0].ihdr.color_type);
+    else if (type.cname == "sBIT")
+        PNG_CHUNK_SBIT    sbit(chunk[0].ihdr.color_type);
+    else if (type.cname == "sPLT")
+        PNG_CHUNK_SPLT    splt(length);
+    else if (type.cname == "acTL")
+        PNG_CHUNK_ACTL    actl;
+    else if (type.cname == "fcTL")
+        PNG_CHUNK_FCTL    fctl;
+    else if (type.cname == "fdAT")
+        PNG_CHUNK_FDAT    fdat;
+    else if( length > 0 )
+        ubyte   data[length];       // Data (or not present)
+    local int64 data_size = FTell() - pos_start;
+    uint32  crc <format=hex, fgcolor=cDkPurple>;  // CRC (not including length or crc)
+    local uint32 crc_calc = Checksum(CHECKSUM_CRC32, pos_start, data_size);
+    if (crc != crc_calc) {
+        local string msg;
+        SPrintf(msg, "*ERROR: CRC Mismatch @ chunk[%d]; in data: %08x; expected: %08x", CHUNK_CNT, crc, crc_calc);
+        error_message( msg );
+    }
+    CHUNK_CNT++;
+} PNG_CHUNK <read=readCHUNK>;
+
+
+// Chunks can be in any order: HOWEVER, IHDR must be first, IEND must be last
+// Bit 5s in chunk type bytes are used to flag some things:
+//    Ancillary bit: bit 5 of 1st byte: 0=Critical, 1=Ancillary
+//      Private bit: bit 5 of 2nd byte: 0=Public, 1=Private
+//     Reserved bit: bit 5 of 3rd byte: MUST be 0
+// Safe to Copy bit: bit 5 of 4th byte: 0=Unsafe to Copy, 1=Safe to Copy
+string readCHUNK(local PNG_CHUNK &c) {
+    local string s;
+    s=readCTYPE(c.type)+"  (";
+    s += (c.type.cname[0] & 0x20) ? "Ancillary, "      : "Critical, ";
+    s += (c.type.cname[1] & 0x20) ? "Private, "        : "Public, ";
+    s += (c.type.cname[2] & 0x20) ? "ERROR_RESERVED, " : "";
+    s += (c.type.cname[3] & 0x20) ? "Safe to Copy)"    : "Unsafe to Copy)";
+    return s;
+}
+
+// ---------------------------------------------------------------------------
+// MAIN  --  Here's where we really allocate the data
+// ---------------------------------------------------------------------------
+
+PNG_SIGNATURE sig <bgcolor=cLtPurple>;
+
+if (sig.btPngSignature[0] != 0x8950 ||
+        sig.btPngSignature[1] != 0x4E47 ||
+        sig.btPngSignature[2] != 0x0D0A ||
+        sig.btPngSignature[3] != 0x1A0A) {
+    error_message( "*ERROR: File is not a PNG image. Template stopped." );
+    return -1;
+}
+
+local int32 chunk_count = 0;
+while(!FEof()) {
+    SetBackColor( (chunk_count++ % 2) ? cNone : cLtGray);
+    PNG_CHUNK chunk;
+}
+
+if (CHUNK_CNT > 1) {
+    if ( chunk[0].type.cname != "IHDR" ) {
+        error_message( "*ERROR: Chunk IHDR must be first chunk." );
+    }
+    if ( chunk[CHUNK_CNT-1].type.cname != "IEND" ) {
+        error_message( "*ERROR: Chunk IEND must be last chunk." );
+    }
+}

@@ -8,8 +8,6 @@
 #include <vector>
 #include <stdarg.h>
 
-#include <boost/crc.hpp>
-
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -179,6 +177,11 @@ char* get_bin_name(char* arg) {
 }
 
 
+void set_parser() {
+	file_acc.generate = false;
+}
+
+
 void setup_input(const char* filename) {
 	debug_print = true;
 	int file_fd = open(filename, O_RDONLY);
@@ -254,7 +257,7 @@ void exit_template(int status) {
 }
 
 void check_array_length(unsigned& size) {
-	if (size > MAX_FILE_SIZE && file_acc.generate) {
+	if (size > MAX_FILE_SIZE/16 && file_acc.generate) {
 		unsigned new_size = file_acc.rand_int(16, NULL);
 		if (debug_print)
 			fprintf(stderr, "Array length too large: %d, replaced with %u\n", (signed)size, new_size);
@@ -270,9 +273,7 @@ uint32 Checksum(int checksum_type, int64 start, int64 size) {
 	assert_cond(start + size <= file_acc.file_size, "checksum range invalid");
 	switch(checksum_type) {
 	case CHECKSUM_CRC32: {
-		boost::crc_32_type res;
-		res.process_bytes(file_acc.file_buffer + start, size);
-		return res.checksum();
+		return crc32(0, file_acc.file_buffer + start, size);
 	}
 	default:
 		abort();
