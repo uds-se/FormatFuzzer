@@ -75,6 +75,8 @@ Run the compiler to compile the binary template into C++ code:
 python3 create.py templates/png.bt png.cpp
 ```
 
+TODO: You may want to rename `python3 create.py` to something more specific, say `formatfuzzer` or `ffcompile`
+
 FIXME: Running the above command, I get
 ```
 py010parser.plyparser.ParseError: /var/folders/n2/xd9445p97rb3xh7m1dfx8_4h0006ts/T/tmpay54rg_1:1:1: before: /
