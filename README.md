@@ -166,23 +166,23 @@ By default, the parser computes the parse tree of the file according to the bina
 
 
 
-## Create your own Binary Templates
+## Creating and Customizing Binary Templates
 
 To write your own binary template (and thus create a high-efficiency fuzzer/parser for this format), first have a look at the 010 editor [binary template collection](https://www.sweetscape.com/010editor/templates.html) whether there is something that you can use or base your format on.
 To write your own `.bt` binary template, read the section [Introduction to Templates and Scripts](https://www.sweetscape.com/010editor/manual/IntroTempScripts.htm) from the [010 Editor Manual](https://www.sweetscape.com/010editor/manual/).
 
+TODO: Have a few words here on the limitations of `FormatFuzzer` - what does one need to keep in mind when creating/customizing a `.bt` file?
 
 
 ## Customizing Generators and Parsers
 
 If the files produced by the generator are still not valid, you can edit the C++ code to improve the generator until it successfully generates well-formatted files with high probability.
+
 The difference between the files `synthesized/PNG.bt` and `generators/PNG.bt` shows what changes were added to the PNG generator in order to produce valid files.
 
 FIXME: These files do not exist; instead, I see `synthesized/PNG.cpp` and `generators/PNG.cpp`. Do you expect people to edit the generated `.cpp` files? (Editing `.bt` files would be much preferred.)
 
 TODO: Can I place the extra C++ code (say, for generating picture bits) into the `.bt' file?
-
-TODO: Maybe have two tutorials here - one for customizing `.bt` files, and one for `.cpp` files (if at all)
 
 TODO: Have a way to express changes to `.cpp` files that are not overwritten as one re-generates them from `.bt` files.
 
@@ -201,6 +201,10 @@ GENERATE(chunk, ::g->chunk.generate({ "iCCP", "sRGB", "sBIT", "gAMA", "cHRM", "p
 ```
 The generator will then uniformly pick one of the good known values to use for the new instance. We also allow the choice of an evil value which is not one of the good known values with small probability 1/128.
 This feature can be enabled or disabled any time by using the method `set_evil_bit`.
+
+TODO: Can't I express such context (notably, the first and last chunk) in the `.bt` file?
+
+TODO: Maybe have a walkthrough-style tutorial listing the changes to be made
 
 All the random choices taken by the generator are done by calling the `rand_int()` method.
 ```
