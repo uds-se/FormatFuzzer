@@ -14,6 +14,8 @@
 
 @SET_MAKE@
 
+# FormatFuzzer Makefile. Edit these rules in `Makefile.am' only.
+
 VPATH = @srcdir@
 am__is_gnu_make = { \
   if test -z '$(MAKELEVEL)'; then \
@@ -86,7 +88,7 @@ POST_INSTALL = :
 NORMAL_UNINSTALL = :
 PRE_UNINSTALL = :
 POST_UNINSTALL = :
-bin_PROGRAMS = PNG_generator$(EXEEXT) PNG_parser$(EXEEXT)
+bin_PROGRAMS = PNG-generator$(EXEEXT) PNG-parser$(EXEEXT)
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/configure.ac
@@ -369,12 +371,12 @@ uninstall-binPROGRAMS:
 clean-binPROGRAMS:
 	-test -z "$(bin_PROGRAMS)" || rm -f $(bin_PROGRAMS)
 
-PNG_generator$(EXEEXT): $(PNG_generator_OBJECTS) $(PNG_generator_DEPENDENCIES) $(EXTRA_PNG_generator_DEPENDENCIES) 
-	@rm -f PNG_generator$(EXEEXT)
+PNG-generator$(EXEEXT): $(PNG_generator_OBJECTS) $(PNG_generator_DEPENDENCIES) $(EXTRA_PNG_generator_DEPENDENCIES) 
+	@rm -f PNG-generator$(EXEEXT)
 	$(AM_V_CXXLD)$(CXXLINK) $(PNG_generator_OBJECTS) $(PNG_generator_LDADD) $(LIBS)
 
-PNG_parser$(EXEEXT): $(PNG_parser_OBJECTS) $(PNG_parser_DEPENDENCIES) $(EXTRA_PNG_parser_DEPENDENCIES) 
-	@rm -f PNG_parser$(EXEEXT)
+PNG-parser$(EXEEXT): $(PNG_parser_OBJECTS) $(PNG_parser_DEPENDENCIES) $(EXTRA_PNG_parser_DEPENDENCIES) 
+	@rm -f PNG-parser$(EXEEXT)
 	$(AM_V_CXXLD)$(CXXLINK) $(PNG_parser_OBJECTS) $(PNG_parser_LDADD) $(LIBS)
 
 mostlyclean-compile:
@@ -776,6 +778,20 @@ uninstall-am: uninstall-binPROGRAMS
 # Create a C++ file from template
 %.cpp: $(TEMPLATES)%.bt
 	$(CREATE) $< $@
+
+# How to create a generator
+%-generator$(EXEEXT): %.o generator.o
+	@rm -f $@
+	$(AM_V_CXXLD)$(CXXLINK) $+ $(LIBS)
+
+# How to create a parser
+%-parser$(EXEEXT): %.o parser.o
+	@rm -f $@
+	$(AM_V_CXXLD)$(CXXLINK) $+ $(LIBS)
+
+# Create a random file
+random.%: %-generator$(EXEEXT)
+	./$< /dev/urandom $@
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

@@ -30,6 +30,9 @@ configure.ac
 depcomp
 .deps
 
+# Random outputs
+random.*
+
 # project related
 docs/build
 docs/source/generated
