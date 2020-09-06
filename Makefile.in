@@ -88,10 +88,11 @@ POST_INSTALL = :
 NORMAL_UNINSTALL = :
 PRE_UNINSTALL = :
 POST_UNINSTALL = :
-bin_PROGRAMS = PNG-generator$(EXEEXT) PNG-parser$(EXEEXT)
+bin_PROGRAMS = png-generator$(EXEEXT) png-parser$(EXEEXT)
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-am__aclocal_m4_deps = $(top_srcdir)/configure.ac
+am__aclocal_m4_deps = $(top_srcdir)/m4/m4_ax_cxx_compile_stdcxx.m4 \
+	$(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 DIST_COMMON = $(srcdir)/Makefile.am $(top_srcdir)/configure \
@@ -103,12 +104,12 @@ CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
-am_PNG_generator_OBJECTS = PNG.$(OBJEXT) generator.$(OBJEXT)
-PNG_generator_OBJECTS = $(am_PNG_generator_OBJECTS)
-PNG_generator_LDADD = $(LDADD)
-am_PNG_parser_OBJECTS = PNG.$(OBJEXT) parser.$(OBJEXT)
-PNG_parser_OBJECTS = $(am_PNG_parser_OBJECTS)
-PNG_parser_LDADD = $(LDADD)
+am_png_generator_OBJECTS = png.$(OBJEXT) generator.$(OBJEXT)
+png_generator_OBJECTS = $(am_png_generator_OBJECTS)
+png_generator_LDADD = $(LDADD)
+am_png_parser_OBJECTS = png.$(OBJEXT) parser.$(OBJEXT)
+png_parser_OBJECTS = $(am_png_parser_OBJECTS)
+png_parser_LDADD = $(LDADD)
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -124,8 +125,8 @@ am__v_at_1 =
 DEFAULT_INCLUDES = -I.@am__isrc@
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__maybe_remake_depfiles = depfiles
-am__depfiles_remade = ./$(DEPDIR)/PNG.Po ./$(DEPDIR)/generator.Po \
-	./$(DEPDIR)/parser.Po
+am__depfiles_remade = ./$(DEPDIR)/generator.Po ./$(DEPDIR)/parser.Po \
+	./$(DEPDIR)/png.Po
 am__mv = mv -f
 CXXCOMPILE = $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
 	$(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS)
@@ -140,8 +141,8 @@ AM_V_CXXLD = $(am__v_CXXLD_@AM_V@)
 am__v_CXXLD_ = $(am__v_CXXLD_@AM_DEFAULT_V@)
 am__v_CXXLD_0 = @echo "  CXXLD   " $@;
 am__v_CXXLD_1 = 
-SOURCES = $(PNG_generator_SOURCES) $(PNG_parser_SOURCES)
-DIST_SOURCES = $(PNG_generator_SOURCES) $(PNG_parser_SOURCES)
+SOURCES = $(png_generator_SOURCES) $(png_parser_SOURCES)
+DIST_SOURCES = $(png_generator_SOURCES) $(png_parser_SOURCES)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -196,9 +197,7 @@ AWK = @AWK@
 CPPFLAGS = @CPPFLAGS@
 CXX = @CXX@
 CXXDEPMODE = @CXXDEPMODE@
-
-# C++ flags
-CXXFLAGS = -std=c++11
+CXXFLAGS = @CXXFLAGS@
 CYGPATH_W = @CYGPATH_W@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
@@ -206,6 +205,7 @@ ECHO_C = @ECHO_C@
 ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
 EXEEXT = @EXEEXT@
+HAVE_CXX11 = @HAVE_CXX11@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
@@ -283,8 +283,8 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-PNG_generator_SOURCES = PNG.cpp generator.cpp
-PNG_parser_SOURCES = PNG.cpp parser.cpp
+png_generator_SOURCES = png.cpp generator.cpp
+png_parser_SOURCES = png.cpp parser.cpp
 
 # Where the .bt templates are
 TEMPLATES = templates/
@@ -371,13 +371,13 @@ uninstall-binPROGRAMS:
 clean-binPROGRAMS:
 	-test -z "$(bin_PROGRAMS)" || rm -f $(bin_PROGRAMS)
 
-PNG-generator$(EXEEXT): $(PNG_generator_OBJECTS) $(PNG_generator_DEPENDENCIES) $(EXTRA_PNG_generator_DEPENDENCIES) 
-	@rm -f PNG-generator$(EXEEXT)
-	$(AM_V_CXXLD)$(CXXLINK) $(PNG_generator_OBJECTS) $(PNG_generator_LDADD) $(LIBS)
+png-generator$(EXEEXT): $(png_generator_OBJECTS) $(png_generator_DEPENDENCIES) $(EXTRA_png_generator_DEPENDENCIES) 
+	@rm -f png-generator$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(png_generator_OBJECTS) $(png_generator_LDADD) $(LIBS)
 
-PNG-parser$(EXEEXT): $(PNG_parser_OBJECTS) $(PNG_parser_DEPENDENCIES) $(EXTRA_PNG_parser_DEPENDENCIES) 
-	@rm -f PNG-parser$(EXEEXT)
-	$(AM_V_CXXLD)$(CXXLINK) $(PNG_parser_OBJECTS) $(PNG_parser_LDADD) $(LIBS)
+png-parser$(EXEEXT): $(png_parser_OBJECTS) $(png_parser_DEPENDENCIES) $(EXTRA_png_parser_DEPENDENCIES) 
+	@rm -f png-parser$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(png_parser_OBJECTS) $(png_parser_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -385,9 +385,9 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/PNG.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/generator.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/parser.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/png.Po@am__quote@ # am--include-marker
 
 $(am__depfiles_remade):
 	@$(MKDIR_P) $(@D)
@@ -683,9 +683,9 @@ clean-am: clean-binPROGRAMS clean-generic mostlyclean-am
 
 distclean: distclean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
-		-rm -f ./$(DEPDIR)/PNG.Po
-	-rm -f ./$(DEPDIR)/generator.Po
+		-rm -f ./$(DEPDIR)/generator.Po
 	-rm -f ./$(DEPDIR)/parser.Po
+	-rm -f ./$(DEPDIR)/png.Po
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-tags
@@ -733,9 +733,9 @@ installcheck-am:
 maintainer-clean: maintainer-clean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
 	-rm -rf $(top_srcdir)/autom4te.cache
-		-rm -f ./$(DEPDIR)/PNG.Po
-	-rm -f ./$(DEPDIR)/generator.Po
+		-rm -f ./$(DEPDIR)/generator.Po
 	-rm -f ./$(DEPDIR)/parser.Po
+	-rm -f ./$(DEPDIR)/png.Po
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 

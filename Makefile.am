@@ -1,15 +1,12 @@
 # FormatFuzzer Makefile. Edit these rules in `Makefile.am' only.
 
-# Default targets
-bin_PROGRAMS = PNG-generator PNG-parser
-PNG_generator_SOURCES = PNG.cpp generator.cpp
-PNG_parser_SOURCES = PNG.cpp parser.cpp
+# By default, we build a `png' generator and parser
+bin_PROGRAMS = png-generator png-parser
+png_generator_SOURCES = png.cpp generator.cpp
+png_parser_SOURCES = png.cpp parser.cpp
 
 # Libraries to use
 LIBS = -lz
-
-# C++ flags
-CXXFLAGS = -std=c++11
 
 # Where the .bt templates are
 TEMPLATES = templates/
