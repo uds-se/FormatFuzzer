@@ -22,6 +22,8 @@ lextab.py
 yacctab.py
 
 # Automake etc.
+# Note: While "*.in" files ARE derived,
+# we want to include them in the git repo to make cloning easier
 Makefile
 autom4te.cache
 config.log
