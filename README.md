@@ -5,8 +5,10 @@ It takes a *binary template* that describes the format of a binary input and gen
 From a binary template for PNG, for instance, `FormatFuzzer` produces a PNG generator - also known as *PNG fuzzer*.
 
 The binary templates used by FormatFuzzer come from the [010 editor](https://www.sweetscape.com/010editor/).
-There are more than [170 binary templates](https://www.sweetscape.com/010editor/templates.html), which either can be used directly for `FormatFuzzer` or adapted with little effort.
+There are more than [170 binary templates](https://www.sweetscape.com/010editor/templates.html), which either can be used directly for `FormatFuzzer` or adapted for its use.
 Generators produced by `FormatFuzzer` are highly efficient, producing thousands of files with test inputs per second.
+
+This project is in its very early stage - contributors (notably for adapting and writing `.bt' files) are welcome!
 
 
 ## Installing
@@ -43,7 +45,7 @@ xcode-select --install
 
 ### Method 1: Using Make
 
-There's a `Makefile` provided which automates all construction steps. First do
+There's a `Makefile` (source in `Makefile.am`) which automates all construction steps. First do
 ```
 ./configure
 ```
@@ -57,7 +59,7 @@ make png-parser
 ```
 to build a PNG parser.
 
-This works for all file formats provided in `templates/`; if there is a file `FOO.bt`, then `make FOO-generator` and `make FOO-parser` will work.
+This works for all file formats provided in `templates/`; if there is a file `templates/FOO.bt`, then `make FOO-generator` and `make FOO-parser` will work.
 
 
 ### Method 2: Manual steps
@@ -163,10 +165,26 @@ By default, the parser computes the parse tree of the file according to the bina
 
 
 
+
+## Create your own Binary Templates
+
+To write your own binary template (and thus create a high-efficiency fuzzer/parser for this format), first have a look at the 010 editor [binary template collection](https://www.sweetscape.com/010editor/templates.html) whether there is something that you can use or base your format on.
+To write your own `.bt` binary template, read the section [Introduction to Templates and Scripts](https://www.sweetscape.com/010editor/manual/IntroTempScripts.htm) from the [010 Editor Manual](https://www.sweetscape.com/010editor/manual/).
+
+
+
 ## Customizing Generators and Parsers
 
 If the files produced by the generator are still not valid, you can edit the C++ code to improve the generator until it successfully generates well-formatted files with high probability.
 The difference between the files `synthesized/PNG.bt` and `generators/PNG.bt` shows what changes were added to the PNG generator in order to produce valid files.
+
+FIXME: These files do not exist; instead, I see `synthesized/PNG.cpp` and `generators/PNG.cpp`. Do you expect people to edit the generated `.cpp` files? (Editing `.bt` files would be much preferred.)
+
+TODO: Can I place the extra C++ code (say, for generating picture bits) into the `.bt' file?
+
+TODO: Maybe have two tutorials here - one for customizing `.bt` files, and one for `.cpp` files (if at all)
+
+TODO: Have a way to express changes to `.cpp` files that are not overwritten as one re-generates them from `.bt` files.
 
 When initializing a variable, we can define a set of good known values that this variable can assume. For example, the constructor call
 ```
@@ -192,4 +210,3 @@ When running the program as a generator, this method samples an integer from 0 t
 When running the program as a parser, this method uses the `parse()` function to find out which random bytes must be present in the random buffer in order to generate the target file, and then writes those bytes to the random buffer.
 The `parse` function receives as an argument the buffer at the current position of the file and must then return which value would have to be returned by the current call to `rand_int()` in order to generate this exact file configuration.
 
-TODO: Have a way to express such changes that allows to edit `.bt` files without having to re-apply them again and again.
