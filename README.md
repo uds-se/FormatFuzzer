@@ -45,7 +45,9 @@ xcode-select --install
 
 ### Method 1: Using Make
 
-There's a `Makefile` (source in `Makefile.am`) which automates all construction steps. First do
+There's a `Makefile` (source in `Makefile.am`) which automates all construction steps.
+(Requires `GNU make`.)
+First do
 ```
 ./configure
 ```
