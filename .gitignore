@@ -30,6 +30,9 @@ configure.ac
 depcomp
 .deps
 
+# Garbage
+.DS_Store
+
 # Random outputs
 random.*
 

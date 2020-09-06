@@ -3,8 +3,11 @@
 `FormatFuzzer` is a framework for *high-efficiency, high-quality generation and parsing of binary inputs.*
 It takes a *binary template* that describes the format of a binary input and generates an *executable* that produces and parses the given binary format.
 From a binary template for PNG, for instance, `FormatFuzzer` produces a PNG generator - also known as *PNG fuzzer*.
-There are more than 170 binary templates available, which either can be used directly for `FormatFuzzer` or adapted with little effort.
-The generator is highly efficient, producing thousands of files with test inputs per second.
+
+The binary templates used by FormatFuzzer come from the [010 editor](https://www.sweetscape.com/010editor/).
+There are more than [170 binary templates](https://www.sweetscape.com/010editor/templates.html), which either can be used directly for `FormatFuzzer` or adapted with little effort.
+Generators produced by `FormatFuzzer` are highly efficient, producing thousands of files with test inputs per second.
+
 
 ## Installing
 
@@ -36,49 +39,91 @@ On a Mac:
 xcode-select --install
 ```
 
-## Running
+## Building
 
-### Compiling Binary Template Files into C++ code
+### Method 1: Using Make
 
-Run the compiler to compile the binary template into C++ code.
+There's a `Makefile` provided which automates all construction steps. First do
 ```
-python3 create.py templates/PNG.bt PNG.cpp
+./configure
+```
+and then
+```
+make png-generator
+```
+to build a PNG fuzzer and
+```
+make png-parser
+```
+to build a PNG parser.
+
+This works for all file formats provided in `templates/`; if there is a file `FOO.bt`, then `make FOO-generator` and `make FOO-parser` will work.
+
+
+### Method 2: Manual steps
+
+If the above `make` method does not work, or if you want more control, you may have to proceed manually.
+
+#### Compiling Binary Template Files into C++ code
+
+Run the compiler to compile the binary template into C++ code:
+```
+python3 create.py templates/png.bt png.cpp
 ```
 
-
-TODO: I get
+FIXME: Running the above command, I get
 ```
 py010parser.plyparser.ParseError: /var/folders/n2/xd9445p97rb3xh7m1dfx8_4h0006ts/T/tmpay54rg_1:1:1: before: /
 ```
-and thus used `synthesized/PNG.cpp` for the remaining steps.
+I thus used `synthesized/PNG.cpp` for the remaining steps.
 
 
-### Compiling the C++ code
+#### Compiling the C++ code
 
-Use the following commands to create both a producer `PNG-generator` and a parser `PNG-parser`.
+Use the following commands to create both a producer `png-generator` and a parser `png-parser`.
+First, compile the runtime systems:
 
 ```
-g++ -c -I . -std=c++11 -g -O3 -Wall PNG.cpp
 g++ -c -I . -std=c++11 -g -O3 -Wall generator.cpp
-g++ -O3 PNG.o generator.o -o PNG-generator -lz
 g++ -c -I . -std=c++11 -g -O3 -Wall parser.cpp
-g++ -O3 PNG.o parser.o -o PNG-parser -lz
 ```
 (`-I .` denotes the location of the `bt.h` file; `-std=c++11` sets the C++ standard.)
 
-TODO: Having a `Makefile` (with automake?) or similar may ease things, as one could simply write `make PNG-generator` or `make PNG-parser`, fetching the `.bt` file from `.` or `templates/`
+Then, compile the binary parser/compiler:
+
+```
+g++ -c -I . -std=c++11 -g -O3 -Wall png.cpp
+```
+
+Finally, link the binary parser/compiler with the runtimes to obtain executables:
+```
+g++ -O3 png.o generator.o -o png-generator -lz
+g++ -O3 png.o parser.o -o png-parser -lz
+```
 
 TODO: Consider having a single binary that can be switched from `--generate` (default) to `--parse`. This would also allow you to have a single runtime library (`-lformatfuzzer`).
 
 
-### Running the generated producers and parsers
+## Running Generators
+
+The generator receives as an input the source of randomness used for taking random decisions and produces as output a binary file in the appropriate format.
 
 Run the generator as
 ```
-./PNG-generator /dev/urandom output.png
+./png-generator /dev/urandom output.png
 ```
+The first argument to the generator is the file to read the source of randomness from and the second argument is the file where the output will be stored.
 
-Coming from `synthesized/PNG.cpp`, I get
+TODO: The source of randomness should come as an option (`--random SOURCE`?), with `/dev/urandom' being the default.
+
+TODO: There should be ways to generate several outputs (say, by supplying several files)
+
+TODO: Using `-` as output (or no arg at all) should write output to `stdout`, such that one can use it in a pipe
+
+TODO: Using special options, create a folder that would be filled with files
+
+
+FIXME: Coming from `synthesized/png.cpp`, I get
 ```
 Warning: *ERROR: CRC Mismatch @ chunk[0]; in data: 00000010; expected: b255b6e1
 *ERROR: CRC Mismatch @ chunk[0]; in data: 00000010; expected: b255b6e1
@@ -103,61 +148,22 @@ Warning: *ERROR: Chunk IEND must be last chunk.
 *ERROR: Chunk IEND must be last chunk.
 PNG-generator finished
 ```
+Is this a problem?
 
-TODO: The source of randomness should come as an option (`--random SOURCE`?), with `/dev/urandom' being the default.
+### Running Parsers
 
-TODO: There should be ways to generate several outputs (say, by supplying several files)
-
-TODO: Using `-` as output (or no arg at all) should write output to `stdout`
-
-
-
-
-
-# Original instructions
-
-`FormatFuzzer` works as a python compiler for 010Editor [binary templates](https://www.sweetscape.com/010editor/templates.html), implemented on top of [pfp](https://github.com/d0c-s4vage/pfp).
-`FormatFuzzer` compiles binary templates into C++ code that can be used for generating (or parsing) files that conform to the template specification.
-
-The generator receives as an input the source of randomness used for taking random decisions and produces as output a binary file in the appropriate format.
 The parser takes as input the binary file and computes not only the parse tree of the target file, but also an appropriate source of random bytes that could be used by the generator to produce this exact file.
-
-### Requirements
-
-Tested on Linux (Ubuntu 20.04)
-
-
-### How to support new binary file formats
-
-Run the compiler to compile the binary template into C++ code.
-```
-python3 create.py templates/PNG.bt PNG.cpp
-```
-Fix any issues that may prevent the python compiler from finishing by fixing bugs in the python compiler or modifying the original binary template for easier compilation.
-
-
-After successfully generating the C++ code, try compiling the code.
-```
-g++ -c -I . -std=c++11 -g -O3 -Wall PNG.cpp
-g++ -c -I . -std=c++11 -g -O3 -Wall generator.cpp
-g++ -O3 PNG.o generator.o -o PNG-generator -lz
-g++ -c -I . -std=c++11 -g -O3 -Wall parser.cpp
-g++ -O3 PNG.o parser.o -o PNG-parser -lz
-```
-Fix any issues that may prevent the C++ code from compiling.
-
-After the code compiles, try out running the generator.
-```
-./PNG-generator /dev/urandom output.png
-```
-The first argument to the generator is the file to read the source of randomness from and the second argument is the file where the output will be stored.
 
 You can run the parser with:
 ```
-./PNG-parser output.png rand
+./png-parser output.png random.rnd
 ```
-The first argument to the parser is the input file and the second argument is where to store the source of random bytes that could be used to generate this file.
+The first argument to the parser is the input file (`output.png`) and the second argument (`random.rnd`) is where to store the source of random bytes that could be used to generate this file.
 By default, the parser computes the parse tree of the file according to the binary template.
+
+
+
+## Customizing Generators and Parsers
 
 If the files produced by the generator are still not valid, you can edit the C++ code to improve the generator until it successfully generates well-formatted files with high probability.
 The difference between the files `synthesized/PNG.bt` and `generators/PNG.bt` shows what changes were added to the PNG generator in order to produce valid files.
@@ -178,11 +184,12 @@ GENERATE(chunk, ::g->chunk.generate({ "iCCP", "sRGB", "sBIT", "gAMA", "cHRM", "p
 The generator will then uniformly pick one of the good known values to use for the new instance. We also allow the choice of an evil value which is not one of the good known values with small probability 1/128.
 This feature can be enabled or disabled any time by using the method `set_evil_bit`.
 
-All the random choices taken by the generator are done by calling the `rand_int` method.
+All the random choices taken by the generator are done by calling the `rand_int()` method.
 ```
 long long rand_int(unsigned long long x, std::function<long long (unsigned char*)> parse);
 ```
 When running the program as a generator, this method samples an integer from 0 to x-1 by reading bytes from the random buffer.
-When running the program as a parser, this method uses the `parse` function to find out which random bytes must be present in the random buffer in order to generate the target file, and then writes those bytes to the random buffer.
-The `parse` function receives as an argument the buffer at the current position of the file and must then return which value would have to be returned by the current call to `rand_int` in order to generate this exact file configuration.
+When running the program as a parser, this method uses the `parse()` function to find out which random bytes must be present in the random buffer in order to generate the target file, and then writes those bytes to the random buffer.
+The `parse` function receives as an argument the buffer at the current position of the file and must then return which value would have to be returned by the current call to `rand_int()` in order to generate this exact file configuration.
 
+TODO: Have a way to express such changes that allows to edit `.bt` files without having to re-apply them again and again.
