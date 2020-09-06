@@ -68,6 +68,8 @@ g++ -O3 PNG.o parser.o -o PNG-parser -lz
 
 TODO: Having a `Makefile` (with automake?) or similar may ease things, as one could simply write `make PNG-generator` or `make PNG-parser`, fetching the `.bt` file from `.` or `templates/`
 
+TODO: Consider having a single binary that can be switched from `--generate` (default) to `--parse`. This would also allow you to have a single runtime library (`-lformatfuzzer`).
+
 
 ### Running the generated producers and parsers
 
