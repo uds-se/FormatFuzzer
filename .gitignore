@@ -12,6 +12,13 @@ __pycache__
 .cache
 .coverage
 
+# compilation
+*.o
+*-generator
+*-parser
+lextab.py
+yacctab.py
+
 # project related
 docs/build
 docs/source/generated
