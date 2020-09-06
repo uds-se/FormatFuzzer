@@ -103,10 +103,10 @@ am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
 am_PNG_generator_OBJECTS = PNG.$(OBJEXT) generator.$(OBJEXT)
 PNG_generator_OBJECTS = $(am_PNG_generator_OBJECTS)
-PNG_generator_DEPENDENCIES =
+PNG_generator_LDADD = $(LDADD)
 am_PNG_parser_OBJECTS = PNG.$(OBJEXT) parser.$(OBJEXT)
 PNG_parser_OBJECTS = $(am_PNG_parser_OBJECTS)
-PNG_parser_DEPENDENCIES =
+PNG_parser_LDADD = $(LDADD)
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -211,7 +211,9 @@ INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
 LDFLAGS = @LDFLAGS@
 LIBOBJS = @LIBOBJS@
-LIBS = @LIBS@
+
+# Libraries to use
+LIBS = -lz
 LTLIBOBJS = @LTLIBOBJS@
 MAKEINFO = @MAKEINFO@
 MKDIR_P = @MKDIR_P@
@@ -281,8 +283,6 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 PNG_generator_SOURCES = PNG.cpp generator.cpp
 PNG_parser_SOURCES = PNG.cpp parser.cpp
-PNG_generator_LDADD = -lz
-PNG_parser_LDADD = -lz
 
 # Where the .bt templates are
 TEMPLATES = templates/
@@ -773,6 +773,7 @@ uninstall-am: uninstall-binPROGRAMS
 .PRECIOUS: Makefile
 
 
+# Create a C++ file from template
 %.cpp: $(TEMPLATES)%.bt
 	$(CREATE) $< $@
 
