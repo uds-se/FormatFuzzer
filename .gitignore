@@ -19,6 +19,15 @@ __pycache__
 lextab.py
 yacctab.py
 
+# Automake etc.
+Makefile
+autom4te.cache
+config.log
+config.status
+configure.ac
+depcomp
+.deps
+
 # project related
 docs/build
 docs/source/generated
