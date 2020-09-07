@@ -285,7 +285,7 @@ png_fuzzer_SOURCES = png.cpp fuzzer.cpp
 TEMPLATES = templates/
 
 # The create script
-CREATE = $(PYTHON) create.py
+FFCOMPILE = $(PYTHON) ./ffcompile
 all: all-am
 
 .SUFFIXES:
@@ -765,7 +765,7 @@ uninstall-am: uninstall-binPROGRAMS
 
 # Create a C++ file from template
 %.cpp: $(TEMPLATES)%.bt
-	$(CREATE) $< $@
+	$(FFCOMPILE) $< $@
 
 # How to create the fuzzer
 %-fuzzer$(EXEEXT): %.o fuzzer.o
