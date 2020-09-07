@@ -219,9 +219,9 @@ The `parse` function receives as an argument the buffer at the current position 
 
 ## Authors
 
-FormatFuzzer was designed and written by Rafael Dutra <rafael.dutra@cispa.saarland>.
+FormatFuzzer was designed and written by Rafael Dutra &lt;rafael.dutra@cispa.saarland&gt;.
 
-The concept of a fuzzer compiler was introduced by Rahul Gopinath <rahul.gopinath@cispa.saarland> and Andreas Zeller <zeller@cispa.saarland>.
+The concept of a fuzzer compiler was introduced by Rahul Gopinath &lt;rahul.gopinath@cispa.saarland&gt; and Andreas Zeller &lt;zeller@cispa.saarland&gt;.
 
 
 
