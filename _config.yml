@@ -1,0 +1,7 @@
+theme: jekyll-theme-minimal
+title: FormatFuzzer
+
+include:
+    - README.md
+
+bio: FormatFuzzer is cool
