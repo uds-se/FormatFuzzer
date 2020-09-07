@@ -217,6 +217,14 @@ When running the program as a parser, this method uses the `parse()` function to
 The `parse` function receives as an argument the buffer at the current position of the file and must then return which value would have to be returned by the current call to `rand_int()` in order to generate this exact file configuration.
 
 
+## Authors
+
+FormatFuzzer was designed and written by Rafael Dutra <rafael.dutra@cispa.saarland>.
+
+The concept of a fuzzer compiler was introduced by Rahul Gopinath <rahul.gopinath@cispa.saarland> and Andreas Zeller <zeller@cispa.saarland>.
+
+
+
 ## Copyright
 
 FormatFuzzer is copyright (c) 2020 by CISPA Helmholtz Center for Information Security. The following licenses apply:
