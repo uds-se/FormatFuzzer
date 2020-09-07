@@ -13,11 +13,15 @@ This project is in its very early stage - contributors (notably for adapting and
 
 ## Installing
 
-You need the following:
+To run FormatFuzzer, you need the following:
 * Python 3
 * A C++ compiler
 * The Python packages `py010parser` and `intervaltree`
 * A `zlib` library (for decoding PNG files)
+
+If you plan to edit the build and configuration scripts (`.ac` and `.am` files), you will also need
+* GNU autoconf
+* GNU automake
 
 
 ### Installing Python packages
@@ -122,19 +126,20 @@ You will see error messages if `input.png' cannot be successfully parsed.
 
 ## Decision Files
 
-While parsing, you can also store all parsing decisions (i.e.\ which parsing alternatives were taken) in a _decision file_. This is a sequence of bytes enumerating the decisions taken (byte value of `0' = first alternative was taken, byte value of `1' = second alternative was taken, and so on).
+While parsing, you can also store all parsing decisions (i.e.\ which parsing alternatives were taken) in a _decision file_. This is a sequence of bytes enumerating the decisions taken.
+Each byte stands for a single parsing decision. A byte value of `0` = first alternative was taken, byte value of `1` = second alternative was taken, and so on.
 
 You can generate such a decision file when parsing an input:
 ```
 ./png-fuzzer parse --decisions input.dec input.png
 ```
-Here, `input.dec' represents the decisions made for parsing `input.png'.
+Here, `input.dec` stores the decisions made for parsing `input.png'.
 
 You can also use such a decision file when _generating_ inputs. The fuzzer will then take the exact same decisions as found during parsing. The following command generates a new PNG file using the decisions determined while parsing `input.png':
 ```
 ./png-fuzzer fuzz --decisions input.dec input2.png
 ```
-If everything works well, both files should be similar:
+If everything works well, both files should be identical:
 ```
 cmp input.png input2.png
 ```
