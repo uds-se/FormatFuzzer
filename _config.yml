@@ -4,4 +4,5 @@ title: FormatFuzzer
 include:
     - README.md
 
-bio: FormatFuzzer is cool
+description: FormatFuzzer is a framework for high-efficiency, high-quality generation and parsing of binary inputs.
+

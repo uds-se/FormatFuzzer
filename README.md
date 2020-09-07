@@ -16,7 +16,19 @@ The project still is in an early stage. Current work includes
 Contributors are welcome!
 
 
-## Installing
+## Getting
+
+FormatFuzzer is available from the [FormatFuzzer project page](https://github.com/uds-se/FormatFuzzer) by cloning its git repository:
+
+```
+git clone https://github.com/uds-se/FormatFuzzer.git
+```
+All further actions take place in its main folder:
+```
+cd FormatFuzzer
+```
+
+## Prerequisites
 
 To run FormatFuzzer, you need the following:
 * Python 3
