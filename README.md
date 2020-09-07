@@ -30,13 +30,13 @@ pip install intervaltree
 
 ### Installing zlib
 
-You need a `zlib` library (`-lz`).
+For the PNG examples, you need a `zlib` library (`-lz`).
 
 On Linux, using `apt`:
 ```
 sudo apt install zlib1g-dev
 ```
-On a Mac:
+On a Mac, you need to install `XCode'; then run this command:
 ```
 xcode-select --install
 ```
