@@ -11,11 +11,11 @@ LIBS = -lz
 TEMPLATES = templates/
 
 # The create script
-CREATE = $(PYTHON) create.py
+FFCOMPILE = ./ffcompile
 
 # Create a C++ file from template
 %.cpp: $(TEMPLATES)%.bt
-	$(CREATE) $< $@
+	$(FFCOMPILE) $< $@
 
 # How to create the fuzzer
 %-fuzzer$(EXEEXT): %.o fuzzer.o
