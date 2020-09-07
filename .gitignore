@@ -31,8 +31,15 @@ config.h
 stamp-*
 .deps
 
+# Github pages
+.jekyll-cache/
+_site/
+
 # Garbage
 .DS_Store
+
+# Own files
+*.code-workspace
 
 # Random outputs
 random.*
