@@ -194,6 +194,27 @@ void setup_input(const char* filename) {
 		perror(filename);
 		exit(1);
 	}
+    
+    if (file_fd == STDIN_FILENO) {
+        // Read from stdin, up to MAX_RAND_SIZE
+        unsigned char *p = rand_buffer;
+		ssize_t size;
+		ssize_t chars_left = MAX_RAND_SIZE;
+        
+        while (chars_left > 0 && 
+               (size = read(file_fd, p, chars_left)) > 0)
+        {
+            p += size;
+            chars_left -= size;
+        }
+        if (chars_left == 0)
+        {
+			perror("Standard input size exceeds MAX_RAND_SIZE");
+			exit(1);
+        }
+        ssize_t total = p - rand_buffer;
+		file_acc.seed(rand_buffer, MAX_RAND_SIZE, total);
+    }
 	if (file_acc.generate) {
 		ssize_t size = read(file_fd, rand_buffer, MAX_RAND_SIZE);
 		if (size < 0) {
