@@ -80,7 +80,7 @@ Run the `ffcompile` compiler to compile the binary template into C++ code:
 
 #### Compiling the C++ code
 
-Use the following commands to create a fuzzer `png-fuzzer`=.
+Use the following commands to create a fuzzer `png-fuzzer`.
 First, compile the generic command-line driver:
 
 ```
@@ -121,12 +121,12 @@ To run the parser, user
 ```
 ./png-fuzzer parse input.png
 ```
-You will see error messages if `input.png' cannot be successfully parsed.
+You will see error messages if `input.png` cannot be successfully parsed.
 
 
 ## Decision Files
 
-While parsing, you can also store all parsing decisions (i.e.\ which parsing alternatives were taken) in a _decision file_. This is a sequence of bytes enumerating the decisions taken.
+While parsing, you can also store all parsing decisions (i.e. which parsing alternatives were taken) in a _decision file_. This is a sequence of bytes enumerating the decisions taken.
 Each byte stands for a single parsing decision. A byte value of `0` = first alternative was taken, byte value of `1` = second alternative was taken, and so on.
 
 You can generate such a decision file when parsing an input:
