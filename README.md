@@ -20,7 +20,7 @@ Contributors are welcome!
 
 To run FormatFuzzer, you need the following:
 * Python 3
-* A C++ compiler
+* A C++ compiler with GNU libraries (notably `getopt_long()`) such as `clang` or `gcc`
 * The Python packages `py010parser` and `intervaltree`
 * A `zlib` library (for decoding PNG files)
 
@@ -36,6 +36,7 @@ On all systems, using `pip`:
 pip install py010parser
 pip install intervaltree
 ```
+
 
 ### Installing zlib
 
