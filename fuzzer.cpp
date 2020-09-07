@@ -27,7 +27,7 @@ int fuzz(int argc, char **argv)
 				{"decisions", required_argument, 0, 'd'},
 				{0, 0, 0, 0}};
 		int option_index = 0;
-		int c = getopt_long(argc, argv, "r:",
+		int c = getopt_long(argc, argv, "d:",
 							long_options, &option_index);
 
 		// Detect the end of the options.
@@ -93,7 +93,7 @@ int parse(int argc, char **argv)
 				{"decisions", required_argument, 0, 'd'},
 				{0, 0, 0, 0}};
 		int option_index = 0;
-		int c = getopt_long(argc, argv, "r:",
+		int c = getopt_long(argc, argv, "d:",
 							long_options, &option_index);
 
 		// Detect the end of the options.
