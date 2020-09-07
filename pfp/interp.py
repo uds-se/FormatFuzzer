@@ -13,6 +13,7 @@ import re
 import six
 import sys
 import traceback
+import platform
 
 import py010parser
 import py010parser.c_parser
@@ -1366,7 +1367,19 @@ class PfpInterp(object):
     # PRIVATE
     # --------------------
 
+    # On Macs, need to invoke cpp with -xc++ to remove // comments
+    # (This should actually be fixed in py010parser -- AZ)
+    CPP_ARGS = None
+
+    def set_cpp_args(self):
+        if platform.system() == "Darwin":
+            self.CPP_ARGS = "-xc++"
+        else:
+            self.CPP_ARGS = ""
+
     def _parse_string(self, string, predefines=True):
+        if self.CPP_ARGS is None:
+            self.set_cpp_args()
         exts = []
         if predefines:
             for idx, predefine in enumerate(self._predefines):
@@ -1374,6 +1387,7 @@ class PfpInterp(object):
                     ast = py010parser.parse_string(
                         predefine,
                         parser=self._parser,
+                        cpp_args=self.CPP_ARGS,
                         # clear out the scopes for the first one
                         # that we run
                         keep_scopes=(idx != 0),
@@ -1385,6 +1399,7 @@ class PfpInterp(object):
         res = py010parser.parse_string(
             string,
             parser=self._parser,
+            cpp_args=self.CPP_ARGS,
             # only keep the scopes if we ran the predefines
             keep_scopes=predefines,
         )
