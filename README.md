@@ -43,6 +43,8 @@ xcode-select --install
 
 ## Building
 
+Note: all building commands require you to be in the same folder as this `README' file. Building outside of this folder is not yet supported.
+
 ### Method 1: Using Make
 
 There's a `Makefile` (source in `Makefile.am`) which automates all construction steps.
@@ -66,12 +68,10 @@ If the above `make` method does not work, or if you want more control, you may h
 
 #### Compiling Binary Template Files into C++ code
 
-Run the compiler to compile the binary template into C++ code:
+Run the `ffcompile` compiler to compile the binary template into C++ code:
 ```
-python3 create.py templates/png.bt png.cpp
+./ffcompile templates/png.bt png.cpp
 ```
-
-TODO: You may want to rename `python3 create.py` to something more specific, say `formatfuzzer` or `ffcompile`
 
 
 #### Compiling the C++ code
