@@ -11,8 +11,10 @@ Generators produced by `FormatFuzzer` are highly efficient, producing thousands 
 The project is still in an early stage. Current work includes
 
 * creating `.bt` files that are optimized for input generation;
-* adding more configuration options to control the fuzzer; and
-* interfacing with other test generators for coverage-guided testing.
+* adding more configuration options to control the fuzzer;
+* extending binary templates with specific fuzzing targets;
+and
+* interfacing with other test generators for coverage-guided testing and other test strategies.
 
 Contributors are welcome! Visit the [FormatFuzzer project page](https://github.com/uds-se/FormatFuzzer) for filing ideas and issues, or adding pull requests.
 
