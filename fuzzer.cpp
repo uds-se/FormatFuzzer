@@ -4,75 +4,172 @@
 #include <cstdio>
 #include <cstring>
 #include <cassert>
+#include <getopt.h>
 
 #include "formatfuzzer.h"
 
+static const char *bin_name = "formatfuzzer";
+
+// Each command comes as if it were invoked from the command line
+
+// fuzz - generate random inputs
 int fuzz(int argc, char **argv)
 {
-	assert(argc == 3);
-	setup_input(argv[1]);
-	try
+	const char *decision_source = "/dev/urandom";
+
+	// Process options
+	while (1)
 	{
-		generate_file();
+		static struct option long_options[] =
+			{
+				{"help", no_argument, 0, 'h'},
+				{"decisions", required_argument, 0, 'd'},
+				{0, 0, 0, 0}};
+		int option_index = 0;
+		int c = getopt_long(argc, argv, "r:",
+							long_options, &option_index);
+
+		// Detect the end of the options.
+		if (c == -1)
+			break;
+
+		switch (c)
+		{
+		case 'h':
+		case '?':
+			fprintf(stderr, "fuzz: usage: fuzz [--decisions SOURCE] [FILES...|-]\n");
+			fprintf(stderr, "Outputs random data to given FILES (or `-' for standard output).\n");
+			fprintf(stderr, "Options:\n");
+			fprintf(stderr, "--decisions SOURCE: Use SOURCE for generation decisions (default %s)\n", decision_source);
+			return 0;
+
+		case 'd':
+			decision_source = optarg;
+			break;
+		}
 	}
-	catch (...)
+
+	// Main function
+	setup_input(decision_source);
+	int errors = 0;
+	for (int arg = optind; arg < argc; arg++)
 	{
-		delete_globals();
-		fprintf(stderr, "%s failed\n", get_bin_name(argv[0]));
-		save_output(argv[2]);
-		return -1;
+		char *out = argv[arg];
+		bool success = false;
+		try
+		{
+			generate_file();
+			success = true;
+		}
+		catch (...)
+		{
+			delete_globals();
+		}
+		save_output(out);
+		if (success)
+			fprintf(stderr, "%s: %s created\n", bin_name, out);
+		else
+		{
+			fprintf(stderr, "%s: %s failed\n", bin_name, out);
+			errors++;
+		}
 	}
-	save_output(argv[2]);
-	fprintf(stderr, "%s finished\n", get_bin_name(argv[0]));
-	return 0;
+
+	return errors;
 }
 
+// fuzz - parse existing files
 int parse(int argc, char **argv)
 {
-	assert(argc == 3);
-	set_parser();
-	setup_input(argv[1]);
-	try
+	const char *decision_sink = 0;
+
+	// Process options
+	while (1)
 	{
-		generate_file();
+		static struct option long_options[] =
+			{
+				{"help", no_argument, 0, 'h'},
+				{"decisions", required_argument, 0, 'd'},
+				{0, 0, 0, 0}};
+		int option_index = 0;
+		int c = getopt_long(argc, argv, "r:",
+							long_options, &option_index);
+
+		// Detect the end of the options.
+		if (c == -1)
+			break;
+
+		switch (c)
+		{
+		case 'h':
+		case '?':
+			fprintf(stderr, "parse: usage: parse [--decisions SINK] [FILES...|-]\n");
+			fprintf(stderr, "Parses given FILES (or `-' for standard input).\n");
+			fprintf(stderr, "Options:\n");
+			fprintf(stderr, "--decisions SINK: Save parsing decisions in SINK (default: none)\n");
+			return 0;
+
+		case 'd':
+			decision_sink = optarg;
+			break;
+		}
 	}
-	catch (...)
+
+	int errors = 0;
+	for (int arg = optind; arg < argc; arg++)
 	{
-		delete_globals();
-		fprintf(stderr, "%s failed\n", get_bin_name(argv[0]));
-		save_output(argv[2]);
-		return -1;
+		char *in = argv[arg];
+		bool success = true;
+
+		set_parser();
+		setup_input(in);
+		try
+		{
+			generate_file();
+			success = true;
+		}
+		catch (...)
+		{
+			delete_globals();
+		}
+		if (success)
+			fprintf(stderr, "%s: %s parsed\n", bin_name, in);
+		else
+		{
+			fprintf(stderr, "%s: %s failed\n", bin_name, in);
+			errors++;
+		}
+
+		if (decision_sink)
+			save_output(decision_sink);
 	}
-	save_output(argv[2]);
-	fprintf(stderr, "%s finished\n", get_bin_name(argv[0]));
-	return 0;
+
+	return errors;
 }
 
+// Dispatch commands
 typedef struct
 {
 	const char *name;
 	int (*fun)(int argc, char **argv);
+	const char *desc;
 } COMMAND;
 
 COMMAND commands[] = {
-	{"fuzz", fuzz},
-	{"parse", parse},
+	{"fuzz", fuzz, "Generate random inputs"},
+	{"parse", parse, "Parse inputs"},
 };
-
-static char *bin_name;
 
 int help(int argc, char *argv[])
 {
-	fprintf(stderr, "%s: usage: %s COMMAND\n", bin_name, bin_name);
-	fprintf(stderr, "where COMMAND is one of \n");
+	fprintf(stderr, "%s: usage: %s COMMAND [ARGS...]\n", bin_name, bin_name);
+	fprintf(stderr, "Commands:\n");
 	for (int i = 0; i < sizeof(commands) / sizeof(COMMAND); i++)
-		fprintf(stderr, "`%s' ", commands[i].name);
-	fprintf(stderr, "\n");
+		fprintf(stderr, "%-6s - %s\n", commands[i].name, commands[i].desc);
 	fprintf(stderr, "Use COMMAND --help to learn more\n");
 	return 0;
 }
 
-// Dispatch commands
 int main(int argc, char **argv)
 {
 	bin_name = get_bin_name(argv[0]);

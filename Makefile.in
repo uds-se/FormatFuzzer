@@ -88,7 +88,7 @@ POST_INSTALL = :
 NORMAL_UNINSTALL = :
 PRE_UNINSTALL = :
 POST_UNINSTALL = :
-bin_PROGRAMS = png-generator$(EXEEXT) png-parser$(EXEEXT)
+bin_PROGRAMS = png-fuzzer$(EXEEXT)
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/m4_ax_cxx_compile_stdcxx.m4 \
@@ -104,12 +104,9 @@ CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
-am_png_generator_OBJECTS = png.$(OBJEXT) generator.$(OBJEXT)
-png_generator_OBJECTS = $(am_png_generator_OBJECTS)
-png_generator_LDADD = $(LDADD)
-am_png_parser_OBJECTS = png.$(OBJEXT) parser.$(OBJEXT)
-png_parser_OBJECTS = $(am_png_parser_OBJECTS)
-png_parser_LDADD = $(LDADD)
+am_png_fuzzer_OBJECTS = png.$(OBJEXT) fuzzer.$(OBJEXT)
+png_fuzzer_OBJECTS = $(am_png_fuzzer_OBJECTS)
+png_fuzzer_LDADD = $(LDADD)
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -125,8 +122,7 @@ am__v_at_1 =
 DEFAULT_INCLUDES = -I.@am__isrc@
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__maybe_remake_depfiles = depfiles
-am__depfiles_remade = ./$(DEPDIR)/generator.Po ./$(DEPDIR)/parser.Po \
-	./$(DEPDIR)/png.Po
+am__depfiles_remade = ./$(DEPDIR)/fuzzer.Po ./$(DEPDIR)/png.Po
 am__mv = mv -f
 CXXCOMPILE = $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
 	$(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS)
@@ -141,8 +137,8 @@ AM_V_CXXLD = $(am__v_CXXLD_@AM_V@)
 am__v_CXXLD_ = $(am__v_CXXLD_@AM_DEFAULT_V@)
 am__v_CXXLD_0 = @echo "  CXXLD   " $@;
 am__v_CXXLD_1 = 
-SOURCES = $(png_generator_SOURCES) $(png_parser_SOURCES)
-DIST_SOURCES = $(png_generator_SOURCES) $(png_parser_SOURCES)
+SOURCES = $(png_fuzzer_SOURCES)
+DIST_SOURCES = $(png_fuzzer_SOURCES)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -283,8 +279,7 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-png_generator_SOURCES = png.cpp generator.cpp
-png_parser_SOURCES = png.cpp parser.cpp
+png_fuzzer_SOURCES = png.cpp fuzzer.cpp
 
 # Where the .bt templates are
 TEMPLATES = templates/
@@ -371,13 +366,9 @@ uninstall-binPROGRAMS:
 clean-binPROGRAMS:
 	-test -z "$(bin_PROGRAMS)" || rm -f $(bin_PROGRAMS)
 
-png-generator$(EXEEXT): $(png_generator_OBJECTS) $(png_generator_DEPENDENCIES) $(EXTRA_png_generator_DEPENDENCIES) 
-	@rm -f png-generator$(EXEEXT)
-	$(AM_V_CXXLD)$(CXXLINK) $(png_generator_OBJECTS) $(png_generator_LDADD) $(LIBS)
-
-png-parser$(EXEEXT): $(png_parser_OBJECTS) $(png_parser_DEPENDENCIES) $(EXTRA_png_parser_DEPENDENCIES) 
-	@rm -f png-parser$(EXEEXT)
-	$(AM_V_CXXLD)$(CXXLINK) $(png_parser_OBJECTS) $(png_parser_LDADD) $(LIBS)
+png-fuzzer$(EXEEXT): $(png_fuzzer_OBJECTS) $(png_fuzzer_DEPENDENCIES) $(EXTRA_png_fuzzer_DEPENDENCIES) 
+	@rm -f png-fuzzer$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(png_fuzzer_OBJECTS) $(png_fuzzer_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -385,8 +376,7 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/generator.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/parser.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/fuzzer.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/png.Po@am__quote@ # am--include-marker
 
 $(am__depfiles_remade):
@@ -683,8 +673,7 @@ clean-am: clean-binPROGRAMS clean-generic mostlyclean-am
 
 distclean: distclean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
-		-rm -f ./$(DEPDIR)/generator.Po
-	-rm -f ./$(DEPDIR)/parser.Po
+		-rm -f ./$(DEPDIR)/fuzzer.Po
 	-rm -f ./$(DEPDIR)/png.Po
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
@@ -733,8 +722,7 @@ installcheck-am:
 maintainer-clean: maintainer-clean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
 	-rm -rf $(top_srcdir)/autom4te.cache
-		-rm -f ./$(DEPDIR)/generator.Po
-	-rm -f ./$(DEPDIR)/parser.Po
+		-rm -f ./$(DEPDIR)/fuzzer.Po
 	-rm -f ./$(DEPDIR)/png.Po
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
@@ -779,24 +767,14 @@ uninstall-am: uninstall-binPROGRAMS
 %.cpp: $(TEMPLATES)%.bt
 	$(CREATE) $< $@
 
-# How to create a generator
-%-generator$(EXEEXT): %.o generator.o
-	@rm -f $@
-	$(AM_V_CXXLD)$(CXXLINK) $+ $(LIBS)
-
-# How to create a parser
-%-parser$(EXEEXT): %.o parser.o
-	@rm -f $@
-	$(AM_V_CXXLD)$(CXXLINK) $+ $(LIBS)
-
-# How to create a fuzzer (= a generic driver)
+# How to create the fuzzer
 %-fuzzer$(EXEEXT): %.o fuzzer.o
 	@rm -f $@
 	$(AM_V_CXXLD)$(CXXLINK) $+ $(LIBS)
 
 # Create a random file
-random.%: %-generator$(EXEEXT)
-	./$< /dev/urandom $@
+random.%: %-fuzzer$(EXEEXT)
+	./$< fuzz /dev/urandom $@
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

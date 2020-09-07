@@ -1,9 +1,8 @@
 # FormatFuzzer Makefile. Edit these rules in `Makefile.am' only.
 
-# By default, we build a `png' generator and parser
-bin_PROGRAMS = png-generator png-parser
-png_generator_SOURCES = png.cpp generator.cpp
-png_parser_SOURCES = png.cpp parser.cpp
+# By default, we build a `png' fuzzer
+bin_PROGRAMS = png-fuzzer
+png_fuzzer_SOURCES = png.cpp fuzzer.cpp
 
 # Libraries to use
 LIBS = -lz
@@ -18,21 +17,11 @@ CREATE = $(PYTHON) create.py
 %.cpp: $(TEMPLATES)%.bt
 	$(CREATE) $< $@
 
-# How to create a generator
-%-generator$(EXEEXT): %.o generator.o
-	@rm -f $@
-	$(AM_V_CXXLD)$(CXXLINK) $+ $(LIBS)
-
-# How to create a parser
-%-parser$(EXEEXT): %.o parser.o
-	@rm -f $@
-	$(AM_V_CXXLD)$(CXXLINK) $+ $(LIBS)
-
-# How to create a fuzzer (= a generic driver)
+# How to create the fuzzer
 %-fuzzer$(EXEEXT): %.o fuzzer.o
 	@rm -f $@
 	$(AM_V_CXXLD)$(CXXLINK) $+ $(LIBS)
 
 # Create a random file
-random.%: %-generator$(EXEEXT)
-	./$< /dev/urandom $@
+random.%: %-fuzzer$(EXEEXT)
+	./$< fuzz /dev/urandom $@
