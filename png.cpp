@@ -1892,7 +1892,6 @@ globals_class* g;
 
 void error_message(std::string msg) {
 	Warning(msg);
-	Printf((msg + "\n"));
 }
 
 PNG_SIGNATURE* PNG_SIGNATURE::generate() {

@@ -42,7 +42,7 @@ BigEndian();                  // PNG files are in Network Byte order
 
 void error_message(string msg) {
     Warning(msg);
-    Printf(msg + "\n");
+    // Printf(msg + "\n"); // sending output to stdout might garble files
 }
 
 // PNG Data types

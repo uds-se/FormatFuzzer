@@ -184,9 +184,14 @@ void set_parser() {
 
 void setup_input(const char* filename) {
 	debug_print = true;
-	int file_fd = open(filename, O_RDONLY);
+	int file_fd;
+	if (strcmp(filename, "-") == 0)
+		file_fd = STDIN_FILENO;
+	else
+		file_fd = open(filename, O_RDONLY);
+    
 	if (file_fd == -1) {
-		perror("Failed to open seed file");
+		perror(filename);
 		exit(1);
 	}
 	if (file_acc.generate) {
@@ -214,13 +219,20 @@ void setup_input(const char* filename) {
 		}
 		file_acc.seed(rand_buffer, MAX_RAND_SIZE, st.st_size);
 	}
-	close(file_fd);
+    
+	if (file_fd != STDIN_FILENO)
+		close(file_fd);
 }
 
 void save_output(const char* filename) {
-	int file_fd = open(filename, O_CREAT|O_WRONLY|O_TRUNC, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH);
+	int file_fd;
+	if (strcmp(filename, "-") == 0)
+		file_fd = STDOUT_FILENO;
+	else
+		file_fd = open(filename, O_CREAT | O_WRONLY | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH);
+    
 	if (file_fd == -1) {
-		perror("Failed to open output file");
+		perror(filename);
 		exit(1);
 	}
 	if (file_acc.generate) {
@@ -232,7 +244,9 @@ void save_output(const char* filename) {
 		if (res != file_acc.rand_pos)
 			fprintf(stderr, "Failed to write file\n");
 	}
-	close(file_fd);
+    
+	if (file_fd != STDOUT_FILENO)
+        close(file_fd);
 }
 
 void delete_globals();
