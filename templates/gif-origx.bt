@@ -1,0 +1,204 @@
+//------------------------------------------------
+//--- 010 Editor v2.0 Binary Template
+//
+//      File: GIF.bt
+//   Authors: Berend-Jan "SkyLined" Wever
+//   Version: 1.3
+//   Purpose: Defines a template for
+//	          parsing GIF image files.
+//  Category: Image
+// File Mask: *.gif
+//  ID Bytes: 47 49 46 //GIF 
+//   History: 
+//   1.3   2016-01-28 SweetScape: Updated header for repository submission.
+//   1.2   2007-09-25 SweetScape: Added bug fixes for reading local color table and
+//                                changed ReadShort to ReadUShort.
+//   1.1   2007-05-02 SweetScape: Added bug fixes for reading global color table.
+//   1.0   BJ Wever:  Initial release.
+//------------------------------------------------
+
+// From GIF89a Specification:
+
+//<GIF Data Stream> ::=     Header <Logical Screen> <Data>* Trailer
+//<Logical Screen> ::=      Logical Screen Descriptor [Global Color Table]
+//<Data> ::=                <Graphic Block> | <Special-Purpose Block>
+//<Graphic Block> ::=       [Graphic Control Extension] <Graphic-Rendering Block>
+//<Graphic-Rendering Block> ::=  <Table-Based Image> | Plain Text Extension
+//<Table-Based Image> ::=   Image Descriptor [Local Color Table] Image Data
+//<Special-Purpose Block> ::=    Application Extension | Comment Extension
+
+LittleEndian(); 
+
+typedef struct {
+	UBYTE	R;
+	UBYTE	G;
+	UBYTE	B;
+} RGB <read=ReadRGB>;
+string ReadRGB( RGB &color )
+{
+    string s;
+    SPrintf( s, "#%02X%02X%02X", color.R, color.G, color.B );
+    return s;
+}
+typedef struct {
+	local UBYTE size = ReadUByte(FTell());
+	while (size != 0) {
+		struct DATASUBBLOCK {
+			UBYTE	Size;
+			char	Data[size];
+		} DataSubBlock;
+		size = ReadUByte(FTell());
+	}
+	UBYTE	BlockTerminator;
+} DATASUBBLOCKS;
+
+typedef struct {
+	char	Signature[3];
+	char	Version[3];
+} GIFHEADER;
+
+typedef struct {
+	ushort	Width;
+	ushort	Height;
+        BitfieldLeftToRight();
+	struct	LOGICALSCREENDESCRIPTOR_PACKEDFIELDS {
+		UBYTE	GlobalColorTableFlag : 1;
+		UBYTE	ColorResolution : 3;
+		UBYTE	SortFlag : 1;
+		UBYTE	SizeOfGlobalColorTable : 3;
+	} PackedFields;
+	UBYTE	BackgroundColorIndex;
+	UBYTE	PixelAspectRatio;
+} LOGICALSCREENDESCRIPTOR;
+
+//<GIF Data Stream> ::=     Header <Logical Screen> <Data>* Trailer
+// Header
+SetBackColor( 0xFFFFFF );
+GIFHEADER GifHeader;
+if( GifHeader.Signature != "GIF" )
+{
+	Warning( "File is not a valid GIF. Template stopped." );
+	return -1;
+}
+//<Logical Screen> ::=      Logical Screen Descriptor [Global Color Table]
+// Logical Screen Descriptor
+SetBackColor( 0xE0E0E0 );
+LOGICALSCREENDESCRIPTOR LogicalScreenDescriptor;
+// [Global Color Table]
+if (LogicalScreenDescriptor.PackedFields.GlobalColorTableFlag == 1) {
+	SetBackColor( 0xC0C0C0 );
+	struct GLOBALCOLORTABLE {
+		local int i;
+		local int size = 1;
+		for (i = 0; i <= LogicalScreenDescriptor.PackedFields.SizeOfGlobalColorTable; i++) {
+			size *= 2;
+		}
+		RGB rgb[size];
+	} GlobalColorTable <optimize=false>;;
+}
+//<Data> ::=                <Graphic Block> | <Special-Purpose Block>
+SetBackColor( 0xFFFFFF );
+struct DATA {
+	while (ReadUByte(FTell()) != 0x3B) {
+		// <Graphic Block> ::=       [Graphic Control Extension] <Graphic-Rendering Block>
+		if (ReadUByte(FTell()) == 0x2C) {
+			SetBackColor( 0xE0FFE0 );
+			struct IMAGEDESCRIPTOR {
+				UBYTE	ImageSeperator;
+				ushort	ImageLeftPosition;
+				ushort	ImageTopPosition;
+				ushort	ImageWidth;
+				ushort	ImageHeight;
+				struct IMAGEDESCRIPTOR_PACKEDFIELDS {
+					UBYTE	LocalColorTableFlag : 1;
+					UBYTE	InterlaceFlag : 1;
+					UBYTE	SortFlag : 1;
+					UBYTE	Reserved : 2;
+					UBYTE	SizeOfLocalColorTable : 3;
+				} PackedFields;
+			} ImageDescriptor;
+			if (ImageDescriptor.PackedFields.LocalColorTableFlag == 1) {
+				SetBackColor( 0xC0FFC0 );
+				struct LOCALCOLORTABLE {
+					local int i;
+					local int size = 1;
+					for (i = 0; i <= ImageDescriptor.PackedFields.SizeOfLocalColorTable; i++) {
+						size *= 2;
+					}
+					RGB rgb[size];
+				} LocalColorTable <optimize=false>;;
+			}
+			SetBackColor( 0xA0FFA0 );
+			struct IMAGEDATA {
+				UBYTE	LZWMinimumCodeSize;
+				DATASUBBLOCKS DataSubBlocks;
+			} ImageData;
+		} else if (ReadUShort(FTell()) == 0xF921) {
+			SetBackColor( 0xC0FFFF );
+			struct GRAPHICCONTROLEXTENSION {
+				UBYTE ExtensionIntroducer; // 0x21
+				UBYTE GraphicControlLabel; // 0xF9
+				struct GRAPHICCONTROLSUBBLOCK {
+					UBYTE	BlockSize;
+					struct GRAPHICCONTROLEXTENSION_DATASUBBLOCK_PACKEDFIELDS {
+						UBYTE	Reserved : 3;
+						UBYTE	DisposalMethod : 3;
+						UBYTE	UserInputFlag : 1;
+						UBYTE	TransparentColorFlag : 1;
+					} PackedFields;
+					ushort	DelayTime;
+					UBYTE	TransparentColorIndex;
+				} GraphicControlSubBlock;
+				UBYTE	BlockTerminator;
+			} GraphicControlExtension;
+		} else if (ReadUShort(FTell()) == 0xFE21) {
+			SetBackColor( 0xFFFFC0 );
+			struct COMMENTEXTENSION {
+				UBYTE ExtensionIntroducer; // 0x21
+				UBYTE CommentLabel; // 0xFE
+				DATASUBBLOCKS CommentData;
+			} CommentExtension;
+		} else if (ReadUShort(FTell()) == 0x0121) {
+			SetBackColor( 0xC0C0C0 );
+			struct PLAINTEXTEXTENTION {
+				UBYTE ExtensionIntroducer; // 0x21
+				UBYTE PlainTextLabel; // 0x01
+				struct PLAINTEXTSUBBLOCK {
+					UBYTE	BlockSize;
+					ushort	TextGridLeftPosition;
+					ushort	TextGridTopPosition;
+					ushort	TextGridWidth;
+					ushort	TextGridHeight;
+					UBYTE	CharacterCellWidth;
+					UBYTE	CharacterCellHeight;
+					UBYTE	TextForegroundColorIndex;
+					UBYTE	TextBackgroundColorIndex;
+				} PlainTextSubBlock;
+				DATASUBBLOCKS PlainTextData;
+			} PlainTextExtension;
+		} else if (ReadUShort(FTell()) == 0xFF21) {
+			SetBackColor( 0xC0C0FF );
+			struct APPLICATIONEXTENTION {
+				UBYTE ExtensionIntroducer; // 0x21
+				UBYTE ApplicationLabel; // 0xFF
+				struct APPLICATIONSUBBLOCK {
+					UBYTE	BlockSize;
+					char	ApplicationIdentifier[8];
+					char	ApplicationAuthenticationCode[3];
+				} ApplicationSubBlock;
+				DATASUBBLOCKS ApplicationData;
+			} ApplicationExtension;
+		} else {
+			SetBackColor( 0xFF8080 );
+			struct UNDEFINEDDATA {
+				UBYTE	ExtensionIntroducer; // 21
+				UBYTE	Label; // F9
+				DATASUBBLOCKS DataSubBlocks;
+			} UndefinedData;
+		}
+	}
+} Data;
+SetBackColor( 0xFFFFFF );
+struct TRAILER {
+	UBYTE GIFTrailer;
+} Trailer;
