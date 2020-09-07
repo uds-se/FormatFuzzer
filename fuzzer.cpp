@@ -49,6 +49,11 @@ int fuzz(int argc, char **argv)
 			break;
 		}
 	}
+    
+    if (optind >= argc) {
+		fprintf(stderr, "%s: missing output files. (Use '-' for standard output)\n", bin_name);
+        return 1;
+    }
 
 	// Main function
 	setup_input(decision_source);
@@ -115,6 +120,11 @@ int parse(int argc, char **argv)
 			break;
 		}
 	}
+    
+    if (optind >= argc) {
+		fprintf(stderr, "%s: missing input files. (Use '-' for standard input.)\n", bin_name);
+        return 1;
+    }
 
 	int errors = 0;
 	for (int arg = optind; arg < argc; arg++)
