@@ -8,12 +8,13 @@ The binary templates used by FormatFuzzer come from the [010 editor](https://www
 There are more than [170 binary templates](https://www.sweetscape.com/010editor/templates.html), which either can be used directly for `FormatFuzzer` or adapted for its use.
 Generators produced by `FormatFuzzer` are highly efficient, producing thousands of files with test inputs per second.
 
-The project still is in an early stage. Current work includes
+The project is still in an early stage. Current work includes
 
 * creating `.bt` files that are optimized for input generation;
+* adding more configuration options to control the fuzzer; and
 * interfacing with other test generators for coverage-guided testing.
 
-Contributors are welcome!
+Contributors are welcome! Visit the [FormatFuzzer project page](https://github.com/uds-se/FormatFuzzer) for filing ideas and issues, or adding pull requests.
 
 
 ## Getting
@@ -66,7 +67,7 @@ xcode-select --install
 
 ## Building
 
-Note: all building commands require you to be in the same folder as this `README' file. Building outside of this folder is not yet supported.
+Note: all building commands require you to be in the same folder as this `README` file. Building a fuzzer outside of this folder is not yet supported.
 
 ### Method 1: Using Make
 
@@ -227,7 +228,7 @@ The concept of a fuzzer compiler was introduced by Rahul Gopinath &lt;rahul.gopi
 
 ## Copyright
 
-FormatFuzzer is copyright (c) 2020 by CISPA Helmholtz Center for Information Security. The following licenses apply:
+FormatFuzzer is Copyright &copy; 2020 by CISPA Helmholtz Center for Information Security. The following licenses apply:
 
 * _The FormatFuzzer code_ (notably, all C++ code and code related to its generation) is subject to the GNU GENERAL PUBLIC LICENSE, as found in [COPYING](COPYING).
 
