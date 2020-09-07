@@ -291,8 +291,10 @@ void exit_template(int status) {
 	throw status;
 }
 
+bool change_array_length = false;
+
 void check_array_length(unsigned& size) {
-	if (size > MAX_FILE_SIZE/16 && file_acc.generate) {
+	if (change_array_length && size > MAX_FILE_SIZE/16 && file_acc.generate) {
 		unsigned new_size = file_acc.rand_int(16, NULL);
 		if (debug_print)
 			fprintf(stderr, "Array length too large: %d, replaced with %u\n", (signed)size, new_size);
@@ -359,74 +361,6 @@ int IsBigEndian() {abort();}
 template<typename T>
 int64 FindFirst(T data, int matchcase=true, int wholeword=false, int method=0, double tolerance=0.0, int dir=1, int64 start=0, int64 size=0, int wildcardMatchLength=24) {abort();}
 
-extern std::vector<uchar> ReadUByte_values;
-uchar ReadUByte(int64 pos = FTell(), std::vector<uchar> new_known_values = {}) {
-	file_acc.lookahead = true;
-	int64 original_pos = FTell();
-	FSeek(pos);
-	uchar value;
-	for (auto& known : ReadUByte_values) {
-		new_known_values.push_back(known);
-	}
-	if (new_known_values.size())
-		value = file_acc.file_integer(sizeof(uchar), 0, new_known_values);
-	else
-		value = file_acc.file_integer(sizeof(uchar), 0);
-	FSeek(original_pos);
-	file_acc.lookahead = false;
-	return value;
-}
-extern std::vector<ushort> ReadUShort_values;
-ushort ReadUShort(int64 pos = FTell(), std::vector<ushort> new_known_values = {}) {
-	file_acc.lookahead = true;
-	int64 original_pos = FTell();
-	FSeek(pos);
-	ushort value;
-	for (auto& known : ReadUShort_values) {
-		new_known_values.push_back(known);
-	}
-	if (new_known_values.size())
-		value = file_acc.file_integer(sizeof(ushort), 0, new_known_values);
-	else
-		value = file_acc.file_integer(sizeof(ushort), 0);
-	FSeek(original_pos);
-	file_acc.lookahead = false;
-	return value;
-}
-extern std::vector<uint> ReadUInt_values;
-uint ReadUInt(int64 pos = FTell(), std::vector<uint> new_known_values = {}) {
-	file_acc.lookahead = true;
-	int64 original_pos = FTell();
-	FSeek(pos);
-	uint value;
-	for (auto& known : ReadUInt_values) {
-		new_known_values.push_back(known);
-	}
-	if (new_known_values.size())
-		value = file_acc.file_integer(sizeof(uint), 0, new_known_values);
-	else
-		value = file_acc.file_integer(sizeof(uint), 0);
-	FSeek(original_pos);
-	file_acc.lookahead = false;
-	return value;
-}
-extern std::vector<int> ReadInt_values;
-int ReadInt(int64 pos = FTell(), std::vector<int> new_known_values = {}) {
-	file_acc.lookahead = true;
-	int64 original_pos = FTell();
-	FSeek(pos);
-	int value;
-	for (auto& known : ReadInt_values) {
-		new_known_values.push_back(known);
-	}
-	if (new_known_values.size())
-		value = file_acc.file_integer(sizeof(int), 0, new_known_values);
-	else
-		value = file_acc.file_integer(sizeof(int), 0);
-	FSeek(original_pos);
-	file_acc.lookahead = false;
-	return value;
-}
 
 void BitfieldLeftToRight() {
 	is_bitfield_left_to_right[is_big_endian] = true;

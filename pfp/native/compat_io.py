@@ -278,7 +278,7 @@ def _read_data(params, stream, cls, coord):
     bits = stream._bits
     curr_pos = stream.tell()
 
-    if len(params) == 1:
+    if len(params) >= 1:
         pos = PYVAL(params[0])
         stream.seek(pos, 0)
     elif len(params) > 1:

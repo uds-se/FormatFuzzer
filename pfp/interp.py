@@ -1619,10 +1619,31 @@ class PfpInterp(object):
                          ["ushort", "UShort"]]
         lookahead = []
         for t, n in readfunctions:
-            node.cpp += "std::vector<" + t + "> Read" + n + "_values"
-            if "Read" + n in self._known_values:
+            node.cpp += "std::vector<" + t + "> Read" + n + "InitValues"
+            if "Read" + n + "InitValues" in self._known_values:
+                node.cpp += " = { " + ", ".join(self._known_values["Read" + n + "InitValues"]) + " }"
+            elif "Read" + n in self._known_values:
                 node.cpp += " = { " + ", ".join(self._known_values["Read" + n]) + " }"
             node.cpp += ";\n"
+            node.cpp += """
+%s Read%s(int64 pos = FTell(), std::vector<%s> new_known_values = {}) {
+	file_acc.lookahead = true;
+	int64 original_pos = FTell();
+	FSeek(pos);
+	%s value;
+	for (auto& known : Read%sInitValues) {
+		new_known_values.push_back(known);
+	}
+	if (new_known_values.size())
+		value = file_acc.file_integer(sizeof(%s), 0, new_known_values);
+	else
+		value = file_acc.file_integer(sizeof(%s), 0);
+	FSeek(original_pos);
+	file_acc.lookahead = false;
+	return value;
+}
+
+""" % (t, n, t, t, n, t, t)
             if "Read" + n in self._read_funcs:
                 lookahead.append("Read" + n)
         node.cpp += "\n\n" + self._instances
@@ -1822,6 +1843,17 @@ class PfpInterp(object):
         # locals and consts still get a field instance, but DON'T parse the
         # stream!
         elif "local" in node.quals or "const" in node.quals:
+            if field_name.endswith("InitValues"):
+                node.cpp = ""
+                if node.init is not None:
+                    self._handle_node(node.init, scope, ctxt, stream)
+                    values = []
+                    for expr in node.init.exprs:
+                        values.append(expr.cpp)
+                    self._known_values[field_name] = values
+                else:
+                    self._known_values[field_name] = []
+                return
             #print("decl:local/const")
             is_struct = issubclass(field, fields.Struct)
             if not isinstance(field, fields.Field) and not is_struct:
@@ -2112,7 +2144,8 @@ class PfpInterp(object):
                 nodecpp = ""
                 if node.name not in self._defined:
                     self._defined[node.name] = classname + "_array_class"
-                    nodecpp = classname + "_array_class " + node.name + "(" + node.name + "_element);\n"
+                    nodecpp = classname + "_array_class " + node.name + "(" + node.name + "_element"
+                    nodecpp += ");\n"
                 if nodetype is None or isinstance(nodetype, list) or issubclass(nodetype, fields.Enum) or issubclass(nodetype, fields.Union):
                     self._cpp.append((classname + "_array_class", cpp))
                     self._globals.append((node.name, nodecpp))
@@ -2135,6 +2168,13 @@ class PfpInterp(object):
                 node.cpp += "(" + node.originalname + ", ::g->" + node.name + ".generate("
                 if node.type.dim is not None:
                     node.cpp += node.type.dim.cpp
+                if node.init is not None:
+                    val = self._handle_node(node.init, scope, ctxt, stream)
+                    node.cpp += ", { "
+                    for expr in node.init.exprs:
+                        node.cpp += expr.cpp + ", "
+                    node.cpp = node.cpp[:-2]
+                    node.cpp += " }"
                 node.cpp += "))"
             elif isinstance(node.type.type, AST.Enum):
                 classname = " ".join(node.type.type.names)
@@ -2219,7 +2259,17 @@ class PfpInterp(object):
                     node.cpp = "GENERATE"
                     if len(self._incomplete_stack) > 1:
                         node.cpp += "_VAR"
-                    node.cpp += "(" + node.originalname + ", ::g->" + node.name + ".generate())"
+                    node.cpp += "(" + node.originalname + ", ::g->" + node.name + ".generate("
+                    if node.init is not None:
+                        val = self._handle_node(node.init, scope, ctxt, stream)
+                        node.cpp += "{ "
+                        for expr in node.init.exprs:
+                            node.cpp += expr.cpp + ", "
+                        node.cpp = node.cpp[:-2]
+                        node.cpp += " }"
+                    if node.metadata is not None and "values" in node.metadata.keyvals:
+                        node.cpp += node.metadata.keyvals["values"].split(",")[0]
+                    node.cpp += "))"
                 elif issubclass(nodetype, fields.Enum):
                     node.cpp = "GENERATE"
                     if len(self._incomplete_stack) > 1:
@@ -2487,9 +2537,14 @@ class PfpInterp(object):
         """
         self._dlog("handling init list")
         res = []
+        node.cpp = "{"
         for _, init_child in node.children():
             init_field = self._handle_node(init_child, scope, ctxt, stream)
             res.append(init_field)
+            node.cpp += init_child.cpp + ", "
+        if res:
+            node.cpp = node.cpp[:-2]
+        node.cpp += "}"
         return res
 
     def _handle_struct_call_type_decl(self, node, scope, ctxt, stream):
@@ -3226,13 +3281,7 @@ class PfpInterp(object):
             self._read_funcs.add(node.name.name)
         node.cpp = "" + node.name.name + "("
         if node.args:
-            first = True
-            for arg in node.args.exprs:
-                if first:
-                    first = False
-                else:
-                    node.cpp += ", "
-                node.cpp += arg.cpp
+            node.cpp += ", ".join([arg.cpp for arg in node.args.exprs])
         node.cpp += ")"
         self._locals_stack.append([])
         self._call_stack.append(None)

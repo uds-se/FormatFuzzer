@@ -2471,6 +2471,7 @@ PNG_CHUNK* PNG_CHUNK::generate(std::vector<std::string>& chunk_types, bool evil_
 
 
 void generate_file() {
+	change_array_length = true;
 	::g = new globals_class();
 	BigEndian();
 	bool evil = file_acc.set_evil_bit(false);
