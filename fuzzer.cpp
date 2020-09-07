@@ -6,6 +6,7 @@
 #include <cassert>
 #include <getopt.h>
 
+#include "config.h"
 #include "formatfuzzer.h"
 
 static const char *bin_name = "formatfuzzer";
@@ -147,6 +148,12 @@ int parse(int argc, char **argv)
 	return errors;
 }
 
+int version(int argc, char *argv[])
+{
+	fprintf(stderr, "This is %s\n", PACKAGE_STRING);
+	return 0;
+}
+
 // Dispatch commands
 typedef struct
 {
@@ -158,14 +165,16 @@ typedef struct
 COMMAND commands[] = {
 	{"fuzz", fuzz, "Generate random inputs"},
 	{"parse", parse, "Parse inputs"},
+	{"version", version, "Show version"},
 };
 
 int help(int argc, char *argv[])
 {
-	fprintf(stderr, "%s: usage: %s COMMAND [ARGS...]\n", bin_name, bin_name);
+	version(argc, argv);
+	fprintf(stderr, "%s: usage: %s COMMAND [OPTIONS...] [ARGS...]\n", bin_name, bin_name);
 	fprintf(stderr, "Commands:\n");
 	for (int i = 0; i < sizeof(commands) / sizeof(COMMAND); i++)
-		fprintf(stderr, "%-6s - %s\n", commands[i].name, commands[i].desc);
+		fprintf(stderr, "%-10s - %s\n", commands[i].name, commands[i].desc);
 	fprintf(stderr, "Use COMMAND --help to learn more\n");
 	return 0;
 }
