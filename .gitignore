@@ -16,8 +16,7 @@ __pycache__
 *.o
 *-generator
 *-parser
-*_generator
-*_parser
+*-fuzzer
 lextab.py
 yacctab.py
 

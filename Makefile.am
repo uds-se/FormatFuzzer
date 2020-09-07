@@ -28,6 +28,11 @@ CREATE = $(PYTHON) create.py
 	@rm -f $@
 	$(AM_V_CXXLD)$(CXXLINK) $+ $(LIBS)
 
+# How to create a fuzzer (= a generic driver)
+%-fuzzer$(EXEEXT): %.o fuzzer.o
+	@rm -f $@
+	$(AM_V_CXXLD)$(CXXLINK) $+ $(LIBS)
+
 # Create a random file
 random.%: %-generator$(EXEEXT)
 	./$< /dev/urandom $@
