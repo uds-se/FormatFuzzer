@@ -17,7 +17,7 @@ You need the following:
 * Python 3
 * A C++ compiler
 * The Python packages `py010parser` and `intervaltree`
-* A `zlib` library
+* A `zlib` library (for decoding PNG files)
 
 
 ### Installing Python packages
@@ -53,15 +53,11 @@ First do
 ```
 and then
 ```
-make png-generator
+make png-fuzzer
 ```
-to build a PNG fuzzer and
-```
-make png-parser
-```
-to build a PNG parser.
+to create a PNG fuzzer.
 
-This works for all file formats provided in `templates/`; if there is a file `templates/FOO.bt`, then `make FOO-generator` and `make FOO-parser` will work.
+This works for all file formats provided in `templates/`; if there is a file `templates/FOO.bt`, then `make FOO-fuzzer` will work.
 
 
 ### Method 2: Manual steps
@@ -77,21 +73,14 @@ python3 create.py templates/png.bt png.cpp
 
 TODO: You may want to rename `python3 create.py` to something more specific, say `formatfuzzer` or `ffcompile`
 
-FIXME: Running the above command, I get
-```
-py010parser.plyparser.ParseError: /var/folders/n2/xd9445p97rb3xh7m1dfx8_4h0006ts/T/tmpay54rg_1:1:1: before: /
-```
-I thus used `synthesized/PNG.cpp` for the remaining steps.
-
 
 #### Compiling the C++ code
 
-Use the following commands to create both a producer `png-generator` and a parser `png-parser`.
-First, compile the runtime systems:
+Use the following commands to create a fuzzer `png-fuzzer`=.
+First, compile the generic command-line driver:
 
 ```
-g++ -c -I . -std=c++11 -g -O3 -Wall generator.cpp
-g++ -c -I . -std=c++11 -g -O3 -Wall parser.cpp
+g++ -c -I . -std=c++11 -g -O3 -Wall fuzzer.cpp
 ```
 (`-I .` denotes the location of the `bt.h` file; `-std=c++11` sets the C++ standard.)
 
@@ -101,74 +90,55 @@ Then, compile the binary parser/compiler:
 g++ -c -I . -std=c++11 -g -O3 -Wall png.cpp
 ```
 
-Finally, link the binary parser/compiler with the runtimes to obtain executables:
+Finally, link the binary parser/compiler with the command-line driver to obtain an executable:
 ```
-g++ -O3 png.o generator.o -o png-generator -lz
-g++ -O3 png.o parser.o -o png-parser -lz
+g++ -O3 png.o generator.o -o png-fuzzer -lz
 ```
 
-TODO: Consider having a single binary that can be switched from `--generate` (default) to `--parse`. This would also allow you to have a single runtime library (`-lformatfuzzer`).
 
+## Running the Fuzzer
 
-## Running Generators
-
-The generator receives as an input the source of randomness used for taking random decisions and produces as output a binary file in the appropriate format.
+The generator receives as input a list of files to be generated in the appropriate format.
 
 Run the generator as
 ```
-./png-fuzzer fuzz --random /dev/urandom -n 5000 -pattern folder/{}.png
+./png-fuzzer fuzz output.png
 ```
-The first argument to the generator is the file to read the source of randomness from and the second argument is the file where the output will be stored.
+to create a random binary file `output.png'.
 
-TODO: The source of randomness should come as an option (`--random SOURCE`?), with `/dev/urandom' being the default.
-
-TODO: There should be ways to generate several outputs (say, by supplying several files)
-
-TODO: Using `-` as output (or no arg at all) should write output to `stdout`, such that one can use it in a pipe
-
-TODO: Using special options, create a folder that would be filled with files
+Note that during creation, you may encounter warnings about CRC mismatches. To resolve these, you need to extend the `.bt' file.
 
 
-FIXME: Coming from `synthesized/png.cpp`, I get
+## Running Parsers
+
+You can also run the fuzzer as a _parser_ for binary files. This is useful if you want to test the accuracy of the binary template, or if you want to mutate an input (see `Decision Files', below).
+
+To run the parser, user
 ```
-Warning: *ERROR: CRC Mismatch @ chunk[0]; in data: 00000010; expected: b255b6e1
-*ERROR: CRC Mismatch @ chunk[0]; in data: 00000010; expected: b255b6e1
-Array length too large: -694336420, replaced with 5
-Warning: *ERROR: CRC Mismatch @ chunk[1]; in data: 0000000c; expected: 2702739a
-*ERROR: CRC Mismatch @ chunk[1]; in data: 0000000c; expected: 2702739a
-Warning: *ERROR: CRC Mismatch @ chunk[2]; in data: 0000000b; expected: 05da1e5c
-*ERROR: CRC Mismatch @ chunk[2]; in data: 0000000b; expected: 05da1e5c
-Warning: *ERROR: CRC Mismatch @ chunk[3]; in data: 00000071; expected: 18e4dcb5
-*ERROR: CRC Mismatch @ chunk[3]; in data: 00000071; expected: 18e4dcb5
-Warning: *ERROR: CRC Mismatch @ chunk[4]; in data: 00000001; expected: 0473eaf1
-*ERROR: CRC Mismatch @ chunk[4]; in data: 00000001; expected: 0473eaf1
-Warning: *ERROR: CRC Mismatch @ chunk[5]; in data: 00000003; expected: 819d96ba
-*ERROR: CRC Mismatch @ chunk[5]; in data: 00000003; expected: 819d96ba
-Warning: *ERROR: CRC Mismatch @ chunk[6]; in data: 00000004; expected: 74993bc3
-*ERROR: CRC Mismatch @ chunk[6]; in data: 00000004; expected: 74993bc3
-Warning: *ERROR: CRC Mismatch @ chunk[7]; in data: 00000004; expected: 6cfb87ab
-*ERROR: CRC Mismatch @ chunk[7]; in data: 00000004; expected: 6cfb87ab
-Warning: *ERROR: Chunk IHDR must be first chunk.
-*ERROR: Chunk IHDR must be first chunk.
-Warning: *ERROR: Chunk IEND must be last chunk.
-*ERROR: Chunk IEND must be last chunk.
-PNG-generator finished
+./png-fuzzer parse input.png
 ```
-Is this a problem?
+You will see error messages if `input.png' cannot be successfully parsed.
 
-### Running Parsers
 
-The parser takes as input the binary file and computes not only the parse tree of the target file, but also an appropriate source of random bytes that could be used by the generator to produce this exact file.
+## Decision Files
 
-You can run the parser with:
+While parsing, you can also store all parsing decisions (i.e.\ which parsing alternatives were taken) in a _decision file_. This is a sequence of bytes enumerating the decisions taken (byte value of `0' = first alternative was taken, byte value of `1' = second alternative was taken, and so on).
+
+You can generate such a decision file when parsing an input:
 ```
-./png-fuzzer parse --random random.rnd input.png
-./png-fuzzer fuzz --random random.rnd output.png
+./png-fuzzer parse --decisions input.dec input.png
 ```
-The first argument to the parser is the input file (`output.png`) and the second argument (`random.rnd`) is where to store the source of random bytes that could be used to generate this file.
-By default, the parser computes the parse tree of the file according to the binary template.
+Here, `input.dec' represents the decisions made for parsing `input.png'.
 
-
+You can also use such a decision file when _generating_ inputs. The fuzzer will then take the exact same decisions as found during parsing. The following command generates a new PNG file using the decisions determined while parsing `input.png':
+```
+./png-fuzzer fuzz --decisions input.dec input2.png
+```
+If everything works well, both files should be similar:
+```
+cmp input.png input2.png
+```
+By _mutating_ a decision file (e.g. replacing individual bytes), you can create inputs that are similar to the original file parsed. This is useful for interfacing with specific testing strategies and fuzzers such as AFL.
 
 
 ## Creating and Customizing Binary Templates
