@@ -116,7 +116,7 @@ The generator receives as an input the source of randomness used for taking rand
 
 Run the generator as
 ```
-./png-generator /dev/urandom output.png
+./png-fuzzer fuzz --random /dev/urandom -n 5000 -pattern folder/{}.png
 ```
 The first argument to the generator is the file to read the source of randomness from and the second argument is the file where the output will be stored.
 
@@ -162,7 +162,8 @@ The parser takes as input the binary file and computes not only the parse tree o
 
 You can run the parser with:
 ```
-./png-parser output.png random.rnd
+./png-fuzzer parse --random random.rnd input.png
+./png-fuzzer fuzz --random random.rnd output.png
 ```
 The first argument to the parser is the input file (`output.png`) and the second argument (`random.rnd`) is where to store the source of random bytes that could be used to generate this file.
 By default, the parser computes the parse tree of the file according to the binary template.
@@ -182,7 +183,7 @@ TODO: Have a few words here on the limitations of `FormatFuzzer` - what does one
 
 If the files produced by the generator are still not valid, you can edit the C++ code to improve the generator until it successfully generates well-formatted files with high probability.
 
-The difference between the files `synthesized/PNG.bt` and `generators/PNG.bt` shows what changes were added to the PNG generator in order to produce valid files.
+The difference between the files `synthesized/PNG.cpp` and `generators/PNG.cpp` shows what changes were added to the PNG generator in order to produce valid files.
 
 FIXME: These files do not exist; instead, I see `synthesized/PNG.cpp` and `generators/PNG.cpp`. Do you expect people to edit the generated `.cpp` files? (Editing `.bt` files would be much preferred.)
 
