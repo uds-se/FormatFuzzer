@@ -1,5 +1,16 @@
 #!/usr/bin/env python3
 import sys
+import argparse
+
+# Note: must be _local_ pfp
 import pfp
 
-dom = pfp.parse(data="", template_file=sys.argv[1])
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("template_file", help=".bt template file to be compiled")
+    parser.add_argument("target", help=".cpp target to be produced")
+    args = parser.parse_args()
+    
+    # Note: Output to sys.argv[2] is currently hardwired into pfp,
+    # so ignore args
+    dom = pfp.parse(data="", template_file=sys.argv[1])
