@@ -88,7 +88,7 @@ POST_INSTALL = :
 NORMAL_UNINSTALL = :
 PRE_UNINSTALL = :
 POST_UNINSTALL = :
-bin_PROGRAMS = png-fuzzer$(EXEEXT)
+bin_PROGRAMS = gif-fuzzer$(EXEEXT)
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/m4_ax_cxx_compile_stdcxx.m4 \
@@ -105,9 +105,9 @@ CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
-am_png_fuzzer_OBJECTS = png.$(OBJEXT) fuzzer.$(OBJEXT)
-png_fuzzer_OBJECTS = $(am_png_fuzzer_OBJECTS)
-png_fuzzer_LDADD = $(LDADD)
+am_gif_fuzzer_OBJECTS = gif.$(OBJEXT) fuzzer.$(OBJEXT)
+gif_fuzzer_OBJECTS = $(am_gif_fuzzer_OBJECTS)
+gif_fuzzer_LDADD = $(LDADD)
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -123,7 +123,7 @@ am__v_at_1 =
 DEFAULT_INCLUDES = -I.@am__isrc@
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__maybe_remake_depfiles = depfiles
-am__depfiles_remade = ./$(DEPDIR)/fuzzer.Po ./$(DEPDIR)/png.Po
+am__depfiles_remade = ./$(DEPDIR)/fuzzer.Po ./$(DEPDIR)/gif.Po
 am__mv = mv -f
 CXXCOMPILE = $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
 	$(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS)
@@ -138,8 +138,8 @@ AM_V_CXXLD = $(am__v_CXXLD_@AM_V@)
 am__v_CXXLD_ = $(am__v_CXXLD_@AM_DEFAULT_V@)
 am__v_CXXLD_0 = @echo "  CXXLD   " $@;
 am__v_CXXLD_1 = 
-SOURCES = $(png_fuzzer_SOURCES)
-DIST_SOURCES = $(png_fuzzer_SOURCES)
+SOURCES = $(gif_fuzzer_SOURCES)
+DIST_SOURCES = $(gif_fuzzer_SOURCES)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -167,8 +167,8 @@ ETAGS = etags
 CTAGS = ctags
 CSCOPE = cscope
 AM_RECURSIVE_TARGETS = cscope
-am__DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/config.h.in depcomp \
-	install-sh missing
+am__DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/config.h.in COPYING \
+	depcomp install-sh missing
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 distdir = $(PACKAGE)-$(VERSION)
 top_distdir = $(distdir)
@@ -213,7 +213,7 @@ INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
 LDFLAGS = @LDFLAGS@
 LIBOBJS = @LIBOBJS@
 
-# Libraries to use
+# Libraries to use (png needs -lz)
 LIBS = -lz
 LTLIBOBJS = @LTLIBOBJS@
 MAKEINFO = @MAKEINFO@
@@ -282,7 +282,7 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-png_fuzzer_SOURCES = png.cpp fuzzer.cpp
+gif_fuzzer_SOURCES = gif.cpp fuzzer.cpp
 
 # Where the .bt templates are
 TEMPLATES = templates/
@@ -385,9 +385,9 @@ uninstall-binPROGRAMS:
 clean-binPROGRAMS:
 	-test -z "$(bin_PROGRAMS)" || rm -f $(bin_PROGRAMS)
 
-png-fuzzer$(EXEEXT): $(png_fuzzer_OBJECTS) $(png_fuzzer_DEPENDENCIES) $(EXTRA_png_fuzzer_DEPENDENCIES) 
-	@rm -f png-fuzzer$(EXEEXT)
-	$(AM_V_CXXLD)$(CXXLINK) $(png_fuzzer_OBJECTS) $(png_fuzzer_LDADD) $(LIBS)
+gif-fuzzer$(EXEEXT): $(gif_fuzzer_OBJECTS) $(gif_fuzzer_DEPENDENCIES) $(EXTRA_gif_fuzzer_DEPENDENCIES) 
+	@rm -f gif-fuzzer$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(gif_fuzzer_OBJECTS) $(gif_fuzzer_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -396,7 +396,7 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/fuzzer.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/png.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/gif.Po@am__quote@ # am--include-marker
 
 $(am__depfiles_remade):
 	@$(MKDIR_P) $(@D)
@@ -693,7 +693,7 @@ clean-am: clean-binPROGRAMS clean-generic mostlyclean-am
 distclean: distclean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
 		-rm -f ./$(DEPDIR)/fuzzer.Po
-	-rm -f ./$(DEPDIR)/png.Po
+	-rm -f ./$(DEPDIR)/gif.Po
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-hdr distclean-tags
@@ -742,7 +742,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
 	-rm -rf $(top_srcdir)/autom4te.cache
 		-rm -f ./$(DEPDIR)/fuzzer.Po
-	-rm -f ./$(DEPDIR)/png.Po
+	-rm -f ./$(DEPDIR)/gif.Po
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 
@@ -782,18 +782,18 @@ uninstall-am: uninstall-binPROGRAMS
 .PRECIOUS: Makefile
 
 
-# Create a C++ file from template
+# Create a C++ file from template (say, 'gif.cpp' from template 'gif.bt')
 %.cpp: $(TEMPLATES)%.bt
 	$(FFCOMPILE) $< $@
 
-# How to create the fuzzer
+# How to create the fuzzer (say, 'gif-fuzzer')
 %-fuzzer$(EXEEXT): %.o fuzzer.o
 	@rm -f $@
 	$(AM_V_CXXLD)$(CXXLINK) $+ $(LIBS)
 
-# Create a random file
+# Create a random file (say, 'make random.gif')
 random.%: %-fuzzer$(EXEEXT)
-	./$< fuzz /dev/urandom $@
+	./$< fuzz $@
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
