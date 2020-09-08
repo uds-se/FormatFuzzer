@@ -194,22 +194,70 @@ Note that the `.bt` files provided in the repository generally target _parsing_ 
 
 In this section, we discuss some of the ways in which you can customize `.bt` files to work well with `FormatFuzzer`.
 
-TODO: to be added
+For example, for the GIF format, the file [templates/gif-orig.bt](templates/gif-orig.bt) shows the original binary template, which was only designed for parsing, while the file [templates/gif.bt](templates/gif.bt) is a modified version which is capable of generating valid GIFs. Comparing the two files, we see that a small number changes was required to achieve this.
+
+If you have created a `gif-fuzzer`, either by running `make gif-fuzzer` or by using the `ffcompile` tool, you have already obtained a C++ file `gif.cpp` which contains an implementation of the GIF generator and parser. This is useful to see how the changes you make to the binary template are translated into executable code. More details on the C++ code are presented on the next section.
+
+The GIF binary template makes use of _lookahead_ functions `ReadUByte()` and `ReadUShort()` to look ahead at the values of the next bytes in the file before actually parsing them into a struct field. At generation time, we allow those functions to receive an additional argument specifying a set of good known values to pick for the bytes that we look ahead. In addition, we also allow specifying a global set of good known values to always use when calling a particular lookahead function, such as `ReadUByte()`. Those are stored in the `ReadUByteInitValues` vector.
+
+By default, our translation procedure `ffcompile` tries to mine interesting values which have been used in comparisons against lookahead bytes and use them as a global set of known values. When running
+```
+./ffcompile templates/gif.bt gif.cpp
+```
+a printed message shows the lookahead functions identified, as well as the mined interesting values:
+```
+Finished creating cpp generator.
+
+Lookahead functions found:
+
+ReadUByte
+ReadUShort
+
+Mined interesting values:
+
+GlobalColorTableFlag: ['1']
+LocalColorTableFlag: ['1']
+ReadUByte: ['0x3B', '0x2C']
+ReadUShort: ['0xF921', '0xFE21', '0x0121', '0xFF21']
+Signature: ['"GIF"']
+```
+
+For GIF generation, however, it is better to specify the set of good known values for `ReadUByte()` individually at each call to the function. So we define an empty array (size 0)
+```
+const local UBYTE ReadUByteInitValues[0];
+```
+to overwrite the set of global `ReadUByteInitValues` and for each call to `ReadUByte()`, we use an additional argument to specify the set of good values to use for that particular location.
+The binary template language is also powerful enough to allow this choice to be made based on runtime conditions. For example, in the following code we show how the choice of appropriate values for a `ReadUByte()` call can depend on the current GIF version we are generating. A GIF version `89a` allows one extra possible value for the byte (0x21).
+```
+	if(GifHeader.Version == "89a")
+		local UBYTE values[] = { 0x3B, 0x2C, 0x21 };
+	else
+		local UBYTE values[] = { 0x3B, 0x2C };
+
+	while (ReadUByte(FTell(), values) != 0x3B) {
+		...
+	}
+```
+
+The remaining edits required for the GIF binary template are similar. For example, for each struct field can also specify a set of known good values. For example this specifies the correct values for the `Version` field: `87a` and `89a`.
+```
+	char	Version[3] = { {"87a"}, {"89a"} };
+```
 
 
-## Customizing Generated C++ Code
+## Understanding the Generated C++ Code
 
-TODO: This section is obsolete and will be replaced by an introduction on customizing `.bt` files.
+For debugging purposes, as well as for understanding how to make appropriate changes to improve your generators and parsers, it may be useful to understand some inner workings of the generated C++ code.
+Ideally, you should be able to edit the binary template files until they can be used to generate valid files with high probability, so you wouldn't have to edit the generated C++ code.
 
-If the files produced by the generator are still not valid, you can edit the C++ code to improve the generator until it successfully generates well-formatted files with high probability.
+The C++ code creates a class for each `struct` and `union` defined in the binary template, as well as for native types, such as `int`.
 
-The difference between the files `synthesized/PNG.cpp` and `generators/PNG.cpp` shows what changes were added to the PNG generator in order to produce valid files.
-
-When initializing a variable, we can define a set of good known values that this variable can assume. For example, the constructor call
+At construction time, when initializing a variable, we can define a set of good known values that this variable can assume. For example, the constructor call
 ```
 char_array_class cname(cname_element, { "IHDR", "tEXt", "PLTE", "cHRM", "sRGB", "iEXt", "zEXt", "tIME", "pHYs", "bKGD", "sBIT", "sPLT", "acTL", "fcTL", "fdAT", "IHDR", "IEND" });
 ```
-would specify 17 good values to use for variable `cname`. But in the case of PNG, the choice of appropriate chunk types is context sensitive, so it is better to specify the set of good values at generation time when generating a new chunk.
+would specify 17 good values to use for variable `cname`. But this is often not enough, since the choice of appropriate chunk types is context sensitive.
+So we also allow specifying a set of good values at generation time when generating a new chunk.
 For example, this call could be used to generate an instance of `chunk` for the first chunk, which must have type IHDR.
 ```
 GENERATE(chunk, ::g->chunk.generate({ "IHDR" }, false));
@@ -246,4 +294,4 @@ FormatFuzzer is Copyright &copy; 2020 by CISPA Helmholtz Center for Information 
 
 * As an exception to the above, _C++ code generated by FormatFuzzer_ (i.e., fuzzers and parsers for specific formats) is in the public domain.
 
-* _The original pfp code_, which FormatFuzzer is based upon, is subject to a MIT license, as found in [LICENSE-pfp](LICENSE-pfp).
+* _The original_ [pfp](https://github.com/d0c-s4vage/pfp) _code_, which FormatFuzzer is based upon, is subject to a MIT license, as found in [LICENSE-pfp](LICENSE-pfp).
