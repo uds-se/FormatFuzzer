@@ -43,6 +43,12 @@ If you plan to edit the build and configuration scripts (`.ac` and `.am` files),
 * GNU autoconf
 * GNU automake
 
+### Installing Everything on Linux (Debian Packages)
+
+```
+sudo apt install git g++ make automake python3-pip zlib1g-dev
+pip3 install py010parser six intervaltree
+```
 
 ### Installing Python packages
 
