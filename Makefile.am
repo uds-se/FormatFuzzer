@@ -17,6 +17,9 @@ FFCOMPILE = $(PYTHON) ./ffcompile
 %.cpp: $(TEMPLATES)%.bt
 	$(FFCOMPILE) $< $@
 
+# Keep generated .cpp files
+.PRECIOUS: %.cpp
+
 # How to create the fuzzer (say, 'gif-fuzzer')
 %-fuzzer$(EXEEXT): %.o fuzzer.o
 	@rm -f $@
