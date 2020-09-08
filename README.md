@@ -83,6 +83,10 @@ There's a `Makefile` (source in `Makefile.am`) which automates all construction 
 (Requires `GNU make`.)
 First do
 ```
+touch configure Makefile.in
+```
+then
+```
 ./configure
 ```
 and then
