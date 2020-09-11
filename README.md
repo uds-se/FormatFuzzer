@@ -128,7 +128,7 @@ g++ -c -I . -std=c++11 -g -O3 -Wall gif.cpp
 
 Finally, link the binary parser/compiler with the command-line driver to obtain an executable. If you use any extra libraries (such as `-lz`), be sure to specify these here too.
 ```
-g++ -O3 gif.o generator.o -o gif-fuzzer -lz
+g++ -O3 gif.o fuzzer.o -o gif-fuzzer -lz
 ```
 
 
