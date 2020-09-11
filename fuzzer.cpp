@@ -56,12 +56,12 @@ int fuzz(int argc, char **argv)
     }
 
 	// Main function
-	setup_input(decision_source);
 	int errors = 0;
 	for (int arg = optind; arg < argc; arg++)
 	{
 		char *out = argv[arg];
 		bool success = false;
+		setup_input(decision_source);
 		try
 		{
 			generate_file();
