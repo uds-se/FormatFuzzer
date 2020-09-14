@@ -1605,18 +1605,19 @@ class PfpInterp(object):
             #node.cpp += "/*" + n + "*/\n"
             node.cpp += c
         readfunctions = [["char", "Byte"],
-                         ["double", "Double"],
-                         ["float", "Float"],
-                         ["hfloat", "HFloat"],
-                         ["int", "Int"],
-                         ["int64", "Int64"],
-                         ["int64", "Quad"],
-                         ["short", "Short"],
                          ["uchar", "UByte"],
+                         ["short", "Short"],
+                         ["ushort", "UShort"],
+                         ["int", "Int"],
                          ["uint", "UInt"],
-                         ["uint64", "UInt64"],
+                         ["int64", "Quad"],
                          ["uint64", "UQuad"],
-                         ["ushort", "UShort"]]
+                         ["int64", "Int64"],
+                         ["uint64", "UInt64"],
+                         ["hfloat", "HFloat"],
+                         ["float", "Float"],
+                         ["double", "Double"],
+                         ["std::string", "Bytes"]]
         lookahead = []
         for t, n in readfunctions:
             node.cpp += "std::vector<" + t + "> Read" + n + "InitValues"
@@ -1625,25 +1626,6 @@ class PfpInterp(object):
             elif "Read" + n in self._known_values:
                 node.cpp += " = { " + ", ".join(self._known_values["Read" + n]) + " }"
             node.cpp += ";\n"
-            node.cpp += """
-%s Read%s(int64 pos = FTell(), std::vector<%s> new_known_values = {}) {
-	file_acc.lookahead = true;
-	int64 original_pos = FTell();
-	FSeek(pos);
-	%s value;
-	for (auto& known : Read%sInitValues) {
-		new_known_values.push_back(known);
-	}
-	if (new_known_values.size())
-		value = file_acc.file_integer(sizeof(%s), 0, new_known_values);
-	else
-		value = file_acc.file_integer(sizeof(%s), 0);
-	FSeek(original_pos);
-	file_acc.lookahead = false;
-	return value;
-}
-
-""" % (t, n, t, t, n, t, t)
             if "Read" + n in self._read_funcs:
                 lookahead.append("Read" + n)
         node.cpp += "\n\n" + self._instances
@@ -1883,6 +1865,8 @@ class PfpInterp(object):
             field._pfp__interp = self
             if isinstance(node.type, AST.ArrayDecl):
                 classname = " ".join(node.type.type.type.names)
+                if classname == "string":
+                    classname = "std::string"
                 if classname in ["uchar", "char"]:
                     node.type.cpp += "std::string"
                 else:
@@ -1892,14 +1876,17 @@ class PfpInterp(object):
                     node.cpp = node.name
                 else:
                     node.cpp = node.type.cpp + " " + node.name
-                if node.init is not None:
+                if node.init is None:
+                    if classname in ["uchar", "char"]:
+                        node.cpp += "(" + node.type.dim.cpp + ", 0)"
+                    if in_struct:
+                        node.cpp = ""
+                else:
                     node.cpp += " = { "
                     for expr in node.init.exprs:
                         node.cpp += expr.cpp + ", "
                     node.cpp = node.cpp[:-2]
                     node.cpp += " }"
-                elif in_struct:
-                    node.cpp = ""
             else:
                 names = node.type.type.names
                 for name in names:
@@ -3299,10 +3286,16 @@ class PfpInterp(object):
                     names = param.type.type.names
                 else:
                     names = param.type.type.type.names
+                paramtype = ""
                 for name in names:
                     if name == "string":
                         name = "std::string"
-                    func.node.cpp += name + " "
+                    paramtype += name + " "
+                if param.type.__class__ == AST.ArrayDecl:
+                    paramtype = "std::vector<" + paramtype[:-1] + ">& "
+                if param.type.__class__ == AST.ByRefDecl:
+                    paramtype = paramtype[:-1] + "& "
+                func.node.cpp += paramtype
                 func.node.cpp += param.name + ", "
                 func.body.cpp = func.body.cpp.replace("/**/" + param.name + "()", param.name)
             decls = self.get_decls(func.body)

@@ -305,7 +305,14 @@ void check_array_length(unsigned& size) {
 
 void BigEndian() { is_big_endian = true; }
 void LittleEndian() { is_big_endian = false; }
+int IsBigEndian() { return is_big_endian; }
+
+void BitfieldLeftToRight() {
+	is_bitfield_left_to_right[is_big_endian] = true;
+}
+
 void SetBackColor(int color) { }
+
 uint32 Checksum(int checksum_type, int64 start, int64 size) {
 	assert_cond(start + size <= file_acc.file_size, "checksum range invalid");
 	switch(checksum_type) {
@@ -316,10 +323,12 @@ uint32 Checksum(int checksum_type, int64 start, int64 size) {
 		abort();
 	}
 }
+
 void Warning(std::string s) {
 	if (debug_print)
 		fprintf(stderr, "Warning: %s\n", s.c_str());
 }
+
 void Printf(const std::string fmt, ...) {
 	if (!debug_print)
 		return;
@@ -328,6 +337,7 @@ void Printf(const std::string fmt, ...) {
 	vprintf(fmt.c_str(),args);
 	va_end(args);
 }
+
 void SPrintf(std::string& s, const char* fmt, ...) {
 	char res[4096];
 	va_list args;
@@ -336,12 +346,33 @@ void SPrintf(std::string& s, const char* fmt, ...) {
 	va_end(args);
 	s = res;
 }
+
 std::string::size_type Strlen(std::string s) { return s.size(); }
+
+int Strncmp(std::string s1, std::string s2, int n) {
+	return strncmp(s1.c_str(), s2.c_str(), n);
+}
+
+std::string SubStr(std::string s, int start, int count = -1) {
+	size_t len = s.length();
+	assert_cond((unsigned)start < len, "SubStr: invalid position");
+	if (count == -1)
+		return std::string(s.c_str() + start, len - start);
+	assert_cond((unsigned)count <= len - start, "SubStr: invalid count");
+	return std::string(s.c_str() + start, count);
+}
+
+void Memcpy(std::string& dest, std::string src, int n, int destOffset = 0, int srcOffset = 0) {
+	// Other configurations not yet handled
+	assert(destOffset == 0 && srcOffset == 0);
+	assert ((unsigned) n <= src.length());
+	dest = std::string(src.c_str(), n);
+}
+
 int FEof() { return file_acc.feof(); }
+
 int64 FTell() { return file_acc.file_pos; }
-void ReadBytes(std::string& s, int64 pos, int n) {abort();}
-void ReadBytes(char* s, int64 pos, int n) {abort();}
-void ReadBytes(std::vector<uchar> s, int64 pos, int n) {abort();}
+
 int FSeek(int64 pos) {
 	assert_cond(0 <= pos && pos < MAX_FILE_SIZE, "FSeek: invalid position");
 	file_acc.file_pos = pos;
@@ -352,19 +383,303 @@ int FSkip(int64 offset) {
 	assert_cond(0 <= file_acc.file_pos && file_acc.file_pos < MAX_FILE_SIZE, "FSkip: invalid position");
 	return 0;
 }
-int Strncmp(std::string s1, std::string s2, int n) {abort();}
-std::string SubStr(std::string s, int start, int count=-1) {abort();}
-void Memcpy(char* dest, std::string src, int n) {abort();}
-void Memcpy(std::string dest, std::string src, int n) {abort();}
-int IsBigEndian() {abort();}
+
+int64 FileSize() {
+	file_acc.file_size = file_acc.file_pos + file_acc.rand_int(MAX_FILE_SIZE + 1 - file_acc.file_pos, [](unsigned char* file_buf) -> long long { return file_acc.file_size - file_acc.file_pos; } );
+	return file_acc.file_size;
+}
 
 template<typename T>
-int64 FindFirst(T data, int matchcase=true, int wholeword=false, int method=0, double tolerance=0.0, int dir=1, int64 start=0, int64 size=0, int wildcardMatchLength=24) {abort();}
+int64 FindFirst(T data, int matchcase=true, int wholeword=false, int method=0, double tolerance=0.0, int dir=1, int64 start=0, int64 size=0, int wildcardMatchLength=24) {
+	// Other configurations not yet handled
+	assert(matchcase == true && wholeword == false && method == 0 && tolerance == 0.0 && dir == 1 && size == 0 && wildcardMatchLength == 24);
+	T newdata = data;
+	swap_bytes(&newdata, sizeof(T));
+	if (file_acc.evil( [&start, &newdata](unsigned char* file_buf) -> bool {
+			return memmem(file_acc.file_buffer + start, file_acc.file_size - start, &newdata, sizeof(T)) == NULL;
+		} )) {
+		return -1;
+	}
+	int64 pos = start + file_acc.rand_int(MAX_FILE_SIZE + 1 - sizeof(T) - start, [&start, &newdata](unsigned char* file_buf) -> long long {
+			return (unsigned char *)memmem(file_acc.file_buffer + start, file_acc.file_size - start, &newdata, sizeof(T)) - (file_acc.file_buffer + start);
+		} );
+	file_acc.lookahead = true;
+	int64 original_pos = FTell();
+	FSeek(pos);
+	std::vector<T> values = { data };
+	bool evil = file_acc.set_evil_bit(false);
+	file_acc.file_integer(sizeof(T), 0, values);
+	file_acc.set_evil_bit(evil);
+        FSeek(original_pos);
+        file_acc.lookahead = false;
+        return pos;
 
-
-void BitfieldLeftToRight() {
-	is_bitfield_left_to_right[is_big_endian] = true;
 }
-int64 FileSize() {abort();}
+
+extern std::vector<std::string> ReadBytesInitValues;
+
+void ReadBytes(std::string& s, int64 pos, int n, std::vector<std::string> new_known_values = {}) {
+	assert_cond(n > 0, "ReadBytes: invalid number of bytes");
+	file_acc.lookahead = true;
+	int64 original_pos = FTell();
+	FSeek(pos);
+	for (auto& known : ReadBytesInitValues) {
+		new_known_values.push_back(known);
+	}
+	if (new_known_values.size())
+		s = file_acc.file_string(new_known_values);
+	else
+		s = file_acc.file_string(n);
+	FSeek(original_pos);
+	file_acc.lookahead = false;
+}
+
+extern std::vector<char> ReadByteInitValues;
+
+char ReadByte(int64 pos = FTell(), std::vector<char> new_known_values = {}) {
+	file_acc.lookahead = true;
+	int64 original_pos = FTell();
+	FSeek(pos);
+	char value;
+	for (auto& known : ReadByteInitValues) {
+		new_known_values.push_back(known);
+	}
+	if (new_known_values.size())
+		value = file_acc.file_integer(sizeof(char), 0, new_known_values);
+	else
+		value = file_acc.file_integer(sizeof(char), 0);
+	FSeek(original_pos);
+	file_acc.lookahead = false;
+	return value;
+}
+
+extern std::vector<uchar> ReadUByteInitValues;
+
+uchar ReadUByte(int64 pos = FTell(), std::vector<uchar> new_known_values = {}) {
+	file_acc.lookahead = true;
+	int64 original_pos = FTell();
+	FSeek(pos);
+	uchar value;
+	for (auto& known : ReadUByteInitValues) {
+		new_known_values.push_back(known);
+	}
+	if (new_known_values.size())
+		value = file_acc.file_integer(sizeof(uchar), 0, new_known_values);
+	else
+		value = file_acc.file_integer(sizeof(uchar), 0);
+	FSeek(original_pos);
+	file_acc.lookahead = false;
+	return value;
+}
+
+extern std::vector<short> ReadShortInitValues;
+
+short ReadShort(int64 pos = FTell(), std::vector<short> new_known_values = {}) {
+	file_acc.lookahead = true;
+	int64 original_pos = FTell();
+	FSeek(pos);
+	short value;
+	for (auto& known : ReadShortInitValues) {
+		new_known_values.push_back(known);
+	}
+	if (new_known_values.size())
+		value = file_acc.file_integer(sizeof(short), 0, new_known_values);
+	else
+		value = file_acc.file_integer(sizeof(short), 0);
+	FSeek(original_pos);
+	file_acc.lookahead = false;
+	return value;
+}
+
+extern std::vector<ushort> ReadUShortInitValues;
+
+ushort ReadUShort(int64 pos = FTell(), std::vector<ushort> new_known_values = {}) {
+	file_acc.lookahead = true;
+	int64 original_pos = FTell();
+	FSeek(pos);
+	ushort value;
+	for (auto& known : ReadUShortInitValues) {
+		new_known_values.push_back(known);
+	}
+	if (new_known_values.size())
+		value = file_acc.file_integer(sizeof(ushort), 0, new_known_values);
+	else
+		value = file_acc.file_integer(sizeof(ushort), 0);
+	FSeek(original_pos);
+	file_acc.lookahead = false;
+	return value;
+}
+
+extern std::vector<int> ReadIntInitValues;
+
+int ReadInt(int64 pos = FTell(), std::vector<int> new_known_values = {}) {
+	file_acc.lookahead = true;
+	int64 original_pos = FTell();
+	FSeek(pos);
+	int value;
+	for (auto& known : ReadIntInitValues) {
+		new_known_values.push_back(known);
+	}
+	if (new_known_values.size())
+		value = file_acc.file_integer(sizeof(int), 0, new_known_values);
+	else
+		value = file_acc.file_integer(sizeof(int), 0);
+	FSeek(original_pos);
+	file_acc.lookahead = false;
+	return value;
+}
+
+extern std::vector<uint> ReadUIntInitValues;
+
+uint ReadUInt(int64 pos = FTell(), std::vector<uint> new_known_values = {}) {
+	file_acc.lookahead = true;
+	int64 original_pos = FTell();
+	FSeek(pos);
+	uint value;
+	for (auto& known : ReadUIntInitValues) {
+		new_known_values.push_back(known);
+	}
+	if (new_known_values.size())
+		value = file_acc.file_integer(sizeof(uint), 0, new_known_values);
+	else
+		value = file_acc.file_integer(sizeof(uint), 0);
+	FSeek(original_pos);
+	file_acc.lookahead = false;
+	return value;
+}
+
+extern std::vector<int64> ReadQuadInitValues;
+
+int64 ReadQuad(int64 pos = FTell(), std::vector<int64> new_known_values = {}) {
+	file_acc.lookahead = true;
+	int64 original_pos = FTell();
+	FSeek(pos);
+	int64 value;
+	for (auto& known : ReadQuadInitValues) {
+		new_known_values.push_back(known);
+	}
+	if (new_known_values.size())
+		value = file_acc.file_integer(sizeof(int64), 0, new_known_values);
+	else
+		value = file_acc.file_integer(sizeof(int64), 0);
+	FSeek(original_pos);
+	file_acc.lookahead = false;
+	return value;
+}
+
+extern std::vector<uint64> ReadUQuadInitValues;
+
+uint64 ReadUQuad(int64 pos = FTell(), std::vector<uint64> new_known_values = {}) {
+	file_acc.lookahead = true;
+	int64 original_pos = FTell();
+	FSeek(pos);
+	uint64 value;
+	for (auto& known : ReadUQuadInitValues) {
+		new_known_values.push_back(known);
+	}
+	if (new_known_values.size())
+		value = file_acc.file_integer(sizeof(uint64), 0, new_known_values);
+	else
+		value = file_acc.file_integer(sizeof(uint64), 0);
+	FSeek(original_pos);
+	file_acc.lookahead = false;
+	return value;
+}
+
+extern std::vector<int64> ReadInt64InitValues;
+
+int64 ReadInt64(int64 pos = FTell(), std::vector<int64> new_known_values = {}) {
+	file_acc.lookahead = true;
+	int64 original_pos = FTell();
+	FSeek(pos);
+	int64 value;
+	for (auto& known : ReadInt64InitValues) {
+		new_known_values.push_back(known);
+	}
+	if (new_known_values.size())
+		value = file_acc.file_integer(sizeof(int64), 0, new_known_values);
+	else
+		value = file_acc.file_integer(sizeof(int64), 0);
+	FSeek(original_pos);
+	file_acc.lookahead = false;
+	return value;
+}
+
+extern std::vector<uint64> ReadUInt64InitValues;
+
+uint64 ReadUInt64(int64 pos = FTell(), std::vector<uint64> new_known_values = {}) {
+	file_acc.lookahead = true;
+	int64 original_pos = FTell();
+	FSeek(pos);
+	uint64 value;
+	for (auto& known : ReadUInt64InitValues) {
+		new_known_values.push_back(known);
+	}
+	if (new_known_values.size())
+		value = file_acc.file_integer(sizeof(uint64), 0, new_known_values);
+	else
+		value = file_acc.file_integer(sizeof(uint64), 0);
+	FSeek(original_pos);
+	file_acc.lookahead = false;
+	return value;
+}
+
+extern std::vector<hfloat> ReadHFloatInitValues;
+
+hfloat ReadHFloat(int64 pos = FTell(), std::vector<hfloat> new_known_values = {}) {
+	file_acc.lookahead = true;
+	int64 original_pos = FTell();
+	FSeek(pos);
+	hfloat value;
+	for (auto& known : ReadHFloatInitValues) {
+		new_known_values.push_back(known);
+	}
+	if (new_known_values.size())
+		value = file_acc.file_integer(sizeof(hfloat), 0, new_known_values);
+	else
+		value = file_acc.file_integer(sizeof(hfloat), 0);
+	FSeek(original_pos);
+	file_acc.lookahead = false;
+	return value;
+}
+
+extern std::vector<float> ReadFloatInitValues;
+
+float ReadFloat(int64 pos = FTell(), std::vector<float> new_known_values = {}) {
+	file_acc.lookahead = true;
+	int64 original_pos = FTell();
+	FSeek(pos);
+	float value;
+	for (auto& known : ReadFloatInitValues) {
+		new_known_values.push_back(known);
+	}
+	if (new_known_values.size())
+		value = file_acc.file_integer(sizeof(float), 0, new_known_values);
+	else
+		value = file_acc.file_integer(sizeof(float), 0);
+	FSeek(original_pos);
+	file_acc.lookahead = false;
+	return value;
+}
+
+extern std::vector<double> ReadDoubleInitValues;
+
+double ReadDouble(int64 pos = FTell(), std::vector<double> new_known_values = {}) {
+	file_acc.lookahead = true;
+	int64 original_pos = FTell();
+	FSeek(pos);
+	double value;
+	for (auto& known : ReadDoubleInitValues) {
+		new_known_values.push_back(known);
+	}
+	if (new_known_values.size())
+		value = file_acc.file_integer(sizeof(double), 0, new_known_values);
+	else
+		value = file_acc.file_integer(sizeof(double), 0);
+	FSeek(original_pos);
+	file_acc.lookahead = false;
+	return value;
+}
+
 
 #endif

@@ -382,7 +382,7 @@ def ReadLine(params, ctxt, scope, stream, coord):
 # void ReadBytes( uchar buffer[], int64 pos, int n )
 @native(name="ReadBytes", ret=pfp.fields.Void)
 def ReadBytes(params, ctxt, scope, stream, coord):
-    if len(params) != 3:
+    if len(params) not in [3, 4]:
         raise errors.InvalidArguments(
             coord,
             "3 arguments (buffer, pos, n)",

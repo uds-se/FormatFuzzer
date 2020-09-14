@@ -55,10 +55,6 @@ class file_accessor {
 	bool has_bitmap = false;
 	std::vector<bool> bitmap;
 
-	bool evil(std::function<bool (unsigned char*)> parse) {
-		return rand_int(127 + allow_evil_values, [&parse](unsigned char* file_buf) -> long long { return parse(file_buf) ? 127 : 0; } ) == 127;
-	}
-
 	unsigned long long parse_integer(unsigned char* file_buf, unsigned size, unsigned bits = 0) {
 		unsigned long long value = 0;
 		if (bits) {
@@ -191,6 +187,14 @@ class file_accessor {
 
 		if (file_size < file_pos)
 			file_size = file_pos;
+
+		if (lookahead) {
+			has_bitmap = true;
+			unsigned original_pos = file_pos - size;
+			for (unsigned i = 0; i < size; ++i)
+				bitmap[original_pos + i] = true;
+		}
+
 		if (!get_parse_tree)
 			return;
 		if (start_pos < generator_stack.back().min)
@@ -215,6 +219,10 @@ public:
 		bool old = allow_evil_values;
 		allow_evil_values = allow;
 		return old;
+	}
+
+	bool evil(std::function<bool (unsigned char*)> parse) {
+		return rand_int(127 + allow_evil_values, [&parse](unsigned char* file_buf) -> long long { return parse(file_buf) ? 127 : 0; } ) == 127;
 	}
 
 	long long rand_int(unsigned long long x, std::function<long long (unsigned char*)> parse) {
@@ -281,7 +289,7 @@ public:
 	}
 
 	template<typename T>
-	bool is_compatible(unsigned size, T& v) {
+	bool is_compatible_integer(unsigned size, T& v) {
 		unsigned char* p = (unsigned char*) &v;
 		for (unsigned i = 0; i < size; ++i) {
 			if (bitmap[file_pos + i]) {
@@ -309,7 +317,7 @@ public:
 			if (match) {
 				assert_cond(bits == 0, "bitfield lookahead not implemented");
 				for (T& v : known) {
-					if (is_compatible(size, v))
+					if (is_compatible_integer(size, v))
 						compatible.push_back(v);
 				}
 			}
@@ -317,29 +325,22 @@ public:
 		std::vector<T>& good = match ? compatible : known;
 
 		if ((match && compatible.empty()) || evil( [&size, &bits, &good, this](unsigned char* file_buf) -> bool {
-				T value = parse_integer(file_buf, size, bits);
+				T value = (T)parse_integer(file_buf, size, bits);
 				return std::find(good.begin(), good.end(), value) == good.end();
 			} )) {
 			return file_integer(size, bits);
 		}
 		T value = good[rand_int(good.size(), [&size, &bits, &good, this](unsigned char* file_buf) -> long long {
-			T value = parse_integer(file_buf, size, bits);
+			T value = (T)parse_integer(file_buf, size, bits);
 			return std::find(good.begin(), good.end(), value) - good.begin();
 		} )];
 		T newvalue = value;
 		if (bits) {
-			value = (unsigned long long)value & ((1LLU << bits) - 1LLU);
+			value = (T)((unsigned long long)value & ((1LLU << bits) - 1LLU));
 			write_file_bits(value, size, bits);
 		} else {
 			swap_bytes(&newvalue, size);
 			write_file(&newvalue, size);
-		}
-
-		if (lookahead) {
-			has_bitmap = true;
-			unsigned original_pos = file_pos - size;
-			for (unsigned i = 0; i < size; ++i)
-				bitmap[original_pos + i] = true;
 		}
 
 		return value;
@@ -398,26 +399,48 @@ public:
 			write_file(&newvalue, size);
 		}
 
-		if (lookahead) {
-			has_bitmap = true;
-			unsigned original_pos = file_pos - size;
-			for (unsigned i = 0; i < size; ++i)
-				bitmap[original_pos + i] = true;
-		}
-
 		return value;
+	}
+
+	bool is_compatible_string(std::string& v) {
+		unsigned char* p = (unsigned char*) v.c_str();
+		for (unsigned i = 0; i < v.length(); ++i) {
+			if (bitmap[file_pos + i] && p[i] != file_buffer[file_pos + i])
+				return false;
+		}
+		return true;
 	}
 	
 	std::string file_string(std::vector<std::string>& known) {
-		if (evil( [&known](unsigned char* file_buf) -> bool {
-				std::string value((char*) file_buf, known[0].length());
-				return std::find(known.begin(), known.end(), value) == known.end();
-			} )) {
-			return file_string(known[0].length());
+		int size = known[0].length();
+		assert_cond(file_pos + size <= MAX_FILE_SIZE, "file size exceeded MAX_FILE_SIZE");
+		std::vector<std::string> compatible;
+		bool match = false;
+		if (has_bitmap) {
+			for (int i = 0; i < size; ++i) {
+				if (bitmap[file_pos + i]) {
+					match = true;
+					break;
+				}
+			}
+			if (match) {
+				for (std::string& v : known) {
+					if (is_compatible_string(v))
+						compatible.push_back(v);
+				}
+			}
 		}
-		std::string value = known[rand_int(known.size(), [&known](unsigned char* file_buf) -> long long {
-				std::string value((char*) file_buf, known[0].length());
-				return std::find(known.begin(), known.end(), value) - known.begin();
+		std::vector<std::string>& good = match ? compatible : known;
+
+		if ((match && compatible.empty()) || evil( [&good](unsigned char* file_buf) -> bool {
+				std::string value((char*) file_buf, good[0].length());
+				return std::find(good.begin(), good.end(), value) == good.end();
+			} )) {
+			return file_string(size);
+		}
+		std::string value = good[rand_int(good.size(), [&good](unsigned char* file_buf) -> long long {
+				std::string value((char*) file_buf, good[0].length());
+				return std::find(good.begin(), good.end(), value) - good.begin();
 			} )];
 		ssize_t len = value.length();
 		write_file(value.c_str(), len);
@@ -446,6 +469,13 @@ public:
 				buf[i] = rand_int(256, [&i](unsigned char* file_buf) -> long long { return file_buf[i]; } );
 		}
 		buf[len] = '\0';
+		if (has_bitmap) {
+			for (int i = 0; i < len; ++i) {
+				if (bitmap[file_pos + i]) {
+					buf[i] = file_buffer[file_pos + i];
+				}
+			}
+		}
 		std::string value((char*)buf, len);
 		if (size == 0)
 			++len;
@@ -465,6 +495,13 @@ public:
 				buf[i] += 34;
 		}
 		buf[len] = '\0';
+		if (has_bitmap) {
+			for (int i = 0; i < len; ++i) {
+				if (bitmap[file_pos + i]) {
+					buf[i] = file_buffer[file_pos + i];
+				}
+			}
+		}
 		std::string value((char*)buf, len);
 		if (size == 0)
 			++len;
