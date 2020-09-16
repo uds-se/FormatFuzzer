@@ -127,6 +127,25 @@ const int FALSE = 0;
 	name ## _exists = true
 
 
+unsigned long long STR2INT(std::string s) {
+	assert(s.size() <= 8);
+	unsigned long long result = 0;
+	for (char& c : s) {
+		result = (result << 8) | c;
+	}
+	return result;
+}
+
+constexpr unsigned long long STR2INT(const char * s) {
+	assert(strlen(s) <= 8);
+	unsigned long long result = 0;
+	while (*s) {
+		result = (result << 8) | *s;
+		++s;
+	}
+	return result;
+}
+
 unsigned char rand_buffer[MAX_RAND_SIZE];
 file_accessor file_acc;
 
@@ -385,7 +404,11 @@ int FSkip(int64 offset) {
 }
 
 int64 FileSize() {
-	file_acc.file_size = file_acc.file_pos + file_acc.rand_int(MAX_FILE_SIZE + 1 - file_acc.file_pos, [](unsigned char* file_buf) -> long long { return file_acc.file_size - file_acc.file_pos; } );
+	static bool has_size = false;
+	if (!has_size) {
+		file_acc.file_size = file_acc.file_pos + file_acc.rand_int(MAX_FILE_SIZE + 1 - file_acc.file_pos, [](unsigned char* file_buf) -> long long { return file_acc.file_size - file_acc.file_pos; } );
+		has_size = true;
+	}
 	return file_acc.file_size;
 }
 

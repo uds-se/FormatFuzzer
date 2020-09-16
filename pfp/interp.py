@@ -689,7 +689,7 @@ class PfpInterp(object):
         else:
             if classname not in self._to_define:
                 self._to_define[classname] = []
-            self._to_define[classname].append((node.name, node))
+            self._to_define[classname].append((node.name, node, len(self._incomplete_stack) > 1))
             node.cpp = "/*TODO field " + node.name + "*/"
             node.type.cpp = classname
             if not self._incomplete:
@@ -861,17 +861,17 @@ class PfpInterp(object):
                 cpp += "\t" + decl.type.cpp + " " + name + "_var;\n"
         if is_union:
             cpp += "};\n"
-        cpp += "\n"
+        cpp += "\npublic:\n"
         for name, decl in variables:
             cpp += "\tbool " + name + "_exists = false;\n"
-        cpp += "\npublic:\n"
+        cpp += "\n"
         for name, decl in variables:
             if hasattr(decl, "is_structunion"):
                 if decl.type.cpp in self._defined:
                     cpp += "\t" + decl.type.cpp + "& " + name + "() {\n\t\tassert_cond(" + name + "_exists, \"struct field " + name + " does not exist\");\n\t\treturn *" + name + "_var;\n\t}\n"
                 else:
                     cpp += "\t" + decl.type.cpp + "& " + name + "();\n"
-                    self._to_define[decl.type.cpp].append((decl.type.cpp + "& " + classname + "::" + name + "() {\n\tassert_cond(" + name + "_exists, \"struct field " + name + " does not exist\");\n\treturn *" + name + "_var;\n}\n", decl))
+                    self._to_define[decl.type.cpp].append((decl.type.cpp + "& " + classname + "::" + name + "() {\n\tassert_cond(" + name + "_exists, \"struct field " + name + " does not exist\");\n\treturn *" + name + "_var;\n}\n", decl, False))
             elif is_union and decl.type.cpp == "std::string" and decl.type.__class__ == AST.ArrayDecl:
                 cpp += "\tstd::string " + name + "() {\n\t\tassert_cond(" + name + "_exists, \"struct field " + name + " does not exist\");\n\t\treturn std::string(" + name + "_var, " + decl.type.dim.cpp + ");\n\t}\n"
             else:
@@ -936,9 +936,9 @@ class PfpInterp(object):
         cpp += ");\n};\n\n"
         self._cpp.append((classname, cpp))
         if classname in self._to_define:
-            for field_name, node in self._to_define[classname]:
+            for field_name, node, is_var in self._to_define[classname]:
                 if "::" in field_name:
-                    self._generates_cpp += field_name
+                    self._cpp.append((classname + "_to_define", field_name))
                     continue
                 if field_name not in self._defined:
                     self._defined[field_name] = classname
@@ -948,7 +948,7 @@ class PfpInterp(object):
                 if hasattr(node, "originalname"):
                     name = node.originalname
                 node.cpp = "GENERATE"
-                if len(self._incomplete_stack) > 1:
+                if is_var:
                     node.cpp += "_VAR"
                 node.cpp += "(" + name + ", ::g->" + field_name + ".generate("
                 arg_num = 0
@@ -2028,7 +2028,7 @@ class PfpInterp(object):
                     node.name += "_"
                 is_char_array = False
                 is_string = False
-                if classname in ["char", "uchar", "unsigned char", "CHAR", "UCHAR"]:
+                if classname in ["char", "uchar", "unsigned char", "CHAR", "UCHAR", "byte", "ubyte", "BYTE", "UBYTE"]:
                     node.type.cpp = "std::string"
                     is_char_array = True
                 else:
@@ -2137,14 +2137,14 @@ class PfpInterp(object):
                     self._cpp.append((classname + "_array_class", cpp))
                     self._globals.append((node.name, nodecpp))
                 else:
+                    self._globals.append((node.name, nodecpp))
                     if classname in self._defined:
                         self._cpp.append((classname + "_array_class", cpp))
-                        self._globals.append((node.name, nodecpp))
                         self.add_class_generate(classname, classnode, is_union)
                     else:
                         if classname not in self._to_define:
                             self._to_define[classname] = []
-                        self._to_define[classname].append((cpp, node))
+                        self._to_define[classname].append((cpp, node, False))
                         if classname not in self._declared:
                             self._declared.add(classname)
                             self._cpp.append((classname, "\nclass " + classname + ";\n\n"))
@@ -2463,6 +2463,9 @@ class PfpInterp(object):
                 if self._generate:
                     return None
                 raise
+
+        if "is_local" in vars(sub_field) and sub_field.is_local:
+            node.cpp = node.cpp[:-2]
 
         return sub_field
 
@@ -2953,7 +2956,7 @@ class PfpInterp(object):
             raise errors.UnsupportedUnaryOperator(node.coord, node.op)
 
         if node.op == "exists" and node.expr.__class__ == AST.StructRef:
-            node.cpp = "EXISTS(" + node.expr.name.name + ", " + node.expr.field.name + ")"
+            node.cpp = node.expr.name.name + "." + node.expr.field.name + "_exists"
 
         if node.op in special_switch:
             return special_switch[node.op](node, scope, ctxt, stream)
@@ -3032,8 +3035,11 @@ class PfpInterp(object):
         """
         res = fields.Int()
         try:
-            self._handle_node(node.expr, scope, ctxt, stream)
-            res._pfp__set_value(1)
+            a = self._handle_node(node.expr, scope, ctxt, stream)
+            if a is not None:
+                res._pfp__set_value(1)
+            else:
+                res._pfp__set_value(0)
         except AttributeError:
             res._pfp__set_value(0)
         return res
@@ -3267,6 +3273,21 @@ class PfpInterp(object):
         if node.name.name.startswith("Read"):
             self._read_funcs.add(node.name.name)
         node.cpp = "" + node.name.name + "("
+        if node.name.name in ["Printf", "SPrintf"]:
+            is_sprintf = 1 if node.name.name == "SPrintf" else 0
+            fmt = node.args.exprs[is_sprintf].cpp
+            i = 0
+            index = fmt.find("%")
+            while index != -1:
+                if fmt[index + 1] == "%":
+                    index = fmt.find("%", index + 2)
+                    continue
+                i += 1
+                if fmt[index + 1] == "s":
+                    node.args.exprs[is_sprintf + i].cpp += ".c_str()"
+                index = fmt.find("%", index + 2)
+            if is_sprintf + i + 1 != len(node.args.exprs):
+                print("Warning: wrong number of % formats in " + node.name.name)
         if node.args:
             node.cpp += ", ".join([arg.cpp for arg in node.args.exprs])
         node.cpp += ")"
@@ -3794,6 +3815,7 @@ class PfpInterp(object):
         cond = self._handle_node(node.cond, scope, ctxt, stream)
         if cond is None:
             cond = 0
+        is_string = "width" in vars(cond)
 
         default_idx = None
         found_match = False
@@ -3820,11 +3842,21 @@ class PfpInterp(object):
         if self._generate:
             ret = exec_case(0, cases)
             node.cpp = "switch ("
+            if is_string:
+                node.cpp += "STR2INT("
             node.cpp += node.cond.cpp
+            if is_string:
+                node.cpp += ")"
             node.cpp += ") {\n"
             for child in cases:
                 if child.__class__ == AST.Case:
-                    node.cpp += "case " + child.expr.cpp + ":\n"
+                    node.cpp += "case "
+                    if is_string:
+                        node.cpp += "STR2INT("
+                    node.cpp += child.expr.cpp
+                    if is_string:
+                        node.cpp += ")"
+                    node.cpp += ":\n"
                     for stmt in child.stmts:
                         node.cpp += "\t" + stmt.cpp.replace("\n", "\n\t") + ";\n"
                 elif child.__class__ == AST.Default:
