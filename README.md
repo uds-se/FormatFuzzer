@@ -116,14 +116,14 @@ Use the following commands to create a fuzzer `gif-fuzzer`.
 First, compile the generic command-line driver:
 
 ```
-g++ -c -I . -std=c++11 -g -O3 -Wall fuzzer.cpp
+g++ -c -I . -std=c++17 -g -O3 -Wall fuzzer.cpp
 ```
-(`-I .` denotes the location of the `bt.h` file; `-std=c++11` sets the C++ standard.)
+(`-I .` denotes the location of the `bt.h` file; `-std=c++17` sets the C++ standard.)
 
 Then, compile the binary parser/compiler:
 
 ```
-g++ -c -I . -std=c++11 -g -O3 -Wall gif.cpp
+g++ -c -I . -std=c++17 -g -O3 -Wall gif.cpp
 ```
 
 Finally, link the binary parser/compiler with the command-line driver to obtain an executable. If you use any extra libraries (such as `-lz`), be sure to specify these here too.

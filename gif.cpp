@@ -92,10 +92,10 @@ class GIFHEADER {
 	std::string Signature_var;
 	std::string Version_var;
 
+public:
 	bool Signature_exists = false;
 	bool Version_exists = false;
 
-public:
 	std::string Signature() {
 		assert_cond(Signature_exists, "struct field Signature does not exist");
 		return Signature_var;
@@ -195,12 +195,12 @@ class LOGICALSCREENDESCRIPTOR_PACKEDFIELDS {
 	UBYTE SortFlag_var : 1;
 	UBYTE SizeOfGlobalColorTable_var : 3;
 
+public:
 	bool GlobalColorTableFlag_exists = false;
 	bool ColorResolution_exists = false;
 	bool SortFlag_exists = false;
 	bool SizeOfGlobalColorTable_exists = false;
 
-public:
 	UBYTE GlobalColorTableFlag() {
 		assert_cond(GlobalColorTableFlag_exists, "struct field GlobalColorTableFlag does not exist");
 		return GlobalColorTableFlag_var;
@@ -280,13 +280,13 @@ class LOGICALSCREENDESCRIPTOR {
 	UBYTE BackgroundColorIndex_var;
 	UBYTE PixelAspectRatio_var;
 
+public:
 	bool Width_exists = false;
 	bool Height_exists = false;
 	bool PackedFields_exists = false;
 	bool BackgroundColorIndex_exists = false;
 	bool PixelAspectRatio_exists = false;
 
-public:
 	ushort Width() {
 		assert_cond(Width_exists, "struct field Width does not exist");
 		return Width_var;
@@ -336,11 +336,11 @@ class RGB {
 	UBYTE G_var;
 	UBYTE B_var;
 
+public:
 	bool R_exists = false;
 	bool G_exists = false;
 	bool B_exists = false;
 
-public:
 	UBYTE R() {
 		assert_cond(R_exists, "struct field R does not exist");
 		return R_var;
@@ -405,9 +405,9 @@ class GLOBALCOLORTABLE {
 
 	std::vector<RGB*> rgb_var;
 
+public:
 	bool rgb_exists = false;
 
-public:
 	std::vector<RGB*> rgb() {
 		assert_cond(rgb_exists, "struct field rgb does not exist");
 		return rgb_var;
@@ -447,13 +447,13 @@ class IMAGEDESCRIPTOR_PACKEDFIELDS {
 	UBYTE Reserved_var : 2;
 	UBYTE SizeOfLocalColorTable_var : 3;
 
+public:
 	bool LocalColorTableFlag_exists = false;
 	bool InterlaceFlag_exists = false;
 	bool SortFlag_exists = false;
 	bool Reserved_exists = false;
 	bool SizeOfLocalColorTable_exists = false;
 
-public:
 	UBYTE LocalColorTableFlag() {
 		assert_cond(LocalColorTableFlag_exists, "struct field LocalColorTableFlag does not exist");
 		return LocalColorTableFlag_var;
@@ -509,6 +509,7 @@ class IMAGEDESCRIPTOR {
 	ushort ImageHeight_var;
 	IMAGEDESCRIPTOR_PACKEDFIELDS* PackedFields_var;
 
+public:
 	bool ImageSeperator_exists = false;
 	bool ImageLeftPosition_exists = false;
 	bool ImageTopPosition_exists = false;
@@ -516,7 +517,6 @@ class IMAGEDESCRIPTOR {
 	bool ImageHeight_exists = false;
 	bool PackedFields_exists = false;
 
-public:
 	UBYTE ImageSeperator() {
 		assert_cond(ImageSeperator_exists, "struct field ImageSeperator does not exist");
 		return ImageSeperator_var;
@@ -568,9 +568,9 @@ class LOCALCOLORTABLE {
 
 	std::vector<RGB*> rgb_var;
 
+public:
 	bool rgb_exists = false;
 
-public:
 	std::vector<RGB*> rgb() {
 		assert_cond(rgb_exists, "struct field rgb does not exist");
 		return rgb_var;
@@ -607,10 +607,10 @@ class DATASUBBLOCK {
 	UBYTE Size_var;
 	std::string Data_var;
 
+public:
 	bool Size_exists = false;
 	bool Data_exists = false;
 
-public:
 	UBYTE Size() {
 		assert_cond(Size_exists, "struct field Size does not exist");
 		return Size_var;
@@ -647,10 +647,10 @@ class DATASUBBLOCKS {
 	DATASUBBLOCK* DataSubBlock_var;
 	UBYTE BlockTerminator_var;
 
+public:
 	bool DataSubBlock_exists = false;
 	bool BlockTerminator_exists = false;
 
-public:
 	DATASUBBLOCK& DataSubBlock() {
 		assert_cond(DataSubBlock_exists, "struct field DataSubBlock does not exist");
 		return *DataSubBlock_var;
@@ -691,10 +691,10 @@ class IMAGEDATA {
 	UBYTE LZWMinimumCodeSize_var;
 	DATASUBBLOCKS* DataSubBlocks_var;
 
+public:
 	bool LZWMinimumCodeSize_exists = false;
 	bool DataSubBlocks_exists = false;
 
-public:
 	UBYTE LZWMinimumCodeSize() {
 		assert_cond(LZWMinimumCodeSize_exists, "struct field LZWMinimumCodeSize does not exist");
 		return LZWMinimumCodeSize_var;
@@ -733,12 +733,12 @@ class GRAPHICCONTROLEXTENSION_DATASUBBLOCK_PACKEDFIELDS {
 	UBYTE UserInputFlag_var : 1;
 	UBYTE TransparentColorFlag_var : 1;
 
+public:
 	bool Reserved_exists = false;
 	bool DisposalMethod_exists = false;
 	bool UserInputFlag_exists = false;
 	bool TransparentColorFlag_exists = false;
 
-public:
 	UBYTE Reserved() {
 		assert_cond(Reserved_exists, "struct field Reserved does not exist");
 		return Reserved_var;
@@ -785,12 +785,12 @@ class GRAPHICCONTROLSUBBLOCK {
 	ushort DelayTime_var;
 	UBYTE TransparentColorIndex_var;
 
+public:
 	bool BlockSize_exists = false;
 	bool PackedFields_exists = false;
 	bool DelayTime_exists = false;
 	bool TransparentColorIndex_exists = false;
 
-public:
 	UBYTE BlockSize() {
 		assert_cond(BlockSize_exists, "struct field BlockSize does not exist");
 		return BlockSize_var;
@@ -837,12 +837,12 @@ class GRAPHICCONTROLEXTENSION {
 	GRAPHICCONTROLSUBBLOCK* GraphicControlSubBlock_var;
 	UBYTE BlockTerminator_var;
 
+public:
 	bool ExtensionIntroducer_exists = false;
 	bool GraphicControlLabel_exists = false;
 	bool GraphicControlSubBlock_exists = false;
 	bool BlockTerminator_exists = false;
 
-public:
 	UBYTE ExtensionIntroducer() {
 		assert_cond(ExtensionIntroducer_exists, "struct field ExtensionIntroducer does not exist");
 		return ExtensionIntroducer_var;
@@ -888,11 +888,11 @@ class COMMENTEXTENSION {
 	UBYTE CommentLabel_var;
 	DATASUBBLOCKS* CommentData_var;
 
+public:
 	bool ExtensionIntroducer_exists = false;
 	bool CommentLabel_exists = false;
 	bool CommentData_exists = false;
 
-public:
 	UBYTE ExtensionIntroducer() {
 		assert_cond(ExtensionIntroducer_exists, "struct field ExtensionIntroducer does not exist");
 		return ExtensionIntroducer_var;
@@ -940,6 +940,7 @@ class PLAINTEXTSUBBLOCK {
 	UBYTE TextForegroundColorIndex_var;
 	UBYTE TextBackgroundColorIndex_var;
 
+public:
 	bool BlockSize_exists = false;
 	bool TextGridLeftPosition_exists = false;
 	bool TextGridTopPosition_exists = false;
@@ -950,7 +951,6 @@ class PLAINTEXTSUBBLOCK {
 	bool TextForegroundColorIndex_exists = false;
 	bool TextBackgroundColorIndex_exists = false;
 
-public:
 	UBYTE BlockSize() {
 		assert_cond(BlockSize_exists, "struct field BlockSize does not exist");
 		return BlockSize_var;
@@ -1017,12 +1017,12 @@ class PLAINTEXTEXTENTION {
 	PLAINTEXTSUBBLOCK* PlainTextSubBlock_var;
 	DATASUBBLOCKS* PlainTextData_var;
 
+public:
 	bool ExtensionIntroducer_exists = false;
 	bool PlainTextLabel_exists = false;
 	bool PlainTextSubBlock_exists = false;
 	bool PlainTextData_exists = false;
 
-public:
 	UBYTE ExtensionIntroducer() {
 		assert_cond(ExtensionIntroducer_exists, "struct field ExtensionIntroducer does not exist");
 		return ExtensionIntroducer_var;
@@ -1068,11 +1068,11 @@ class APPLICATIONSUBBLOCK {
 	std::string ApplicationIdentifier_var;
 	std::string ApplicationAuthenticationCode_var;
 
+public:
 	bool BlockSize_exists = false;
 	bool ApplicationIdentifier_exists = false;
 	bool ApplicationAuthenticationCode_exists = false;
 
-public:
 	UBYTE BlockSize() {
 		assert_cond(BlockSize_exists, "struct field BlockSize does not exist");
 		return BlockSize_var;
@@ -1115,12 +1115,12 @@ class APPLICATIONEXTENTION {
 	APPLICATIONSUBBLOCK* ApplicationSubBlock_var;
 	DATASUBBLOCKS* ApplicationData_var;
 
+public:
 	bool ExtensionIntroducer_exists = false;
 	bool ApplicationLabel_exists = false;
 	bool ApplicationSubBlock_exists = false;
 	bool ApplicationData_exists = false;
 
-public:
 	UBYTE ExtensionIntroducer() {
 		assert_cond(ExtensionIntroducer_exists, "struct field ExtensionIntroducer does not exist");
 		return ExtensionIntroducer_var;
@@ -1166,11 +1166,11 @@ class UNDEFINEDDATA {
 	UBYTE Label_var;
 	DATASUBBLOCKS* DataSubBlocks_var;
 
+public:
 	bool ExtensionIntroducer_exists = false;
 	bool Label_exists = false;
 	bool DataSubBlocks_exists = false;
 
-public:
 	UBYTE ExtensionIntroducer() {
 		assert_cond(ExtensionIntroducer_exists, "struct field ExtensionIntroducer does not exist");
 		return ExtensionIntroducer_var;
@@ -1217,6 +1217,7 @@ class DATA {
 	APPLICATIONEXTENTION* ApplicationExtension_var;
 	UNDEFINEDDATA* UndefinedData_var;
 
+public:
 	bool ImageDescriptor_exists = false;
 	bool LocalColorTable_exists = false;
 	bool ImageData_exists = false;
@@ -1226,7 +1227,6 @@ class DATA {
 	bool ApplicationExtension_exists = false;
 	bool UndefinedData_exists = false;
 
-public:
 	IMAGEDESCRIPTOR& ImageDescriptor() {
 		assert_cond(ImageDescriptor_exists, "struct field ImageDescriptor does not exist");
 		return *ImageDescriptor_var;
@@ -1289,9 +1289,9 @@ class TRAILER {
 
 	UBYTE GIFTrailer_var;
 
+public:
 	bool GIFTrailer_exists = false;
 
-public:
 	UBYTE GIFTrailer() {
 		assert_cond(GIFTrailer_exists, "struct field GIFTrailer does not exist");
 		return GIFTrailer_var;
@@ -1317,252 +1317,19 @@ public:
 };
 
 std::vector<char> ReadByteInitValues;
-
-char ReadByte(int64 pos = FTell(), std::vector<char> new_known_values = {}) {
-	file_acc.lookahead = true;
-	int64 original_pos = FTell();
-	FSeek(pos);
-	char value;
-	for (auto& known : ReadByteInitValues) {
-		new_known_values.push_back(known);
-	}
-	if (new_known_values.size())
-		value = file_acc.file_integer(sizeof(char), 0, new_known_values);
-	else
-		value = file_acc.file_integer(sizeof(char), 0);
-	FSeek(original_pos);
-	file_acc.lookahead = false;
-	return value;
-}
-
-std::vector<double> ReadDoubleInitValues;
-
-double ReadDouble(int64 pos = FTell(), std::vector<double> new_known_values = {}) {
-	file_acc.lookahead = true;
-	int64 original_pos = FTell();
-	FSeek(pos);
-	double value;
-	for (auto& known : ReadDoubleInitValues) {
-		new_known_values.push_back(known);
-	}
-	if (new_known_values.size())
-		value = file_acc.file_integer(sizeof(double), 0, new_known_values);
-	else
-		value = file_acc.file_integer(sizeof(double), 0);
-	FSeek(original_pos);
-	file_acc.lookahead = false;
-	return value;
-}
-
-std::vector<float> ReadFloatInitValues;
-
-float ReadFloat(int64 pos = FTell(), std::vector<float> new_known_values = {}) {
-	file_acc.lookahead = true;
-	int64 original_pos = FTell();
-	FSeek(pos);
-	float value;
-	for (auto& known : ReadFloatInitValues) {
-		new_known_values.push_back(known);
-	}
-	if (new_known_values.size())
-		value = file_acc.file_integer(sizeof(float), 0, new_known_values);
-	else
-		value = file_acc.file_integer(sizeof(float), 0);
-	FSeek(original_pos);
-	file_acc.lookahead = false;
-	return value;
-}
-
-std::vector<hfloat> ReadHFloatInitValues;
-
-hfloat ReadHFloat(int64 pos = FTell(), std::vector<hfloat> new_known_values = {}) {
-	file_acc.lookahead = true;
-	int64 original_pos = FTell();
-	FSeek(pos);
-	hfloat value;
-	for (auto& known : ReadHFloatInitValues) {
-		new_known_values.push_back(known);
-	}
-	if (new_known_values.size())
-		value = file_acc.file_integer(sizeof(hfloat), 0, new_known_values);
-	else
-		value = file_acc.file_integer(sizeof(hfloat), 0);
-	FSeek(original_pos);
-	file_acc.lookahead = false;
-	return value;
-}
-
-std::vector<int> ReadIntInitValues;
-
-int ReadInt(int64 pos = FTell(), std::vector<int> new_known_values = {}) {
-	file_acc.lookahead = true;
-	int64 original_pos = FTell();
-	FSeek(pos);
-	int value;
-	for (auto& known : ReadIntInitValues) {
-		new_known_values.push_back(known);
-	}
-	if (new_known_values.size())
-		value = file_acc.file_integer(sizeof(int), 0, new_known_values);
-	else
-		value = file_acc.file_integer(sizeof(int), 0);
-	FSeek(original_pos);
-	file_acc.lookahead = false;
-	return value;
-}
-
-std::vector<int64> ReadInt64InitValues;
-
-int64 ReadInt64(int64 pos = FTell(), std::vector<int64> new_known_values = {}) {
-	file_acc.lookahead = true;
-	int64 original_pos = FTell();
-	FSeek(pos);
-	int64 value;
-	for (auto& known : ReadInt64InitValues) {
-		new_known_values.push_back(known);
-	}
-	if (new_known_values.size())
-		value = file_acc.file_integer(sizeof(int64), 0, new_known_values);
-	else
-		value = file_acc.file_integer(sizeof(int64), 0);
-	FSeek(original_pos);
-	file_acc.lookahead = false;
-	return value;
-}
-
-std::vector<int64> ReadQuadInitValues;
-
-int64 ReadQuad(int64 pos = FTell(), std::vector<int64> new_known_values = {}) {
-	file_acc.lookahead = true;
-	int64 original_pos = FTell();
-	FSeek(pos);
-	int64 value;
-	for (auto& known : ReadQuadInitValues) {
-		new_known_values.push_back(known);
-	}
-	if (new_known_values.size())
-		value = file_acc.file_integer(sizeof(int64), 0, new_known_values);
-	else
-		value = file_acc.file_integer(sizeof(int64), 0);
-	FSeek(original_pos);
-	file_acc.lookahead = false;
-	return value;
-}
-
-std::vector<short> ReadShortInitValues;
-
-short ReadShort(int64 pos = FTell(), std::vector<short> new_known_values = {}) {
-	file_acc.lookahead = true;
-	int64 original_pos = FTell();
-	FSeek(pos);
-	short value;
-	for (auto& known : ReadShortInitValues) {
-		new_known_values.push_back(known);
-	}
-	if (new_known_values.size())
-		value = file_acc.file_integer(sizeof(short), 0, new_known_values);
-	else
-		value = file_acc.file_integer(sizeof(short), 0);
-	FSeek(original_pos);
-	file_acc.lookahead = false;
-	return value;
-}
-
 std::vector<uchar> ReadUByteInitValues = {  };
-
-uchar ReadUByte(int64 pos = FTell(), std::vector<uchar> new_known_values = {}) {
-	file_acc.lookahead = true;
-	int64 original_pos = FTell();
-	FSeek(pos);
-	uchar value;
-	for (auto& known : ReadUByteInitValues) {
-		new_known_values.push_back(known);
-	}
-	if (new_known_values.size())
-		value = file_acc.file_integer(sizeof(uchar), 0, new_known_values);
-	else
-		value = file_acc.file_integer(sizeof(uchar), 0);
-	FSeek(original_pos);
-	file_acc.lookahead = false;
-	return value;
-}
-
-std::vector<uint> ReadUIntInitValues;
-
-uint ReadUInt(int64 pos = FTell(), std::vector<uint> new_known_values = {}) {
-	file_acc.lookahead = true;
-	int64 original_pos = FTell();
-	FSeek(pos);
-	uint value;
-	for (auto& known : ReadUIntInitValues) {
-		new_known_values.push_back(known);
-	}
-	if (new_known_values.size())
-		value = file_acc.file_integer(sizeof(uint), 0, new_known_values);
-	else
-		value = file_acc.file_integer(sizeof(uint), 0);
-	FSeek(original_pos);
-	file_acc.lookahead = false;
-	return value;
-}
-
-std::vector<uint64> ReadUInt64InitValues;
-
-uint64 ReadUInt64(int64 pos = FTell(), std::vector<uint64> new_known_values = {}) {
-	file_acc.lookahead = true;
-	int64 original_pos = FTell();
-	FSeek(pos);
-	uint64 value;
-	for (auto& known : ReadUInt64InitValues) {
-		new_known_values.push_back(known);
-	}
-	if (new_known_values.size())
-		value = file_acc.file_integer(sizeof(uint64), 0, new_known_values);
-	else
-		value = file_acc.file_integer(sizeof(uint64), 0);
-	FSeek(original_pos);
-	file_acc.lookahead = false;
-	return value;
-}
-
-std::vector<uint64> ReadUQuadInitValues;
-
-uint64 ReadUQuad(int64 pos = FTell(), std::vector<uint64> new_known_values = {}) {
-	file_acc.lookahead = true;
-	int64 original_pos = FTell();
-	FSeek(pos);
-	uint64 value;
-	for (auto& known : ReadUQuadInitValues) {
-		new_known_values.push_back(known);
-	}
-	if (new_known_values.size())
-		value = file_acc.file_integer(sizeof(uint64), 0, new_known_values);
-	else
-		value = file_acc.file_integer(sizeof(uint64), 0);
-	FSeek(original_pos);
-	file_acc.lookahead = false;
-	return value;
-}
-
+std::vector<short> ReadShortInitValues;
 std::vector<ushort> ReadUShortInitValues = { 0xF921, 0xFE21, 0x0121, 0xFF21 };
-
-ushort ReadUShort(int64 pos = FTell(), std::vector<ushort> new_known_values = {}) {
-	file_acc.lookahead = true;
-	int64 original_pos = FTell();
-	FSeek(pos);
-	ushort value;
-	for (auto& known : ReadUShortInitValues) {
-		new_known_values.push_back(known);
-	}
-	if (new_known_values.size())
-		value = file_acc.file_integer(sizeof(ushort), 0, new_known_values);
-	else
-		value = file_acc.file_integer(sizeof(ushort), 0);
-	FSeek(original_pos);
-	file_acc.lookahead = false;
-	return value;
-}
-
+std::vector<int> ReadIntInitValues;
+std::vector<uint> ReadUIntInitValues;
+std::vector<int64> ReadQuadInitValues;
+std::vector<uint64> ReadUQuadInitValues;
+std::vector<int64> ReadInt64InitValues;
+std::vector<uint64> ReadUInt64InitValues;
+std::vector<hfloat> ReadHFloatInitValues;
+std::vector<float> ReadFloatInitValues;
+std::vector<double> ReadDoubleInitValues;
+std::vector<std::string> ReadBytesInitValues;
 
 
 std::vector<GIFHEADER*> GIFHEADER_GifHeader_instances;

@@ -3815,7 +3815,11 @@ class PfpInterp(object):
         cond = self._handle_node(node.cond, scope, ctxt, stream)
         if cond is None:
             cond = 0
-        is_string = "width" in vars(cond)
+        is_string = False
+        try:
+            is_string = "width" in vars(cond)
+        except:
+            pass
 
         default_idx = None
         found_match = False
