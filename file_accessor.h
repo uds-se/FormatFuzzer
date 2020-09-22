@@ -153,15 +153,12 @@ class file_accessor {
 			bitfield_bits += write_bits;
 		}
 		bitfield_size = size;
-		if (bitfield_bits == bitfield_size * 8) {
-			file_pos += bitfield_size;
-			bitfield_size = 0;
-			bitfield_bits = 0;
-		}
 		while (bitfield_bits >= bitfield_size * 8) {
 			file_pos += bitfield_size;
 			bitfield_bits -= bitfield_size * 8;
 		}
+		if (bitfield_bits == 0)
+			bitfield_size = 0;
 
 		if (file_size < file_pos)
 			file_size = file_pos;
