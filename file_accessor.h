@@ -13,6 +13,7 @@
 
 bool is_big_endian = false;
 bool is_bitfield_left_to_right[2] = {false, true};
+bool is_padded_bitfield = true;
 
 
 void swap_bytes(void* b, unsigned size) {
@@ -60,7 +61,7 @@ class file_accessor {
 		if (bits) {
 			unsigned new_pos = 0;
 			unsigned new_bitfield_bits = bitfield_bits;
-			if (bitfield_bits + bits > 8 * bitfield_size || size != bitfield_size) {
+			if (is_padded_bitfield && (bitfield_bits + bits > 8 * bitfield_size || size != bitfield_size)) {
 				new_pos += bitfield_size;
 				new_bitfield_bits = 0;
 			}
@@ -106,7 +107,7 @@ class file_accessor {
 	}
 
 	void write_file_bits(unsigned long long value, size_t size, unsigned bits) {
-		if (bitfield_bits + bits > 8 * bitfield_size || size != bitfield_size) {
+		if (is_padded_bitfield && (bitfield_bits + bits > 8 * bitfield_size || size != bitfield_size)) {
 			file_pos += bitfield_size;
 			bitfield_size = 0;
 			bitfield_bits = 0;
@@ -156,6 +157,10 @@ class file_accessor {
 			file_pos += bitfield_size;
 			bitfield_size = 0;
 			bitfield_bits = 0;
+		}
+		while (bitfield_bits >= bitfield_size * 8) {
+			file_pos += bitfield_size;
+			bitfield_bits -= bitfield_size * 8;
 		}
 
 		if (file_size < file_pos)

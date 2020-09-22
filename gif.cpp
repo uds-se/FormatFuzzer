@@ -159,15 +159,14 @@ public:
 
 
 class UBYTE_bitfield {
-	unsigned bits;
 	bool small;
 	std::vector<UBYTE> known_values;
 	UBYTE value;
 public:
 	UBYTE operator () () { return value; }
-	UBYTE_bitfield(unsigned bits, bool small, std::vector<UBYTE> known_values = {}) : bits(bits), small(small), known_values(known_values) {}
+	UBYTE_bitfield(bool small, std::vector<UBYTE> known_values = {}) : small(small), known_values(known_values) {}
 
-	UBYTE generate() {
+	UBYTE generate(unsigned bits) {
 		if (known_values.empty()) {
 			value = file_acc.file_integer(sizeof(UBYTE), bits, small);
 		} else {
@@ -176,7 +175,7 @@ public:
 		return value;
 	}
 
-	UBYTE generate(std::vector<UBYTE> new_known_values) {
+	UBYTE generate(unsigned bits, std::vector<UBYTE> new_known_values) {
 		for (auto& known : known_values) {
 			new_known_values.push_back(known);
 		}
@@ -1452,10 +1451,10 @@ public:
 		GifHeader(GIFHEADER_GifHeader_instances),
 		Width(true),
 		Height(true),
-		GlobalColorTableFlag(1, true),
-		ColorResolution(3, true),
-		SortFlag(1, true),
-		SizeOfGlobalColorTable(3, true),
+		GlobalColorTableFlag(true, { 1 }),
+		ColorResolution(true),
+		SortFlag(true),
+		SizeOfGlobalColorTable(true),
 		PackedFields(LOGICALSCREENDESCRIPTOR_PACKEDFIELDS_PackedFields_instances),
 		BackgroundColorIndex(true),
 		PixelAspectRatio(true),
@@ -1471,10 +1470,10 @@ public:
 		ImageTopPosition(true),
 		ImageWidth(true),
 		ImageHeight(true),
-		LocalColorTableFlag(1, true),
-		InterlaceFlag(1, true),
-		Reserved(2, true),
-		SizeOfLocalColorTable(3, true),
+		LocalColorTableFlag(true, { 1 }),
+		InterlaceFlag(true),
+		Reserved(true),
+		SizeOfLocalColorTable(true),
 		PackedFields_(IMAGEDESCRIPTOR_PACKEDFIELDS_PackedFields__instances),
 		ImageDescriptor(IMAGEDESCRIPTOR_ImageDescriptor_instances),
 		LocalColorTable(LOCALCOLORTABLE_LocalColorTable_instances),
@@ -1489,10 +1488,10 @@ public:
 		ExtensionIntroducer(true),
 		GraphicControlLabel(true),
 		BlockSize(true),
-		Reserved_(3, true),
-		DisposalMethod(3, true),
-		UserInputFlag(1, true),
-		TransparentColorFlag(1, true),
+		Reserved_(true),
+		DisposalMethod(true),
+		UserInputFlag(true),
+		TransparentColorFlag(true),
 		PackedFields__(GRAPHICCONTROLEXTENSION_DATASUBBLOCK_PACKEDFIELDS_PackedFields___instances),
 		DelayTime(true),
 		TransparentColorIndex(true),
@@ -1556,10 +1555,10 @@ LOGICALSCREENDESCRIPTOR_PACKEDFIELDS* LOGICALSCREENDESCRIPTOR_PACKEDFIELDS::gene
 	if (!generated)
 		generated = 1;
 
-	GENERATE_VAR(GlobalColorTableFlag, ::g->GlobalColorTableFlag.generate());
-	GENERATE_VAR(ColorResolution, ::g->ColorResolution.generate());
-	GENERATE_VAR(SortFlag, ::g->SortFlag.generate());
-	GENERATE_VAR(SizeOfGlobalColorTable, ::g->SizeOfGlobalColorTable.generate());
+	GENERATE_VAR(GlobalColorTableFlag, ::g->GlobalColorTableFlag.generate(1));
+	GENERATE_VAR(ColorResolution, ::g->ColorResolution.generate(3));
+	GENERATE_VAR(SortFlag, ::g->SortFlag.generate(1));
+	GENERATE_VAR(SizeOfGlobalColorTable, ::g->SizeOfGlobalColorTable.generate(3));
 	return this;
 }
 
@@ -1635,11 +1634,11 @@ IMAGEDESCRIPTOR_PACKEDFIELDS* IMAGEDESCRIPTOR_PACKEDFIELDS::generate() {
 	} else {
 		possible_values = { 1 };
 	};
-	GENERATE_VAR(LocalColorTableFlag, ::g->LocalColorTableFlag.generate(possible_values));
-	GENERATE_VAR(InterlaceFlag, ::g->InterlaceFlag.generate());
-	GENERATE_VAR(SortFlag, ::g->SortFlag.generate());
-	GENERATE_VAR(Reserved, ::g->Reserved.generate());
-	GENERATE_VAR(SizeOfLocalColorTable, ::g->SizeOfLocalColorTable.generate());
+	GENERATE_VAR(LocalColorTableFlag, ::g->LocalColorTableFlag.generate(1, possible_values));
+	GENERATE_VAR(InterlaceFlag, ::g->InterlaceFlag.generate(1));
+	GENERATE_VAR(SortFlag, ::g->SortFlag.generate(1));
+	GENERATE_VAR(Reserved, ::g->Reserved.generate(2));
+	GENERATE_VAR(SizeOfLocalColorTable, ::g->SizeOfLocalColorTable.generate(3));
 	return this;
 }
 
@@ -1740,10 +1739,10 @@ GRAPHICCONTROLEXTENSION_DATASUBBLOCK_PACKEDFIELDS* GRAPHICCONTROLEXTENSION_DATAS
 	if (!generated)
 		generated = 1;
 
-	GENERATE_VAR(Reserved, ::g->Reserved_.generate());
-	GENERATE_VAR(DisposalMethod, ::g->DisposalMethod.generate());
-	GENERATE_VAR(UserInputFlag, ::g->UserInputFlag.generate());
-	GENERATE_VAR(TransparentColorFlag, ::g->TransparentColorFlag.generate());
+	GENERATE_VAR(Reserved, ::g->Reserved_.generate(3));
+	GENERATE_VAR(DisposalMethod, ::g->DisposalMethod.generate(3));
+	GENERATE_VAR(UserInputFlag, ::g->UserInputFlag.generate(1));
+	GENERATE_VAR(TransparentColorFlag, ::g->TransparentColorFlag.generate(1));
 	return this;
 }
 

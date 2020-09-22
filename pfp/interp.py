@@ -726,8 +726,6 @@ class PfpInterp(object):
         if classname not in self._defined:
             self._defined[classname] = None
             cpp = "\n\nclass " + classname + " {\n"
-            if is_bitfield:
-                cpp += "\tunsigned bits;\n"
             cpp += "\tbool small;\n"
             cpp += "\tstd::vector<" + classtype + "> known_values;\n"
             cpp += "\t" + classtype + " value;\n"
@@ -736,11 +734,11 @@ class PfpInterp(object):
                 cpp += "\tint64 _startof;\n"
                 cpp += "\tstd::size_t _sizeof = sizeof(" + classtype + ");\n"
             cpp += "\t" + classtype + " operator () () { return value; }\n"
+            cpp += "\t" + classname + "(bool small, std::vector<" + classtype + "> known_values = {}) : small(small), known_values(known_values) {}\n"
             if is_bitfield:
-                cpp += "\t" + classname + "(unsigned bits, bool small, std::vector<" + classtype + "> known_values = {}) : bits(bits), small(small), known_values(known_values) {}\n"
+                cpp += "\n\t" + classtype + " generate(unsigned bits) {\n"
             else:
-                cpp += "\t" + classname + "(bool small, std::vector<" + classtype + "> known_values = {}) : small(small), known_values(known_values) {}\n"
-            cpp += "\n\t" + classtype + " generate() {\n"
+                cpp += "\n\t" + classtype + " generate() {\n"
             if not is_bitfield:
                 cpp += "\t\t_startof = FTell();\n"
             cpp += "\t\tif (known_values.empty()) {\n"
@@ -756,7 +754,10 @@ class PfpInterp(object):
             cpp += "\t\t}\n"
             cpp += "\t\treturn value;\n"
             cpp += "\t}\n"
-            cpp += "\n\t" + classtype + " generate(std::vector<" + classtype + "> new_known_values) {\n"
+            if is_bitfield:
+                cpp += "\n\t" + classtype + " generate(unsigned bits, std::vector<" + classtype + "> new_known_values) {\n"
+            else:
+                cpp += "\n\t" + classtype + " generate(std::vector<" + classtype + "> new_known_values) {\n"
             if not is_bitfield:
                 cpp += "\t\t_startof = FTell();\n"
             cpp += "\t\tfor (auto& known : known_values) {\n"
@@ -800,6 +801,9 @@ class PfpInterp(object):
         elif isinstance(node, AST.While):
             decls += self.get_decls(node.stmt)
             return decls
+        elif isinstance(node, AST.DoWhile):
+            decls += self.get_decls(node.stmt)
+            return decls
         elif isinstance(node, AST.For):
             decls += self.get_decls(node.stmt)
             return decls
@@ -829,7 +833,7 @@ class PfpInterp(object):
             if "local" in decl.quals:
                 self._struct_locals.append(decl)
             else:
-                self._struct_vars.append(decl)
+                self._struct_vars.append(name)
             if "local" not in decl.quals:
                 if name in defined:
                     sametype = True
@@ -856,7 +860,10 @@ class PfpInterp(object):
             elif is_union and decl.type.cpp == "std::string" and decl.type.__class__ == AST.ArrayDecl:
                 cpp += "\t" + " ".join(decl.type.type.type.names) + " " + name + "_var[" + decl.type.dim.cpp + "];\n"
             elif decl.bitsize is not None:
-                cpp += "\t" + decl.type.cpp + " " + name + "_var : " + decl.bitsize.cpp + ";\n"
+                if "/**/" in decl.bitsize.cpp:
+                    cpp += "\t" + decl.type.cpp + " " + name + "_var;  //  : " + decl.bitsize.cpp.replace("/**/", "") + ";\n"
+                else:
+                    cpp += "\t" + decl.type.cpp + " " + name + "_var : " + decl.bitsize.cpp + ";\n"
             else:
                 cpp += "\t" + decl.type.cpp + " " + name + "_var;\n"
         if is_union:
@@ -896,7 +903,7 @@ class PfpInterp(object):
         local_args = []
         for frame in self._locals_stack[1:]:
             for local in frame:
-                if local in self._struct_locals:
+                if local.name in [l.name for l in self._struct_locals]:
                     continue
                 used = False
                 for decl in classnode.decls:
@@ -1001,7 +1008,7 @@ class PfpInterp(object):
             for local in self._struct_locals + params:
                 decl.cpp = decl.cpp.replace("/**/" + local.name + "()", local.name)
             for var in self._struct_vars:
-                decl.cpp = decl.cpp.replace("/**/" + var.name + "()", var.name + "()")
+                decl.cpp = decl.cpp.replace("/**/" + var + "()", var + "()")
             if is_union and not first:
                 decl.cpp = decl.cpp.replace("GENERATE_VAR", "GENERATE_EXISTS")
             for n in self._struct_repeated:
@@ -1009,7 +1016,7 @@ class PfpInterp(object):
             if decl.cpp:
                 body += "\t" + decl.cpp.replace("\n", "\n\t") + ";\n"
             first = False
-        if classname[-7:] == "_struct" and "break;" in body:
+        if "break;" in body and (classname[-7:] == "_struct" or not ("switch (" in body or "do {" in body or "while (" in body or "for (" in body)):
             body = "do {\n" + body + "} while (false);\n"
         cpp += body
         cpp += "\treturn this;\n"
@@ -1594,12 +1601,11 @@ class PfpInterp(object):
                     is_forward_declared_struct(child):
                 continue
             self._handle_node(child, scope, ctxt, stream)
+            if isinstance(child, AST.Decl) and "local" in child.quals and "const" not in child.quals and hasattr(child.type, "cpp"):
+                self._globals.append((child.name, child.type.cpp + " " + child.name + ";\n"))
+                self._global_locals.append(child.name)
             if child.cpp:
-                if isinstance(child, AST.Decl) and "local" in child.quals:
-                    self._globals.append((child.name, child.cpp + ";\n"))
-                    self._global_locals.append(child.name)
-                else:
-                    node.cpp1 += "\t" + child.cpp.replace("\n", "\n\t") + ";\n"
+                node.cpp1 += "\t" + child.cpp.replace("\n", "\n\t") + ";\n"
 
         for n, c in self._cpp:
             #node.cpp += "/*" + n + "*/\n"
@@ -1850,7 +1856,8 @@ class PfpInterp(object):
                     field = val
                     scope.add_local(field_name, field)
                 else:
-                    field._pfp__set_value(val)
+                    if val is not None:
+                        field._pfp__set_value(val)
 
             field.is_local = True
             node.type.cpp = ""
@@ -1861,7 +1868,7 @@ class PfpInterp(object):
                 field._pfp__freeze()
                 node.type.cpp += "const "
 
-            in_struct = "local" in node.quals and len(self._incomplete_stack) > 1 and not self._call_stack
+            in_struct = "local" in node.quals and not self._call_stack and "const" not in node.quals
             field._pfp__interp = self
             if isinstance(node.type, AST.ArrayDecl):
                 classname = " ".join(node.type.type.type.names)
@@ -1873,7 +1880,7 @@ class PfpInterp(object):
                     node.type.cpp += "std::vector<" + classname + ">"
 
                 if in_struct:
-                    node.cpp = node.name
+                    node.cpp = "/**/" + node.name + "()"
                 else:
                     node.cpp = node.type.cpp + " " + node.name
                 if node.init is None:
@@ -1887,6 +1894,10 @@ class PfpInterp(object):
                         node.cpp += expr.cpp + ", "
                     node.cpp = node.cpp[:-2]
                     node.cpp += " }"
+                    if "const" in node.quals:
+                        self._global_consts.append(node.name)
+                        self._cpp.append((node.name, node.cpp + ";"))
+                        node.cpp = ""
             else:
                 names = node.type.type.names
                 for name in names:
@@ -1895,7 +1906,7 @@ class PfpInterp(object):
                     node.type.cpp += name + " "
                 node.type.cpp = node.type.cpp[:-1]
                 if in_struct:
-                    node.cpp = node.name
+                    node.cpp = "/**/" + node.name + "()"
                 else:
                     node.cpp = node.type.cpp + " " + node.name
                 if node.name in ["true", "false"]:
@@ -2198,9 +2209,9 @@ class PfpInterp(object):
                     classname = node.type.type.name
                 else:
                     classname = " ".join(node.type.type.names)
-                if classname == field_name + "_struct" and ctxt._pfp__node.name is not None:
+                if classname == field_name + "_struct" and hasattr(ctxt, "_pfp__node") and ctxt._pfp__node.name is not None:
                     classname = ctxt._pfp__node.name + "_" + field_name + "_struct"
-                if classname == field_name + "_union" and ctxt._pfp__node.name is not None:
+                if classname == field_name + "_union" and hasattr(ctxt, "_pfp__node") and ctxt._pfp__node.name is not None:
                     classname = ctxt._pfp__node.name + "_" + field_name + "_union"
                 classnode = field._pfp__node
                 node.originalname = node.name
@@ -2239,15 +2250,17 @@ class PfpInterp(object):
                         self._defined[node.name] = classnamebits
                         if is_string:
                             self._globals.append((node.name, classname + " " + node.name + ";\n"))
-                        elif is_bitfield:
-                            self._globals.append((node.name, classname + " " + node.name + "(" + node.bitsize.cpp + ", true);\n"))
                         else:
                             self._globals.append((node.name, classname + " " + node.name + "(true);\n"))
                     node.cpp = "GENERATE"
                     if len(self._incomplete_stack) > 1:
                         node.cpp += "_VAR"
                     node.cpp += "(" + node.originalname + ", ::g->" + node.name + ".generate("
+                    if is_bitfield:
+                        node.cpp += node.bitsize.cpp
                     if node.init is not None:
+                        if is_bitfield:
+                            node.cpp += ", "
                         val = self._handle_node(node.init, scope, ctxt, stream)
                         node.cpp += "{ "
                         for expr in node.init.exprs:
@@ -2255,6 +2268,8 @@ class PfpInterp(object):
                         node.cpp = node.cpp[:-2]
                         node.cpp += " }"
                     if node.metadata is not None and "values" in node.metadata.keyvals:
+                        if is_bitfield:
+                            node.cpp += ", "
                         node.cpp += node.metadata.keyvals["values"].split(",")[0]
                     node.cpp += "))"
                 elif issubclass(nodetype, fields.Enum):
@@ -2820,7 +2835,7 @@ class PfpInterp(object):
             res = 1
         else:
             right_val = self._handle_node(node.right, scope, ctxt, stream)
-            if dest_type is not None and not isinstance(right_val, dest_type):
+            if dest_type is not None and not isinstance(right_val, dest_type) and right_val is not None:
                 new_right_val = dest_type()
                 new_right_val._pfp__set_value(right_val)
                 right_val = new_right_val

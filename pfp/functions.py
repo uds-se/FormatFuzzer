@@ -161,7 +161,8 @@ class ParamListDef(object):
                 param_instances[x] = param
                 scope.add_local(self._params[x][0], param)
             else:
-                param._pfp__set_value(args[x])
+                if args[x] is not None:
+                    param._pfp__set_value(args[x])
                 scope.add_local(param._pfp__name, param)
             param._pfp__interp = interp
 

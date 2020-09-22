@@ -150,6 +150,7 @@ unsigned char rand_buffer[MAX_RAND_SIZE];
 file_accessor file_acc;
 
 extern bool is_big_endian;
+extern bool is_padded_bitfield;
 void generate_file();
 
 
@@ -328,6 +329,14 @@ int IsBigEndian() { return is_big_endian; }
 
 void BitfieldLeftToRight() {
 	is_bitfield_left_to_right[is_big_endian] = true;
+}
+
+void BitfieldEnablePadding() {
+	is_padded_bitfield = true;
+}
+
+void BitfieldDisablePadding() {
+	is_padded_bitfield = false;
 }
 
 void SetBackColor(int color) { }
