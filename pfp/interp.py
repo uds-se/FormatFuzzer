@@ -2780,7 +2780,8 @@ class PfpInterp(object):
             conversion, field_cls = switch[node.type]
             val = conversion(node.value)
             node.cpp = node.value
-
+            if node.type == "string" and '\0' in val:
+                node.cpp = "std::string(" + node.value + ", {})".format(len(val))
             if hasattr(field_cls, "__call__") and not type(field_cls) is type:
                 field_cls = field_cls(val)
 
