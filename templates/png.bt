@@ -311,14 +311,6 @@ struct PNG_CHUNK_FDAT {
     ubyte  frame_data[length-4];
 };
 
-struct PNG_CHUNK_DATA {
-    uchar xxx;
-};
-
-struct PNG_CHUNK_IDAT {
-    char comp_data[100]<packer=PackerGZip, packtype=PNG_CHUNK_DATA>;
-};
-
 // -- End: Specific Chunks
 
 local uint32 CHUNK_CNT = 0;
@@ -358,8 +350,6 @@ typedef struct {
         PNG_CHUNK_FCTL    fctl;
     else if (type.cname == "fdAT")
         PNG_CHUNK_FDAT    fdat;
-    else if (type.cname == "IDAT")
-        PNG_CHUNK_IDAT    idat;
     else if( length > 0 && type.cname != "IEND" )
         ubyte   data[length];       // Data (or not present)
     local int64 pos_end = FTell();
