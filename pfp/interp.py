@@ -827,6 +827,8 @@ class PfpInterp(object):
         variables = []
         defined = set()
         for decl in decls:
+            if "const" in decl.quals:
+                continue
             name = decl.name
             if hasattr(decl, "originalname"):
                 name = decl.originalname
@@ -853,11 +855,11 @@ class PfpInterp(object):
         variables = [(n,d) for (n,d) in variables if n not in self._struct_repeated]
 
         if is_union:
-            cpp += "union {\n"
+            cpp += "// union {\n"
         for name, decl in variables:
             if hasattr(decl, "is_structunion"):
                 cpp += "\t" + decl.type.cpp + "* " + name + "_var;\n"
-            elif is_union and decl.type.cpp == "std::string" and decl.type.__class__ == AST.ArrayDecl:
+            elif False and is_union and decl.type.cpp == "std::string" and decl.type.__class__ == AST.ArrayDecl:
                 cpp += "\t" + " ".join(decl.type.type.type.names) + " " + name + "_var[" + decl.type.dim.cpp + "];\n"
             elif decl.bitsize is not None:
                 if "/**/" in decl.bitsize.cpp:
@@ -867,7 +869,7 @@ class PfpInterp(object):
             else:
                 cpp += "\t" + decl.type.cpp + " " + name + "_var;\n"
         if is_union:
-            cpp += "};\n"
+            cpp += "// };\n"
         cpp += "\npublic:\n"
         for name, decl in variables:
             cpp += "\tbool " + name + "_exists = false;\n"
@@ -879,7 +881,7 @@ class PfpInterp(object):
                 else:
                     cpp += "\t" + decl.type.cpp + "& " + name + "();\n"
                     self._to_define[decl.type.cpp].append((decl.type.cpp + "& " + classname + "::" + name + "() {\n\tassert_cond(" + name + "_exists, \"struct field " + name + " does not exist\");\n\treturn *" + name + "_var;\n}\n", decl, False))
-            elif is_union and decl.type.cpp == "std::string" and decl.type.__class__ == AST.ArrayDecl:
+            elif False and is_union and decl.type.cpp == "std::string" and decl.type.__class__ == AST.ArrayDecl:
                 cpp += "\tstd::string " + name + "() {\n\t\tassert_cond(" + name + "_exists, \"struct field " + name + " does not exist\");\n\t\treturn std::string(" + name + "_var, " + decl.type.dim.cpp + ");\n\t}\n"
             else:
                 cpp += "\t" + decl.type.cpp + " " + name + "() {\n\t\tassert_cond(" + name + "_exists, \"struct field " + name + " does not exist\");\n\t\treturn " + name + "_var;\n\t}\n"
@@ -889,7 +891,7 @@ class PfpInterp(object):
             name = decl.name
             if hasattr(decl, "originalname"):
                 name = decl.originalname
-            if "local" in decl.quals and name not in defined:
+            if "local" in decl.quals and "const" not in decl.quals and name not in defined:
                 defined.add(name)
                 if not hasattr(decl.type, "cpp"):
                     if hasattr(decl.type.type, "name"):
@@ -903,7 +905,7 @@ class PfpInterp(object):
         local_args = []
         for frame in self._locals_stack[1:]:
             for local in frame:
-                if local.name in [l.name for l in self._struct_locals]:
+                if local.name in [l.name for l in self._struct_locals] + self._struct_vars:
                     continue
                 used = False
                 for decl in classnode.decls:
@@ -1883,16 +1885,17 @@ class PfpInterp(object):
                     node.cpp = "/**/" + node.name + "()"
                 else:
                     node.cpp = node.type.cpp + " " + node.name
-                if node.init is None:
+                if node.init is None and node.type.dim.cpp != "0":
                     if classname in ["uchar", "char"]:
                         node.cpp += "(" + node.type.dim.cpp + ", 0)"
                     if in_struct:
                         node.cpp = ""
                 else:
                     node.cpp += " = { "
-                    for expr in node.init.exprs:
-                        node.cpp += expr.cpp + ", "
-                    node.cpp = node.cpp[:-2]
+                    if node.init is not None:
+                        for expr in node.init.exprs:
+                            node.cpp += expr.cpp + ", "
+                        node.cpp = node.cpp[:-2]
                     node.cpp += " }"
                     if "const" in node.quals:
                         self._global_consts.append(node.name)
@@ -2684,6 +2687,7 @@ class PfpInterp(object):
                 name = node.type.type.name
             node.cpp += name
             node.cpp += " " + node.name
+            self._global_consts.append(node.name + "_values")
             cpp = "std::vector<" + " ".join(node.type.type.type.names) + "> " + node.name + "_values = { "
             for enumerator in node.type.type.values.enumerators:
                 cpp += enumerator.name + ", "
@@ -3196,11 +3200,17 @@ class PfpInterp(object):
             if node.op not in switch:
                 raise errors.UnsupportedAssignmentOperator(node.coord, node.op)
             try:
-                switch[node.op](field, value)
+                if not hasattr(field, "width"):
+                    switch[node.op](field, value)
             except:
                 print("* EXCEPTION IN ASSIGNMENT " + str(field) + " " + node.op + " " + str(value) + ", in line " + str(node.coord.line))
                 pass
             node.cpp = node.lvalue.cpp + " " + node.op + " " + node.rvalue.cpp
+            if hasattr(field, "width"):
+                if node.op == "-=":
+                    node.cpp = "VectorRemove(" + node.lvalue.cpp + ", { " + node.rvalue.cpp + " })"
+                if node.op == "+=":
+                    node.cpp = node.lvalue.cpp + ".insert(" + node.lvalue.cpp + ".end(), { " + node.rvalue.cpp + " })"
         return field
 
     def _handle_func_def(self, node, scope, ctxt, stream):
@@ -3307,6 +3317,8 @@ class PfpInterp(object):
         if node.args:
             node.cpp += ", ".join([arg.cpp for arg in node.args.exprs])
         node.cpp += ")"
+        if node.name.name in ["SetEvilBit", "ChangeArrayLength"]:
+            return
         self._locals_stack.append([])
         self._call_stack.append(None)
         ret = func.call(func_args, ctxt, scope, stream, self, node.coord)
@@ -3360,6 +3372,11 @@ class PfpInterp(object):
         exprs = [
             self._handle_node(expr, scope, ctxt, stream) for expr in node.exprs
         ]
+        node.cpp = ", ".join([expr.cpp for expr in node.exprs])
+        if ".insert(" in node.cpp:
+            raise errors.PfpError("Missing parenthesis after +=")
+        if "VectorRemove(" in node.cpp:
+            raise errors.PfpError("Missing parenthesis after -=")
         return exprs
 
     def _handle_compound(self, node, scope, ctxt, stream):
@@ -3495,6 +3512,7 @@ class PfpInterp(object):
         else:
             self._defined[name] = "enum"
             if node.type is not None:
+                self._global_consts.append(name + "_values")
                 cpp = "std::vector<" + " ".join(node.type.names) + "> " + name + "_values = { "
                 for enumerator in node.values.enumerators:
                     cpp += enumerator.name + ", "

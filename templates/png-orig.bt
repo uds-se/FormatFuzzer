@@ -110,8 +110,8 @@ typedef enum <byte> {
 
 // Chunk Type
 typedef union {
-    char    cname[4];           // character representation
     uint32  ctype <format=hex>; // Chunk Type
+    char    cname[4];           // character representation
 } CTYPE <read=readCTYPE>;
 
 string readCTYPE(local CTYPE &t) {
@@ -124,27 +124,7 @@ string readCTYPE(local CTYPE &t) {
 typedef struct {
     uint32   width;
     uint32   height;
-    const byte color_types[] = { GrayScale, TrueColor, Indexed, AlphaGrayScale, AlphaTrueColor };
-    switch (ReadByte(FTell() + 1, color_types)) {
-    case GrayScale:
-        ubyte    bits = { 1, 2, 4, 8, 16 };
-        break;
-    case TrueColor:
-        ubyte    bits = { 8, 16 };
-        break;
-    case Indexed:
-        ubyte    bits = { 1, 2, 4, 8 };
-        break;
-    case AlphaGrayScale:
-        ubyte    bits = { 8, 16 };
-        break;
-    case AlphaTrueColor:
-        ubyte    bits = { 8, 16 };
-        break;
-    default:
-        ubyte    bits;
-        break;
-    }
+    ubyte    bits;
     PNG_COLOR_SPACE_TYPE color_type;
     PNG_COMPR_METHOD     compr_method;
     PNG_FILTER_METHOD    filter_method;
@@ -292,10 +272,8 @@ struct PNG_CHUNK_ACTL {
     uint32 num_plays;
 };
 
-local uint32 sec_num = 0;
-
 struct PNG_CHUNK_FCTL {
-    uint32 sequence_number = { sec_num++ };
+    uint32 sequence_number;
     uint32 width;
     uint32 height;
     uint32 x_offset;
@@ -307,16 +285,8 @@ struct PNG_CHUNK_FCTL {
 };
 
 struct PNG_CHUNK_FDAT {
-    uint32 sequence_number = { sec_num++ };
+    uint32 sequence_number;
     ubyte  frame_data[length-4];
-};
-
-struct PNG_CHUNK_DATA {
-    uchar xxx;
-};
-
-struct PNG_CHUNK_IDAT {
-    char comp_data[100]<packer=PackerGZip, packtype=PNG_CHUNK_DATA>;
 };
 
 // -- End: Specific Chunks
@@ -358,31 +328,17 @@ typedef struct {
         PNG_CHUNK_FCTL    fctl;
     else if (type.cname == "fdAT")
         PNG_CHUNK_FDAT    fdat;
-    else if (type.cname == "IDAT")
-        PNG_CHUNK_IDAT    idat;
-    else if( length > 0 && type.cname != "IEND" )
+    else if( length > 0 )
         ubyte   data[length];       // Data (or not present)
-    local int64 pos_end = FTell();
-    local uint32 correct_length = pos_end - pos_start - 4;
-    // Fix length if necessary
-    if (length != correct_length) {
-        FSeek(pos_start - 4);
-        local int evil = SetEvilBit(false);
-        uint32  length = { correct_length };
-        SetEvilBit(evil);
-        FSeek(pos_end);
-    }
-    local int64 data_size = pos_end - pos_start;
+    local int64 data_size = FTell() - pos_start;
+    uint32  crc <format=hex, fgcolor=cDkPurple>;  // CRC (not including length or crc)
     local uint32 crc_calc = Checksum(CHECKSUM_CRC32, pos_start, data_size);
-    uint32  crc = { crc_calc } <format=hex, fgcolor=cDkPurple>;  // CRC (not including length or crc)
     if (crc != crc_calc) {
         local string msg;
         SPrintf(msg, "*ERROR: CRC Mismatch @ chunk[%d]; in data: %08x; expected: %08x", CHUNK_CNT, crc, crc_calc);
         error_message( msg );
     }
     CHUNK_CNT++;
-    if (type.cname == "eXIf")
-        uint16 pad;
 } PNG_CHUNK <read=readCHUNK>;
 
 
@@ -408,7 +364,6 @@ string readCHUNK(local PNG_CHUNK &c) {
 
 PNG_SIGNATURE sig <bgcolor=cLtPurple>;
 
-local int evil = SetEvilBit(false);
 if (sig.btPngSignature[0] != 0x8950 ||
         sig.btPngSignature[1] != 0x4E47 ||
         sig.btPngSignature[2] != 0x0D0A ||
@@ -416,80 +371,11 @@ if (sig.btPngSignature[0] != 0x8950 ||
     error_message( "*ERROR: File is not a PNG image. Template stopped." );
     return -1;
 }
-SetEvilBit(evil);
-
-ChangeArrayLength();
 
 local int32 chunk_count = 0;
-local char chunk_type[4];
-local string preferred_chunks[] = { "IHDR" };
-local string possible_chunks[] = { "IHDR" };
-while(ReadBytes(chunk_type, FTell() + 4, 4, preferred_chunks, possible_chunks)) {
+while(!FEof()) {
     SetBackColor( (chunk_count++ % 2) ? cNone : cLtGray);
     PNG_CHUNK chunk;
-    
-    switch (chunk_type) {
-    case "IHDR":
-        switch (chunk.ihdr.color_type) {
-        case Indexed:
-            local string preferred_chunks[] = { "PLTE" };
-            local string possible_chunks[] = { "tIME", "zTXt", "tEXt", "iTXt", "pHYs", "sPLT", "iCCP", "sRGB", "sBIT", "gAMA", "cHRM", "PLTE" };
-            break;
-        case GrayScale:
-        case AlphaGrayScale:
-            local string preferred_chunks[] = { "IDAT" };
-            local string possible_chunks[] = { "tIME", "zTXt", "tEXt", "iTXt", "pHYs", "sPLT", "iCCP", "sRGB", "sBIT", "gAMA", "cHRM", "tRNS", "bKGD", "IDAT" };
-            break;
-        default:
-            local string preferred_chunks[] = { "PLTE", "IDAT" };
-            local string possible_chunks[] = { "tIME", "zTXt", "tEXt", "iTXt", "pHYs", "sPLT", "iCCP", "sRGB", "sBIT", "gAMA", "cHRM", "PLTE", "tRNS", "bKGD", "IDAT" };
-        }
-        break;
-    case "tIME":
-        possible_chunks -= "tIME";
-        break;
-    case "pHYs":
-        possible_chunks -= "pHYs";
-        break;
-    case "iCCP":
-        possible_chunks -= ("iCCP", "sRGB");
-        break;
-    case "sRGB":
-        possible_chunks -= ("iCCP", "sRGB");
-        break;
-    case "sBIT":
-        possible_chunks -= "sBIT";
-        break;
-    case "gAMA":
-        possible_chunks -= "gAMA";
-        break;
-    case "cHRM":
-        possible_chunks -= "cHRM";
-        break;
-    case "PLTE":
-        local string preferred_chunks[] = { "IDAT" };
-        possible_chunks -= ("PLTE", "iCCP", "sRGB", "sBIT", "gAMA", "cHRM");
-        possible_chunks += ("tRNS", "hIST", "bKGD", "IDAT");
-        break;
-    case "tRNS":
-        possible_chunks -= "tRNS";
-        break;
-    case "hIST":
-        possible_chunks -= "hIST";
-        break;
-    case "bKGD":
-        possible_chunks -= "bKGD";
-        break;
-    case "IDAT":
-        local string preferred_chunks[] = { "IEND" };
-        possible_chunks -= ("IDAT", "pHYs", "sPLT", "iCCP", "sRGB", "sBIT", "gAMA", "cHRM", "PLTE", "tRNS", "hIST", "bKGD");
-        possible_chunks += "IEND";
-        break;
-    case "IEND":
-        local string preferred_chunks[0];
-        local string possible_chunks[0];
-        break;
-    }
 }
 
 if (CHUNK_CNT > 1) {
