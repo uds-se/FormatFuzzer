@@ -6,6 +6,7 @@
 #include <string>
 #include <cstring>
 #include <vector>
+#include <unordered_set>
 #include <stdarg.h>
 
 #include <unistd.h>
@@ -323,6 +324,10 @@ void check_array_length(unsigned& size) {
 	}
 }
 
+void ChangeArrayLength() {
+	change_array_length = true;
+}
+
 void BigEndian() { is_big_endian = true; }
 void LittleEndian() { is_big_endian = false; }
 int IsBigEndian() { return is_big_endian; }
@@ -340,6 +345,10 @@ void BitfieldDisablePadding() {
 }
 
 void SetBackColor(int color) { }
+
+int SetEvilBit(int allow) {
+	return file_acc.set_evil_bit(allow);
+}
 
 uint32 Checksum(int checksum_type, int64 start, int64 size) {
 	assert_cond(start + size <= file_acc.file_size, "checksum range invalid");
@@ -448,22 +457,67 @@ int64 FindFirst(T data, int matchcase=true, int wholeword=false, int method=0, d
 
 }
 
+void VectorRemove(std::vector<std::string>& vec, std::unordered_set<std::string> set) {
+	vec.erase(std::remove_if(vec.begin(), vec.end(), [&set](std::string s) { return set.find(s) != set.end(); }), vec.end());
+}
+
 extern std::vector<std::string> ReadBytesInitValues;
 
-void ReadBytes(std::string& s, int64 pos, int n, std::vector<std::string> new_known_values = {}) {
+bool ReadBytes(std::string& s, int64 pos, int n) {
 	assert_cond(n > 0, "ReadBytes: invalid number of bytes");
 	file_acc.lookahead = true;
 	int64 original_pos = FTell();
 	FSeek(pos);
+
+	if (ReadBytesInitValues.size())
+		s = file_acc.file_string(ReadBytesInitValues);
+	else
+		s = file_acc.file_string(n);
+
+	FSeek(original_pos);
+	file_acc.lookahead = false;
+	return true;
+}
+
+bool ReadBytes(std::string& s, int64 pos, int n, std::vector<std::string> preferred_values, std::vector<std::string> new_known_values = {}) {
+	assert_cond(n > 0, "ReadBytes: invalid number of bytes");
+	file_acc.lookahead = true;
+	int64 original_pos = FTell();
+	FSeek(pos);
+	for (auto& known : preferred_values) {
+		new_known_values.push_back(known);
+	}
 	for (auto& known : ReadBytesInitValues) {
 		new_known_values.push_back(known);
 	}
-	if (new_known_values.size())
-		s = file_acc.file_string(new_known_values);
+
+	std::function<long long (unsigned char*)> parse;
+	if (preferred_values.size())
+		parse = [&preferred_values, &n](unsigned char* file_buf) -> long long {
+	                	return std::find(preferred_values.begin(), preferred_values.end(), std::string((char*)file_buf, n)) == preferred_values.end();
+	                };
 	else
-		s = file_acc.file_string(n);
+		parse = [&new_known_values, &n](unsigned char* file_buf) -> long long {
+	                	return std::find(new_known_values.begin(), new_known_values.end(), std::string((char*)file_buf, n)) != new_known_values.end();
+	                };
+	
+	if (file_acc.rand_int(4, parse) == 0) {
+		if (preferred_values.size())
+			s = file_acc.file_string(preferred_values);
+		else {
+			s = "";
+		}
+	} else {
+		if (new_known_values.size())
+			s = file_acc.file_string(new_known_values);
+		else {
+			s = "";
+		}
+	}
+
 	FSeek(original_pos);
 	file_acc.lookahead = false;
+	return s != "";
 }
 
 extern std::vector<char> ReadByteInitValues;
