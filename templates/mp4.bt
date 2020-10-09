@@ -1,0 +1,889 @@
+BigEndian();
+
+struct fp16;
+struct fp32;
+struct fp32uvw;
+struct matrix;
+struct fourcc;
+struct boxheader;
+struct compatible_brand;
+struct mp4box;
+struct mp4time;
+struct mp4lang;
+struct qtopcolor;
+struct elst_entry;
+struct tkhd_flags;
+struct vmhd_flags;
+
+
+//enum declaration
+enum qtlang
+{
+    qtlEnglish            = 0,
+    qtlFrench             = 1,
+    qtlGerman             = 2,
+    qtlItalian            = 3,
+    qtlDutch              = 4,
+    qtlSwedish            = 5,
+    qtlSpanish            = 6,
+    qtlDanish             = 7,
+    qtlPortuguese         = 8,
+    qtlNorwegian          = 9,
+    qtlHebrew             = 10,
+    qtlJapanese           = 11,
+    qtlArabic             = 12,
+    qtlFinnish            = 13,
+    qtlGreek              = 14,
+    qtlIcelandic          = 15,
+    qtlMaltese            = 16,
+    qtlTurkish            = 17,
+    qtlCroatian           = 18,
+    qtlChineseTraditional = 19,
+    qtlUrdu               = 20,
+    qtlHindi              = 21,
+    qtlThai               = 22,
+    qtlKorean             = 23,
+    qtlLithuanian         = 24,
+    qtlPolish             = 25,
+    qtlHungarian          = 26,
+    qtlEstonian           = 27,
+    qtlLettish            = 28,
+    qtlLatvian            = 28,
+    qtlSaami              = 29,
+    qtlSami               = 29,
+    qtlFaroese            = 30,
+    qtlFarsi              = 31,
+    qtlRussian            = 32,
+    qtlChineseSimplified  = 33,
+    qtlFlemish            = 34,
+    qtlIrish              = 35,
+    qtlAlbanian           = 36,
+    qtlRomanian           = 37,
+    qtlCzech              = 38,
+    qtlSlovak             = 39,
+    qtlSlovenian          = 40,
+    qtlYiddish            = 41,
+    qtlSerbian            = 42,
+    qtlMacedonian         = 43,
+    qtlBulgarian          = 44,
+    qtlUkrainian          = 45,
+    qtlBelarusian         = 46,
+    qtlUzbek              = 47,
+    qtlKazakh             = 48,
+    qtlAzerbaijani        = 49,
+    qtlAzerbaijanAr       = 50,
+    qtlArmenian           = 51,
+    qtlGeorgian           = 52,
+    qtlMoldavian          = 53,
+    qtlKirghiz            = 54,
+    qtlTajiki             = 55,
+    qtlTurkmen            = 56,
+    qtlMongolian          = 57,
+    qtlMongolianCyr       = 58,
+    qtlPashto             = 59,
+    qtlKurdish            = 60,
+    qtlKashmiri           = 61,
+    qtlSindhi             = 62,
+    qtlTibetan            = 63,
+    qtlNepali             = 64,
+    qtlSanskrit           = 65,
+    qtlMarathi            = 66,
+    qtlBengali            = 67,
+    qtlAssamese           = 68,
+    qtlGujarati           = 69,
+    qtlPunjabi            = 70,
+    qtlOriya              = 71,
+    qtlMalayalam          = 72,
+    qtlKannada            = 73,
+    qtlTamil              = 74,
+    qtlTelugu             = 75,
+    qtlSinhala            = 76,
+    qtlBurmese            = 77,
+    qtlKhmer              = 78,
+    qtlLao                = 79,
+    qtlVietnamese         = 80,
+    qtlIndonesian         = 81,
+    qtlTagalog            = 82,
+    qtlMalayRoman         = 83,
+    qtlMalayArabic        = 84,
+    qtlAmharic            = 85,
+    qtlGalla              = 87,
+    qtlOromo              = 87,
+    qtlSomali             = 88,
+    qtlSwahili            = 89,
+    qtlKinyarwanda        = 90,
+    qtlRundi              = 91,
+    qtlNyanja             = 92,
+    qtlMalagasy           = 93,
+    qtlEsperanto          = 94,
+    qtlWelsh              = 128,
+    qtlBasque             = 129,
+    qtlCatalan            = 130,
+    qtlLatin              = 131,
+    qtlQuechua            = 132,
+    qtlGuarani            = 133,
+    qtlAymara             = 134,
+    qtlTatar              = 135,
+    qtlUighur             = 136,
+    qtlDzongkha           = 137,
+    qtlJavaneseRom        = 138,
+    qtlUnspecified        = 32767
+};
+enum <uint16> qtgfxmode
+{
+    qtgCopy               = 0x000,
+    qtgDitherCopy         = 0x040,
+    qtgBlend              = 0x020,
+    qtgTransparent        = 0x024,
+    qtgStraightAlpha      = 0x100,
+    qtgPremulWhiteAlpha   = 0x101,
+    qtgPremulBlackAlpha   = 0x102,
+    qtgStraightAlphaBlend = 0x104,
+    qtgComposition        = 0x103
+};
+
+//function declaration
+uint64 ContentSize(boxheader& bh)
+{
+    return (exists(bh.size64) ? bh.size64 : bh.size) - sizeof(bh);
+}
+uint64 BoxSize(boxheader& bh)
+{
+    return (exists(bh.size64) ? bh.size64 : bh.size);
+}
+string ReadFP32(fp32& f)
+{
+    local string buf;
+    SPrintf(buf, "%lf", (double)f.value / (double)0x10000);
+    return buf;
+}
+wstring ReadBox(mp4box& box)
+{
+    return box.hdr.type.value;
+}
+string PipeConcat(string s1, string s2)
+{
+    if (Strlen(s1) > 0)
+    {
+        return s1 + " | " + s2;
+    }
+    return s2;
+}
+string ReadVmhdFlags(vmhd_flags& f)
+{
+    local string result;
+    if (f.no_lean_ahead)
+    {
+        result = "No lean ahead";
+    }
+    return result;
+}
+
+//struct declaration 
+typedef struct //fp16 
+{
+    int16 value;
+} fp16;
+typedef struct //fp32
+{
+    int32 value;
+} fp32;
+typedef struct //fp32uvw
+{
+    int32 value;
+} fp32uvw;
+typedef struct //matrix
+{
+    fp32 a;
+    fp32 b;
+    fp32uvw u;
+    fp32 c;
+    fp32 d;
+    fp32uvw v;
+    fp32 x;
+    fp32 y;
+    fp32uvw w;
+} matrix;
+typedef struct //fourcc
+{
+	byte value[4] = { "dinf", "edts", "mdia", "minf", "moov", "moof", "stbl", "trak", "udta", "traf", "mvex", "sinf", "schi", "frma", "tenc", "schm", "pssh", "senc", "saio", "saiz", "trun", "tfhd", "mfhd", "sidx", "trex", "mehd", "stsd", "enca", "stts", "stsc", "stco", "co64", "stsz", "stss", "elst", "ftyp", "hdlr", "mdhd", "mvhd", "smhd", "tkhd", "vmhd" };
+} fourcc;
+typedef struct //boxheader
+{
+    uint32 size;
+    fourcc type;
+    if (size == 1)
+    {
+        uint64 size64;
+    }
+} boxheader;
+typedef struct //compatible_brand
+{
+    fourcc brand;
+} compatible_brand;
+typedef struct //mp4time
+{
+    uint32 value;
+} mp4time;
+typedef struct //mp4lang
+{
+    uint16 value;
+} mp4lang;
+typedef struct //qtopcolor
+{
+    uint16 red;
+    uint16 green;
+    uint16 blue;
+} qtopcolor;
+typedef struct //elst_entry
+{
+	//TODO include dependency to version?
+    uint32 duration;
+    uint32 media_time;
+    fp32 media_rate;
+} elst_entry;
+typedef struct //tkhd_flags
+{
+    byte dummy[2];
+    byte dummy2 : 4;
+    byte track_in_poster : 1;
+    byte track_in_preview : 1;
+    byte track_in_movie : 1;
+    byte track_enabled : 1;
+} tkhd_flags;
+typedef struct //vmhd_flags
+{
+    byte dummy[2];
+    byte dummy2 = {1};
+} vmhd_flags;
+typedef struct //str_stsc
+{
+    uint32 first_chunk;
+    uint32 samples_per_chunk;
+    uint32 sample_description_index;
+}str_stsc;
+typedef struct //str_stts
+{
+    uint32 sample_count;
+    uint32 sample_delta;
+}str_stts;
+typedef struct //str_stsd
+{
+    uint32 contentSize;
+    byte   content[contentSize - 4];
+}str_stsd;
+typedef struct //str_sidx
+{
+    uint32 reference_size31_type1;
+    uint32 subsegment_duration;
+    uint32 SAP_delta_time28_type3_starts_with1;
+}str_sidx;
+typedef struct //mp4box
+{    
+    local uint64 startOffset = FTell();
+
+	//header
+	uint32 size; //TODO I ignore 64 bit sizes here
+    fourcc type;
+	
+    local int64 endOffset = startOffset + size;
+    local uint64 contentsize = size-8;
+    
+    switch (type.value)
+    {
+        case "moof":
+        case "traf":
+        case "mvex":
+        case "sinf":
+        case "schi":
+            while (FTell() < endOffset)
+            {
+                mp4box box;
+                FSeek(box.endOffset);
+            }
+            break;
+        case "moov":		
+			//TODO Optimize selection via new function
+			local string tmp_s[] = {"mvhd"};
+			local uchar tmp[4];
+			ReadBytes(tmp, FTell()+4, 4, tmp_s); // exactly one, mandatory
+			mp4box box;   
+
+			local string tmp_s[] = {"iods"};
+			ReadBytes(tmp, FTell()+4, 4, tmp_s); // zero or one, not mandatory
+			mp4box box;  
+			
+			local string tmp_s[] = {"trak"};
+			ReadBytes(tmp, FTell()+4, 4, tmp_s); // one ore more, mandatory
+			mp4box box;  
+
+			local string tmp_s[] = {"udta"};
+			ReadBytes(tmp, FTell()+4, 4, tmp_s); // zero or one not mandatory
+			mp4box box;   
+			
+			local string tmp_s[] = {"meta"};
+			ReadBytes(tmp, FTell()+4, 4, tmp_s); // zero or one not mandatory
+			mp4box box;  
+			break;
+		case "ftyp"://done            
+            char major_brand[4] = { {"avc1"}, {"iso2"}, {"isom"}, {"mmp4"}, {"mp41"}, {"mp42"}, {"mp71"}, {"msnv"}, {"ndas"}, {"ndsc"}, {"ndsh"}, {"ndsm"}, {"ndsp"}, {"ndss"}, {"ndxc"}, {"ndxh"}, {"ndxm"}, {"ndxp"}, {"ndxs"} };
+			
+			//generate random ammount of compatiple_brands, use space of minor_version as random coin
+			local uint32 coinPosition = FTell();
+			uint32 coin = {0,1,2,3};
+			local uint64 writePosition = FTell();
+			
+			while (true)
+            {
+				char compatiple_brand[4] = { {"avc1"}, {"iso2"}, {"isom"}, {"mmp4"}, {"mp41"}, {"mp42"}, {"mp71"}, {"msnv"}, {"ndas"}, {"ndsc"}, {"ndsh"}, {"ndsm"}, {"ndsp"}, {"ndss"}, {"ndxc"}, {"ndxh"}, {"ndxm"}, {"ndxp"}, {"ndxs"} };			
+				writePosition = writePosition+4;
+				if(coin == 0){
+					FSeek(coinPosition);
+					uint32 minor_version;
+					FSeek(writePosition);
+					break;
+				}
+				FSeek(coinPosition);
+				uint32 coin = {0,1};
+				FSeek(writePosition);
+            }
+			break;
+		case "mvhd": //done?
+            byte version;
+            byte flags[3];
+			if(version == 0){
+				uint32 create_time;
+				uint32 modify_time;
+				uint32 time_scale;
+				uint32 duration;
+			}
+			if(version == 1){
+				uint64 create_time;
+				uint64 modify_time;
+				uint32 time_scale;
+				uint32 duration;
+			}
+            fp32 preferred_rate;
+            fp16 preferred_volume;
+            byte reserved[10];
+            matrix matrix_structure;
+            uint32 preview_time;
+            uint32 preview_duration;
+            uint32 poster_time;
+            uint32 selection_time;
+            uint32 selection_duration;
+            uint32 current_time;
+            uint32 next_track_id;
+            break;
+		case "mdat": //done?
+			uint32 length;
+			byte data[length]; //maybe look into a sensefull encoding of the data
+            break;
+		case "iods": //done?
+			uint32 num_entries;
+			FSeek(FTell()-4);
+			uint32 track_IDs[num_entries]; 			
+            break;
+		case "tref": //done?
+			uint32 num_entries;
+			FSeek(FTell()-4);
+			uint32 track_IDs[num_entries]; 			
+            break;
+		case "trak":		
+			//TODO Optimize selection via new function
+			local string tmp_s[] = {"tkhd"};
+			local uchar tmp[4];
+			ReadBytes(tmp, FTell()+4, 4, tmp_s); // exactly one, mandatory
+			mp4box box;   
+
+			local string tmp_s[] = {"tref"};
+			ReadBytes(tmp, FTell()+4, 4, tmp_s); // zero or one not mandatory
+			mp4box box;   
+
+			local string tmp_s[] = {"mdia"};
+			ReadBytes(tmp, FTell()+4, 4, tmp_s); // exactly one mandatory
+			mp4box box;   
+
+			local string tmp_s[] = {"edts"};
+			ReadBytes(tmp, FTell()+4, 4, tmp_s); // zero or one not mandatory
+			mp4box box;   
+			
+			local string tmp_s[] = {"udta"};
+			ReadBytes(tmp, FTell()+4, 4, tmp_s); // zero or one not mandatory
+			mp4box box;   
+			
+			local string tmp_s[] = {"meta"};
+			ReadBytes(tmp, FTell()+4, 4, tmp_s); // zero or one not mandatory
+			mp4box box;   
+			break;
+        case "tkhd": //done?
+            byte version;
+			tkhd_flags flags;
+			if (version == 1){
+				uint64 create_time;
+				uint64 modify_time;
+				uint32 track_id;
+				uint32 reserved;
+				uint64 duration;
+			}
+			if(version == 0){
+				uint32 create_time;
+				uint32 modify_time;
+				uint32 track_id;
+				uint32 reserved;
+				uint32 duration;
+			}          
+            uint64 reserved2;
+            uint16 layer;
+            uint16 alt_group;
+            fp16 volume;
+            uint16 reserved3;
+            matrix matrix_structure;
+            fp32 width;
+            fp32 height;
+            break;
+		case "mdia":
+			//TODO Optimize selection via new function
+			local string tmp_s[] = {"mdhd"};
+			local uchar tmp[4];
+			ReadBytes(tmp, FTell()+4, 4, tmp_s); // exactly one mandatory
+			mp4box box;   
+
+			local string tmp_s[] = {"hdlr"};
+			ReadBytes(tmp, FTell()+4, 4, tmp_s); // exactly one mandatory
+			mp4box box;   
+			
+			local string tmp_s[] = {"minf"};
+			ReadBytes(tmp, FTell()+4, 4, tmp_s); // exactly one mandatory
+			mp4box box;   
+			break;
+		case "mdhd": //done?
+            byte version;
+            byte flags[3];
+			if(version==1){
+				uint64 create_time;
+				uint64 modify_time;
+				uint32 time_scale;
+				uint64 duration;
+			}
+			if(version ==0){
+				uint32 create_time;
+				uint32 modify_time;
+				uint32 time_scale;
+				uint32 duration;
+			}		   
+            mp4lang language;
+            uint16 quality;
+            break;
+		case "hdlr": //done?
+            byte version;
+            byte flags[3];
+            fourcc type;
+            fourcc subtype;
+            uint32 mfr;
+            uint32 flags_mask;         
+            byte rest[contentsize - (FTell() - startof(version))];
+            break;
+		case "edts":
+			//TODO Optimize selection via new function
+			local string tmp_s[] = {"elst"};
+			local uchar tmp[4];
+			ReadBytes(tmp, FTell()+4, 4, tmp_s); // one or zero, not mandatory
+			mp4box box;   
+			break;
+		case "udta":
+			//TODO Optimize selection via new function
+			local string tmp_s[] = {"cprt"};
+			local uchar tmp[4];
+			ReadBytes(tmp, FTell()+4, 4, tmp_s); // one or zero, not mandatory
+			mp4box box;   
+			break;
+		case "meta":
+			//TODO Optimize selection via new function			
+			local string tmp_s[] = {"hdlr"};
+			local uchar tmp[4];
+			ReadBytes(tmp, FTell()+4, 4, tmp_s); // exactly one mandatory
+			mp4box box;   
+			
+			local string tmp_s[] = {"iinf"};
+			ReadBytes(tmp, FTell()+4, 4, tmp_s); // one or zero, not mandatory
+			mp4box box;   
+
+			local string tmp_s[] = {"dinf"};
+			ReadBytes(tmp, FTell()+4, 4, tmp_s); // one or zero, not mandatory
+			mp4box box; 
+			//TODO Add further variants
+			//xml or bxml zero or one not mandatory
+			//iloc zero or one not mandatory
+			//pitm zero or one not mandatory
+			//ipro zero or one not mandatory
+			//ptim zero or one not mandatory
+			//ipmc zero or one not mandatory
+			break;
+		case "minf":
+			//TODO add "hmhd", "nmhd" for more variety 
+			local string tmp_s[] = {"vmhd", "smhd"};
+			local uchar tmp[4];
+			ReadBytes(tmp, FTell()+4, 4, tmp_s); // Exactly one specific media header shall be present 
+			mp4box box; 
+			
+			local string tmp_s[] = {"dinf"};
+			ReadBytes(tmp, FTell()+4, 4, tmp_s); // one, mandatory
+			mp4box box; 
+
+			local string tmp_s[] = {"stbl"};
+			ReadBytes(tmp, FTell()+4, 4, tmp_s); // one, mandatory
+			mp4box box; 			
+			break;
+        case "stbl":
+			//TODO Increase variety. use funtion to change order
+			local string tmp_s[] = {"stts"};
+			local uchar tmp[4];
+			ReadBytes(tmp, FTell()+4, 4, tmp_s); // one, mandatory
+			mp4box box; 
+			
+			local string tmp_s[] = {"stsd"};
+			ReadBytes(tmp, FTell()+4, 4, tmp_s); // one, mandatory
+			mp4box box; 
+			
+			local string tmp_s[] = {"stsc"};
+			ReadBytes(tmp, FTell()+4, 4, tmp_s); // one, mandatory
+			mp4box box; 
+			
+			local string tmp_s[] = {"stsz"};
+			ReadBytes(tmp, FTell()+4, 4, tmp_s); // or "stz2" one, mandatory
+			mp4box box; 
+			
+			local string tmp_s[] = {"co64", "stco"};
+			ReadBytes(tmp, FTell()+4, 4, tmp_s); // one, mandatory
+			mp4box box; 
+			
+			//ctts zero or one not mandatory
+			//stss zero or one, not mandatory
+			//stsh zero or one, not mandatory
+			//stdb zero or one, not mandatory
+			//sdtp zero or one, not mandatory
+			//sbgp zero or more, not mandatory
+			//sgpd zero or more, not mandatory
+			//subs zero or one, not mandatory
+			break;
+		case "stsd":
+            byte version;
+            byte flag[3];
+            uint32 entry_count_1;
+			local uint32 i;
+			for(i=0; i<entry_count_1; i++){
+				uint32 t = {0,1,2};
+				FSeek(FTell()-4);
+				//TODO Implement different boxes
+				switch (t){
+					case 0: //soun
+						break;
+					case 1: //vide
+						break;
+					case 2: //hint
+						break;
+				}
+			}
+            break;
+		case "stts": //done?
+			byte version;
+            byte flag[3];
+			uint32 entry_count_2;
+			str_stts entry[entry_count_2];	   
+			break;
+        case "elst": //done
+            byte version;
+            byte flags[3];
+            uint32 num_entries;
+            elst_entry entries[num_entries];
+            break;       
+		case "cprt": //done?
+			byte version;
+			uint16 language[3];
+			string notice; 
+			break;
+		case "iinf": //done?
+			uint16 entry_count_3;
+			local uint16 i;
+			for (i=0; i<entry_count_3; i++){
+				uint16  item_ID = {(uint16)i};  
+				uint16  item_protection_index;
+				string   item_name;  
+				string   content_type;  
+				string   content_encoding; //optional 
+			}
+			break;
+		case "dinf": //done
+			//TODO add "dref" for more variety 
+			local string tmp_s[] = {"url ", "urn "};
+			local uchar tmp[4];
+			ReadBytes(tmp, FTell()+4, 4, tmp_s); // one mandatory
+			mp4box box;   
+			break;
+		case "url ": //done			
+			byte version;
+            byte flag[3]; 
+			string location;
+			break;
+		case "urn ":  //done				
+			byte version;
+            byte flag[3]; 
+			string name;
+			string location;
+			break;
+		case "smhd": // done
+            byte version;
+            byte flags[3];
+            fp16 balance;
+            uint16 reserved;
+            break;      
+        case "vmhd": // done
+            byte version;
+            vmhd_flags flags = {1};
+            qtgfxmode graphics_mode;
+            qtopcolor opcolor;
+            break;
+		case "stsc": //done
+            byte version;
+            byte flag[3];
+            uint32 entry_count_4;
+            str_stsc entry[entry_count_4];
+            break;
+		case "co64": //done
+            byte version;
+            byte flag[3];
+            uint32 entry_count_5;
+            uint64 chunk_offset[entry_count_5];
+            break;
+		case "stco": //done
+            byte version;
+            byte flag[3];
+            uint32 entry_count_6;
+            uint32 chunk_offset[entry_count_6];
+            break;
+        case "stsz"://done
+            byte version;
+            byte flag[3];
+            uint32 sample_size;
+            uint32 sample_count;
+            if (sample_size == 0)
+            {
+                uint32 entry_size[sample_count];
+            }
+            break;
+		case "frma":
+            uint32 codingName;
+            break;
+        case "tenc":
+            byte version;
+            byte flag[3]; 
+            byte reserved1;
+            if (version == 0) byte reserved2;
+            else byte default_crypt_skip_byte_block;
+            byte default_is_protected;
+            byte default_per_sample_IV_size;
+            byte default_KID[16];
+            if (0 == default_per_sample_IV_size)
+            {
+                byte default_constant_IV_size;
+                byte default_constant_IV[default_constant_IV_size];
+            }
+            break;
+        case "schm":
+            byte version;
+            byte flag[3]; 
+            uint32 scheme_type;
+            uint32 scheme_version;
+            break;
+        case "pssh":
+            byte version;
+            byte flag[3]; 
+            byte systemID[16];
+            if (version > 0)
+            {
+                uint32 KID_count;
+                struct
+                {
+                    byte entry[16];
+                }KID[KID_count];
+            }
+            uint32 DataSize;
+            byte Data[DataSize];
+            break;
+        case "senc":
+            byte version;
+            byte flag[3];
+            uint32 sample_count;
+            struct
+            {
+                byte per_sample_IV[8];
+                if (flag[2] == 2)
+                {
+                    uint16 subsample_count;
+                    struct
+                    {   
+                        uint16 bytes_of_clear_data;
+                        uint32 bytes_of_protected_data;
+                    }subsample_data[subsample_count];
+                }
+            }entry[sample_count];
+            break;
+        case "saio":
+            byte version;
+            byte flag[3];
+            if ((flag[2] & 1) != 0)
+            {
+                uint32 aux_info_type;
+                uint32 aud_info_type_parameter;
+            }
+            uint32 entry_count_7;
+            if(version == 0)
+                uint32 offset[entry_count_7];
+            else
+                uint64 offset[entry_count_7];
+            break;
+        case "saiz":
+            byte version;
+            byte flag[3];
+            if ((flag[2] & 1) != 0)
+            {
+                uint32 aux_info_type;
+                uint32 aux_info_type_parameter;
+            }
+            byte   default_sample_info_size;
+            uint32 sample_count;
+            if(default_sample_info_size == 0)
+            {
+                byte entry[sample_count];
+            }
+            break;
+        case "trun":
+            local uint32 i;
+            byte version;
+            byte flag[3];
+            uint32 sample_count;
+            if ((flag[2] & 1) != 0)          
+				uint32 data_offset;
+            if ((flag[2] & 4) != 0)          
+				uint32 first_sample_flags;
+            for (i = 0; i < sample_count; i++)
+            {
+                struct
+                {
+                    if((flag[1] & 1) != 0)  uint32 sample_duration;
+                    if((flag[1] & 2) != 0)  uint32 sample_size;
+                    if((flag[1] & 4) != 0)  uint32 sample_flags;
+                    if((flag[1] & 8) != 0)
+                    {
+                        if (version == 0)
+                            uint32 sample_composition_time_offset;
+                        else
+                            int32  sample_composition_time_offset;
+                    }
+                }entry;
+            }
+            break;
+        case "tfhd":
+            byte version;
+            byte flag[3];
+            uint32 trackID;
+            if (0 != (flag[2] & 1))  
+				uint64 base_data_offset;
+            if (0 != (flag[2] & 2))  
+				uint32 sample_description_index;
+            if (0 != (flag[2] & 8))  
+				uint32 default_sample_duration;
+            if (0 != (flag[2] & 0x10))   
+				uint32 default_sample_size;
+            if (0 != (flag[2] & 0x20))   
+				uint32 default_sample_flags;
+            break;
+        case "mfhd":
+            byte version;
+            byte flag[3];
+            uint32 sequence_number;
+            break;
+        case "sidx":
+            byte version;
+            byte flag[3];
+            uint32 referenceID;
+            uint32 timescale;
+            if (version == 0)
+            {
+                uint32 earliest_presentation_time;
+                uint32 first_offset;
+            }
+            else
+            {
+                uint64 earliest_presentation_time;
+                uint64 first_offset;
+            }
+            uint16 reserved;
+            uint16 reference_count;
+            str_sidx references[reference_count];
+            break;
+        case "trex":
+            byte version;
+            byte flag[3];
+            uint32 trackID;
+            uint32 default_sample_description_index;
+            uint32 default_sample_duration;
+            uint32 default_sample_size;
+            uint32 default_sample_flags;
+            break;
+        case "mehd":
+            byte version;
+            byte flag[3];
+            if(version == 0)
+                uint32 fragment_duration;
+            else
+                uint64 fragment_duration;
+            break;
+        case "enca":
+            byte version;
+            byte flag[3];
+            uint32 entry_count_8;
+            byte data[0x14];
+            break;
+        case "stss":
+            byte version;
+            byte flag[3];
+            uint32 entry_count_9;
+            uint32 sample_number[entry_count_9];
+            break;      
+        default:
+            FSkip(contentsize);
+            break;
+    }
+	
+	local uint64 writePosition = FTell();
+	FSeek(startOffset);
+	local uint32 newSize = writePosition-startOffset;
+	uint32 size = {newSize};
+	FSeek(writePosition);
+} mp4box;
+
+//added structs
+typedef struct{ //mp4file
+
+	//TODO Optimize selection via new function
+	local string tmp_s[] = {"ftyp"};
+    local uchar tmp[4];
+    ReadBytes(tmp, FTell()+4, 4, tmp_s); // (exactly one mandatory, at the beginning)
+    mp4box box;   
+
+	local string tmp_s[] = {"mdat"};
+    ReadBytes(tmp, FTell()+4, 4, tmp_s); // (exactly one mandatory, usually at beginning after ftyp or at end, but possible everywhere)	
+	mp4box box;   
+
+	local string tmp_s[] = {"moov"};
+    ReadBytes(tmp, FTell()+4, 4, tmp_s); // (any number, not mandatory, contains data)
+    mp4box box;   
+
+	local string tmp_s[] = {"free"};
+    ReadBytes(tmp, FTell()+4, 4, tmp_s); // (can be anywhere anytime, not mandatory, even at the beginning)
+	mp4box box;   
+}mp4file;
+
+mp4file file; 
