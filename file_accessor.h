@@ -284,6 +284,18 @@ public:
 		rand_pos = 0;
 		file_pos = 0;
 		file_size = fsize;
+
+		allow_evil_values = true;
+		bitfield_size = 0;
+		bitfield_bits = 0;
+		lookahead = false;
+		if (has_bitmap)
+			std::fill(bitmap.begin(), bitmap.end(), false);
+		has_bitmap = false;
+		is_big_endian = false;
+		is_bitfield_left_to_right[0] = false;
+		is_bitfield_left_to_right[1] = true;
+		is_padded_bitfield = true;
 	}
 
 	int feof() {
