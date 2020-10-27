@@ -5,6 +5,12 @@
 #include <cstring>
 #include <cassert>
 #include <getopt.h>
+#include <stdint.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/time.h>
+#include <fcntl.h>
 
 #include "config.h"
 #include "formatfuzzer.h"
@@ -158,6 +164,48 @@ int parse(int argc, char **argv)
 	return errors;
 }
 
+extern "C" size_t afl_pre_save_handler(unsigned char* data, size_t size, unsigned char** new_data);
+
+/* Get unix time in microseconds */
+
+static uint64_t get_cur_time_us(void) {
+
+  struct timeval  tv;
+  struct timezone tz;
+
+  gettimeofday(&tv, &tz);
+
+  return (tv.tv_sec * 1000000ULL) + tv.tv_usec;
+
+}
+
+int benchmark(int argc, char *argv[])
+{
+	int rand_fd = open("/dev/urandom", O_RDONLY);
+	unsigned char data[4096];
+	unsigned char* new_data = NULL;
+	int generated = 0;
+	uint64_t total_bytes = 0;
+	int i;
+	uint64_t start = get_cur_time_us();
+	for (i = 0; i < 100000; ++i)
+	{
+		ssize_t r = read(rand_fd, data, 4096);
+		assert(r == 4096);
+		size_t new_size = afl_pre_save_handler(data, 4096, &new_data);
+		if (new_size && new_data) {
+			generated += 1;
+			total_bytes += new_size;
+		}
+	}
+	uint64_t end = get_cur_time_us();
+	double time = (end - start) / 1.0e6;
+	printf("Generated %d files from %d attempts in %f s.\n", generated, i, time);
+	printf("Average file size %lu bytes.\n", total_bytes / generated);
+	printf("Speed %f / s.\n", generated / time);
+	return 0;
+}
+
 int version(int argc, char *argv[])
 {
 	fprintf(stderr, "This is %s\n", PACKAGE_STRING);
@@ -175,6 +223,7 @@ typedef struct
 COMMAND commands[] = {
 	{"fuzz", fuzz, "Generate random inputs"},
 	{"parse", parse, "Parse inputs"},
+	{"benchmark", benchmark, "Benchmark fuzzing"},
 	{"version", version, "Show version"},
 };
 
