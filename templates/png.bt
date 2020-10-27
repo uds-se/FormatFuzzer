@@ -47,7 +47,9 @@ void error_message(string msg) {
 
 // PNG Data types
 typedef struct {
+    local int evil = SetEvilBit(false);
     uint16 btPngSignature[4] <format=hex>;
+    SetEvilBit(evil);
 } PNG_SIGNATURE;
 
 typedef enum <byte> pngColorSpaceType {
