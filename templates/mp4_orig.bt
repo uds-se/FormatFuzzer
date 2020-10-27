@@ -1,0 +1,807 @@
+//------------------------------------------------
+//--- 010 Editor v8.0 Binary Template
+//
+//      File: MP4.bt
+//   Authors: Alexey Lyashko, Andrew Molyneux, Marian Denes, SweetScape, Marko Musa
+//   Version: 3.3
+//   Purpose: Defines a template for parsing MP4 and MOV video files.
+//  Category: Video
+// File Mask: *.mp4,*.mov,*.m4v
+//  ID Bytes: [+4] 66 74 79 70, [+4] 6D 6F 6F 76, [+4] 6D 64 61 74
+//   History:
+//   3.3   2019-08-08 M. Musa: Modified box logic to respect box size in header.
+//   3.2   2019-02-03 A. Lyashko: Added support for fragmented MP4 files.
+//   3.1   2018-06-17 A. Lyashko: Added support for sample table atoms.
+//   3.0   2017-10-03 A Molyneux: Total rewrite, more complete and robust.
+//   2.2   2016-01-29 SweetScape: Updated header for repository submission.
+//   2.1   2015-06-04 M Denes: Public release.
+//------------------------------------------------
+
+BigEndian();
+
+struct fp16;
+struct fp32;
+struct fp32uvw;
+struct matrix;
+struct fourcc;
+struct boxheader;
+struct compatible_brand;
+struct mp4box;
+struct mp4time;
+struct mp4lang;
+struct qtopcolor;
+struct elst_entry;
+struct tkhd_flags;
+struct vmhd_flags;
+
+// QuickTime language codes from https://developer.apple.com/library/content/documentation/QuickTime/QTFF/QTFFChap4/qtff4.html#//apple_ref/doc/uid/TP40000939-CH206-34353
+enum qtlang
+{
+    qtlEnglish            = 0,
+    qtlFrench             = 1,
+    qtlGerman             = 2,
+    qtlItalian            = 3,
+    qtlDutch              = 4,
+    qtlSwedish            = 5,
+    qtlSpanish            = 6,
+    qtlDanish             = 7,
+    qtlPortuguese         = 8,
+    qtlNorwegian          = 9,
+    qtlHebrew             = 10,
+    qtlJapanese           = 11,
+    qtlArabic             = 12,
+    qtlFinnish            = 13,
+    qtlGreek              = 14,
+    qtlIcelandic          = 15,
+    qtlMaltese            = 16,
+    qtlTurkish            = 17,
+    qtlCroatian           = 18,
+    qtlChineseTraditional = 19,
+    qtlUrdu               = 20,
+    qtlHindi              = 21,
+    qtlThai               = 22,
+    qtlKorean             = 23,
+    qtlLithuanian         = 24,
+    qtlPolish             = 25,
+    qtlHungarian          = 26,
+    qtlEstonian           = 27,
+    qtlLettish            = 28,
+    qtlLatvian            = 28,
+    qtlSaami              = 29,
+    qtlSami               = 29,
+    qtlFaroese            = 30,
+    qtlFarsi              = 31,
+    qtlRussian            = 32,
+    qtlChineseSimplified  = 33,
+    qtlFlemish            = 34,
+    qtlIrish              = 35,
+    qtlAlbanian           = 36,
+    qtlRomanian           = 37,
+    qtlCzech              = 38,
+    qtlSlovak             = 39,
+    qtlSlovenian          = 40,
+    qtlYiddish            = 41,
+    qtlSerbian            = 42,
+    qtlMacedonian         = 43,
+    qtlBulgarian          = 44,
+    qtlUkrainian          = 45,
+    qtlBelarusian         = 46,
+    qtlUzbek              = 47,
+    qtlKazakh             = 48,
+    qtlAzerbaijani        = 49,
+    qtlAzerbaijanAr       = 50,
+    qtlArmenian           = 51,
+    qtlGeorgian           = 52,
+    qtlMoldavian          = 53,
+    qtlKirghiz            = 54,
+    qtlTajiki             = 55,
+    qtlTurkmen            = 56,
+    qtlMongolian          = 57,
+    qtlMongolianCyr       = 58,
+    qtlPashto             = 59,
+    qtlKurdish            = 60,
+    qtlKashmiri           = 61,
+    qtlSindhi             = 62,
+    qtlTibetan            = 63,
+    qtlNepali             = 64,
+    qtlSanskrit           = 65,
+    qtlMarathi            = 66,
+    qtlBengali            = 67,
+    qtlAssamese           = 68,
+    qtlGujarati           = 69,
+    qtlPunjabi            = 70,
+    qtlOriya              = 71,
+    qtlMalayalam          = 72,
+    qtlKannada            = 73,
+    qtlTamil              = 74,
+    qtlTelugu             = 75,
+    qtlSinhala            = 76,
+    qtlBurmese            = 77,
+    qtlKhmer              = 78,
+    qtlLao                = 79,
+    qtlVietnamese         = 80,
+    qtlIndonesian         = 81,
+    qtlTagalog            = 82,
+    qtlMalayRoman         = 83,
+    qtlMalayArabic        = 84,
+    qtlAmharic            = 85,
+    qtlGalla              = 87,
+    qtlOromo              = 87,
+    qtlSomali             = 88,
+    qtlSwahili            = 89,
+    qtlKinyarwanda        = 90,
+    qtlRundi              = 91,
+    qtlNyanja             = 92,
+    qtlMalagasy           = 93,
+    qtlEsperanto          = 94,
+    qtlWelsh              = 128,
+    qtlBasque             = 129,
+    qtlCatalan            = 130,
+    qtlLatin              = 131,
+    qtlQuechua            = 132,
+    qtlGuarani            = 133,
+    qtlAymara             = 134,
+    qtlTatar              = 135,
+    qtlUighur             = 136,
+    qtlDzongkha           = 137,
+    qtlJavaneseRom        = 138,
+    qtlUnspecified        = 32767
+};
+
+// QuickTime graphics modes from https://developer.apple.com/library/content/documentation/QuickTime/QTFF/QTFFChap4/qtff4.html#//apple_ref/doc/uid/TP40000939-CH206-18741
+enum <uint16> qtgfxmode
+{
+    qtgCopy               = 0x000,
+    qtgDitherCopy         = 0x040,
+    qtgBlend              = 0x020,
+    qtgTransparent        = 0x024,
+    qtgStraightAlpha      = 0x100,
+    qtgPremulWhiteAlpha   = 0x101,
+    qtgPremulBlackAlpha   = 0x102,
+    qtgStraightAlphaBlend = 0x104,
+    qtgComposition        = 0x103
+};
+
+uint64 ContentSize(boxheader& bh)
+{
+    return (exists(bh.size64) ? bh.size64 : bh.size) - sizeof(bh);
+}
+
+uint64 BoxSize(boxheader& bh)
+{
+    return (exists(bh.size64) ? bh.size64 : bh.size);
+}
+
+string ReadFP16(fp16& f)
+{
+    local string buf;
+    SPrintf(buf, "%lf", (double)f.value / (double)0x100);
+    return buf;
+}
+
+string ReadFP32(fp32& f)
+{
+    local string buf;
+    SPrintf(buf, "%lf", (double)f.value / (double)0x10000);
+    return buf;
+}
+
+string ReadFP32uvw(fp32uvw& f)
+{
+    local string buf;
+    SPrintf(buf, "%lf", (double)f.value / (double)0x40000000);
+    return buf;
+}
+
+wstring ReadBox(mp4box& box)
+{
+    return box.hdr.type.value;
+}
+
+string BoxComment(mp4box& box)
+{
+    switch (box.hdr.type.value)
+    {
+        case "dinf": return "Data Information Box";
+        case "dref": return "Data Reference Box";
+        case "edts": return "Edit Box";
+        case "elst": return "Edit List Box";
+        case "free": return "Free Space Box";
+        case "ftyp": return "File Type Box";
+        case "hdlr": return "Handler Reference Box";
+        case "mdat": return "Media Data Box";
+        case "mdhd": return "Media Header Box";
+        case "mdia": return "Media Box";
+        case "minf": return "Media Information Box";
+        case "moov": return "Movie Box";
+        case "mvhd": return "Movie Header Box";
+        case "stbl": return "Sample Table Box";
+        case "tkhd": return "Track Header Box";
+        case "trak": return "Track Box";
+        case "udta": return "User Data Box";
+        case "vmhd": return "Video Media Information Header Box";
+        // Added mvex
+        case "mvex": return "Movie Extends Box";
+        case "mehd": return "Movie Extends Header Box";
+        case "trex": return "Track Extends Box";
+        case "sidx": return "Segment Index Box";
+        case "moof": return "Movie Fragment Box";
+        case "mfhd": return "Movie Fragment Header Box";
+        case "traf": return "Track Fragment Box";
+        case "trun": return "Track Fragment Run Box";
+        case "saiz": return "Sample auxiliary information sizes";
+        case "saio": return "Sample auxiliary information offsets";
+        case "senc": return "Sample encryption";
+        case "pssh": return "Protection System Specific Header Box";
+        // Added the following to support stbl child atoms
+        case "stss": return "Sync Sample Box";
+        case "stsz": return "Sample Size Box";
+        case "stco": return "Chunk Offset Box";
+        case "co64": return "Chunk Large Offset Box";
+        case "stsc": return "Sample To Chunk Box";
+        case "stts": return "Time To Sample Box";
+        case "stsd": return "Sample Description Box";
+        default: return "Unknown box type";
+    }
+}
+
+wstring ReadFourCC(fourcc& f)
+{
+    return f.value;
+}
+
+wstring ReadBoxHeader(boxheader& bh)
+{
+    local string s;
+    SPrintf(s, "[size=%Lu]", ContentSize(bh));
+    return bh.type.value + " " + s;
+}
+
+string ReadCompatibleBrand(compatible_brand& b)
+{
+    return b.brand.value;
+}
+
+string ReadTime(mp4time& t)
+{
+    // Magic number 2082844800 is the difference in seconds between the
+    // classic Mac OS epoch (midnight on January 1st 1904) and the POSIX
+    // epoch (midnight on January 1st 1970).
+    local quad value = (quad)t.value - 2082844800;
+    return TimeTToString(value, "yyyy-MM-dd hh:mm:ss");
+}
+
+string ReadLang(mp4lang& lang)
+{
+    if (lang.value < 0x0400 || lang.value == qtlUnspecified)
+    {
+        local qtlang v = lang.value;
+        return EnumToString(v);
+    }
+    local char iso[4];
+    iso[0] = ((lang.value & 0x7c00) >> 10) + 0x60;
+    iso[1] = ((lang.value & 0x03e0) >> 5) + 0x60;
+    iso[2] = (lang.value & 0x001f) + 0x60;
+    iso[3] = '\0';
+    return iso;
+}
+
+string ReadOpcolor(qtopcolor& c)
+{
+    local string result;
+    SPrintf(result, "r=%d, g=%d, b=%d", c.red, c.green, c.blue);
+    return result;
+}
+
+string PipeConcat(string s1, string s2)
+{
+    if (Strlen(s1) > 0)
+    {
+        return s1 + " | " + s2;
+    }
+    return s2;
+}
+
+string ReadTkhdFlags(tkhd_flags& f)
+{
+    local string result;
+    if (f.track_enabled)
+    {
+        result = "Track enabled";
+    }
+    if (f.track_in_movie)
+    {
+        result = PipeConcat(result, "Track in movie");
+    }
+    if (f.track_in_preview)
+    {
+        result = PipeConcat(result, "Track in preview");
+    }
+    if (f.track_in_poster)
+    {
+        result = PipeConcat(result, "Track in poster");
+    }
+    return result;
+}
+
+string ReadVmhdFlags(vmhd_flags& f)
+{
+    local string result;
+    if (f.no_lean_ahead)
+    {
+        result = "No lean ahead";
+    }
+    return result;
+}
+
+typedef struct
+{
+    int16 value;
+} fp16 <read=ReadFP16, open=suppress>;
+
+typedef struct
+{
+    int32 value;
+} fp32 <read=ReadFP32, open=suppress>;
+
+typedef struct
+{
+    int32 value;
+} fp32uvw <read=ReadFP32uvw, open=suppress>;
+
+typedef struct
+{
+    fp32 a <name="a">;
+    fp32 b <name="b">;
+    fp32uvw u <name="u">;
+    fp32 c <name="c">;
+    fp32 d <name="d">;
+    fp32uvw v <name="v">;
+    fp32 x <name="x">;
+    fp32 y <name="y">;
+    fp32uvw w <name="w">;
+} matrix <open=suppress>;
+
+typedef struct
+{
+    byte value[4] <open=suppress>;
+} fourcc <read=ReadFourCC, open=suppress>;
+
+typedef struct
+{
+    uint32 size;
+    fourcc type;
+    if (size == 1)
+    {
+        uint64 size64;
+    }
+} boxheader <read=ReadBoxHeader, open=suppress>;
+
+typedef struct
+{
+    fourcc brand;
+} compatible_brand <read=ReadCompatibleBrand, open=suppress>;
+
+typedef struct
+{
+    uint32 value;
+} mp4time <read=ReadTime, open=suppress>;
+
+typedef struct
+{
+    uint16 value;
+} mp4lang <read=ReadLang, open=suppress>;
+
+typedef struct
+{
+    uint16 red;
+    uint16 green;
+    uint16 blue;
+} qtopcolor <read=ReadOpcolor, open=suppress>;
+
+typedef struct
+{
+    uint32 duration <name="Duration", comment="Duration of this edit segment in movie time scale units (specified in mvhd box)">;
+    uint32 media_time <name="Media Time", comment="Start time of this edit segment in media time scale units (specified in mdhd box)">;
+    fp32 media_rate <name="Media Rate", comment="Relative rate at which to play this edit segment">;
+} elst_entry;
+
+typedef struct
+{
+    byte dummy[2] <open=suppress>;
+    byte dummy2 : 4;
+    byte track_in_poster : 1 <name="Track in poster">;
+    byte track_in_preview : 1 <name="Track in preview">;
+    byte track_in_movie : 1 <name="Track in movie">;
+    byte track_enabled : 1 <name="Track enabled">;
+} tkhd_flags <read=ReadTkhdFlags, open=suppress>;
+
+typedef struct
+{
+    byte dummy[2];
+    byte dummy2 : 7;
+    byte no_lean_ahead : 1;
+} vmhd_flags <read=ReadVmhdFlags, open=suppress>;
+
+// The following three structs are used with sample table atoms
+typedef struct
+{
+    uint32 first_chunk;
+    uint32 samples_per_chunk;
+    uint32 sample_description_index;
+}str_stsc;
+
+typedef struct
+{
+    uint32 sample_count;
+    uint32 sample_delta;
+}str_stts;
+
+typedef struct
+{
+    uint32 contentSize;
+    byte   content[contentSize - 4];
+    /*local quad so = FTell();
+    while(FTell() < so + contentSize - 4)
+    {
+        mp4box box <name="Box">;
+    }*/
+}str_stsd;
+
+typedef struct
+{
+    uint32 reference_size31_type1;
+    uint32 subsegment_duration;
+    uint32 SAP_delta_time28_type3_starts_with1;
+}str_sidx;
+
+typedef struct
+{
+    // Seperated box start/end logic as box sizes being larger than content of the box caused issues
+    // For example 120 bit sized mvhd; it's wrong as it should be a fixed size, but it happens. 
+    local uint64 startOffset = FTell();
+
+    boxheader hdr;
+    
+    local uint64 endOffset = startOffset + BoxSize(hdr);
+    local uint64 contentsize = ContentSize(hdr);
+    
+    switch (hdr.type.value)
+    {
+        // These box types are all just containers for other boxes
+        case "dinf":
+        case "edts":
+        case "mdia":
+        case "minf":
+        case "moov":
+        case "moof":
+        case "stbl":
+        case "trak":
+        case "udta":
+        case "traf":
+        case "mvex":
+        case "sinf":
+        case "schi":
+
+            while (FTell() < endOffset)
+            {
+                mp4box box <name="Box">;
+
+                // Warn about fixed sizes boxes having content size in header set to larger value.
+                if(FTell() != box.endOffset) {
+                    Printf("%s at %d larger then expected. Expected end: %d, Actual: %d\n",
+                                box.hdr.type.value,box.startOffset, FTell(), box.endOffset );
+                }
+                FSeek(box.endOffset);
+            }
+            break;
+        // Added mehd, trex, sidx, traf, tfhd, trun, saiz, saio, senc, pssh
+        case "frma":
+            uint32 codingName;
+            break;
+        case "tenc":
+            byte version <name="Version">;
+            byte flag[3] <open=suppress, name="Flags">; 
+            byte reserved1;
+            if(version == 0) byte reserved2;
+            else byte default_crypt_skip_byte_block;
+            byte default_is_protected;
+            byte default_per_sample_IV_size;
+            byte default_KID[16];
+            if(0 == default_per_sample_IV_size)
+            {
+                byte default_constant_IV_size;
+                byte default_constant_IV[default_constant_IV_size];
+            }
+            break;
+        case "schm":
+            byte version <name="Version">;
+            byte flag[3] <open=suppress, name="Flags">; 
+            uint32 scheme_type;
+            uint32 scheme_version;
+
+            break;
+        case "pssh":
+            byte version <name="Version">;
+            byte flag[3] <open=suppress, name="Flags">; 
+            byte systemID[16];
+            if(version > 0)
+            {
+                uint32 KID_count;
+                struct
+                {
+                    byte entry[16];
+                }KID[KID_count];
+            }
+            uint32 DataSize;
+            byte Data[DataSize];
+            break;
+        case "senc":
+            byte version <name="Version">;
+            byte flag[3] <open=suppress, name="Flags">;
+            uint32 sample_count;
+            struct
+            {
+                byte per_sample_IV[8];
+                if(flag[2] == 2)
+                {
+                    uint16 subsample_count;
+                    struct
+                    {   
+                        uint16 bytes_of_clear_data;
+                        uint32 bytes_of_protected_data;
+                    }subsample_data[subsample_count];
+                }
+            }entry[sample_count];
+            break;
+        case "saio":
+            byte version <name="Version">;
+            byte flag[3] <open=suppress, name="Flags">;
+            if((flag[2] & 1) != 0)
+            {
+                uint32 aux_info_type;
+                uint32 aud_info_type_parameter;
+            }
+            uint32 entry_count;
+            if(version == 0)
+                uint32 offset[entry_count];
+            else
+                uint64 offset[entry_count];
+            break;
+        case "saiz":
+            byte version <name="Version">;
+            byte flag[3] <open=suppress, name="Flags">;
+            if((flag[2] & 1) != 0)
+            {
+                uint32 aux_info_type;
+                uint32 aux_info_type_parameter;
+            }
+            byte   default_sample_info_size;
+            uint32 sample_count;
+            if(default_sample_info_size == 0)
+            {
+                byte entry[sample_count];
+            }
+            break;
+        case "trun":
+            local int i;
+            byte version <name="Version">;
+            byte flag[3] <open=suppress, name="Flags">;
+            uint32 sample_count;
+            if((flag[2] & 1) != 0)          uint32 data_offset;
+            if((flag[2] & 4) != 0)          uint32 first_sample_flags;
+            for(i = 0; i < sample_count; i++)
+            {
+                struct
+                {
+                    if((flag[1] & 1) != 0)  uint32 sample_duration;
+                    if((flag[1] & 2) != 0)  uint32 sample_size;
+                    if((flag[1] & 4) != 0)  uint32 sample_flags;
+                    if((flag[1] & 8) != 0)
+                    {
+                        if(version == 0)
+                            uint32 sample_composition_time_offset;
+                        else
+                            int32  sample_composition_time_offset;
+                    }
+                }entry;
+            }
+            break;
+        case "tfhd":
+            byte version <name="Version">;
+            byte flag[3] <open=suppress, name="Flags">;
+            uint32 trackID;
+            if(0 != (flag[2] & 1))  uint64 base_data_offset;
+            if(0 != (flag[2] & 2))  uint32 sample_description_index;
+            if(0 != (flag[2] & 8))  uint32 default_sample_duration;
+            if(0 != (flag[2] & 0x10))   uint32 default_sample_size;
+            if(0 != (flag[2] & 0x20))   uint32 default_sample_flags;
+            break;
+        case "mfhd":
+            byte version <name="Version">;
+            byte flag[3] <open=suppress, name="Flags">;
+            uint32 sequence_number;
+            break;
+        case "sidx":
+            byte version <name="Version">;
+            byte flag[3] <open=suppress, name="Flags">;
+            uint32 referenceID <name="Reference ID">;
+            uint32 timescale <name="Timescale">;
+            if(version == 0)
+            {
+                uint32 earliest_presentation_time;
+                uint32 first_offset;
+            }
+            else
+            {
+                uint64 earliest_presentation_time;
+                uint64 first_offset;
+            }
+            uint16 reserved;
+            uint16 reference_count;
+            str_sidx references[reference_count] <open=suppress>;
+            break;
+        case "trex":
+            byte version <name="Version">;
+            byte flag[3] <open=suppress, name="Flags">;
+            uint32 trackID;
+            uint32 default_sample_description_index;
+            uint32 default_sample_duration;
+            uint32 default_sample_size;
+            uint32 default_sample_flags;
+            break;
+        case "mehd":
+            byte version <name="Version">;
+            byte flag[3] <open=suppress, name="Flags">;
+            if(version == 0)
+                uint32 fragment_duration <name="Fragment duration">;
+            else
+                uint64 fragment_duration <name="Fragment duration">;
+            break;
+        // Added stsd, stts, stsc, stco, co64, stsz and stss
+        case "stsd":
+            byte version <name="Version">;
+            byte flag[3] <open=suppress, name="Flags">;
+            uint32 entry_count;
+            //str_stsd description[entry_count];
+            mp4box entries[entry_count];
+            break;
+        case "enca":
+            byte version <name="Version">;
+            byte flag[3] <open=suppress, name="Flags">;
+            uint32 entry_count;
+            byte data[0x14];
+            break;
+        case "stts":
+            byte version <name="Version">;
+            byte flag[3] <open=suppress, name="Flags">;
+            uint32 entry_count;
+            str_stts entry[entry_count];
+            break;
+        case "stsc":
+            byte version <name="Version">;
+            byte flag[3] <open=suppress, name="Flags">;
+            uint32 entry_count;
+            str_stsc entry[entry_count];
+            break;
+        case "stco":
+            byte version <name="Version">;
+            byte flag[3] <open=suppress, name="Flags">;
+            uint32 entry_count;
+            uint32 chunk_offset[entry_count];
+            break;
+        case "co64":
+            byte version <name="Version">;
+            byte flag[3] <open=suppress, name="Flags">;
+            uint32 entry_count;
+            uint64 chunk_offset[entry_count];
+            break;
+        case "stsz":
+            byte version <name="Version">;
+            byte flag[3] <open=suppress, name="Flags">;
+            uint32 sample_size;
+            uint32 sample_count;
+            if(sample_size == 0)
+            {
+                uint32 entry_size[sample_count];
+            }
+            break;
+        case "stss":
+            byte version <name="Version">;
+            byte flag[3] <open=suppress, name="Flags">;
+            uint32 entry_count;
+            uint32 sample_number[entry_count];
+            break;
+        case "elst":
+            byte version <name="Version">;
+            byte flags[3] <open=suppress, name="Flags">;
+            uint32 num_entries <name="Number of Entries">;
+            elst_entry entries[num_entries] <open=suppress, name="Edit List Table">;
+            break;
+        case "ftyp":
+            fourcc major_brand <name="Major Brand">;
+            uint32 minor_version <format=hex, name="Minor Version">;
+            while (FTell() < startof(major_brand) + contentsize)
+            {
+                compatible_brand brand <name="Compatible Brand">;
+            }
+            break;
+        case "hdlr":
+            byte version <name="Version">;
+            byte flags[3] <open=suppress, name="Flags">;
+            fourcc type <name="Component Type">;
+            fourcc subtype <name="Component Subtype">;
+            uint32 mfr <name="Component Manufacturer">;
+            uint32 flags_mask <name="Component Flags Mask">;
+            // TODO: Apparently the rest of this box is a "counted string" giving the component name,
+            // but I haven't yet found good documentation on how it's structured
+            byte rest[contentsize - (FTell() - startof(version))] <open=suppress>;
+            break;
+        case "mdhd":
+            byte version <name="Version">;
+            byte flags[3] <open=suppress, name="Flags">;
+            mp4time create_time <name="Creation Time">;
+            mp4time modify_time <name="Modification Time">;
+            uint32 time_scale <name="Time Scale", comment="Number of media time units per second">;
+            uint32 duration <name="Duration", comment="Duration of the media in media time scale units">;
+            mp4lang language <name="Language">;
+            uint16 quality <name="Quality">;
+            break;
+        case "mvhd":
+            byte version <name="Version">;
+            byte flags[3] <open=suppress, name="Flags">;
+            mp4time create_time <name="Creation Time">;
+            mp4time modify_time <name="Modification Time">;
+            uint32 time_scale <name="Time Scale", comment="Number of movie time units per second">;
+            uint32 duration <name="Duration", comment="Duration of the movie in movie time scale units">;
+            fp32 preferred_rate <name="Preferred Rate">;
+            fp16 preferred_volume <name="Preferred Volume">;
+            byte reserved[10] <name="Reserved">;
+            matrix matrix_structure <name="Matrix Structure">;
+            uint32 preview_time <name="Preview Time", comment="Time value in the movie at which the preview begins">;
+            uint32 preview_duration <name="Preview Duration", comment="Duration of the movie preview in movie time scale units">;
+            uint32 poster_time <name="Poster Time", comment="Time value in the movie of the movie poster">;
+            uint32 selection_time <name="Selection Time", comment="Start time of the current selection">;
+            uint32 selection_duration <name="Selection Duration", comment="Duration of the current selection in movie time scale units">;
+            uint32 current_time <name="Current Time", comment="Time value of current time position within the movie">;
+            uint32 next_track_id <name="Next Track ID", comment="The value to use for the track ID number of the next track added">;
+            break;
+        case "smhd":
+            byte version <name="Version">;
+            byte flags[3] <open=suppress, name="Flags">;
+            fp16 balance <name="Balance">;
+            uint16 reserved <name="Reserved">;
+            break;
+        case "tkhd":
+            byte version <name="Version">;
+            tkhd_flags flags <name="Flags">;
+            mp4time create_time <name="Creation Time">;
+            mp4time modify_time <name="Modification Time">;
+            uint32 track_id <name="Track ID">;
+            uint32 reserved <name="Reserved">;
+            uint32 duration <name="Duration", comment="Duration of the media in movie time scale units (specified in mvhd box)">;
+            uint64 reserved2 <name="Reserved">;
+            uint16 layer <name="Layer">;
+            uint16 alt_group <name="Alternate Group">;
+            fp16 volume <name="Volume">;
+            uint16 reserved3 <name="Reserved">;
+            matrix matrix_structure <name="Matrix Structure">;
+            fp32 width <name="Track Width">;
+            fp32 height <name="Track Height">;
+            break;
+        case "vmhd":
+            byte version <name="Version">;
+            vmhd_flags flags <name="Flags">;
+            qtgfxmode graphics_mode <name="Graphics Mode">;
+            qtopcolor opcolor <name="Opcolor", open=suppress>;
+            break;
+        default:
+            FSkip(contentsize);
+            break;
+    }
+} mp4box <read=ReadBox, comment=BoxComment>;
+
+while (FTell() < FileSize())
+{
+    mp4box box <name="Box">;
+}
