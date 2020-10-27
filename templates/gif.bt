@@ -55,7 +55,9 @@ typedef struct {
 } DATASUBBLOCKS;
 
 typedef struct {
-	char	Signature[3];
+	local int evil = SetEvilBit(false);
+	char	Signature[3] = {"GIF"};
+	SetEvilBit(evil);
 	char	Version[3] = { {"87a"}, {"89a"} };
 } GIFHEADER;
 
