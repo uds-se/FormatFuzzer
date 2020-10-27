@@ -814,13 +814,7 @@ typedef struct //mp4box
 			
 			local uint32 i;
 			for(i=0; i< entry_count; i++){
-				local uint32 curOffset;
-				if(curOffset<FTell()){
-					uint32 chunk_offset = {curOffset};
-				}
-				else{
-					i = i-1;
-				}
+				uint32 chunk_offset = {0};
 			}
             break;
         case "stsz":
