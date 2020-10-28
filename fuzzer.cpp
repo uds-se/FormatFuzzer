@@ -188,7 +188,7 @@ int benchmark(int argc, char *argv[])
 	uint64_t total_bytes = 0;
 	int i;
 	uint64_t start = get_cur_time_us();
-	for (i = 0; i < 100000; ++i)
+	for (i = 0; i < 10000; ++i)
 	{
 		ssize_t r = read(rand_fd, data, 4096);
 		assert(r == 4096);

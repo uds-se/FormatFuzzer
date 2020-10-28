@@ -9,7 +9,7 @@
 #include <zlib.h>
 
 #define MAX_RAND_SIZE 65536
-#define MAX_FILE_SIZE 4096
+#define MAX_FILE_SIZE 8192
 
 bool is_big_endian = false;
 bool is_bitfield_left_to_right[2] = {false, true};
@@ -27,8 +27,8 @@ void swap_bytes(void* b, unsigned size) {
 }
 
 
-bool debug_print = false;
-bool get_parse_tree = false;
+bool debug_print = true;
+bool get_parse_tree = true;
 struct stack_cell {
 	const char* name;
 	std::unordered_map<std::string, int> counts;

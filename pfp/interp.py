@@ -3574,6 +3574,10 @@ class PfpInterp(object):
         index = fields.PYVAL(subscript)
         if self._generate:
             index = 0
+            try:
+                return ary[index]
+            except:
+                return None
         return ary[index]
 
     def _handle_if(self, node, scope, ctxt, stream):
