@@ -396,9 +396,10 @@ string readCHUNK(local PNG_CHUNK &c) {
 // MAIN  --  Here's where we really allocate the data
 // ---------------------------------------------------------------------------
 
-PNG_SIGNATURE sig <bgcolor=cLtPurple>;
-
 local int evil = SetEvilBit(false);
+PNG_SIGNATURE sig <bgcolor=cLtPurple>;
+SetEvilBit(evil);
+
 if (sig.btPngSignature[0] != 0x8950 ||
         sig.btPngSignature[1] != 0x4E47 ||
         sig.btPngSignature[2] != 0x0D0A ||
@@ -406,7 +407,6 @@ if (sig.btPngSignature[0] != 0x8950 ||
     error_message( "*ERROR: File is not a PNG image. Template stopped." );
     return -1;
 }
-SetEvilBit(evil);
 
 ChangeArrayLength();
 
