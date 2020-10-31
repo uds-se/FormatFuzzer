@@ -136,7 +136,7 @@ int parse(int argc, char **argv)
 	for (int arg = optind; arg < argc; arg++)
 	{
 		char *in = argv[arg];
-		bool success = true;
+		bool success = false;
 
 		set_parser();
 		setup_input(in);
@@ -165,6 +165,9 @@ int parse(int argc, char **argv)
 }
 
 extern "C" size_t afl_pre_save_handler(unsigned char* data, size_t size, unsigned char** new_data);
+extern "C" int afl_post_load_handler(unsigned char* data, size_t size, unsigned char** new_data, size_t* new_size);
+extern bool print_errors;
+
 
 /* Get unix time in microseconds */
 
@@ -177,6 +180,67 @@ static uint64_t get_cur_time_us(void) {
 
   return (tv.tv_sec * 1000000ULL) + tv.tv_usec;
 
+}
+
+void write_file(const char* filename, unsigned char* data, size_t size) {
+	printf("Saving file %s\n", filename);
+	int file_fd = open(filename, O_CREAT | O_WRONLY | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH);
+	write(file_fd, data, size);
+	close(file_fd);
+}
+
+int test(int argc, char *argv[])
+{
+	print_errors = true;
+	int rand_fd = open("/dev/urandom", O_RDONLY);
+	unsigned char data[4096];
+	unsigned char contents[65536];
+	unsigned char* file = NULL;
+	size_t file_size;
+	unsigned char* rand = NULL;
+	size_t rand_size;
+	size_t new_file_size;
+	int generated = 0;
+	int i;
+	uint64_t start = get_cur_time_us();
+	for (i = 0; i < 10000; ++i)
+	{
+		ssize_t r = read(rand_fd, data, 4096);
+		assert(r == 4096);
+		file_size = afl_pre_save_handler(data, 4096, &file);
+		if (file_size && file) {
+			generated += 1;
+			bool parsed = afl_post_load_handler(file, file_size, &rand, &rand_size);
+			assert(file_size <= 65536);
+			memcpy(contents, file, file_size);
+			memset(file, 0, file_size);
+			file = NULL;
+			if (!parsed) {
+				printf("Failed to parse!\n");
+				break;
+			}
+			new_file_size = afl_pre_save_handler(rand, rand_size, &file);
+			if (!file || !file_size) {
+				printf("Failed to re-generate!\n");
+				break;
+			}
+			if (file_size != new_file_size || memcmp(contents, file, file_size)) {
+				printf("Re-generated file different from original file!\n");
+				break;
+			}
+		}
+	}
+	if (i != 10000) {
+		write_file("r0", data, 4096);
+		write_file("f0", contents, file_size);
+		write_file("r1", rand, rand_size);
+		if (file)
+			write_file("f1", file, new_file_size);
+	}
+	uint64_t end = get_cur_time_us();
+	double time = (end - start) / 1.0e6;
+	printf("Tested %d files from %d attempts in %f s.\n", generated, i, time);
+	return 0;
 }
 
 int benchmark(int argc, char *argv[])
@@ -223,6 +287,7 @@ typedef struct
 COMMAND commands[] = {
 	{"fuzz", fuzz, "Generate random inputs"},
 	{"parse", parse, "Parse inputs"},
+	{"test", test, "Test if fuzzer is working properly (sanity checks)"},
 	{"benchmark", benchmark, "Benchmark fuzzing"},
 	{"version", version, "Show version"},
 };
@@ -232,7 +297,7 @@ int help(int argc, char *argv[])
 	version(argc, argv);
 	fprintf(stderr, "%s: usage: %s COMMAND [OPTIONS...] [ARGS...]\n", bin_name, bin_name);
 	fprintf(stderr, "Commands:\n");
-	for (int i = 0; i < sizeof(commands) / sizeof(COMMAND); i++)
+	for (unsigned i = 0; i < sizeof(commands) / sizeof(COMMAND); i++)
 		fprintf(stderr, "%-10s - %s\n", commands[i].name, commands[i].desc);
 	fprintf(stderr, "Use COMMAND --help to learn more\n");
 	return 0;
@@ -245,7 +310,7 @@ int main(int argc, char **argv)
 		return help(argc, argv);
 
 	char *cmd = argv[1];
-	for (int i = 0; i < sizeof(commands) / sizeof(COMMAND); i++)
+	for (unsigned i = 0; i < sizeof(commands) / sizeof(COMMAND); i++)
 	{
 		if (strcmp(cmd, commands[i].name) == 0)
 			return (*commands[i].fun)(argc - 1, argv + 1);

@@ -306,6 +306,27 @@ extern "C" size_t afl_pre_save_handler(unsigned char* data, size_t size, unsigne
 	return file_acc.file_size;
 }
 
+extern "C" int afl_post_load_handler(unsigned char* data, size_t size, unsigned char** new_data, size_t* new_size) {
+	file_acc.generate = false;
+
+	if (data != file_acc.file_buffer) {
+		memcpy(file_acc.file_buffer, data, size);
+	}
+	memset(file_acc.file_buffer + size, 0, MAX_FILE_SIZE - size);
+	file_acc.seed(rand_buffer, MAX_RAND_SIZE, size);
+	bool success = true;
+	try {
+		generate_file();
+	} catch (...) {
+		delete_globals();
+		success = false;
+	}
+	*new_data = rand_buffer;
+	*new_size = file_acc.rand_pos;
+	file_acc.generate = true;
+	return success;
+}
+
 void exit_template(int status) {
 	if (debug_print)
 		fprintf(stderr, "Template exited with code %d\n", status);
@@ -326,6 +347,10 @@ void check_array_length(unsigned& size) {
 
 void ChangeArrayLength() {
 	change_array_length = true;
+}
+
+void EndChangeArrayLength() {
+	change_array_length = false;
 }
 
 void BigEndian() { is_big_endian = true; }
@@ -491,15 +516,18 @@ bool ReadBytes(std::string& s, int64 pos, int n, std::vector<std::string> prefer
 		new_known_values.push_back(known);
 	}
 
+	int evil;
 	std::function<long long (unsigned char*)> parse;
-	if (preferred_values.size())
+	if (preferred_values.size()) {
 		parse = [&preferred_values, &n](unsigned char* file_buf) -> long long {
 	                	return std::find(preferred_values.begin(), preferred_values.end(), std::string((char*)file_buf, n)) == preferred_values.end();
 	                };
-	else
+	} else {
 		parse = [&new_known_values, &n](unsigned char* file_buf) -> long long {
 	                	return std::find(new_known_values.begin(), new_known_values.end(), std::string((char*)file_buf, n)) != new_known_values.end();
 	                };
+		evil = SetEvilBit(false);
+	}
 	
 	if (file_acc.rand_int(4, parse) == 0) {
 		if (preferred_values.size())
@@ -515,9 +543,12 @@ bool ReadBytes(std::string& s, int64 pos, int n, std::vector<std::string> prefer
 		}
 	}
 
+	if (preferred_values.size() == 0)
+		SetEvilBit(evil);
+
 	FSeek(original_pos);
 	file_acc.lookahead = false;
-	return s != "";
+	return s.length() != 0;
 }
 
 extern std::vector<char> ReadByteInitValues;

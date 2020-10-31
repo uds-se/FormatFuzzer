@@ -28,6 +28,7 @@ void swap_bytes(void* b, unsigned size) {
 
 
 bool debug_print = false;
+bool print_errors = false;
 bool get_parse_tree = false;
 struct stack_cell {
 	const char* name;
@@ -42,7 +43,7 @@ std::vector<stack_cell> generator_stack = {root_cell};
 
 void assert_cond(bool cond, const char* error_msg) {
 	if (!cond) {
-		if (debug_print)
+		if (debug_print || print_errors)
 			fprintf(stderr, "Error: %s\n", error_msg);
 		throw 0;
 	}
@@ -464,7 +465,7 @@ public:
 	std::string file_string(int size = 0) {
 		if (rand_int(8, [&size](unsigned char* file_buf) -> long long {
 			int len = size ? size : INT_MAX;
-			for (int i = 0; i < len && file_buf[i]; ++i)
+			for (int i = 0; i < len && (size || file_buf[i]); ++i)
 				if (file_buf[i] < 32 || (127 <= file_buf[i] && file_buf[i] < 161))
 					return 7;
 			return 0;

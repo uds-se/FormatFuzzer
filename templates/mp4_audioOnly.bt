@@ -1,3 +1,22 @@
+//------------------------------------------------
+//--- 010 Editor v8.0 Binary Template
+//
+//      File: MP4.bt
+//   Authors: Alexey Lyashko, Andrew Molyneux, Marian Denes, SweetScape, Marko Musa
+//   Version: 3.3
+//   Purpose: Defines a template for parsing MP4 and MOV video files.
+//  Category: Video
+// File Mask: *.mp4,*.mov,*.m4v
+//  ID Bytes: [+4] 66 74 79 70, [+4] 6D 6F 6F 76, [+4] 6D 64 61 74
+//   History:
+//   3.3   2019-08-08 M. Musa: Modified box logic to respect box size in header.
+//   3.2   2019-02-03 A. Lyashko: Added support for fragmented MP4 files.
+//   3.1   2018-06-17 A. Lyashko: Added support for sample table atoms.
+//   3.0   2017-10-03 A Molyneux: Total rewrite, more complete and robust.
+//   2.2   2016-01-29 SweetScape: Updated header for repository submission.
+//   2.1   2015-06-04 M Denes: Public release.
+//------------------------------------------------
+
 BigEndian();
 
 struct fp16;
@@ -326,6 +345,9 @@ typedef struct //mp4box
 						mp4box meta_block;
 						possible_blocks -= "meta";	
 						break;
+					default:
+						mp4box unknown_block;
+						break;
 				}
 			}
 			break;
@@ -401,6 +423,9 @@ typedef struct //mp4box
 					case "udta":
 						mp4box udta_block;
 						break;
+					default:
+						mp4box unknown_block;
+						break;
 				}
 				possible_blocks -= chunk_type;
 			}
@@ -436,6 +461,9 @@ typedef struct //mp4box
 						break;	
 					case "minf":
 						mp4box minf_block;
+						break;
+					default:
+						mp4box unknown_block;
 						break;							
 				}
 				preferred_blocks -= chunk_type;
@@ -510,6 +538,9 @@ typedef struct //mp4box
 					case "bxml":
 						mp4box bxml_block;
 						break;
+					default:
+						mp4box unknown_block;
+						break;
 				}
 				possible_blocks -= chunk_type;
 			} 
@@ -549,6 +580,9 @@ typedef struct //mp4box
 						mp4box dinf_block;						
 						preferred_blocks -= chunk_type;
 						possible_blocks -= chunk_type;
+						break;
+					default:
+						mp4box unknown_block;
 						break;
 				}
 			} 	
@@ -632,6 +666,9 @@ typedef struct //mp4box
 					case "subs":
 						mp4box subs_block;
 						possible_blocks -= chunk_type;
+						break;
+					default:
+						mp4box unknown_block;
 						break;
 				}
 			} 	
@@ -750,6 +787,9 @@ typedef struct //mp4box
 				case "urn ":
 					mp4box urn_box;
 					break;  
+				default:
+					mp4box unknown_block;
+					break;
 			}			
 			break;
 		case "url ":	
@@ -787,7 +827,7 @@ typedef struct //mp4box
 			local uint32 sampleCount = 0;
 			local uint32 currentIndex = 1;
 						
-			for (i=0; i < tmp; i++) {
+			for (i=0; i < entry_count; i++) {
 				uint32 first_chunk = {currentIndex};
 				local uint32 nextIndex;
 				currentIndex = currentIndex + nextIndex;
@@ -1009,20 +1049,25 @@ typedef struct //mp4box
             byte flag[3];
             uint32 entry_count;
             uint32 sample_number[entry_count];
-            break;      
+            break; 
+        default:
+            ChangeArrayLength();
+            byte unknown[contentsize];
+            EndChangeArrayLength();
+            break;     
     }
 	
 	local uint64 writePosition = FTell();
 	FSeek(startOffset);
 	local uint32 newSize = writePosition-startOffset;
+	local int evil = SetEvilBit(false);
 	uint32 size = {newSize};
+	SetEvilBit(evil);
 	FSeek(writePosition);
 } mp4box;
 
 //added structs
 typedef struct{ //mp4file
-	SetEvilBit(0);
-	
 	local char chunk_type[4];
 	local string preferred_blocks[] = { "ftyp" };
 	local string possible_blocks[] = { "ftyp" };
@@ -1045,6 +1090,9 @@ typedef struct{ //mp4file
 				break;
 			case "free":
 				mp4box free_block;
+				break;
+			default:
+				mp4box unknown_block;
 				break;
 		}
 	}
