@@ -36,6 +36,11 @@ struct stack_cell {
 	unsigned min = UINT_MAX;
 	unsigned max = 0;
 	stack_cell(const char* name) : name(name) {}
+	void clear() {
+		counts.clear();
+		min = UINT_MAX;
+		max = 0;
+	}
 };
 stack_cell root_cell("file");
 std::vector<stack_cell> generator_stack = {root_cell};
@@ -213,6 +218,7 @@ public:
 	unsigned char file_buffer[MAX_FILE_SIZE];
 	unsigned file_pos = 0;
 	unsigned file_size = 0;
+	bool has_size = false;
 	bool generate = true;
 	bool lookahead = false;
 
@@ -286,6 +292,7 @@ public:
 		file_pos = 0;
 		file_size = fsize;
 
+		has_size = false;
 		allow_evil_values = true;
 		bitfield_size = 0;
 		bitfield_bits = 0;
@@ -297,6 +304,8 @@ public:
 		is_bitfield_left_to_right[0] = false;
 		is_bitfield_left_to_right[1] = true;
 		is_padded_bitfield = true;
+		if (get_parse_tree)
+			generator_stack[0].clear();
 	}
 
 	int feof() {

@@ -1560,19 +1560,11 @@ JpegFileEnd = FileSize();
 // ------------------------------------------------------------
 // JPEG file
 
-const local WORD ReadUShortInitValues[] = { 0xffff, M_SOI, M_SOS, M_APP0, M_DHT, M_DQT, M_DRI, M_DHP, M_SOF0, M_SOF1, M_SOF2, M_SOF3, M_APP1, M_APP2, M_APP12, M_APP13, M_APP14, M_COMM, M_JPGLS };
 SetBackColor(jetMap[0]);
 
 //edited
-local byte colorFlag;
+local byte colorFlag = 0;
 typedef struct tgJPGFile {
-
-	SetEvilBit(0);
-	byte colorFlagVariable = {1,0};
-	colorFlag = colorFlagVariable;
-	FSeek(FTell() - 1);
-	SetEvilBit(1);
-
 	local int was_bigendian = IsBigEndian();
 	BigEndian(); 		
 		
@@ -1586,8 +1578,11 @@ typedef struct tgJPGFile {
 
 	//DQT section + SOFx
 	DQT dqt;	
-	if(colorFlag)
+	local WORD markers[] = { M_SOF0, M_DQT };
+	if (ReadUShort(FTell(), markers) == M_DQT) {
+		colorFlag = 1;
 		DQT dqt;		
+	}
 	SOFx sof0;
 	
 	//huffman tables
@@ -1600,12 +1595,21 @@ typedef struct tgJPGFile {
 		
 	//data
 	SOS  scanStart;
-	uint16 dataSize;
-	FSeek(FTell()-1);
-	char scanData[dataSize];
-	ChangeColor(1);
-						
-	uint16 endMarker = {65497};
+	Printf("Start of Scan Marker\n");
+	local quad fpos2 = FindFirst(M_EOI, true, false, FINDMETHOD_NORMAL, 0.0, 1, FTell());
+        if( fpos2 < 0 )
+        {
+                char unterminatedScanData[JpegFileEnd - FTell()];
+                Printf("Missing End of File marker\n");
+        }
+        else
+        {
+                char scanData[fpos2 - FTell()];
+                ChangeColor(1);
+                M_ID EOIMarker;
+                Printf("End of File Image\n");
+                if(JpegFileEnd > FTell()) char unknownPadding[JpegFileEnd - FTell()] <bgcolor=cSilver>;
+        }
 	
 	if (!was_bigendian)
 		LittleEndian();

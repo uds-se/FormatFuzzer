@@ -105,6 +105,9 @@ public:
 		return Version_var;
 	}
 
+	/* locals */
+	int evil;
+
 	unsigned char generated = 0;
 	int64 _startof;
 	std::size_t _sizeof;
@@ -1540,7 +1543,9 @@ GIFHEADER* GIFHEADER::generate() {
 	if (!generated)
 		generated = 1;
 
+	evil = SetEvilBit(false);
 	GENERATE_VAR(Signature, ::g->Signature.generate(3));
+	SetEvilBit(evil);
 	GENERATE_VAR(Version, ::g->Version.generate(3, { {"87a"}, {"89a"} }));
 	return this;
 }

@@ -185,15 +185,18 @@ static uint64_t get_cur_time_us(void) {
 void write_file(const char* filename, unsigned char* data, size_t size) {
 	printf("Saving file %s\n", filename);
 	int file_fd = open(filename, O_CREAT | O_WRONLY | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH);
-	write(file_fd, data, size);
+	ssize_t res = write(file_fd, data, size);
+	assert((size_t) res == size);
 	close(file_fd);
 }
+
+#define MAX_RAND_SIZE 65536
 
 int test(int argc, char *argv[])
 {
 	print_errors = true;
 	int rand_fd = open("/dev/urandom", O_RDONLY);
-	unsigned char data[4096];
+	unsigned char data[MAX_RAND_SIZE];
 	unsigned char contents[65536];
 	unsigned char* file = NULL;
 	size_t file_size;
@@ -207,7 +210,7 @@ int test(int argc, char *argv[])
 	{
 		ssize_t r = read(rand_fd, data, 4096);
 		assert(r == 4096);
-		file_size = afl_pre_save_handler(data, 4096, &file);
+		file_size = afl_pre_save_handler(data, MAX_RAND_SIZE, &file);
 		if (file_size && file) {
 			generated += 1;
 			bool parsed = afl_post_load_handler(file, file_size, &rand, &rand_size);
@@ -231,7 +234,7 @@ int test(int argc, char *argv[])
 		}
 	}
 	if (i != 10000) {
-		write_file("r0", data, 4096);
+		write_file("r0", data, MAX_RAND_SIZE);
 		write_file("f0", contents, file_size);
 		write_file("r1", rand, rand_size);
 		if (file)
@@ -246,7 +249,7 @@ int test(int argc, char *argv[])
 int benchmark(int argc, char *argv[])
 {
 	int rand_fd = open("/dev/urandom", O_RDONLY);
-	unsigned char data[4096];
+	unsigned char data[MAX_RAND_SIZE];
 	unsigned char* new_data = NULL;
 	int generated = 0;
 	uint64_t total_bytes = 0;
@@ -256,7 +259,7 @@ int benchmark(int argc, char *argv[])
 	{
 		ssize_t r = read(rand_fd, data, 4096);
 		assert(r == 4096);
-		size_t new_size = afl_pre_save_handler(data, 4096, &new_data);
+		size_t new_size = afl_pre_save_handler(data, MAX_RAND_SIZE, &new_data);
 		if (new_size && new_data) {
 			generated += 1;
 			total_bytes += new_size;

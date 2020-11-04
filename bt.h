@@ -447,10 +447,9 @@ int FSkip(int64 offset) {
 }
 
 int64 FileSize() {
-	static bool has_size = false;
-	if (!has_size) {
+	if (!file_acc.has_size) {
 		file_acc.file_size = file_acc.file_pos + file_acc.rand_int(MAX_FILE_SIZE + 1 - file_acc.file_pos, [](unsigned char* file_buf) -> long long { return file_acc.file_size - file_acc.file_pos; } );
-		has_size = true;
+		file_acc.has_size = true;
 	}
 	return file_acc.file_size;
 }
@@ -516,7 +515,7 @@ bool ReadBytes(std::string& s, int64 pos, int n, std::vector<std::string> prefer
 		new_known_values.push_back(known);
 	}
 
-	int evil;
+	int evil = true;
 	std::function<long long (unsigned char*)> parse;
 	if (preferred_values.size()) {
 		parse = [&preferred_values, &n](unsigned char* file_buf) -> long long {
