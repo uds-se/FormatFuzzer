@@ -22,12 +22,30 @@ import utils
 
 class TestDebug(utils.PfpTestCase):
     def setUp(self):
+        """
+        Sets the result of this thread.
+
+        Args:
+            self: (todo): write your description
+        """
         pass
 
     def tearDown(self):
+        """
+        Tear down the next callable.
+
+        Args:
+            self: (todo): write your description
+        """
         pass
 
     def test_debug_prompt(self):
+        """
+        Test for debugging.
+
+        Args:
+            self: (todo): write your description
+        """
         return
         dom = pfp.parse(
             StringIO("aaaabbbbcccchello there\x00\x05abcdf"),

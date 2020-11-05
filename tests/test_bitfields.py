@@ -25,12 +25,30 @@ import utils
 
 class TestBitfields(utils.PfpTestCase):
     def setUp(self):
+        """
+        Sets the result of this thread.
+
+        Args:
+            self: (todo): write your description
+        """
         pass
 
     def tearDown(self):
+        """
+        Tear down the next callable.
+
+        Args:
+            self: (todo): write your description
+        """
         pass
 
     def test_bitfield_basic(self):
+        """
+        Parse bitfield test test test test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "\xab",
             """
@@ -41,6 +59,12 @@ class TestBitfields(utils.PfpTestCase):
         )
 
     def test_bitfield_enable_padding_left_right(self):
+        """
+        Enables bitfield.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "\x3f\x03",
             """
@@ -57,6 +81,12 @@ class TestBitfields(utils.PfpTestCase):
         self.assertEqual(dom.blah.test2, 0x3F)
 
     def test_bitfield_enable_padding_right_left(self):
+        """
+        Sets the bitfield padding.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "\x3f\x03",
             """
@@ -73,6 +103,12 @@ class TestBitfields(utils.PfpTestCase):
         self.assertEqual(dom.blah.test2, 0x0)
 
     def test_bitfield_basic_big_endian(self):
+        """
+        Calculate big endian bitfield.
+
+        Args:
+            self: (todo): write your description
+        """
         b = lambda x: chr(int(x, 2))
 
         dom = self._test_parse_build(
@@ -93,6 +129,12 @@ class TestBitfields(utils.PfpTestCase):
         self.assertEqual(dom.blah.test3, int("1001111110000001", 2))
 
     def test_bitfield_basic_little_endian(self):
+        """
+        Test the bitfield bitfield.
+
+        Args:
+            self: (todo): write your description
+        """
         b = lambda x: chr(int(x, 2))
 
         dom = self._test_parse_build(
@@ -113,6 +155,12 @@ class TestBitfields(utils.PfpTestCase):
         self.assertEqual(dom.blah.test3, int("1001101110000001", 2))
 
     def test_bitfield_basic_padded_little_endian(self):
+        """
+        Calculate the bitfield bitfield.
+
+        Args:
+            self: (todo): write your description
+        """
         b = lambda x: chr(int(x, 2))
 
         dom = self._test_parse_build(
@@ -131,6 +179,12 @@ class TestBitfields(utils.PfpTestCase):
         self.assertEqual(dom.blah.big, int("1000000000000000", 2))
 
     def test_bitfield_basic_unpadded_little_endian(self):
+        """
+        Basic bitfield bitfield bitfield.
+
+        Args:
+            self: (todo): write your description
+        """
         b = lambda x: chr(int(x, 2))
 
         dom = self._test_parse_build(
@@ -149,6 +203,12 @@ class TestBitfields(utils.PfpTestCase):
         self.assertEqual(dom.blah.big, int("10000000", 2))
 
     def test_bitfield_basic_unpadded_big_endian(self):
+        """
+        Test if the big - endian.
+
+        Args:
+            self: (todo): write your description
+        """
         b = lambda x: chr(int(x, 2))
 
         dom = self._test_parse_build(
@@ -167,6 +227,12 @@ class TestBitfields(utils.PfpTestCase):
         self.assertEqual(dom.blah.big, int("1000000000000000", 2))
 
     def test_bitfield_in_if(self):
+        """
+        The test test test test test is not none
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "\xf0",
             """
@@ -182,6 +248,12 @@ class TestBitfields(utils.PfpTestCase):
         )
 
     def test_bitfield_again(self):
+        """
+        Sets the test test test fields.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "\x00AB",
             """
@@ -195,6 +267,12 @@ class TestBitfields(utils.PfpTestCase):
         )
 
     def test_bitfield_no_padding(self):
+        """
+        Create bitfield bit padding.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "\x78\x00\x05\x5f\x00\x00\x0f\xa0\x00\x00\x0c",
             """
@@ -223,6 +301,12 @@ class TestBitfields(utils.PfpTestCase):
         self.assertEqual(dom.test, 0x0C00)
 
     def test_bitfield_with_mixed_types_and_enum(self):
+        """
+        Test for the bitfields bitfields.
+
+        Args:
+            self: (todo): write your description
+        """
         b = lambda x: chr(int(x, 2))
 
         dom = self._test_parse_build(

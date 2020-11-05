@@ -20,24 +20,54 @@ import utils
 
 class TestBitwrap(unittest.TestCase):
     def setUp(self):
+        """
+        Sets the result of this thread.
+
+        Args:
+            self: (todo): write your description
+        """
         pass
 
     def tearDown(self):
+        """
+        Tear down the next callable.
+
+        Args:
+            self: (todo): write your description
+        """
         pass
 
     def test_bytes_read(self):
+        """
+        Reads the given bytes from the stream.
+
+        Args:
+            self: (todo): write your description
+        """
         stream = six.BytesIO(pfp.utils.binary("abcd"))
         bitwrapped = BitwrappedStream(stream)
         res = bitwrapped.read(4)
         self.assertEqual(pfp.utils.binary("abcd"), res)
 
     def test_bits_read1(self):
+        """
+        Return the number of 8 bits from the stream.
+
+        Args:
+            self: (todo): write your description
+        """
         stream = six.BytesIO(pfp.utils.binary(chr(int("01010101", 2))))
         bitwrapped = BitwrappedStream(stream)
         res = bitwrapped.read_bits(8)
         self.assertEqual([0, 1, 0, 1, 0, 1, 0, 1], res)
 
     def test_bits_read2_padded1(self):
+        """
+        Reads the bits of the bits in the stream.
+
+        Args:
+            self: (todo): write your description
+        """
         stream = six.BytesIO(
             pfp.utils.binary(chr(int("11110000", 2)) + chr(int("10101010", 2)))
         )
@@ -57,6 +87,12 @@ class TestBitwrap(unittest.TestCase):
         self.assertEqual([0, 1, 0, 1, 0], res)
 
     def test_bits_read2_padded2(self):
+        """
+        Reads the amount of the bits in the stream.
+
+        Args:
+            self: (todo): write your description
+        """
         stream = six.BytesIO(
             pfp.utils.binary(chr(int("11110000", 2)) + chr(int("10101010", 2)))
         )
@@ -70,6 +106,12 @@ class TestBitwrap(unittest.TestCase):
         self.assertEqual(pfp.utils.binary(chr(int("10101010", 2))), next_byte)
 
     def test_bits_read_unpadded(self):
+        """
+        Reads the amount of bits from the stream.
+
+        Args:
+            self: (todo): write your description
+        """
         stream = six.BytesIO(
             pfp.utils.binary(chr(int("11110000", 2)) + chr(int("10101010", 2)))
         )
@@ -86,6 +128,12 @@ class TestBitwrap(unittest.TestCase):
         self.assertEqual([1, 0, 1, 0], res)
 
     def test_bits_read_unpadded(self):
+        """
+        Reads the amount of bits from the stream.
+
+        Args:
+            self: (todo): write your description
+        """
         stream = six.BytesIO(
             pfp.utils.binary(chr(int("11110000", 2)) + chr(int("10101010", 2)))
         )
@@ -102,6 +150,12 @@ class TestBitwrap(unittest.TestCase):
         self.assertEqual([1, 0, 1, 0], res)
 
     def test_bits_write_padded(self):
+        """
+        Writes the write bits to write bits to the stream.
+
+        Args:
+            self: (todo): write your description
+        """
         stream = six.BytesIO()
         bitwrapped = BitwrappedStream(stream)
         bitwrapped.padded = True
@@ -117,6 +171,12 @@ class TestBitwrap(unittest.TestCase):
         )
 
     def test_unconsumed_ranges1(self):
+        """
+        Reads out - of the bitwrapper. bitwrapper.
+
+        Args:
+            self: (todo): write your description
+        """
         stream = six.BytesIO(pfp.utils.binary("A" * 100))
         bitwrapped = BitwrappedStream(stream)
 
@@ -141,6 +201,12 @@ class TestBitwrap(unittest.TestCase):
         self.assertEqual(len(uranges[40]), 0)
 
     def test_unconsumed_ranges2(self):
+        """
+        Convert a bitwrapper to a list.
+
+        Args:
+            self: (todo): write your description
+        """
         stream = six.BytesIO(pfp.utils.binary("A" * 100))
         bitwrapped = BitwrappedStream(stream)
 
@@ -160,6 +226,12 @@ class TestBitwrap(unittest.TestCase):
         self.assertEqual(len(uranges[20]), 0)
 
     def test_unconsumed_ranges3(self):
+        """
+        Reads the bitwrapper of the binary stream.
+
+        Args:
+            self: (todo): write your description
+        """
         stream = six.BytesIO(pfp.utils.binary("A" * 100))
         bitwrapped = BitwrappedStream(stream)
 
@@ -172,6 +244,12 @@ class TestBitwrap(unittest.TestCase):
         self.assertEqual(len(uranges), 0)
 
     def test_tell_bits(self):
+        """
+        Test if the bits of the stream.
+
+        Args:
+            self: (todo): write your description
+        """
         stream = six.BytesIO(pfp.utils.binary("\x41" + chr(0b11001100)))
         bitwrapped = BitwrappedStream(stream)
 

@@ -19,9 +19,21 @@ import utils
 
 class TestMetadata(utils.PfpTestCase):
     def setUp(self):
+        """
+        Set the re - of - fields fields.
+
+        Args:
+            self: (todo): write your description
+        """
         pfp.fields.NumberBase.endian = pfp.fields.BIG_ENDIAN
 
     def tearDown(self):
+        """
+        Tear down the next callable.
+
+        Args:
+            self: (todo): write your description
+        """
         pass
 
     # < format=hex|decimal|octal|binary,
@@ -35,6 +47,12 @@ class TestMetadata(utils.PfpTestCase):
     #     write=<function_name>
     #     size=<number>|<function_name> >
     def test_metadata_watch_interpd(self):
+        """
+        Wrapper for the interpds
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "\x05\x07",
             """
@@ -55,7 +73,23 @@ class TestMetadata(utils.PfpTestCase):
         self.assertEqual(dom.blah, 22)
 
     def test_metadata_watch_native(self):
+        """
+        Test if the watch - watch is complete.
+
+        Args:
+            self: (todo): write your description
+        """
         def plus_two(params, ctxt, scope, stream, coord):
+            """
+            Todo : ref : meth : __init__. )
+
+            Args:
+                params: (dict): write your description
+                ctxt: (todo): write your description
+                scope: (todo): write your description
+                stream: (todo): write your description
+                coord: (todo): write your description
+            """
             params[0]._pfp__set_value(params[1] + 2)
 
         interp = pfp.interp.PfpInterp()
@@ -77,6 +111,12 @@ class TestMetadata(utils.PfpTestCase):
         self.assertEqual(dom.blah, 22)
 
     def test_metadata_watch_struct(self):
+        """
+        : return : attr : watch_parse.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "\x02\x03\xff\x05",
             """
@@ -107,6 +147,12 @@ class TestMetadata(utils.PfpTestCase):
         self.assertEqual(dom.sum_a_b, 13)
 
     def test_metadata_watch_this(self):
+        """
+        Runs the test test test test test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "\x05\x06\x0b",
             """
@@ -132,7 +178,23 @@ class TestMetadata(utils.PfpTestCase):
         self.assertEqual(dom.main_struct.c, 55)
 
     def test_metadata_complex(self):
+        """
+        Dump metadata.
+
+        Args:
+            self: (todo): write your description
+        """
         def crc32(params, ctxt, scope, stream, coord):
+            """
+            Calculate a crc.
+
+            Args:
+                params: (dict): write your description
+                ctxt: (todo): write your description
+                scope: (str): write your description
+                stream: (str): write your description
+                coord: (todo): write your description
+            """
             data = pfp.utils.binary("").join(
                 [x._pfp__build() for x in params[1:]]
             )
@@ -185,6 +247,12 @@ class TestMetadata(utils.PfpTestCase):
         self.assertEqual(dom.chunks[1].crc, 0xA5FADF1B)
 
     def test_metadata_packer(self):
+        """
+        Parse the metadata file.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "yoyoyo\x00\x10x\x9cc```d```\x02\x00\x00\x0f\x00\x04",
             """

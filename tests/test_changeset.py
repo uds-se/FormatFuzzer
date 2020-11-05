@@ -7,6 +7,11 @@ from pfp.fuzz import Changer
 
 
 def test_changeset():
+    """
+    Test for changeset.
+
+    Args:
+    """
     template = """
         struct {
             ushort a;
@@ -49,6 +54,11 @@ def test_changeset():
 
 
 def test_changeset_with_bitfields():
+    """
+    Restores changeset changeset changeset.
+
+    Args:
+    """
     template = """
         BigEndian();
         struct {

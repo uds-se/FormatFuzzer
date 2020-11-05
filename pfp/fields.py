@@ -20,18 +20,34 @@ LITTLE_ENDIAN = "<"
 
 
 def true():
+    """
+    Return the number of the boolean.
+
+    Args:
+    """
     res = Int()
     res._pfp__value = 1
     return res
 
 
 def false():
+    """
+    Returns an unsigned int that will be used as a number.
+
+    Args:
+    """
     res = Int()
     res._pfp__value = 0
     return res
 
 
 def get_value(field):
+    """
+    Convert field value from field to string.
+
+    Args:
+        field: (str): write your description
+    """
     if isinstance(field, Field):
         if isinstance(field, Array):
             return field._array_to_str()
@@ -41,6 +57,12 @@ def get_value(field):
 
 
 def get_width(field):
+    """
+    Returns the width of a field.
+
+    Args:
+        field: (todo): write your description
+    """
     if isinstance(field, Field):
         return field.width
     elif isinstance(field, int):
@@ -55,6 +77,12 @@ def get_width(field):
 
 
 def get_str(field):
+    """
+    Get string representation of field
+
+    Args:
+        field: (str): write your description
+    """
     if isinstance(field, Array):
         res = field._array_to_str()
     elif isinstance(field, Char):
@@ -66,6 +94,12 @@ def get_str(field):
 
 
 def inherit_hash(cls):
+    """
+    Returns a hash of - > hash
+
+    Args:
+        cls: (todo): write your description
+    """
     cls.__hash__ = Field.__hash__
     return cls
 
@@ -140,6 +174,13 @@ class BitfieldRW(object):
         return True
 
     def tell(self, stream):
+        """
+        Return the number of bytes in the stream.
+
+        Args:
+            self: (todo): write your description
+            stream: (todo): write your description
+        """
         if self.offset is None:
             return stream.tell()
         else:
@@ -147,6 +188,12 @@ class BitfieldRW(object):
             return self.offset + bytes_offset
 
     def tell_bits(self):
+        """
+        The number of the bits in bytes.
+
+        Args:
+            self: (todo): write your description
+        """
         return 8 - (self.total_bits_read % 8)
 
     def read_bits(self, stream, num_bits, padded, left_right, endian):
@@ -211,6 +258,14 @@ class BitfieldRW(object):
             stream.write_bits(raw_bits)
 
     def _endian_transform(self, bits, endian):
+        """
+        Return the endian string representation of the string.
+
+        Args:
+            self: (todo): write your description
+            bits: (int): write your description
+            endian: (todo): write your description
+        """
         res = []
 
         # perform endianness transformation
@@ -260,6 +315,14 @@ class Field(object):
     """All fields that this field is watching"""
 
     def __init__(self, stream=None, metadata_processor=None):
+        """
+        Initialize the metadata
+
+        Args:
+            self: (todo): write your description
+            stream: (todo): write your description
+            metadata_processor: (str): write your description
+        """
         super(Field, self).__init__()
         self._pfp__name = None
         self._pfp__frozen = False
@@ -516,6 +579,13 @@ class Field(object):
         self._pfp__no_notify = False
 
     def _pfp__notify_update(self, child=None):
+        """
+        Notify that the changes.
+
+        Args:
+            self: (todo): write your description
+            child: (str): write your description
+        """
         for watcher in self._pfp__watchers:
             watcher._pfp__handle_updated(self)
         if self._pfp__parent is not None:
@@ -556,6 +626,12 @@ class Field(object):
         return self._pfp__notify_parent()
 
     def _pfp__notify_parent(self):
+        """
+        Notify the parent of the parent.
+
+        Args:
+            self: (todo): write your description
+        """
         if self._pfp__no_notify:
             return []
 
@@ -629,6 +705,13 @@ class Field(object):
         return self._pfp__value < val
 
     def __le__(self, other):
+        """
+        Returns a < = self.
+
+        Args:
+            self: (todo): write your description
+            other: (todo): write your description
+        """
         val = get_value(other)
         return self._pfp__value <= val
 
@@ -643,10 +726,24 @@ class Field(object):
         return self._pfp__value > val
 
     def __ge__(self, other):
+        """
+        Returns the geometries of other.
+
+        Args:
+            self: (todo): write your description
+            other: (todo): write your description
+        """
         val = get_value(other)
         return self._pfp__value >= val
 
     def __ne__(self, other):
+        """
+        Returns true if self is not in self.
+
+        Args:
+            self: (todo): write your description
+            other: (todo): write your description
+        """
         val = get_value(other)
         return self._pfp__value != val
 
@@ -665,6 +762,12 @@ class Field(object):
     # Also note - this is not inheritable in python3 and MUST be explicitly
     # set: https://stackoverflow.com/a/1608907
     def __hash__(self):
+        """
+        Return a hash of the list.
+
+        Args:
+            self: (todo): write your description
+        """
         #return self._pfp__value.__hash__()
         res = self._pfp__build()
         # bit fields return an array, not bytes
@@ -673,9 +776,22 @@ class Field(object):
         return res.__hash__()
 
     def __repr__(self):
+        """
+        Return a human - readable representation of this object.
+
+        Args:
+            self: (todo): write your description
+        """
         return "{}({!r})".format(self.__class__.__name__, self._pfp__value)
 
     def __getitem__(self, idx):
+        """
+        Return the item at indexx.
+
+        Args:
+            self: (todo): write your description
+            idx: (list): write your description
+        """
         if idx != 0:
             raise IndexError(idx)
         return self
@@ -757,6 +873,14 @@ class Struct(Field):
     _pfp__scope = None
 
     def __init__(self, stream=None, metadata_processor=None):
+        """
+        Initialize the metadata.
+
+        Args:
+            self: (todo): write your description
+            stream: (todo): write your description
+            metadata_processor: (str): write your description
+        """
         # ordered list of children
         super(Struct, self).__setattr__("_pfp__children", [])
         # initialize implicit arrays for this struct instance
@@ -1046,9 +1170,22 @@ class Struct(Field):
             return super(Struct, self).__setattr__(name, value)
 
     def __repr__(self):
+        """
+        Return a repr representation of the object.
+
+        Args:
+            self: (todo): write your description
+        """
         return object.__repr__(self)
 
     def __eq__(self, other):
+        """
+        Determine if two values are equal.
+
+        Args:
+            self: (todo): write your description
+            other: (todo): write your description
+        """
         return self is other
 
     def _pfp__show(self, level=0, include_offset=False):
@@ -1217,6 +1354,12 @@ class Dom(Struct):
     """The main container struct for a template"""
 
     def __init__(self, *args, **kwargs):
+        """
+        Initialize the pfp type.
+
+        Args:
+            self: (todo): write your description
+        """
         super(self.__class__, self).__init__(*args, **kwargs)
 
         # see keep_successful notes on pfp.parse and pfp.interp.PfpInterp.parse
@@ -1236,6 +1379,14 @@ class Dom(Struct):
     """The result of an interpreted template"""
 
     def _pfp__build(self, stream=None, save_offset=False):
+        """
+        Builds the field
+
+        Args:
+            self: (todo): write your description
+            stream: (todo): write your description
+            save_offset: (bool): write your description
+        """
         if stream is None:
             io_stream = six.BytesIO()
             tmp_stream = bitwrap.BitwrappedStream(io_stream)
@@ -1416,56 +1567,147 @@ class NumberBase(Field):
             return Float
 
     def __iadd__(self, other):
+        """
+        Add this set i { self.
+
+        Args:
+            self: (todo): write your description
+            other: (todo): write your description
+        """
         root = get_value(other)
         self._pfp__set_value(self._pfp__value + root)
         return self
 
     def __isub__(self, other):
+        """
+        Determine if this set objects are the same.
+
+        Args:
+            self: (todo): write your description
+            other: (todo): write your description
+        """
         root = get_value(other)
         self._pfp__set_value(self._pfp__value - root)
         return self
 
     def __imul__(self, other):
+        """
+        Return the result of - placeholders.
+
+        Args:
+            self: (todo): write your description
+            other: (todo): write your description
+        """
         self._pfp__value *= get_value(other)
         return self
 
     def __idiv__(self, other):
+        """
+        Return the unique idiv idivative identifier.
+
+        Args:
+            self: (todo): write your description
+            other: (todo): write your description
+        """
         self._pfp__value /= get_value(other)
         return self
 
     def __iand__(self, other):
+        """
+        Returns the i { self } objects.
+
+        Args:
+            self: (todo): write your description
+            other: (todo): write your description
+        """
         self._pfp__value &= get_value(other)
         return self
 
     def __ixor__(self, other):
+        """
+        Returns the value of this : class :.
+
+        Args:
+            self: (todo): write your description
+            other: (todo): write your description
+        """
         self._pfp__value ^= get_value(other)
         return self
 
     def __ior__(self, other):
+        """
+        Returns the value of self and other.
+
+        Args:
+            self: (todo): write your description
+            other: (todo): write your description
+        """
         self._pfp__value |= get_value(other)
         return self
 
     def __ifloordiv__(self, other):
+        """
+        Returns true ifloordivivivivivivivivivivative.
+
+        Args:
+            self: (todo): write your description
+            other: (todo): write your description
+        """
         self._pfp__value //= get_value(other)
         return self
 
     def __imod__(self, other):
+        """
+        Return the result of self and other.
+
+        Args:
+            self: (todo): write your description
+            other: (todo): write your description
+        """
         self._pfp__value %= get_value(other)
         return self
 
     def __ipow__(self, other):
+        """
+        Return a given ipow representation of self and other.
+
+        Args:
+            self: (todo): write your description
+            other: (todo): write your description
+        """
         self._pfp__value **= get_value(other)
         return self
 
     def __ilshift__(self, other):
+        """
+        Shifts the cursor objects.
+
+        Args:
+            self: (todo): write your description
+            other: (todo): write your description
+        """
         self._pfp__value <<= get_value(other)
         return self
 
     def __irshift__(self, other):
+        """
+        Shifts the current time by another.
+
+        Args:
+            self: (todo): write your description
+            other: (todo): write your description
+        """
         self._pfp__value >>= get_value(other)
         return self
 
     def __add__(self, other):
+        """
+        Add another : class to self to self.
+
+        Args:
+            self: (todo): write your description
+            other: (todo): write your description
+        """
         res = self.__class__()
         res._pfp__set_value(
             self._pfp__value + get_value(other)
@@ -1473,6 +1715,13 @@ class NumberBase(Field):
         return res
 
     def __sub__(self, other):
+        """
+        Subtodel.
+
+        Args:
+            self: (todo): write your description
+            other: (todo): write your description
+        """
         res = self.__class__()
         res._pfp__set_value(
             self._pfp__value - get_value(other)
@@ -1480,6 +1729,13 @@ class NumberBase(Field):
         return res
 
     def __mul__(self, other):
+        """
+        Mulmulvalue objects.
+
+        Args:
+            self: (todo): write your description
+            other: (todo): write your description
+        """
         res = self.__class__()
         res._pfp__set_value(
             self._pfp__value * get_value(other)
@@ -1487,6 +1743,13 @@ class NumberBase(Field):
         return res
 
     def __truediv__(self, other):
+        """
+        Returns the partial value of this set.
+
+        Args:
+            self: (todo): write your description
+            other: (todo): write your description
+        """
         res = self.__class__()
         # if truediv is being called, then / should also behave like
         # truediv (2/3 == 0.6666 instead of 0 [classic division])
@@ -1497,6 +1760,13 @@ class NumberBase(Field):
         return res
 
     def __div__(self, other):
+        """
+        Divide the two values.
+
+        Args:
+            self: (todo): write your description
+            other: (todo): write your description
+        """
         res = self.__class__()
         res._pfp__set_value(
             self._pfp__value / get_value(other)
@@ -1504,6 +1774,13 @@ class NumberBase(Field):
         return res
 
     def __and__(self, other):
+        """
+        Shared version of - place.
+
+        Args:
+            self: (todo): write your description
+            other: (todo): write your description
+        """
         res = self.__class__()
         res._pfp__set_value(
             self._pfp__value & get_value(other)
@@ -1511,6 +1788,13 @@ class NumberBase(Field):
         return res
 
     def __xor__(self, other):
+        """
+        Returns the value of other.
+
+        Args:
+            self: (todo): write your description
+            other: (todo): write your description
+        """
         res = self.__class__()
         res._pfp__set_value(
             self._pfp__value ^ get_value(other)
@@ -1518,6 +1802,13 @@ class NumberBase(Field):
         return res
 
     def __or__(self, other):
+        """
+        Shared version of self or b.
+
+        Args:
+            self: (todo): write your description
+            other: (todo): write your description
+        """
         res = self.__class__()
         res._pfp__set_value(
             self._pfp__value | get_value(other)
@@ -1525,6 +1816,13 @@ class NumberBase(Field):
         return res
 
     def __floordiv__(self, other):
+        """
+        Returns a new value for this record.
+
+        Args:
+            self: (todo): write your description
+            other: (todo): write your description
+        """
         res = self.__class__()
         res._pfp__set_value(
             self._pfp__value // get_value(other)
@@ -1532,6 +1830,13 @@ class NumberBase(Field):
         return res
 
     def __mod__(self, other):
+        """
+        Return a new set objects in self.
+
+        Args:
+            self: (todo): write your description
+            other: (todo): write your description
+        """
         res = self.__class__()
         res._pfp__set_value(
             self._pfp__value % get_value(other)
@@ -1539,6 +1844,13 @@ class NumberBase(Field):
         return res
 
     def __pow__(self, other):
+        """
+        Pow of the values.
+
+        Args:
+            self: (todo): write your description
+            other: (todo): write your description
+        """
         res = self.__class__()
         res._pfp__set_value(
             self._pfp__value ** get_value(other)
@@ -1546,6 +1858,13 @@ class NumberBase(Field):
         return res
 
     def __lshift__(self, other):
+        """
+        Shift this timeseries with another one.
+
+        Args:
+            self: (todo): write your description
+            other: (todo): write your description
+        """
         res = self.__class__()
         res._pfp__set_value(
             self._pfp__value << get_value(other)
@@ -1553,6 +1872,13 @@ class NumberBase(Field):
         return res
 
     def __rshift__(self, other):
+        """
+        Shift the current rshift together with another one.
+
+        Args:
+            self: (todo): write your description
+            other: (todo): write your description
+        """
         res = self.__class__()
         res._pfp__set_value(
             self._pfp__value >> get_value(other)
@@ -1560,16 +1886,35 @@ class NumberBase(Field):
         return res
 
     def __invert__(self):
+        """
+        Invert the field.
+
+        Args:
+            self: (todo): write your description
+        """
         res = self.__class__()
         res._pfp__set_value(~self._pfp__value)
         return res
 
     def __neg__(self):
+        """
+        Returns the value of the value of the set.
+
+        Args:
+            self: (todo): write your description
+        """
         res = self.__class__()
         res._pfp__set_value(-self._pfp__value)
         return res
 
     def __getattr__(self, val):
+        """
+        Return the value.
+
+        Args:
+            self: (todo): write your description
+            val: (str): write your description
+        """
         if val.startswith("__") and val.endswith("__"):
             return getattr(self._pfp__value, val)
         raise AttributeError(val)
@@ -1682,6 +2027,12 @@ class IntBase(NumberBase):
         return self._pfp__notify_parent()
 
     def __repr__(self):
+        """
+        Return a representation of this field.
+
+        Args:
+            self: (todo): write your description
+        """
         f = ":0{}x".format(self.width * 2)
         return ("{}({!r} [{" + f + "}]){}").format(
             self._pfp__cls_name(),
@@ -1723,6 +2074,13 @@ class IntBase(NumberBase):
         return cmp_self < cmp_other
 
     def __le__(self, other):
+        """
+        See : meth : ~pywbem. cim
+
+        Args:
+            self: (todo): write your description
+            other: (todo): write your description
+        """
         cmp_self, cmp_other = self._pfp__maybe_promote(self, other)
         return cmp_self <= cmp_other
 
@@ -1737,10 +2095,24 @@ class IntBase(NumberBase):
         return cmp_self > cmp_other
 
     def __ge__(self, other):
+        """
+        See placeholder. compare
+
+        Args:
+            self: (todo): write your description
+            other: (todo): write your description
+        """
         cmp_self, cmp_other = self._pfp__maybe_promote(self, other)
         return cmp_self >= cmp_other
 
     def __ne__(self, other):
+        """
+        See : meth : ~pywbem. cim
+
+        Args:
+            self: (todo): write your description
+            other: (todo): write your description
+        """
         cmp_self, cmp_other = self._pfp__maybe_promote(self, other)
         return cmp_self != cmp_other
 
@@ -1754,52 +2126,115 @@ class IntBase(NumberBase):
         return cmp_self == cmp_other
 
     def __iadd__(self, other):
+        """
+        Adds the set.
+
+        Args:
+            self: (todo): write your description
+            other: (todo): write your description
+        """
         other = self._pfp__promote(other)
         root = get_value(other)
         self._pfp__set_value(self._pfp__value + root)
         return self
 
     def __isub__(self, other):
+        """
+        Determine if other?
+
+        Args:
+            self: (todo): write your description
+            other: (todo): write your description
+        """
         other = self._pfp__promote(other)
         root = get_value(other)
         self._pfp__set_value(self._pfp__value - root)
         return self
 
     def __imul__(self, other):
+        """
+        Promote. imulers of self and other.
+
+        Args:
+            self: (todo): write your description
+            other: (todo): write your description
+        """
         other = self._pfp__promote(other)
         root = get_value(other)
         self._pfp__set_value(self._pfp__value * root)
         return self
 
     def __idiv__(self, other):
+        """
+        Returns the integer id of the other.
+
+        Args:
+            self: (todo): write your description
+            other: (todo): write your description
+        """
         other = self._pfp__promote(other)
         root = get_value(other)
         self._pfp__set_value(int(self._pfp__value / root))
         return self
 
     def __iand__(self, other):
+        """
+        Returns the two values.
+
+        Args:
+            self: (todo): write your description
+            other: (todo): write your description
+        """
         other = self._pfp__promote(other)
         root = get_value(other)
         self._pfp__set_value(self._pfp__value & root)
         return self
 
     def __ixor__(self, other):
+        """
+        Set the class.
+
+        Args:
+            self: (todo): write your description
+            other: (todo): write your description
+        """
         other = self._pfp__promote(other)
         root = get_value(other)
         self._pfp__set_value(self._pfp__value ^ root)
         return self
 
     def __ior__(self, other):
+        """
+        Sets the integer value.
+
+        Args:
+            self: (todo): write your description
+            other: (todo): write your description
+        """
         other = self._pfp__promote(other)
         root = get_value(other)
         self._pfp__set_value(self._pfp__value | root)
         return self
 
     def __ifloordiv__(self, other):
+        """
+        Return true ifloordivivivivivivivivivivivivivivative.
+
+        Args:
+            self: (todo): write your description
+            other: (todo): write your description
+        """
         # will always be floordiv with IntBase numbers
         return self.__idiv__(self, other)
 
     def __imod__(self, other):
+        """
+        Return the result of self and other.
+
+        Args:
+            self: (todo): write your description
+            other: (todo): write your description
+        """
         # NOTE: We are not doing the same style of integer promotion here.
         # this current implementation matches the C implementation.
         #
@@ -1808,18 +2243,46 @@ class IntBase(NumberBase):
         return self
 
     def __ipow__(self, other):
+        """
+        Return a given ipow representation of self and other.
+
+        Args:
+            self: (todo): write your description
+            other: (todo): write your description
+        """
         self._pfp__value **= get_value(other)
         return self
 
     def __ilshift__(self, other):
+        """
+        Shifts the cursor objects.
+
+        Args:
+            self: (todo): write your description
+            other: (todo): write your description
+        """
         self._pfp__value <<= get_value(other)
         return self
 
     def __irshift__(self, other):
+        """
+        Shifts the current time by another.
+
+        Args:
+            self: (todo): write your description
+            other: (todo): write your description
+        """
         self._pfp__value >>= get_value(other)
         return self
 
     def __add__(self, other):
+        """
+        Return a new : class to self.
+
+        Args:
+            self: (todo): write your description
+            other: (todo): write your description
+        """
         res = self.__class__()
         res._pfp__set_value(self)
         # takes care of promotion already
@@ -1827,6 +2290,13 @@ class IntBase(NumberBase):
         return res
 
     def __sub__(self, other):
+        """
+        Subtodal of self.
+
+        Args:
+            self: (todo): write your description
+            other: (todo): write your description
+        """
         res = self.__class__()
         res._pfp__set_value(self)
         # takes care of promotion already
@@ -1834,6 +2304,13 @@ class IntBase(NumberBase):
         return res
 
     def __mul__(self, other):
+        """
+        Return a new mul ( self.
+
+        Args:
+            self: (todo): write your description
+            other: (todo): write your description
+        """
         res = self.__class__()
         res._pfp__set_value(self)
         # takes care of promotion already
@@ -1841,10 +2318,24 @@ class IntBase(NumberBase):
         return res
 
     def __truediv__(self, other):
+        """
+        Returns the difference between self and b.
+
+        Args:
+            self: (todo): write your description
+            other: (todo): write your description
+        """
         # no truediv for pfp fields - only classic division
         return self.__div__(other)
 
     def __div__(self, other):
+        """
+        Return a new multiset with the other.
+
+        Args:
+            self: (todo): write your description
+            other: (todo): write your description
+        """
         res = self.__class__()
         res._pfp__set_value(self)
         # takes care of promotion already
@@ -1852,6 +2343,13 @@ class IntBase(NumberBase):
         return res
 
     def __and__(self, other):
+        """
+        Construct a new and b.
+
+        Args:
+            self: (todo): write your description
+            other: (todo): write your description
+        """
         res = self.__class__()
         res._pfp__set_value(self)
         # takes care of promotion already
@@ -1859,6 +2357,13 @@ class IntBase(NumberBase):
         return res
 
     def __xor__(self, other):
+        """
+        Returns the value of the value of other.
+
+        Args:
+            self: (todo): write your description
+            other: (todo): write your description
+        """
         res = self.__class__()
         res._pfp__set_value(self)
         # takes care of promotion already
@@ -1866,6 +2371,13 @@ class IntBase(NumberBase):
         return res
 
     def __or__(self, other):
+        """
+        A decorator that sets.
+
+        Args:
+            self: (todo): write your description
+            other: (todo): write your description
+        """
         res = self.__class__()
         res._pfp__set_value(self)
         # takes care of promotion already
@@ -1873,9 +2385,23 @@ class IntBase(NumberBase):
         return res
 
     def __floordiv__(self, other):
+        """
+        Returns the difference between self and other.
+
+        Args:
+            self: (todo): write your description
+            other: (todo): write your description
+        """
         return self.__div__(self, other)
 
     def __mod__(self, other):
+        """
+        Return a new set objects in self.
+
+        Args:
+            self: (todo): write your description
+            other: (todo): write your description
+        """
         res = self.__class__()
         res._pfp__set_value(
             self._pfp__value % get_value(other)
@@ -1883,6 +2409,13 @@ class IntBase(NumberBase):
         return res
 
     def __pow__(self, other):
+        """
+        Pow of the values.
+
+        Args:
+            self: (todo): write your description
+            other: (todo): write your description
+        """
         res = self.__class__()
         res._pfp__set_value(
             self._pfp__value ** get_value(other)
@@ -1890,6 +2423,13 @@ class IntBase(NumberBase):
         return res
 
     def __lshift__(self, other):
+        """
+        Shift this timeseries with another one.
+
+        Args:
+            self: (todo): write your description
+            other: (todo): write your description
+        """
         res = self.__class__()
         res._pfp__set_value(
             self._pfp__value << get_value(other)
@@ -1897,6 +2437,13 @@ class IntBase(NumberBase):
         return res
 
     def __rshift__(self, other):
+        """
+        Shift the current rshift together with another one.
+
+        Args:
+            self: (todo): write your description
+            other: (todo): write your description
+        """
         res = self.__class__()
         res._pfp__set_value(
             self._pfp__value >> get_value(other)
@@ -1904,11 +2451,23 @@ class IntBase(NumberBase):
         return res
 
     def __invert__(self):
+        """
+        Invert the field.
+
+        Args:
+            self: (todo): write your description
+        """
         res = self.__class__()
         res._pfp__set_value(~self._pfp__value)
         return res
 
     def __neg__(self):
+        """
+        Returns the value of the value of the set.
+
+        Args:
+            self: (todo): write your description
+        """
         res = self.__class__()
         res._pfp__set_value(-self._pfp__value)
         return res
@@ -2140,16 +2699,36 @@ class Array(Field):
                 item._pfp__restore_snapshot(recurse=recurse)
 
     def append(self, item):
+        """
+        Append item to the end of the end of the end.
+
+        Args:
+            self: (todo): write your description
+            item: (array): write your description
+        """
         # TODO check for consistent type
         item._pfp__parent = self
         self.items.append(item)
         self.width = len(self.items)
 
     def is_stringable(self):
+        """
+        Return true if the field is a string
+
+        Args:
+            self: (todo): write your description
+        """
         # TODO WChar
         return self.field_cls in [Char, UChar]
 
     def _array_to_str(self, max_len=-1):
+        """
+        Return a string representation : numpy : classable string.
+
+        Args:
+            self: (todo): write your description
+            max_len: (int): write your description
+        """
         if not self.is_stringable():
             return None
 
@@ -2172,6 +2751,13 @@ class Array(Field):
         return res
 
     def __eq__(self, other):
+        """
+        Returns true if other is a binary.
+
+        Args:
+            self: (todo): write your description
+            other: (todo): write your description
+        """
         if self.is_stringable() and other.__class__ in [String, WString, str, bytes]:
             res = self._array_to_str()
             return utils.binary(res) == utils.binary(PYSTR(other))
@@ -2179,9 +2765,23 @@ class Array(Field):
             raise Exception("TODO")
 
     def __ne__(self, other):
+        """
+        Determine if self and false otherwise.
+
+        Args:
+            self: (todo): write your description
+            other: (todo): write your description
+        """
         return not self.__eq__(other)
 
     def _pfp__set_value(self, value):
+        """
+        Set the field value of the field.
+
+        Args:
+            self: (todo): write your description
+            value: (todo): write your description
+        """
         is_string_type = False
 
         if isinstance(value, String):
@@ -2232,6 +2832,14 @@ class Array(Field):
         return self._pfp__notify_parent()
 
     def _pfp__parse(self, stream, save_offset=False):
+        """
+        Parse the stream.
+
+        Args:
+            self: (todo): write your description
+            stream: (todo): write your description
+            save_offset: (bool): write your description
+        """
         start_offset = stream.tell()
         if save_offset:
             self._pfp__offset = start_offset
@@ -2267,6 +2875,14 @@ class Array(Field):
                 self._pfp__unpack_data(data)
 
     def _pfp__build(self, stream=None, save_offset=False):
+        """
+        Build the raw binary stream.
+
+        Args:
+            self: (todo): write your description
+            stream: (todo): write your description
+            save_offset: (bool): write your description
+        """
         if stream is not None and save_offset:
             self._pfp__offset = stream.tell()
 
@@ -2283,6 +2899,13 @@ class Array(Field):
         return res
 
     def _pfp__handle_updated(self, watched_field):
+        """
+        Handles the updated field.
+
+        Args:
+            self: (todo): write your description
+            watched_field: (str): write your description
+        """
         if (
             self.raw_data is not None
             and watched_field._pfp__name is not None
@@ -2300,6 +2923,13 @@ class Array(Field):
             super(Array, self)._pfp__handle_updated(watched_field)
 
     def __getitem__(self, idx):
+        """
+        Return the item at index of the item
+
+        Args:
+            self: (todo): write your description
+            idx: (list): write your description
+        """
         if self.raw_data is None:
             return self.items[idx]
         else:
@@ -2318,6 +2948,14 @@ class Array(Field):
             return res
 
     def __setitem__(self, idx, value):
+        """
+        Set the item to the given index.
+
+        Args:
+            self: (todo): write your description
+            idx: (str): write your description
+            value: (str): write your description
+        """
         if isinstance(value, Field):
             if self.raw_data is None:
                 self.items[idx] = value
@@ -2337,6 +2975,12 @@ class Array(Field):
         self._pfp__notify_update(self)
 
     def __repr__(self):
+        """
+        Return a human - readable string.
+
+        Args:
+            self: (todo): write your description
+        """
         other = ""
         if self.is_stringable():
             res = self._array_to_str(20)
@@ -2351,6 +2995,14 @@ class Array(Field):
         )
 
     def _pfp__show(self, level=0, include_offset=False):
+        """
+        Return a string representation of this object.
+
+        Args:
+            self: (todo): write your description
+            level: (int): write your description
+            include_offset: (bool): write your description
+        """
         if self.is_stringable():
             res = self.__repr__()
             if self._ is not None:
@@ -2374,6 +3026,12 @@ class Array(Field):
         return "\n".join(res)
 
     def __len__(self):
+        """
+        The length of the field.
+
+        Args:
+            self: (todo): write your description
+        """
         if self.raw_data is not None:
             return int(len(self.raw_data) / self.field_cls.width)
         else:
@@ -2398,6 +3056,14 @@ class String(Field):
     terminator = utils.binary("\x00")
 
     def __init__(self, stream=None, metadata_processor=None):
+        """
+        Initialize the stream.
+
+        Args:
+            self: (todo): write your description
+            stream: (todo): write your description
+            metadata_processor: (str): write your description
+        """
         self._pfp__value = utils.binary("")
 
         super(String, self).__init__(
@@ -2452,6 +3118,13 @@ class String(Field):
             return len(data)
 
     def __getitem__(self, idx):
+        """
+        Return the item at indexx.
+
+        Args:
+            self: (todo): write your description
+            idx: (list): write your description
+        """
         if idx < 0 or idx + 1 > len(self._pfp__value):
             raise IndexError(idx)
 
@@ -2461,6 +3134,14 @@ class String(Field):
         return res
 
     def __setitem__(self, idx, val):
+        """
+        Set the item at the given index.
+
+        Args:
+            self: (todo): write your description
+            idx: (str): write your description
+            val: (int): write your description
+        """
         if idx < 0 or idx + 1 > len(self._pfp__value):
             raise IndexError(idx)
 
@@ -2504,6 +3185,12 @@ class String(Field):
         return self
 
     def __len__(self):
+        """
+        Returns the length of the field.
+
+        Args:
+            self: (todo): write your description
+        """
         return len(self._pfp__value)
 
 
@@ -2514,10 +3201,26 @@ class WString(String):
     terminator = utils.binary("\x00\x00")
 
     def _pfp__parse(self, stream, save_offset=False):
+        """
+        Parse the stream.
+
+        Args:
+            self: (todo): write your description
+            stream: (str): write your description
+            save_offset: (bool): write your description
+        """
         String._pfp__parse(self, stream, save_offset)
         self._pfp__value = utils.binary(self._pfp__value.decode("utf-16le"))
 
     def _pfp__build(self, stream=None, save_offset=False):
+        """
+        Build the string representation of this field.
+
+        Args:
+            self: (todo): write your description
+            stream: (todo): write your description
+            save_offset: (bool): write your description
+        """
         if stream is not None and save_offset:
             self._pfp__offset = stream.tell()
 

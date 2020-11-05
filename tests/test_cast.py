@@ -18,12 +18,30 @@ import utils
 
 class TestArrays(utils.PfpTestCase):
     def setUp(self):
+        """
+        Set the re - of - fields fields.
+
+        Args:
+            self: (todo): write your description
+        """
         pfp.fields.NumberBase.endian = pfp.fields.BIG_ENDIAN
 
     def tearDown(self):
+        """
+        Tear down the next callable.
+
+        Args:
+            self: (todo): write your description
+        """
         pass
 
     def test_cast_basic(self):
+        """
+        Cast test test test to test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -35,6 +53,12 @@ class TestArrays(utils.PfpTestCase):
         )
 
     def test_cast_from_dex(self):
+        """
+        Cast test test test to test test test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """

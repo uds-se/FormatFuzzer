@@ -12,10 +12,23 @@ sample = _sample = RANDOM.sample
 
 
 def seed(val):
+    """
+    Sets the val to val
+
+    Args:
+        val: (int): write your description
+    """
     RANDOM.seed(val)
 
 
 def randint(a, b=None):
+    """
+    Return a random integer.
+
+    Args:
+        a: (array): write your description
+        b: (array): write your description
+    """
     if b is None:
         return _randint(0, a)
     else:
@@ -23,6 +36,13 @@ def randint(a, b=None):
 
 
 def randfloat(min_, max_):
+    """
+    Generate a random number.
+
+    Args:
+        min_: (float): write your description
+        max_: (int): write your description
+    """
     diff = max_ - min_
     res = _random()
     res *= diff
@@ -31,8 +51,21 @@ def randfloat(min_, max_):
 
 
 def maybe(prob=0.5):
+    """
+    Return a random integer.
+
+    Args:
+        prob: (todo): write your description
+    """
     return _random() < prob
 
 
 def data(length, charset):
+    """
+    Returns a string of the given length.
+
+    Args:
+        length: (int): write your description
+        charset: (str): write your description
+    """
     return b"".join(_choice(charset) for x in six.moves.range(length))

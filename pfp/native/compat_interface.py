@@ -25,6 +25,16 @@ import pfp.errors as errors
 #    int moveWithCursor=false )
 @native(name="AddBookmark", ret=pfp.fields.Void)
 def AddBookmark(params, ctxt, scope, stream, coord):
+    """
+    Add a marker to the current parameters.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     # resolved: won't implement
     pass
 
@@ -32,6 +42,16 @@ def AddBookmark(params, ctxt, scope, stream, coord):
 # void ClearClipboard()
 @native(name="ClearClipboard", ret=pfp.fields.Void)
 def ClearClipboard(params, ctxt, scope, stream, coord):
+    """
+    Takes a string.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (todo): write your description
+        coord: (todo): write your description
+    """
     # resolved: won't implement
     pass
 
@@ -39,6 +59,16 @@ def ClearClipboard(params, ctxt, scope, stream, coord):
 # void CopyBytesToClipboard( uchar buffer[], int size, int charset=CHARSET_ANSI, int bigendian=false )
 @native(name="CopyBytesToClipboard", ret=pfp.fields.Void)
 def CopyBytesToClipboard(params, ctxt, scope, stream, coord):
+    """
+    Copied from the c { stream }.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     # resolved: won't implement
     pass
 
@@ -46,6 +76,16 @@ def CopyBytesToClipboard(params, ctxt, scope, stream, coord):
 # void CopyStringToClipboard( const char str[], int charset=CHARSET_ANSI )
 @native(name="CopyStringToClipboard", ret=pfp.fields.Void)
 def CopyStringToClipboard(params, ctxt, scope, stream, coord):
+    """
+    Copies the given a string.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     # resolved: won't implement
     pass
 
@@ -53,6 +93,16 @@ def CopyStringToClipboard(params, ctxt, scope, stream, coord):
 # void CopyToClipboard()
 @native(name="CopyToClipboard", ret=pfp.fields.Void)
 def CopyToClipboard(params, ctxt, scope, stream, coord):
+    """
+    Copied version of the specified in the stream.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     # resolved: won't implement
     pass
 
@@ -60,18 +110,48 @@ def CopyToClipboard(params, ctxt, scope, stream, coord):
 # void CutToClipboard()
 @native(name="CutToClipboard", ret=pfp.fields.Void)
 def CutToClipboard(params, ctxt, scope, stream, coord):
+    """
+    Convert the given c { keyboardboard.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
 # int DeleteFile( char filename[] )
 @native(name="DeleteFile", ret=pfp.fields.Int)
 def DeleteFile(params, ctxt, scope, stream, coord):
+    """
+    Deletes a file from a file - like object.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     return 0
 
 
 # void DisableUndo()
 @native(name="DisableUndo", ret=pfp.fields.Void)
 def DisableUndo(params, ctxt, scope, stream, coord):
+    """
+    Evaluates the given parameters.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     # resolved: won't implement
     pass
 
@@ -79,6 +159,16 @@ def DisableUndo(params, ctxt, scope, stream, coord):
 # void DisplayFormatBinary()
 @native(name="DisplayFormatBinary", ret=pfp.fields.Void)
 def DisplayFormatBinary(params, ctxt, scope, stream, coord):
+    """
+    Formats the given parameters.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     # resolved: won't implement
     pass
 
@@ -86,6 +176,16 @@ def DisplayFormatBinary(params, ctxt, scope, stream, coord):
 # void DisplayFormatDecimal()
 @native(name="DisplayFormatDecimal", ret=pfp.fields.Void)
 def DisplayFormatDecimal(params, ctxt, scope, stream, coord):
+    """
+    Todo : ref.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     # resolved: won't implement
     pass
 
@@ -93,6 +193,16 @@ def DisplayFormatDecimal(params, ctxt, scope, stream, coord):
 # void DisplayFormatHex()
 @native(name="DisplayFormatHex", ret=pfp.fields.Void)
 def DisplayFormatHex(params, ctxt, scope, stream, coord):
+    """
+    Todo : meth : meth : ~simple.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     # resolved: won't implement
     pass
 
@@ -100,6 +210,16 @@ def DisplayFormatHex(params, ctxt, scope, stream, coord):
 # void DisplayFormatOctal()
 @native(name="DisplayFormatOctal", ret=pfp.fields.Void)
 def DisplayFormatOctal(params, ctxt, scope, stream, coord):
+    """
+    Evaluates of the parameters.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     # resolved: won't implement
     pass
 
@@ -107,6 +227,16 @@ def DisplayFormatOctal(params, ctxt, scope, stream, coord):
 # void EnableUndo()
 @native(name="EnableUndo", ret=pfp.fields.Void)
 def EnableUndo(params, ctxt, scope, stream, coord):
+    """
+    Todo : pywbem.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (todo): write your description
+        coord: (todo): write your description
+    """
     # resolved: won't implement
     pass
 
@@ -114,12 +244,32 @@ def EnableUndo(params, ctxt, scope, stream, coord):
 # int Exec( const char program[], const char arguments[], int wait, int &errorCode )
 @native(name="Exec", ret=pfp.fields.Int)
 def Exec(params, ctxt, scope, stream, coord):
+    """
+    Evaluates the given parameters.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
 # void Exit( int errorcode )
 @native(name="Exit", ret=pfp.fields.Void)
 def Exit(params, ctxt, scope, stream, coord):
+    """
+    Raises an error code.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (todo): write your description
+        coord: (todo): write your description
+    """
     if len(params) != 1:
         raise errors.InvalidArguments(
             coord, "1 arguments", "{} args".format(len(params))
@@ -131,6 +281,16 @@ def Exit(params, ctxt, scope, stream, coord):
 # void ExpandAll()
 @native(name="ExpandAll", ret=pfp.fields.Void)
 def ExpandAll(params, ctxt, scope, stream, coord):
+    """
+    Evaluate the given parameters.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     # resolved: won't implement
     pass
 
@@ -138,42 +298,112 @@ def ExpandAll(params, ctxt, scope, stream, coord):
 # void ExportCSV( const char filename[] )
 @native(name="ExportCSV", ret=pfp.fields.Void)
 def ExportCSV(params, ctxt, scope, stream, coord):
+    """
+    Evaluate the given parameters.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (todo): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
 # void ExportXML( const char filename[] )
 @native(name="ExportXML", ret=pfp.fields.Void)
 def ExportXML(params, ctxt, scope, stream, coord):
+    """
+    Evaluate the given parameters.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
 # void FileClose()
 @native(name="FileClose", ret=pfp.fields.Void)
 def FileClose(params, ctxt, scope, stream, coord):
+    """
+    Takes a file - like object to a file - like object.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
 # int FileCount()
 @native(name="FileCount", ret=pfp.fields.Int)
 def FileCount(params, ctxt, scope, stream, coord):
+    """
+    Returns the number of the number of parameters in a file - like object.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (todo): write your description
+        stream: (todo): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
 # int FileExists( const char filename[] )
 @native(name="FileExists", ret=pfp.fields.Int)
 def FileExists(params, ctxt, scope, stream, coord):
+    """
+    Evaluate file exists.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
 # int FileNew( char interface[]="", int makeActive=true )
 @native(name="FileNew", ret=pfp.fields.Int)
 def FileNew(params, ctxt, scope, stream, coord):
+    """
+    Creates a file - like object.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (str): write your description
+    """
     raise NotImplementedError()
 
 
 # int FileOpen( const char filename[], int runTemplate=false, char interface[]="", int openDuplicate=false )
 @native(name="FileOpen", ret=pfp.fields.Int)
 def FileOpen(params, ctxt, scope, stream, coord):
+    """
+    Opens a file - like object.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (str): write your description
+    """
     raise NotImplementedError()
 
 
@@ -182,6 +412,16 @@ def FileOpen(params, ctxt, scope, stream, coord):
 # int FileSave( const wchar_t filename[] )
 @native(name="FileSave", ret=pfp.fields.Int)
 def FileSave(params, ctxt, scope, stream, coord):
+    """
+    Wrapper function to file - like object.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
@@ -189,42 +429,112 @@ def FileSave(params, ctxt, scope, stream, coord):
 # int FileSaveRange( const wchar_t filename[], int64 start, int64 size )
 @native(name="FileSaveRange", ret=pfp.fields.Int)
 def FileSaveRange(params, ctxt, scope, stream, coord):
+    """
+    Takes a file - like object and returns the result.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
 # void FileSelect( int index )
 @native(name="FileSelect", ret=pfp.fields.Void)
 def FileSelect(params, ctxt, scope, stream, coord):
+    """
+    Takes a c { yamlanguages.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
 # int FindOpenFile( const char path[] )
 @native(name="FindOpenFile", ret=pfp.fields.Int)
 def FindOpenFile(params, ctxt, scope, stream, coord):
+    """
+    Opens a file - like object.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
 # int FindOpenFileW( const wchar_t path[] )
 @native(name="FindOpenFileW", ret=pfp.fields.Int)
 def FindOpenFileW(params, ctxt, scope, stream, coord):
+    """
+    Deprecated.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
 # char[] GetArg( int index )
 @native(name="GetArg", ret=pfp.fields.String)
 def GetArg(params, ctxt, scope, stream, coord):
+    """
+    Returns the first argument for the given parameters.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (todo): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
 # wchar_t[] GetArgW( int index )
 @native(name="GetArgW", ret=pfp.fields.WString)
 def GetArgW(params, ctxt, scope, stream, coord):
+    """
+    Evaluate the given parameters.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (todo): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
 # int GetBackColor()
 @native(name="GetBackColor", ret=pfp.fields.Int)
 def GetBackColor(params, ctxt, scope, stream, coord):
+    """
+    Gets the parameters of parameters.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     # resolved: won't implement
     pass
 
@@ -232,6 +542,16 @@ def GetBackColor(params, ctxt, scope, stream, coord):
 # int GetBookmarkArraySize( int index )
 @native(name="GetBookmarkArraySize", ret=pfp.fields.Int)
 def GetBookmarkArraySize(params, ctxt, scope, stream, coord):
+    """
+    Gets the size of the image.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     # resolved: won't implement
     pass
 
@@ -239,6 +559,16 @@ def GetBookmarkArraySize(params, ctxt, scope, stream, coord):
 # int GetBookmarkBackColor( int index )
 @native(name="GetBookmarkBackColor", ret=pfp.fields.Int)
 def GetBookmarkBackColor(params, ctxt, scope, stream, coord):
+    """
+    Gets a markdown value.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     # resolved: won't implement
     pass
 
@@ -246,6 +576,16 @@ def GetBookmarkBackColor(params, ctxt, scope, stream, coord):
 # int GetBookmarkForeColor( int index )
 @native(name="GetBookmarkForeColor", ret=pfp.fields.Int)
 def GetBookmarkForeColor(params, ctxt, scope, stream, coord):
+    """
+    Gets the current position of the given parameters.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     # resolved: won't implement
     pass
 
@@ -253,6 +593,16 @@ def GetBookmarkForeColor(params, ctxt, scope, stream, coord):
 # int GetBookmarkMoveWithCursor( int index )
 @native(name="GetBookmarkMoveWithCursor", ret=pfp.fields.Int)
 def GetBookmarkMoveWithCursor(params, ctxt, scope, stream, coord):
+    """
+    Gets the marker.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     # resolved: won't implement
     pass
 
@@ -260,6 +610,16 @@ def GetBookmarkMoveWithCursor(params, ctxt, scope, stream, coord):
 # string GetBookmarkName( int index )
 @native(name="GetBookmarkName", ret=pfp.fields.String)
 def GetBookmarkName(params, ctxt, scope, stream, coord):
+    """
+    Gets the name for the given parameters.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     # resolved: won't implement
     pass
 
@@ -267,6 +627,16 @@ def GetBookmarkName(params, ctxt, scope, stream, coord):
 # int64 GetBookmarkPos( int index )
 @native(name="GetBookmarkPos", ret=pfp.fields.Int64)
 def GetBookmarkPos(params, ctxt, scope, stream, coord):
+    """
+    Gets the position of the marker.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     # resolved: won't implement
     pass
 
@@ -274,6 +644,16 @@ def GetBookmarkPos(params, ctxt, scope, stream, coord):
 # string GetBookmarkType( int index )
 @native(name="GetBookmarkType", ret=pfp.fields.String)
 def GetBookmarkType(params, ctxt, scope, stream, coord):
+    """
+    Gets the type of the given type.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     # resolved: won't implement
     pass
 
@@ -281,12 +661,32 @@ def GetBookmarkType(params, ctxt, scope, stream, coord):
 # int GetBytesPerLine()
 @native(name="GetBytesPerLine", ret=pfp.fields.Int)
 def GetBytesPerLine(params, ctxt, scope, stream, coord):
+    """
+    Wrapper for c { stream }.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
 # int GetClipboardBytes( uchar buffer[], int maxBytes )
 @native(name="GetClipboardBytes", ret=pfp.fields.Int)
 def GetClipboardBytes(params, ctxt, scope, stream, coord):
+    """
+    Deprecipboard.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (todo): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     # resolved: won't implement
     pass
 
@@ -294,6 +694,16 @@ def GetClipboardBytes(params, ctxt, scope, stream, coord):
 # int GetClipboardIndex()
 @native(name="GetClipboardIndex", ret=pfp.fields.Int)
 def GetClipboardIndex(params, ctxt, scope, stream, coord):
+    """
+    Gets the index of the given scope.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (todo): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     # resolved: won't implement
     pass
 
@@ -301,6 +711,16 @@ def GetClipboardIndex(params, ctxt, scope, stream, coord):
 # string GetClipboardString()
 @native(name="GetClipboardString", ret=pfp.fields.String)
 def GetClipboardString(params, ctxt, scope, stream, coord):
+    """
+    Returns the string representation of the given parameters.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     # resolved: won't implement
     pass
 
@@ -308,78 +728,209 @@ def GetClipboardString(params, ctxt, scope, stream, coord):
 # string GetCurrentTime( char format[] = "hh:mm:ss" )
 @native(name="GetCurrentTime", ret=pfp.fields.String)
 def GetCurrentTime(params, ctxt, scope, stream, coord):
+    """
+    Takes a c { y } and returns c { y }.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (todo): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
 # string GetCurrentDate( char format[] = "MM/dd/yyyy" )
 @native(name="GetCurrentDate", ret=pfp.fields.String)
 def GetCurrentDate(params, ctxt, scope, stream, coord):
+    """
+    Evaluates the input parameters.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (todo): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
 # string GetCurrentDateTime( char format[] = "MM/dd/yyyy hh:mm:ss" )
 @native(name="GetCurrentDateTime", ret=pfp.fields.String)
 def GetCurrentDateTime(params, ctxt, scope, stream, coord):
+    """
+    Takes a c { stream } for a specific parameters.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (todo): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
 # int64 GetCursorPos()
 @native(name="GetCursorPos", ret=pfp.fields.Int64)
 def GetCursorPos(params, ctxt, scope, stream, coord):
+    """
+    Returns a cursor.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (todo): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
 # char[] GetEnv( const char str[] )
 @native(name="GetEnv", ret=pfp.fields.String)
 def GetEnv(params, ctxt, scope, stream, coord):
+    """
+    Returns the result of the given parameters.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
 # int GetFileAttributesUnix()
 @native(name="GetFileAttributesUnix", ret=pfp.fields.Int)
 def GetFileAttributesUnix(params, ctxt, scope, stream, coord):
+    """
+    Wrapper for __init function__Unix__ method.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (str): write your description
+    """
     raise NotImplementedError()
 
 
 # int GetFileAttributesWin()
 @native(name="GetFileAttributesWin", ret=pfp.fields.Int)
 def GetFileAttributesWin(params, ctxt, scope, stream, coord):
+    """
+    Wrapper around the __init__ } function.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (str): write your description
+    """
     raise NotImplementedError()
 
 
 # int GetFileCharSet()
 @native(name="GetFileCharSet", ret=pfp.fields.Int)
 def GetFileCharSet(params, ctxt, scope, stream, coord):
+    """
+    Gets a file - like object for a file - like object.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (str): write your description
+    """
     raise NotImplementedError()
 
 
 # char[] GetFileInterface()
 @native(name="GetFileInterface", ret=pfp.fields.String)
 def GetFileInterface(params, ctxt, scope, stream, coord):
+    """
+    Gets a file - like object.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (str): write your description
+    """
     raise NotImplementedError()
 
 
 # char[] GetFileName()
 @native(name="GetFileName", ret=pfp.fields.String, send_interp=True)
 def GetFileName(params, ctxt, scope, stream, coord, interp):
+    """
+    Gets a file name for the given parameters.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (str): write your description
+        interp: (todo): write your description
+    """
     return interp.get_filename()
 
 
 # wchar_t[] GetFileNameW()
 @native(name="GetFileNameW", ret=pfp.fields.WString)
 def GetFileNameW(params, ctxt, scope, stream, coord):
+    """
+    Gets a file descriptor.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (str): write your description
+    """
     raise NotImplementedError()
 
 
 # int GetFileNum()
 @native(name="GetFileNum", ret=pfp.fields.Int)
 def GetFileNum(params, ctxt, scope, stream, coord):
+    """
+    Gets the contents () object parameters.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (str): write your description
+    """
     raise NotImplementedError()
 
 
 # int GetForeColor()
 @native(name="GetForeColor", ret=pfp.fields.Int)
 def GetForeColor(params, ctxt, scope, stream, coord):
+    """
+    Gets the current position } position } value.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     # resolved: won't implement
     pass
 
@@ -387,6 +938,16 @@ def GetForeColor(params, ctxt, scope, stream, coord):
 # int GetMouseWheelScrollSpeed()
 @native(name="GetMouseWheelScrollSpeed", ret=pfp.fields.Int)
 def GetMouseWheelScrollSpeed(params, ctxt, scope, stream, coord):
+    """
+    Gets the list of a given parameters.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     # resolved: won't implement
     pass
 
@@ -394,12 +955,32 @@ def GetMouseWheelScrollSpeed(params, ctxt, scope, stream, coord):
 # int GetNumArgs()
 @native(name="GetNumArgs", ret=pfp.fields.Int)
 def GetNumArgs(params, ctxt, scope, stream, coord):
+    """
+    Gets the given parameters.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
 # int GetNumBookmarks()
 @native(name="GetNumBookmarks", ret=pfp.fields.Int)
 def GetNumBookmarks(params, ctxt, scope, stream, coord):
+    """
+    Gets the parameters for the given parameters.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     # resolved: won't implement
     pass
 
@@ -407,108 +988,288 @@ def GetNumBookmarks(params, ctxt, scope, stream, coord):
 # int GetReadOnly()
 @native(name="GetReadOnly", ret=pfp.fields.Int)
 def GetReadOnly(params, ctxt, scope, stream, coord):
+    """
+    Reads c { yamlazy from }.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
 # char[] GetScriptName()
 @native(name="GetScriptName", ret=pfp.fields.String)
 def GetScriptName(params, ctxt, scope, stream, coord):
+    """
+    Returns the name of the module name.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
 # wchar_t[] GetScriptNameW()
 @native(name="GetScriptNameW", ret=pfp.fields.WString)
 def GetScriptNameW(params, ctxt, scope, stream, coord):
+    """
+    \
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
 # char[] GetScriptFileName()
 @native(name="GetScriptFileName", ret=pfp.fields.String)
 def GetScriptFileName(params, ctxt, scope, stream, coord):
+    """
+    Gets a file name of the file.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (str): write your description
+    """
     raise NotImplementedError()
 
 
 # wchar_t[] GetScriptFileNameW()
 @native(name="GetScriptFileNameW", ret=pfp.fields.WString)
 def GetScriptFileNameW(params, ctxt, scope, stream, coord):
+    """
+    Https : py : class
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (str): write your description
+    """
     raise NotImplementedError()
 
 
 # int64 GetSelSize()
 @native(name="GetSelSize", ret=pfp.fields.Int64)
 def GetSelSize(params, ctxt, scope, stream, coord):
+    """
+    Gets the size of the size.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
 # int64 GetSelStart()
 @native(name="GetSelStart", ret=pfp.fields.Int64)
 def GetSelStart(params, ctxt, scope, stream, coord):
+    """
+    Returns the start and starts of the given position.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (todo): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
 # string GetTempDirectory()
 @native(name="GetTempDirectory", ret=pfp.fields.String)
 def GetTempDirectory(params, ctxt, scope, stream, coord):
+    """
+    Returns a directory structure.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
 # char[] GetTempFileName()
 @native(name="GetTempFileName", ret=pfp.fields.String)
 def GetTempFileName(params, ctxt, scope, stream, coord):
+    """
+    Returns the name for the given file name.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (str): write your description
+    """
     raise NotImplementedError()
 
 
 # char[] GetTemplateName()
 @native(name="GetTemplateName", ret=pfp.fields.String)
 def GetTemplateName(params, ctxt, scope, stream, coord):
+    """
+    Creates the name of the given parameters.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
 # wchar_t[] GetTemplateNameW()
 @native(name="GetTemplateNameW", ret=pfp.fields.WString)
 def GetTemplateNameW(params, ctxt, scope, stream, coord):
+    """
+    Wrapper for the name of the parameters.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
 # char[] GetTemplateFileName()
 @native(name="GetTemplateFileName", ret=pfp.fields.String)
 def GetTemplateFileName(params, ctxt, scope, stream, coord):
+    """
+    Gets a file name for the given parameters.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (str): write your description
+    """
     raise NotImplementedError()
 
 
 # wchar_t[] GetTemplateFileNameW()
 @native(name="GetTemplateFileNameW", ret=pfp.fields.WString)
 def GetTemplateFileNameW(params, ctxt, scope, stream, coord):
+    """
+    Wrapper for a file name for the given parameters.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (str): write your description
+    """
     raise NotImplementedError()
 
 
 # char[] GetWorkingDirectory()
 @native(name="GetWorkingDirectory", ret=pfp.fields.String)
 def GetWorkingDirectory(params, ctxt, scope, stream, coord):
+    """
+    Creates a directory structure for the given } directory }.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
 # wchar_t[] GetWorkingDirectoryW()
 @native(name="GetWorkingDirectoryW", ret=pfp.fields.WString)
 def GetWorkingDirectoryW(params, ctxt, scope, stream, coord):
+    """
+    Gets the location of the input stream.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
 # char[] InputDirectory( const char title[], const char defaultDir[]="" , coord)
 @native(name="InputDirectory", ret=pfp.fields.String)
 def InputDirectory(params, ctxt, scope, stream, coord):
+    """
+    Evaluate the given directory.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
 # double InputFloat(const char title[], const char caption[], const char defaultValue[] , coord)
 @native(name="InputFloat", ret=pfp.fields.Double)
 def InputFloat(params, ctxt, scope, stream, coord):
+    """
+    Evaluate the input stream.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (todo): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
 # int InputNumber(const char title[], const char caption[], const char defaultValue[] , coord)
 @native(name="InputNumber", ret=pfp.fields.Int)
 def InputNumber(params, ctxt, scope, stream, coord):
+    """
+    Takes an input function.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
@@ -518,6 +1279,16 @@ def InputNumber(params, ctxt, scope, stream, coord):
 #    char filename[]="" )
 @native(name="InputOpenFileName", ret=pfp.fields.String)
 def InputOpenFileName(params, ctxt, scope, stream, coord):
+    """
+    Opens a file - like object.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
@@ -527,6 +1298,16 @@ def InputOpenFileName(params, ctxt, scope, stream, coord):
 #    char filename[]="" )
 @native(name="InputOpenFileNames", ret=pfp.fields.Void)
 def InputOpenFileNames(params, ctxt, scope, stream, coord):
+    """
+    Opens the input reader.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
@@ -541,6 +1322,16 @@ def InputOpenFileNames(params, ctxt, scope, stream, coord):
 #    const char str13[]="", const char str14[]="", const char str15[]="" )
 @native(name="InputRadioButtonBox", ret=pfp.fields.Int)
 def InputRadioButtonBox(params, ctxt, scope, stream, coord):
+    """
+    Evaluates the inputted button and the inputted parameters.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
@@ -551,6 +1342,16 @@ def InputRadioButtonBox(params, ctxt, scope, stream, coord):
 #    char extension[]="" )
 @native(name="InputSaveFileName", ret=pfp.fields.String)
 def InputSaveFileName(params, ctxt, scope, stream, coord):
+    """
+    Returns the input file name for the input file name.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
@@ -560,6 +1361,16 @@ def InputSaveFileName(params, ctxt, scope, stream, coord):
 #    const char defaultValue[] , coord)
 @native(name="InputString", ret=pfp.fields.String)
 def InputString(params, ctxt, scope, stream, coord):
+    """
+    Evaluates a string.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (todo): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
@@ -569,42 +1380,112 @@ def InputString(params, ctxt, scope, stream, coord):
 #    const wstring defaultValue , coord)
 @native(name="InputWString", ret=pfp.fields.WString)
 def InputWString(params, ctxt, scope, stream, coord):
+    """
+    Evaluate the given string.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (todo): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
 # int InsertFile( const char filename[], int64 position )
 @native(name="InsertFile", ret=pfp.fields.Int)
 def InsertFile(params, ctxt, scope, stream, coord):
+    """
+    Evaluate a file - place.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
 # int IsEditorFocused()
 @native(name="IsEditorFocused", ret=pfp.fields.Int)
 def IsEditorFocused(params, ctxt, scope, stream, coord):
+    """
+    Evaluate parameters and checksum and c { y }.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
 # int IsModified()
 @native(name="IsModified", ret=pfp.fields.Int)
 def IsModified(params, ctxt, scope, stream, coord):
+    """
+    Evaluate the given parameters.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (todo): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
 # int IsNoUIMode()
 @native(name="IsNoUIMode", ret=pfp.fields.Int)
 def IsNoUIMode(params, ctxt, scope, stream, coord):
+    """
+    Evaluate a yaml file.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (todo): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
 # int MessageBox( int mask, const char title[], const char format[] [, argument, ... ] )
 @native(name="MessageBox", ret=pfp.fields.Int)
 def MessageBox(params, ctxt, scope, stream, coord):
+    """
+    Returns the given parameters.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
 # void OutputPaneClear()
 @native(name="OutputPaneClear", ret=pfp.fields.Void)
 def OutputPaneClear(params, ctxt, scope, stream, coord):
+    """
+    Todo docs.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     # resolved: won't implement
     pass
 
@@ -612,6 +1493,16 @@ def OutputPaneClear(params, ctxt, scope, stream, coord):
 # int OutputPaneSave( const char filename[] )
 @native(name="OutputPaneSave", ret=pfp.fields.Int)
 def OutputPaneSave(params, ctxt, scope, stream, coord):
+    """
+    Deprecated
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     # resolved: won't implement
     pass
 
@@ -619,6 +1510,16 @@ def OutputPaneSave(params, ctxt, scope, stream, coord):
 # void OutputPaneCopy()
 @native(name="OutputPaneCopy", ret=pfp.fields.Void)
 def OutputPaneCopy(params, ctxt, scope, stream, coord):
+    """
+    Deprecated.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     # resolved: won't implement
     pass
 
@@ -626,6 +1527,16 @@ def OutputPaneCopy(params, ctxt, scope, stream, coord):
 # void PasteFromClipboard()
 @native(name="PasteFromClipboard", ret=pfp.fields.Void)
 def PasteFromClipboard(params, ctxt, scope, stream, coord):
+    """
+    Deprecated.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     # resolved: won't implement
     pass
 
@@ -665,48 +1576,128 @@ def Printf(params, ctxt, scope, stream, coord, interp):
 # int64 ProcessGetHeapLocalAddress( int index )
 @native(name="ProcessGetHeapLocalAddress", ret=pfp.fields.Int64)
 def ProcessGetHeapLocalAddress(params, ctxt, scope, stream, coord):
+    """
+    Takes a yam instruction.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
 # wchar_t[] ProcessGetHeapModule( int index )
 @native(name="ProcessGetHeapModule", ret=pfp.fields.WString)
 def ProcessGetHeapModule(params, ctxt, scope, stream, coord):
+    """
+    Evaluate a yamap function.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
 # int ProcessGetHeapSize( int index )
 @native(name="ProcessGetHeapSize", ret=pfp.fields.Int)
 def ProcessGetHeapSize(params, ctxt, scope, stream, coord):
+    """
+    Takes a yaml file.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
 # int64 ProcessGetHeapStartAddress( int index )
 @native(name="ProcessGetHeapStartAddress", ret=pfp.fields.Int64)
 def ProcessGetHeapStartAddress(params, ctxt, scope, stream, coord):
+    """
+    Takes a l { address } and processes it.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
 # int ProcessGetNumHeaps()
 @native(name="ProcessGetNumHeaps", ret=pfp.fields.Int)
 def ProcessGetNumHeaps(params, ctxt, scope, stream, coord):
+    """
+    Evaluate the input stream.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
 # int64 ProcessHeapToLocalAddress( int64 memoryAddress )
 @native(name="ProcessHeapToLocalAddress", ret=pfp.fields.Int64)
 def ProcessHeapToLocalAddress(params, ctxt, scope, stream, coord):
+    """
+    Todo docs.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (todo): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
 # int64 ProcessLocalToHeapAddress( int64 localAddress )
 @native(name="ProcessLocalToHeapAddress", ret=pfp.fields.Int64)
 def ProcessLocalToHeapAddress(params, ctxt, scope, stream, coord):
+    """
+    Takes a l { address.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (todo): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
 # void RemoveBookmark( int index )
 @native(name="RemoveBookmark", ret=pfp.fields.Void)
 def RemoveBookmark(params, ctxt, scope, stream, coord):
+    """
+    Removes a marker from the given parameters.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (todo): write your description
+        stream: (todo): write your description
+        coord: (todo): write your description
+    """
     # resolved: won't implement
     pass
 
@@ -714,24 +1705,64 @@ def RemoveBookmark(params, ctxt, scope, stream, coord):
 # int RenameFile( const char originalname[], const char newname[] )
 @native(name="RenameFile", ret=pfp.fields.Int)
 def RenameFile(params, ctxt, scope, stream, coord):
+    """
+    Returns the result of a file.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (todo): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
 # void RequiresFile()
 @native(name="RequiresFile", ret=pfp.fields.Void)
 def RequiresFile(params, ctxt, scope, stream, coord):
+    """
+    \ x1 /2 / c { file1 / y.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (todo): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
 # void RequiresVersion( int majorVer, int minorVer=0, int revision=0 )
 @native(name="RequiresVersion", ret=pfp.fields.Void)
 def RequiresVersion(params, ctxt, scope, stream, coord):
+    """
+    Todo : class : ~.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (todo): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
 # void RunTemplate( const char filename[]="", int clearOutput=false )
 @native(name="RunTemplate", ret=pfp.fields.Void)
 def RunTemplate(params, ctxt, scope, stream, coord):
+    """
+    \
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (todo): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
@@ -769,6 +1800,16 @@ const int cNone = 0xffffffff;
 # void SetBackColor( int color )
 @native(name="SetBackColor", ret=pfp.fields.Void)
 def SetBackColor(params, ctxt, scope, stream, coord):
+    """
+    Sets the parameters of parameters.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     # resolved: won't implement
     pass
 
@@ -776,6 +1817,16 @@ def SetBackColor(params, ctxt, scope, stream, coord):
 # void SetColor( int forecolor, int backcolor )
 @native(name="SetColor", ret=pfp.fields.Void)
 def SetColor(params, ctxt, scope, stream, coord):
+    """
+    Sets the parameters of the specified parameters.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (str): write your description
+    """
     # resolved: won't implement
     pass
 
@@ -783,6 +1834,16 @@ def SetColor(params, ctxt, scope, stream, coord):
 # void SetForeColor( int color )
 @native(name="SetForeColor", ret=pfp.fields.Void)
 def SetForeColor(params, ctxt, scope, stream, coord):
+    """
+    Sets the parameters to the specified parameters.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     # resolved: won't implement
     pass
 
@@ -790,6 +1851,16 @@ def SetForeColor(params, ctxt, scope, stream, coord):
 # int SetClipboardIndex( int index )
 @native(name="SetClipboardIndex", ret=pfp.fields.Int)
 def SetClipboardIndex(params, ctxt, scope, stream, coord):
+    """
+    Gets the index of the given parameters.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     # resolved: won't implement
     pass
 
@@ -797,88 +1868,238 @@ def SetClipboardIndex(params, ctxt, scope, stream, coord):
 # void SetCursorPos( int64 pos )
 @native(name="SetCursorPos", ret=pfp.fields.Void)
 def SetCursorPos(params, ctxt, scope, stream, coord):
+    """
+    Sets the cursor position.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (todo): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
 # int SetEnv( const char str[], const char value[] )
 @native(name="SetEnv", ret=pfp.fields.Int)
 def SetEnv(params, ctxt, scope, stream, coord):
+    """
+    Sets the parameters of the input stream.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
 # int SetFileAttributesUnix( int attributes )
 @native(name="SetFileAttributesUnix", ret=pfp.fields.Int)
 def SetFileAttributesUnix(params, ctxt, scope, stream, coord):
+    """
+    Sets the parameters of the specified file.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
 # int SetFileAttributesWin( int attributes )
 @native(name="SetFileAttributesWin", ret=pfp.fields.Int)
 def SetFileAttributesWin(params, ctxt, scope, stream, coord):
+    """
+    Sets the parameters of the specified position.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
 # int SetFileInterface( const char name[] )
 @native(name="SetFileInterface", ret=pfp.fields.Int)
 def SetFileInterface(params, ctxt, scope, stream, coord):
+    """
+    Sets the given parameters.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
 # void SetMouseWheelScrollSpeed( int speed )
 @native(name="SetMouseWheelScrollSpeed", ret=pfp.fields.Void)
 def SetMouseWheelScrollSpeed(params, ctxt, scope, stream, coord):
+    """
+    Sets the parameters for the input stream.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
 # int SetReadOnly( int readonly )
 @native(name="SetReadOnly", ret=pfp.fields.Int)
 def SetReadOnly(params, ctxt, scope, stream, coord):
+    """
+    Sets the parameters for the inputted stream.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
 # void SetSelection( int64 start, int64 size )
 @native(name="SetSelection", ret=pfp.fields.Void)
 def SetSelection(params, ctxt, scope, stream, coord):
+    """
+    Sets the parameters.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
 # int SetWorkingDirectory( const char dir[] )
 @native(name="SetWorkingDirectory", ret=pfp.fields.Int)
 def SetWorkingDirectory(params, ctxt, scope, stream, coord):
+    """
+    Sets the parameters of parameters.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
 # int SetWorkingDirectoryW( const wchar_t dir[] )
 @native(name="SetWorkingDirectoryW", ret=pfp.fields.Int)
 def SetWorkingDirectoryW(params, ctxt, scope, stream, coord):
+    """
+    Sets the parameters for the given position.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
 # void Sleep( int milliseconds )
 @native(name="Sleep", ret=pfp.fields.Void)
 def Sleep(params, ctxt, scope, stream, coord):
+    """
+    Evaluates the given parameters.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     raise NotImplementedError()
 
 
 # void StatusMessage( const char format[] [, argument, ... ] )
 @native(name="StatusMessage", ret=pfp.fields.Void)
 def StatusMessage(params, ctxt, scope, stream, coord):
+    """
+    Gets the message parameters.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (str): write your description
+        coord: (todo): write your description
+    """
     pass
 
 
 # void Terminate( int force=true )
 @native(name="Terminate", ret=pfp.fields.Void)
 def Terminate(params, ctxt, scope, stream, coord):
+    """
+    Evaluate the given parameters.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (todo): write your description
+        stream: (todo): write your description
+        coord: (todo): write your description
+    """
     raise errors.InterpExit()
 
 
 # void Warning( const char format[] [, argument, ... ] )
 @native(name="Warning", ret=pfp.fields.Void)
 def Warning(params, ctxt, scope, stream, coord):
+    """
+    Evaluate the given parameters.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (todo): write your description
+        coord: (todo): write your description
+    """
     pass
 
 
 # void Assert( int value, const char msg[] = "" )
 @native(name="Assert", ret=pfp.fields.Void)
 def Assert(params, ctxt, scope, stream, coord):
+    """
+    Takes a function calls the given parameters.
+
+    Args:
+        params: (todo): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (todo): write your description
+        coord: (todo): write your description
+    """
     pass

@@ -18,12 +18,30 @@ import utils
 
 class TestCompat(utils.PfpTestCase):
     def setUp(self):
+        """
+        Set the start and end numbers.
+
+        Args:
+            self: (todo): write your description
+        """
         self._start_endian = pfp.fields.NumberBase.endian
 
     def tearDown(self):
+        """
+        Tear down the start of the file.
+
+        Args:
+            self: (todo): write your description
+        """
         pfp.fields.NumberBase.endian = self._start_endian
 
     def test_big_endian(self):
+        """
+        A big - big endian field.
+
+        Args:
+            self: (todo): write your description
+        """
         # just something different so that we know it changed
         pfp.fields.NumberBase.endian = pfp.fields.LITTLE_ENDIAN
         dom = self._test_parse_build(
@@ -35,6 +53,12 @@ class TestCompat(utils.PfpTestCase):
         self.assertEqual(pfp.fields.NumberBase.endian, pfp.fields.BIG_ENDIAN)
 
     def test_little_endian(self):
+        """
+        Write the fields that fields
+
+        Args:
+            self: (todo): write your description
+        """
         # just something different so that we know it changed
         pfp.fields.NumberBase.endian = pfp.fields.BIG_ENDIAN
         dom = self._test_parse_build(
@@ -48,6 +72,12 @@ class TestCompat(utils.PfpTestCase):
         )
 
     def test_file_size(self):
+        """
+        Test if the test test.
+
+        Args:
+            self: (todo): write your description
+        """
         input_ = six.StringIO("ABCDE")
         output_ = six.StringIO()
         sys.stdout = output_
@@ -64,12 +94,30 @@ class TestCompat(utils.PfpTestCase):
 
 class TestCompatInterface(utils.PfpTestCase):
     def setUp(self):
+        """
+        Sets the result of this thread.
+
+        Args:
+            self: (todo): write your description
+        """
         pass
 
     def tearDown(self):
+        """
+        Tear down the next callable.
+
+        Args:
+            self: (todo): write your description
+        """
         pass
 
     def test_boolean_constants(self):
+        """
+        Parse the test constants.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -86,6 +134,12 @@ class TestCompatInterface(utils.PfpTestCase):
         )
 
     def test_color_constants(self):
+        """
+        Finds the test case.
+
+        Args:
+            self: (todo): write your description
+        """
         # shouldn't error
         dom = self._test_parse_build(
             "",
@@ -123,12 +177,30 @@ class TestCompatInterface(utils.PfpTestCase):
 
 class TestCompatIO(utils.PfpTestCase):
     def setUp(self):
+        """
+        Set the re - of - fields fields.
+
+        Args:
+            self: (todo): write your description
+        """
         pfp.fields.NumberBase.endian = pfp.fields.BIG_ENDIAN
 
     def tearDown(self):
+        """
+        Tear down the next callable.
+
+        Args:
+            self: (todo): write your description
+        """
         pass
 
     def test_read_ushort(self):
+        """
+        Run test test test test test test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "\x80\x01",
             """
@@ -141,6 +213,12 @@ class TestCompatIO(utils.PfpTestCase):
         )
 
     def test_read_bytes_uchar(self):
+        """
+        Read test test test test test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "ab\x00\x01",
             """
@@ -156,6 +234,12 @@ class TestCompatIO(utils.PfpTestCase):
         )
 
     def test_seek1(self):
+        """
+        Test to the dom of the specified in the dom.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "\x01\x02ABCD\x03\x04",
             """
@@ -174,6 +258,12 @@ class TestCompatIO(utils.PfpTestCase):
         self.assertEqual(dom.d, 4)
 
     def test_seek2(self):
+        """
+        Test for tests in - specific dom.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "\x01\x02ABCD\x03EF\x04",
             """
@@ -196,6 +286,12 @@ class TestCompatIO(utils.PfpTestCase):
         self.assertEqual(dom.d, 4)
 
     def test_seek3(self):
+        """
+        Test to test test test test test test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "ABCD",
             """
@@ -206,6 +302,12 @@ class TestCompatIO(utils.PfpTestCase):
         )
 
     def test_seek4(self):
+        """
+        Test if the dom position.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "ABCD",
             """
@@ -239,6 +341,12 @@ class TestCompatIO(utils.PfpTestCase):
         self.assertEqual(dom.pos7, 0)
 
     def test_skip1(self):
+        """
+        Compute cross - section.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "\x01\x02ABCD\x03\x04",
             """
@@ -257,6 +365,12 @@ class TestCompatIO(utils.PfpTestCase):
         self.assertEqual(dom.d, 4)
 
     def test_skip2(self):
+        """
+        Determine the cross validation.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "\x01\x02ABCD\x03EF\x04",
             """
@@ -279,6 +393,12 @@ class TestCompatIO(utils.PfpTestCase):
         self.assertEqual(dom.d, 4)
 
     def test_skip3(self):
+        """
+        Compute the dom.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "ABCD",
             """
@@ -300,12 +420,30 @@ class TestCompatIO(utils.PfpTestCase):
 
 class TestCompatString(utils.PfpTestCase):
     def setup(self):
+        """
+        Set up a new setup.
+
+        Args:
+            self: (todo): write your description
+        """
         pass
 
     def tearDown(self):
+        """
+        Tear down the next callable.
+
+        Args:
+            self: (todo): write your description
+        """
         pass
 
     def test_memcpy1(self):
+        """
+        Perform test test test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "abcd",
             """
@@ -319,6 +457,12 @@ class TestCompatString(utils.PfpTestCase):
         )
 
     def test_memcpy2(self):
+        """
+        Computes test test test test test test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "abcd",
             """
@@ -337,6 +481,12 @@ class TestCompatString(utils.PfpTestCase):
         )
 
     def test_strchr1(self):
+        """
+        Test the test test test test test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -347,6 +497,12 @@ class TestCompatString(utils.PfpTestCase):
         )
 
     def test_strchr2(self):
+        """
+        Generate test test test test test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -357,6 +513,12 @@ class TestCompatString(utils.PfpTestCase):
         )
 
     def test_strcpy(self):
+        """
+        Parse the test test test test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -373,6 +535,12 @@ class TestCompatString(utils.PfpTestCase):
         )
 
     def test_strncpy(self):
+        """
+        Parse test test test test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -389,6 +557,12 @@ class TestCompatString(utils.PfpTestCase):
         )
 
     def test_strcmp1(self):
+        """
+        Test for test test test files.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -400,6 +574,12 @@ class TestCompatString(utils.PfpTestCase):
         )
 
     def test_strcmp2(self):
+        """
+        Test if test test test files.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -411,6 +591,12 @@ class TestCompatString(utils.PfpTestCase):
         )
 
     def test_stricmp1(self):
+        """
+        Build test test test test test test test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -422,6 +608,12 @@ class TestCompatString(utils.PfpTestCase):
         )
 
     def test_stricmp2(self):
+        """
+        Test for test test test test test test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -433,6 +625,12 @@ class TestCompatString(utils.PfpTestCase):
         )
 
     def test_strncmp1(self):
+        """
+        Test for test test test files
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -444,6 +642,12 @@ class TestCompatString(utils.PfpTestCase):
         )
 
     def test_strncmp2(self):
+        """
+        Test for test test test test test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -455,6 +659,12 @@ class TestCompatString(utils.PfpTestCase):
         )
 
     def test_strnicmp1(self):
+        """
+        Test test test test test test test test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -466,6 +676,12 @@ class TestCompatString(utils.PfpTestCase):
         )
 
     def test_strnicmp2(self):
+        """
+        Test for test test test test test
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -477,6 +693,12 @@ class TestCompatString(utils.PfpTestCase):
         )
 
     def test_strstr1(self):
+        """
+        Generate test test test test test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -487,6 +709,12 @@ class TestCompatString(utils.PfpTestCase):
         )
 
     def test_strstr2(self):
+        """
+        Convert test - test test test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -497,6 +725,12 @@ class TestCompatString(utils.PfpTestCase):
         )
 
     def test_memcmp(self):
+        """
+        Called when the test tests.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             r"""
@@ -516,12 +750,30 @@ class TestCompatString(utils.PfpTestCase):
 
 class TestCompatTools(utils.PfpTestCase):
     def setUp(self):
+        """
+        Sets the result of this thread.
+
+        Args:
+            self: (todo): write your description
+        """
         pass
 
     def tearDown(self):
+        """
+        Tear down the next callable.
+
+        Args:
+            self: (todo): write your description
+        """
         pass
 
     def test_find_all1(self):
+        """
+        Searches for test test test test results.
+
+        Args:
+            self: (todo): write your description
+        """
         # TODO maybe we should just expose all defined fields/locals/types/vars/etc
         # to the user? then could just directly test dom.results...
         #
@@ -541,6 +793,12 @@ class TestCompatTools(utils.PfpTestCase):
         )
 
     def test_find_all2(self):
+        """
+        Searches for test test test test test test test test
+
+        Args:
+            self: (todo): write your description
+        """
         # TODO maybe we should just expose all defined fields/locals/types/vars/etc
         # to the user? then could just directly test dom.results...
         #
@@ -560,6 +818,12 @@ class TestCompatTools(utils.PfpTestCase):
         )
 
     def test_find_all_no_match_case(self):
+        """
+        Find all test case case - test case - match.
+
+        Args:
+            self: (todo): write your description
+        """
         # TODO maybe we should just expose all defined fields/locals/types/vars/etc
         # to the user? then could just directly test dom.results...
         #
@@ -579,6 +843,12 @@ class TestCompatTools(utils.PfpTestCase):
         )
 
     def test_find_all_whole_words_only(self):
+        """
+        Finds all the test terms.
+
+        Args:
+            self: (todo): write your description
+        """
         # TODO maybe we should just expose all defined fields/locals/types/vars/etc
         # to the user? then could just directly test dom.results...
         #
@@ -598,6 +868,12 @@ class TestCompatTools(utils.PfpTestCase):
         )
 
     def test_find_all_wildcards(self):
+        """
+        Find all wildcard wildcards.
+
+        Args:
+            self: (todo): write your description
+        """
         # TODO maybe we should just expose all defined fields/locals/types/vars/etc
         # to the user? then could just directly test dom.results...
         #
@@ -622,6 +898,12 @@ class TestCompatTools(utils.PfpTestCase):
         )
 
     def test_find_all_wildcards2(self):
+        """
+        Find all wildcards for all test tests.
+
+        Args:
+            self: (todo): write your description
+        """
         # TODO maybe we should just expose all defined fields/locals/types/vars/etc
         # to the user? then could just directly test dom.results...
         #
@@ -646,6 +928,12 @@ class TestCompatTools(utils.PfpTestCase):
         )
 
     def test_find_all_with_size(self):
+        """
+        Find all test test test test test test results.
+
+        Args:
+            self: (todo): write your description
+        """
         # TODO maybe we should just expose all defined fields/locals/types/vars/etc
         # to the user? then could just directly test dom.results...
         #
@@ -674,6 +962,12 @@ class TestCompatTools(utils.PfpTestCase):
         )
 
     def test_find_first_next(self):
+        """
+        Searches for next test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "abcd HELLO defg HELLO hijk HELLO",
             """

@@ -25,6 +25,13 @@ class BasicStrat(fuzz.StratGroup):
         klass = [fields.IntBase]
 
         def prob(self, field):
+            """
+            Return a list of a field.
+
+            Args:
+                self: (todo): write your description
+                field: (str): write your description
+            """
             # generate the probabilities table
             offset = 0
 
@@ -76,6 +83,13 @@ class BasicStrat(fuzz.StratGroup):
         klass = fields.Enum
 
         def prob(self, field):
+            """
+            Returns a list of probabilities.
+
+            Args:
+                self: (todo): write your description
+                field: (str): write your description
+            """
             # treat it the same as ints, with the addition of the actual (valid)
             # enum values
             res = super(BasicStrat.Enum, self).prob(field)
@@ -106,6 +120,13 @@ class BasicStrat(fuzz.StratGroup):
         klass = fields.String
 
         def next_val(self, field):
+            """
+            Returns a random val in field.
+
+            Args:
+                self: (todo): write your description
+                field: (todo): write your description
+            """
             rand_data_size = fuzz.rand.randint(0, 0x100)
             res = fuzz.rand.data(
                 rand_data_size, [utils.binary(chr(x)) for x in six.moves.range(0x100)]

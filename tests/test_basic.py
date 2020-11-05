@@ -17,12 +17,30 @@ import utils
 
 class TestBasic(utils.PfpTestCase):
     def setUp(self):
+        """
+        Set the endian fields.
+
+        Args:
+            self: (todo): write your description
+        """
         pfp.fields.NumberBase.endian = pfp.fields.LITTLE_ENDIAN
 
     def tearDown(self):
+        """
+        Tear down the next callable.
+
+        Args:
+            self: (todo): write your description
+        """
         pass
 
     def test_printf(self):
+        """
+        Run the test test. test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -42,6 +60,12 @@ class TestBasic(utils.PfpTestCase):
         )
 
     def test_single_decl_parse(self):
+        """
+        Implementation of single declaration declaration
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "\x41",
             """
@@ -50,6 +74,12 @@ class TestBasic(utils.PfpTestCase):
         )
 
     def test_basic_parse_with_comments(self):
+        """
+        Run test test comments.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "\x00\x01\x02\x03",
             """
@@ -65,6 +95,12 @@ class TestBasic(utils.PfpTestCase):
         )
 
     def test_basic_parse(self):
+        """
+        Test for test test test test test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "\x00\x01\x02\x03",
             """
@@ -78,6 +114,12 @@ class TestBasic(utils.PfpTestCase):
         )
 
     def test_nested_basic_parse(self):
+        """
+        Evaluate test test test test test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "\x00\x01\x02\x03",
             """
@@ -94,6 +136,12 @@ class TestBasic(utils.PfpTestCase):
         )
 
     def test_typedef_basic_parse(self):
+        """
+        Check that the element.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "\xff\x00\x00\xff",
             """
@@ -108,6 +156,12 @@ class TestBasic(utils.PfpTestCase):
         self.assertEqual(dom.b, 0xFF)
 
     def test_local(self):
+        """
+        Test for test test files.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -116,6 +170,12 @@ class TestBasic(utils.PfpTestCase):
         )
 
     def test_local_field_precedence1(self):
+        """
+        Precedence of test files.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "\x01",
             """
@@ -129,6 +189,12 @@ class TestBasic(utils.PfpTestCase):
         )
 
     def test_local_field_precedence2(self):
+        """
+        Test for test test files.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "\x01",
             """
@@ -143,6 +209,12 @@ class TestBasic(utils.PfpTestCase):
         )
 
     def test_local_assignment_int(self):
+        """
+        Test for local assignment assignment.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -151,6 +223,12 @@ class TestBasic(utils.PfpTestCase):
         )
 
     def test_local_assignment_char(self):
+        """
+        Test for local assignment assignment.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -159,6 +237,12 @@ class TestBasic(utils.PfpTestCase):
         )
 
     def test_local_assignment_float(self):
+        """
+        Test for local assignment assignment.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -167,6 +251,12 @@ class TestBasic(utils.PfpTestCase):
         )
 
     def test_local_assignment_double(self):
+        """
+        Test for assignment assignment assignment.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -175,6 +265,12 @@ class TestBasic(utils.PfpTestCase):
         )
 
     def test_local_assignment_long(self):
+        """
+        Test if the local test test test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -183,6 +279,12 @@ class TestBasic(utils.PfpTestCase):
         )
 
     def test_local_assignment_string(self):
+        """
+        Test for assignment assignment assignment assignment.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -191,6 +293,12 @@ class TestBasic(utils.PfpTestCase):
         )
 
     def test_local_binary_arithmetic(self):
+        """
+        Sets the binary of the binary.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -213,6 +321,12 @@ class TestBasic(utils.PfpTestCase):
         )
 
     def test_add_operator(self):
+        """
+        Adds the test operator to the test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -225,6 +339,12 @@ class TestBasic(utils.PfpTestCase):
         )
 
     def test_minus_operator(self):
+        """
+        Sets the test operator
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -237,6 +357,12 @@ class TestBasic(utils.PfpTestCase):
         )
 
     def test_mul_operator(self):
+        """
+        Sets the test operator
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -249,6 +375,12 @@ class TestBasic(utils.PfpTestCase):
         )
 
     def test_div_operator(self):
+        """
+        Divide test test operator
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -261,6 +393,12 @@ class TestBasic(utils.PfpTestCase):
         )
 
     def test_mod_operator(self):
+        """
+        Test if the test operations
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -273,6 +411,12 @@ class TestBasic(utils.PfpTestCase):
         )
 
     def test_xor_operator(self):
+        """
+        Evaluate xor test for xor
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -285,6 +429,12 @@ class TestBasic(utils.PfpTestCase):
         )
 
     def test_and_operator(self):
+        """
+        Test for test operator
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -297,6 +447,12 @@ class TestBasic(utils.PfpTestCase):
         )
 
     def test_or_operator(self):
+        """
+        Check if the test is enabled
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -309,6 +465,12 @@ class TestBasic(utils.PfpTestCase):
         )
 
     def test_logical_or_operator(self):
+        """
+        Evaluate test or not *
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -321,6 +483,12 @@ class TestBasic(utils.PfpTestCase):
         )
 
     def test_logical_or_operator2(self):
+        """
+        * test test * test *
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -350,6 +518,12 @@ class TestBasic(utils.PfpTestCase):
         )
 
     def test_logical_and_operator(self):
+        """
+        Evaluate test test test test test *.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -362,6 +536,12 @@ class TestBasic(utils.PfpTestCase):
         )
 
     def test_logical_and_operator2(self):
+        """
+        * test test operator to test test *
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -377,6 +557,12 @@ class TestBasic(utils.PfpTestCase):
         )
 
     def test_logical_shl_operator(self):
+        """
+        * test test for test for test test
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -389,6 +575,12 @@ class TestBasic(utils.PfpTestCase):
         )
 
     def test_logical_shr_operator(self):
+        """
+        Evaluate test test test test results *
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -401,6 +593,12 @@ class TestBasic(utils.PfpTestCase):
         )
 
     def test_local_accessible_via_this(self):
+        """
+        Test to test test files.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "\x01\x02\x03\x04",
             """
@@ -414,6 +612,12 @@ class TestBasic(utils.PfpTestCase):
         )
 
     def test_struct_field_declared_in_function(self):
+        """
+        Test for struct struct struct struct struct struct struct.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "\x01\x02\x03\x04",
             """
@@ -431,6 +635,12 @@ class TestBasic(utils.PfpTestCase):
         )
 
     def test_add(self):
+        """
+        Add test test test test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "ab",
             """
@@ -445,6 +655,12 @@ class TestBasic(utils.PfpTestCase):
         )
 
     def test_unary_arithmetic(self):
+        """
+        Test for unary.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -457,6 +673,12 @@ class TestBasic(utils.PfpTestCase):
         )
 
     def test_unary_double_plus_minus1(self):
+        """
+        R evaluate the cross - validation.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -475,6 +697,12 @@ class TestBasic(utils.PfpTestCase):
         self.assertEqual(dom.d, 2)
 
     def test_unary_sizeof_basic(self):
+        """
+        Test test test test test test test test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "abcd",
             """
@@ -485,6 +713,12 @@ class TestBasic(utils.PfpTestCase):
         )
 
     def test_unary_sizeof_struct(self):
+        """
+        Unary test test test test test test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "abcde",
             """
@@ -498,6 +732,12 @@ class TestBasic(utils.PfpTestCase):
         )
 
     def test_unary_sizeof_atomic_type(self):
+        """
+        The test test test test size.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -507,6 +747,12 @@ class TestBasic(utils.PfpTestCase):
         )
 
     def test_unary_sizeof_atomic_type2(self):
+        """
+        The test test test test test test type.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -517,6 +763,12 @@ class TestBasic(utils.PfpTestCase):
         )
 
     def test_unary_exists(self):
+        """
+        Check if the test test exists.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "\x00",
             """
@@ -539,6 +791,12 @@ class TestBasic(utils.PfpTestCase):
         )
 
     def test_unary_function_exists(self):
+        """
+        Determine if the test test exists.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -564,6 +822,12 @@ class TestBasic(utils.PfpTestCase):
         )
 
     def test_unary_startof(self):
+        """
+        Test for test test test test test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "\x01\x02\x03",
             """
@@ -582,6 +846,12 @@ class TestBasic(utils.PfpTestCase):
         )
 
     def test_unary_parentof(self):
+        """
+        Test for unary test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "\x01\x02\x03",
             """
@@ -610,6 +880,12 @@ class TestBasic(utils.PfpTestCase):
         )
 
     def test_comparisons(self):
+        """
+        Run test test test test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -625,6 +901,12 @@ class TestBasic(utils.PfpTestCase):
 
     # is this even what you call this?
     def test_binary_assignment(self):
+        """
+        Gets the binary assignment.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -644,12 +926,30 @@ class TestBasic(utils.PfpTestCase):
 
 class TestByRef(utils.PfpTestCase):
     def setUp(self):
+        """
+        Sets the result of this thread.
+
+        Args:
+            self: (todo): write your description
+        """
         pass
 
     def tearDown(self):
+        """
+        Tear down the next callable.
+
+        Args:
+            self: (todo): write your description
+        """
         pass
 
     def test_non_byref_native_type(self):
+        """
+        Sets the test type for the test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -664,6 +964,12 @@ class TestByRef(utils.PfpTestCase):
         )
 
     def test_non_byref_complex(self):
+        """
+        Test for test to test tests. test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "abcd",
             """

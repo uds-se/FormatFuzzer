@@ -17,12 +17,30 @@ import utils
 
 class TestStructUnion(utils.PfpTestCase):
     def setUp(self):
+        """
+        Sets the result of this thread.
+
+        Args:
+            self: (todo): write your description
+        """
         pass
 
     def tearDown(self):
+        """
+        Tear down the next callable.
+
+        Args:
+            self: (todo): write your description
+        """
         pass
 
     def test_struct_vit9696_1(self):
+        """
+        The test test test test files.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "\x00\x01\x02\x03\x00\x01\x02\x03",
             """
@@ -38,6 +56,12 @@ class TestStructUnion(utils.PfpTestCase):
         assert dom.s.filesize == 0x03020100
 
     def test_struct_vit9696_2(self):
+        """
+        Build test test test test test test files.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "\x00\x01\x02\x03\x00\x01\x02\x03",
             """
@@ -53,6 +77,12 @@ class TestStructUnion(utils.PfpTestCase):
         assert dom.s.filesize == 0x03020100
 
     def test_struct_vit9696_3(self):
+        """
+        Test for test test test files.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "\x00\x01\x02\x03\x00\x01\x02\x03",
             """
@@ -68,6 +98,12 @@ class TestStructUnion(utils.PfpTestCase):
         assert dom.s.filesize == 0x03020100
 
     def test_struct_vit9696_4(self):
+        """
+        The test test test test test test test files.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "\x00\x01\x02\x03\x00\x01\x02\x03",
             """
@@ -83,6 +119,12 @@ class TestStructUnion(utils.PfpTestCase):
         assert dom.s.filesize == 0x03020100
 
     def test_struct_vit9696_5(self):
+        """
+        Test for test test test test test files
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "\x00\x01\x02\x03\x00\x01\x02\x03",
             """
@@ -100,6 +142,12 @@ class TestStructUnion(utils.PfpTestCase):
         assert dom.s.filesize == 0x03020100
     
     def test_basic_struct(self):
+        """
+        Deter struct struct.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "\x00\x01\x02\x03",
             """
@@ -118,6 +166,12 @@ class TestStructUnion(utils.PfpTestCase):
         assert dom.test.d == 3
 
     def test_field_path(self):
+        """
+        Test for the field path
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "Abbbb4141414142424242",
             """
@@ -146,6 +200,12 @@ class TestStructUnion(utils.PfpTestCase):
         self.assertEqual(dom.root.nested1.nested2.array[3]._pfp__path(), "root.nested1.nested2.array[3]")
     
     def test_struct(self):
+        """
+        The test test test test test test test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "abcddcba",
             """
@@ -159,6 +219,12 @@ class TestStructUnion(utils.PfpTestCase):
         )
     
     def test_forward_declared_struct(self):
+        """
+        Forward test test test test test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "\x00\x01",
             """
@@ -178,6 +244,12 @@ class TestStructUnion(utils.PfpTestCase):
         )
 
     def test_struct_with_parameters(self):
+        """
+        Equal of test test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "aabbb",
             """
@@ -193,6 +265,12 @@ class TestStructUnion(utils.PfpTestCase):
         self.assertEqual(dom.test.chars2, "bbb")
 
     def test_struct_with_parameters2(self):
+        """
+        This function to see if the values in the same order.
+
+        Args:
+            self: (todo): write your description
+        """
         # ``descr_length l(bytes)`` is being treated as a function
         # declaration!
         dom = self._test_parse_build(
@@ -214,6 +292,12 @@ class TestStructUnion(utils.PfpTestCase):
         self.assertEqual(dom.l.b[3], 4)
 
     def test_struct_with_parameters3(self):
+        """
+        Equalize the values of the structure.
+
+        Args:
+            self: (todo): write your description
+        """
         # ``descr_length l(bytes)`` is being treated as a function
         # declaration!
         dom = self._test_parse_build(
@@ -240,6 +324,12 @@ class TestStructUnion(utils.PfpTestCase):
         self.assertEqual(dom.l.c[2], 3)
 
     def test_typedefd_struct_with_parameters(self):
+        """
+        This function for checking of the superclass.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "\x01\x02\x03\x04\x01\x02\x03",
             """
@@ -264,6 +354,12 @@ class TestStructUnion(utils.PfpTestCase):
         self.assertEqual(dom.l.c[2], 3)
 
     def test_struct_decl_with_struct_keyword(self):
+        """
+        Returns a struct struct struct_decl_keyword.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "ABCD",
             """
@@ -284,6 +380,12 @@ class TestStructUnion(utils.PfpTestCase):
         self.assertEqual(dom.decldStruct.d, ord("D"))
 
     def test_struct_initialization(self):
+        """
+        Returns the test_structization of the test.
+
+        Args:
+            self: (todo): write your description
+        """
         # local structs aren't allowed!!!
         return
 
@@ -302,6 +404,12 @@ class TestStructUnion(utils.PfpTestCase):
     #        )
 
     def test_union(self):
+        """
+        Compile the union of the test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "abcd",
             """
@@ -320,6 +428,12 @@ class TestStructUnion(utils.PfpTestCase):
         )
 
     def test_union_complex(self):
+        """
+        Compute the union of the union.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "\x00abcd",
             """
@@ -346,6 +460,12 @@ class TestStructUnion(utils.PfpTestCase):
         self.assertEqual(dom.test.onion.chars.d, ord("d"))
 
     def test_union_offset1(self):
+        """
+        Compute the union of two union.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "abcd",
             """
@@ -363,6 +483,12 @@ class TestStructUnion(utils.PfpTestCase):
         self.assertEqual(dom.test.union_test._pfp__offset, 2)
 
     def test_union_offset2(self):
+        """
+        Compute the union of two union of union offset.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "abcd",
             """
@@ -382,6 +508,12 @@ class TestStructUnion(utils.PfpTestCase):
         self.assertEqual(dom.test.union_test._pfp__offset, 2)
 
     def test_auto_increment_field_names(self):
+        """
+        Test for auto - scaling names of the fields.
+
+        Args:
+            self: (todo): write your description
+        """
         # when a field is declared multiple times with the same name, but
         # not consecutively, the fields should get a sequential number assigned
         # to them and NOT be stored in an implicit array
@@ -403,6 +535,12 @@ class TestStructUnion(utils.PfpTestCase):
         self.assertEqual(dom.val_1, 2)
 
     def test_auto_increment_but_still_reference_last_decl_normal(self):
+        """
+        Increment the auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto
+
+        Args:
+            self: (todo): write your description
+        """
         # this is an interesting behavior of 010 scripts. When a field
         # is repeatedly declared, 010 scripts do not append a suffix to
         # the field names. However, since our goal is manipulation and being
@@ -423,6 +561,12 @@ class TestStructUnion(utils.PfpTestCase):
         )
 
     def test_implicit_array_dot_notation_for_last(self):
+        """
+        Test if the test cross - product.
+
+        Args:
+            self: (todo): write your description
+        """
         # I BELIEVE scripts are able to access implicit array items
         # by index OR directly access the last one without an index
         dom = self._test_parse_build(
