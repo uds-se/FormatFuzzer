@@ -18,12 +18,30 @@ import utils
 
 class TestCompatStrings(utils.PfpTestCase):
     def setUp(self):
+        """
+        Set the re - of - fields fields.
+
+        Args:
+            self: (todo): write your description
+        """
         pfp.fields.NumberBase.endian = pfp.fields.BIG_ENDIAN
 
     def tearDown(self):
+        """
+        Tear down the next callable.
+
+        Args:
+            self: (todo): write your description
+        """
         pass
 
     def test_strlen(self):
+        """
+        Returns the test test test test test test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -33,6 +51,12 @@ class TestCompatStrings(utils.PfpTestCase):
         )
 
     def test_substr(self):
+        """
+        Run test test test test files.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """

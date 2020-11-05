@@ -28,24 +28,59 @@ class PfpDbg(cmd.Cmd, object):
         self._do_print_from_last_cmd = False
 
     def _update_prompt(self):
+        """
+        Update prompt prompt.
+
+        Args:
+            self: (todo): write your description
+        """
         if fields.NumberBase.endian == fields.BIG_ENDIAN:
             self.prompt = "BE pfp> "
         else:
             self.prompt = "LE pfp> "
 
     def update(self, ctxt, scope):
+        """
+        Updates the current scope.
+
+        Args:
+            self: (todo): write your description
+            ctxt: (todo): write your description
+            scope: (todo): write your description
+        """
         self._ctxt = ctxt
         self._scope = scope
 
     def preloop(self):
+        """
+        Update the prompt.
+
+        Args:
+            self: (todo): write your description
+        """
         self._update_prompt()
         self.print_lines()
 
     def postcmd(self, stop, line):
+        """
+        Runs the command.
+
+        Args:
+            self: (todo): write your description
+            stop: (todo): write your description
+            line: (todo): write your description
+        """
         self._update_prompt()
         return stop
 
     def default(self, line):
+        """
+        Default function for default
+
+        Args:
+            self: (todo): write your description
+            line: (str): write your description
+        """
         cmd, arg, line = self.parseline(line)
         funcs = [
             getattr(self, n)
@@ -171,6 +206,12 @@ class PfpDbg(cmd.Cmd, object):
             print(repr(to_show))
 
     def do_x(self, args):
+        """
+        Emit x
+
+        Args:
+            self: (todo): write your description
+        """
         pass
 
     do_x = do_show
@@ -195,6 +236,12 @@ class PfpDbg(cmd.Cmd, object):
     # ---------------------
 
     def print_lines(self):
+        """
+        Print a list.
+
+        Args:
+            self: (todo): write your description
+        """
         curr_line, lines = self._interp.get_curr_lines()
 
         for line_no, line in lines:

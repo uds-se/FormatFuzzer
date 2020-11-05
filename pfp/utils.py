@@ -9,6 +9,13 @@ import time
 
 @contextlib.contextmanager
 def timeit(msg, num=None):
+    """
+    Yields a message at the start.
+
+    Args:
+        msg: (str): write your description
+        num: (int): write your description
+    """
     start = time.time()
     yield
     end = time.time()
@@ -19,6 +26,12 @@ def timeit(msg, num=None):
 
 
 def is_str(s):
+    """
+    Returns true if s is a string.
+
+    Args:
+        s: (array): write your description
+    """
     for type_ in six.string_types:
         if isinstance(s, type_):
             return True
@@ -34,14 +47,32 @@ if PY3:
     from queue import Queue
 
     def string_escape(s):
+        """
+        Escape s with special characters.
+
+        Args:
+            s: (todo): write your description
+        """
         return bytes(string(s), "utf-8").decode("unicode_escape")
 
     def binary(s):
+        """
+        Convert s to binary.
+
+        Args:
+            s: (str): write your description
+        """
         if type(s) is bytes:
             return s
         return s.encode("ISO-8859-1")
 
     def string(s):
+        """
+        Convert a string to bytes.
+
+        Args:
+            s: (str): write your description
+        """
         if type(s) is bytes:
             return s.decode("ISO-8859-1")
         return s
@@ -51,10 +82,28 @@ else:
     from Queue import Queue
 
     def string_escape(s):
+        """
+        Escape given string with special characters.
+
+        Args:
+            s: (todo): write your description
+        """
         return string(s).decode("string_escape")
 
     def binary(s):
+        """
+        Convert a binary string.
+
+        Args:
+            s: (int): write your description
+        """
         return s
 
     def string(s):
+        """
+        Convert a string to a given string.
+
+        Args:
+            s: (int): write your description
+        """
         return s

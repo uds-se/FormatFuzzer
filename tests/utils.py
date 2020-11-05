@@ -11,6 +11,15 @@ import contextlib
 
 class PfpTestMeta(type):
     def __init__(cls, name, bases, dict_):
+        """
+        Initialize a new class.
+
+        Args:
+            cls: (todo): write your description
+            name: (str): write your description
+            bases: (float): write your description
+            dict_: (todo): write your description
+        """
         for attr_name, attr_val in six.iteritems(dict_):
             if not attr_name.startswith("test_"):
                 continue
@@ -32,6 +41,12 @@ class PfpTestMeta(type):
 
         @contextlib.wraps(method)
         def new_method(self, *args, **kwargs):
+            """
+            Returns a new method that will be called method.
+
+            Args:
+                self: (todo): write your description
+            """
             self._test_parse_build = self._test_parse_build_with_string
             try:
                 res = method(self, *args, **kwargs)
@@ -44,11 +59,23 @@ class PfpTestMeta(type):
 @six.add_metaclass(PfpTestMeta)
 class PfpTestCase(unittest.TestCase):
     def __init__(self, *args, **kwargs):
+        """
+        Initialize this component.
+
+        Args:
+            self: (todo): write your description
+        """
         # create two versions of each test
 
         unittest.TestCase.__init__(self, *args, **kwargs)
 
     def _test_parse_build_with_string(self, *args, **kwargs):
+        """
+        Parse test string and return the test string.
+
+        Args:
+            self: (todo): write your description
+        """
         kwargs["_stream"] = False
         return self._test_parse_build_orig(*args, **kwargs)
 
@@ -62,6 +89,19 @@ class PfpTestCase(unittest.TestCase):
         _stream=True,
         printf=True,
     ):
+        """
+        Parse test data to produce a dom. dom.
+
+        Args:
+            self: (todo): write your description
+            data: (str): write your description
+            template: (str): write your description
+            stdout: (todo): write your description
+            debug: (bool): write your description
+            predefines: (todo): write your description
+            _stream: (todo): write your description
+            printf: (str): write your description
+        """
         if stdout is not None:
             fake_stdout = sys.stdout = six.StringIO()
 

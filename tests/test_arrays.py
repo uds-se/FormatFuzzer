@@ -18,15 +18,43 @@ import utils
 
 class TestArrays(utils.PfpTestCase):
     def setUp(self):
+        """
+        Sets the result of this thread.
+
+        Args:
+            self: (todo): write your description
+        """
         pass
 
     def tearDown(self):
+        """
+        Tear down the next callable.
+
+        Args:
+            self: (todo): write your description
+        """
         pass
 
     def _do_parse(self, field, data):
+        """
+        Parse the field.
+
+        Args:
+            self: (todo): write your description
+            field: (todo): write your description
+            data: (todo): write your description
+        """
         field._pfp__parse(StringIO(data))
 
     def _do_endian_tests(self, field, format):
+        """
+        Endian - endian struct.
+
+        Args:
+            self: (todo): write your description
+            field: (todo): write your description
+            format: (str): write your description
+        """
         field.endian = pfp.fields.BIG_ENDIAN
         self._do_parse(field, struct.pack(">" + format, 1))
         self.assertEqual(field, 1)
@@ -36,6 +64,12 @@ class TestArrays(utils.PfpTestCase):
         self.assertEqual(field, 1)
 
     def test_char_array(self):
+        """
+        Parse array.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "AABBCC",
             """
@@ -59,6 +93,12 @@ class TestArrays(utils.PfpTestCase):
         self.assertEqual(dom.blah[5], 10)
 
     def test_char_array_string_compare(self):
+        """
+        Compares the test string.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "AABBCC",
             """
@@ -71,6 +111,12 @@ class TestArrays(utils.PfpTestCase):
         )
 
     def test_implicit_array_basic(self):
+        """
+        Equalizes the cross validation.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "ABCD",
             """
@@ -86,6 +132,12 @@ class TestArrays(utils.PfpTestCase):
         self.assertEqual(dom.chars[3], ord("D"))
 
     def test_implicit_array_same_behavior_as_010(self):
+        """
+        Test if the element - wise cross - cross - validation.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "ABCD",
             """
@@ -100,6 +152,12 @@ class TestArrays(utils.PfpTestCase):
         self.assertEqual(dom.x, b"ABCD")
 
     def test_array_length1(self):
+        """
+        Compute the length of the element - wise length.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "abcd",
             """
@@ -114,6 +172,12 @@ class TestArrays(utils.PfpTestCase):
         self.assertEqual(len(dom.chars), 4)
 
     def test_implicit_array_complex(self):
+        """
+        Equalizes the element - like.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "\x01A\x02B\x03C",
             """
@@ -137,6 +201,12 @@ class TestArrays(utils.PfpTestCase):
         self.assertEqual(dom.structs[2].some_char, 0x43)
 
     def test_array_ref(self):
+        """
+        The test test test test test test test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "abcd",
             """
@@ -147,6 +217,12 @@ class TestArrays(utils.PfpTestCase):
         )
 
     def test_array_initialization(self):
+        """
+        Sets the initial test data.
+
+        Args:
+            self: (todo): write your description
+        """
         # was having problems with array decls _always_ parsing the
         # input stream
         dom = self._test_parse_build(
@@ -159,6 +235,12 @@ class TestArrays(utils.PfpTestCase):
         )
 
     def test_struct_array_decl(self):
+        """
+        Declare struct struct struct struct structs
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "abcd",
             """
@@ -169,6 +251,12 @@ class TestArrays(utils.PfpTestCase):
         )
 
     def test_typedefd_array(self):
+        """
+        Create an array data array for an array.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "abcd",
             """
@@ -184,6 +272,12 @@ class TestArrays(utils.PfpTestCase):
         self.assertEqual(PYSTR(dom.blah2), "cd")
 
     def test_struct_raw_data_optmization1(self):
+        """
+        Run test test test test test test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "abcd",
             """
@@ -195,6 +289,12 @@ class TestArrays(utils.PfpTestCase):
         self.assertEqual(dom.structs.raw_data, None)
 
     def test_struct_raw_data_optmization2(self):
+        """
+        Compute the static data.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "abcd",
             """
@@ -242,6 +342,12 @@ class TestArrays(utils.PfpTestCase):
         self.assertEqual(dom.chars[3], ord("D"))
 
     def test_implicit_single_item_array1(self):
+        """
+        Equal a cross - element.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "\x01",
             """
@@ -253,6 +359,12 @@ class TestArrays(utils.PfpTestCase):
         self.assertEqual(dom.a, 1)
 
     def test_implicit_single_item_array2(self):
+        """
+        Equalizes a cross - wise array.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "aaaa",
             """
@@ -264,6 +376,12 @@ class TestArrays(utils.PfpTestCase):
         self.assertEqual(dom.a, 0x61616161)
 
     def test_implicit_single_item_array3(self):
+        """
+        Test for an element in - wise.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "aaaa",
             """
@@ -280,6 +398,12 @@ class TestArrays(utils.PfpTestCase):
     # list, fetching individual items does not work (attemps to pull
     # the "current" item data its raw data, instead of from the items)
     def test_array_overwrite_fetch(self):
+        """
+        Overwrite the test array.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -319,6 +443,12 @@ class TestArrays(utils.PfpTestCase):
         self.assertEqual(items[2].third, 0x49)
 
     def test_array_with_root_scope(self):
+        """
+        Sets the test test scope.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "\x00\x01\x02\x03",
             """

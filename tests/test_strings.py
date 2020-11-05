@@ -19,12 +19,30 @@ import utils
 
 class TestStrings(utils.PfpTestCase):
     def setUp(self):
+        """
+        Set the re - of - fields fields.
+
+        Args:
+            self: (todo): write your description
+        """
         pfp.fields.NumberBase.endian = pfp.fields.BIG_ENDIAN
 
     def tearDown(self):
+        """
+        Tear down the next callable.
+
+        Args:
+            self: (todo): write your description
+        """
         pass
 
     def test_unicode_const(self):
+        """
+        Test if the unicode string.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "\n",
             """
@@ -37,6 +55,12 @@ class TestStrings(utils.PfpTestCase):
         self.assertEqual(dom.newline, ord("\n"))
 
     def test_basic_string(self):
+        """
+        Parse the test string.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "hello there\x00good byte\x00",
             """
@@ -50,6 +74,12 @@ class TestStrings(utils.PfpTestCase):
         self.assertEqual(dom.greetings.goodbye, pfp.utils.binary("good byte"))
 
     def test_basic_wstring(self):
+        """
+        Parse the test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "h\x00e\x00l\x00l\x00o\x00 \x00t\x00h\x00e\x00r\x00e\x00\x00\x00g\x00o\x00o\x00d\x00 \x00b\x00y\x00t\x00e\x00\x00\x00",
             """
@@ -63,6 +93,12 @@ class TestStrings(utils.PfpTestCase):
         self.assertEqual(dom.greetings.goodbye, pfp.utils.binary("good byte"))
 
     def test_unterminated_string(self):
+        """
+        Test for test test for test.
+
+        Args:
+            self: (todo): write your description
+        """
         with self.assertRaises(pfp.errors.PfpError):
             dom = self._test_parse_build(
                 "unterminated string",
@@ -74,6 +110,12 @@ class TestStrings(utils.PfpTestCase):
             )
 
     def test_string_indexing(self):
+        """
+        Constructs the indexing.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "abcd\x00",
             """
@@ -97,6 +139,12 @@ class TestStrings(utils.PfpTestCase):
         self.assertEqual(dom.alpha[3], ord("d"))
 
     def test_string_declaration_with_chars(self):
+        """
+        Implementation of the declaration
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             r"""
@@ -109,6 +157,12 @@ class TestStrings(utils.PfpTestCase):
     # temp_char ends up being of class Bytes in python 3 - but not on python 2
     # This test ensures we can handle adding both a String and byte together
     def test_add_strings(self):
+        """
+        Adds test test test test strings.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "\x01\x02\x03\x04\x05",
             """
@@ -124,6 +178,12 @@ class TestStrings(utils.PfpTestCase):
         )
 
     def test_add_strings_simple(self):
+        """
+        Add test test test test test test test strings.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "\x01",
             """

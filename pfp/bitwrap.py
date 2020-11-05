@@ -58,6 +58,12 @@ class BitwrappedStream(object):
     exc_count = 0
 
     def error(self):
+        """
+        Return an error message.
+
+        Args:
+            self: (todo): write your description
+        """
         self.exc_count += 1
 
 

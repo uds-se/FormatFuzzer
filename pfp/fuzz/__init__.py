@@ -27,6 +27,13 @@ class Changer(object):
     """
     """
     def __init__(self, orig_data):
+        """
+        Initialize the stack.
+
+        Args:
+            self: (todo): write your description
+            orig_data: (todo): write your description
+        """
         self._orig_data = bytearray(orig_data)
         self._change_set_stack = []
 
@@ -123,6 +130,11 @@ class Changer(object):
 
 
 def init():
+    """
+    Initialize the module
+
+    Args:
+    """
     global get_strategy
     global StratGroup
     global FieldStrat

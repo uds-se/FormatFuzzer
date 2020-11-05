@@ -23,6 +23,13 @@ class InterpContinue(PfpError):
 
 class InterpExit(PfpError):
     def __init__(self, error_code=0):
+        """
+        Initialize the error.
+
+        Args:
+            self: (todo): write your description
+            error_code: (str): write your description
+        """
         self.error_code = error_code
 
 
@@ -34,6 +41,13 @@ class CoordError(PfpError):
     """Base class for pfp exceptions"""
 
     def __init__(self, coord=None, *args):
+        """
+        Initialize the coordinate.
+
+        Args:
+            self: (todo): write your description
+            coord: (array): write your description
+        """
         super(CoordError, self).__init__(
             (self.msg + " at {}").format(*(args + (coord,)))
         )
@@ -41,6 +55,13 @@ class CoordError(PfpError):
 
 class InterpReturn(CoordError):
     def __init__(self, ret_val):
+        """
+        Initialize the callable.
+
+        Args:
+            self: (todo): write your description
+            ret_val: (str): write your description
+        """
         self.value = ret_val
 
 

@@ -45,6 +45,12 @@ class StratGroupMeta(type):
     """
 
     def __init__(cls, *args, **kwargs):
+        """
+        Initialize the class.
+
+        Args:
+            cls: (todo): write your description
+        """
         global STRATS
 
         if cls.name is None and cls.__name__ != "StratGroup":
@@ -72,6 +78,12 @@ class StratGroup(object):
     """
 
     def __init__(self):
+        """
+        Initialize this field s attributes.
+
+        Args:
+            self: (todo): write your description
+        """
         self._strats = {}
 
         # make a mapping for quick lookups
@@ -246,12 +258,27 @@ class FieldStrat(object):
     # utility functions
 
     def _resolve_member_val(self, mval, field):
+        """
+        Resolve the value of a field.
+
+        Args:
+            self: (todo): write your description
+            mval: (todo): write your description
+            field: (todo): write your description
+        """
         if hasattr(mval, "__call__"):
             return mval(field)
         else:
             return mval
 
     def _resolve_val(self, val):
+        """
+        Resolve a value from val.
+
+        Args:
+            self: (todo): write your description
+            val: (float): write your description
+        """
         import pfp.fuzz.rand as rand
 
         if hasattr(val, "__call__"):

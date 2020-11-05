@@ -14,6 +14,12 @@ import sys
 
 
 def parse_args(argv):
+    """
+    Parse command line arguments.
+
+    Args:
+        argv: (list): write your description
+    """
     parser = argparse.ArgumentParser("pfp", description=__doc__)
 
     parser.add_argument(

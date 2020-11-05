@@ -30,6 +30,18 @@ class Function(BaseFunction):
         self._params = params
 
     def call(self, args, ctxt, scope, stream, interp, coord, no_cast=False):
+        """
+        Call a call
+
+        Args:
+            self: (todo): write your description
+            ctxt: (todo): write your description
+            scope: (str): write your description
+            stream: (todo): write your description
+            interp: (todo): write your description
+            coord: (todo): write your description
+            no_cast: (todo): write your description
+        """
         # the no_cast arg does nothing for interpreted functions
 
         if self.body is None:
@@ -73,6 +85,18 @@ class NativeFunction(BaseFunction):
         self.send_interp = send_interp
 
     def call(self, args, ctxt, scope, stream, interp, coord, no_cast=False):
+        """
+        Execute a function to the call
+
+        Args:
+            self: (todo): write your description
+            ctxt: (todo): write your description
+            scope: (todo): write your description
+            stream: (todo): write your description
+            interp: (int): write your description
+            coord: (todo): write your description
+            no_cast: (todo): write your description
+        """
         if self.send_interp:
             res = self.func(args, ctxt, scope, stream, coord, interp)
         else:
@@ -100,6 +124,13 @@ class ParamClsWrapper(object):
     """
 
     def __init__(self, param_cls):
+        """
+        Initialize the class.
+
+        Args:
+            self: (todo): write your description
+            param_cls: (todo): write your description
+        """
         self._cls = param_cls
 
     def __call__(self, *args, **kwargs):
@@ -114,6 +145,14 @@ class ParamListDef(object):
     """docstring for ParamList"""
 
     def __init__(self, params, coords):
+        """
+        Initialize the parameters
+
+        Args:
+            self: (todo): write your description
+            params: (dict): write your description
+            coords: (array): write your description
+        """
         super(ParamListDef, self).__init__()
 
         self._params = params
@@ -175,6 +214,13 @@ class ParamList(object):
     """
 
     def __init__(self, params):
+        """
+        Initialize the parameterset.
+
+        Args:
+            self: (todo): write your description
+            params: (dict): write your description
+        """
         super(ParamList, self).__init__()
         self.params = params
 
@@ -192,6 +238,13 @@ class ParamList(object):
             yield param
 
     def __getitem__(self, name):
+        """
+        Get an item by name.
+
+        Args:
+            self: (todo): write your description
+            name: (str): write your description
+        """
         if name in self._params_map:
             return self._params_map[name]
         raise KeyError(name)

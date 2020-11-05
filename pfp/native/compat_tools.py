@@ -140,10 +140,26 @@ def Checksum(params, ctxt, scope, stream, coord):
 
 
 def _checksum_Adler32(data, crc_init=-1, crc_poly=-1):
+    """
+    Calculate the checksum of the data.
+
+    Args:
+        data: (array): write your description
+        crc_init: (todo): write your description
+        crc_poly: (todo): write your description
+    """
     return zlib.adler32(data)
 
 
 def _crc32(data, crc_init=-1, crc_poly=-1):
+    """
+    Calculate the crc of a 32 - bit 32 bits.
+
+    Args:
+        data: (array): write your description
+        crc_init: (array): write your description
+        crc_poly: (array): write your description
+    """
     if crc_init == -1:
         return binascii.crc32(data)
     else:
@@ -460,6 +476,17 @@ typedef struct {
 
 
 def _find_helper(params, ctxt, scope, stream, coord, interp):
+    """
+    Internal function to find parameters.
+
+    Args:
+        params: (dict): write your description
+        ctxt: (todo): write your description
+        scope: (str): write your description
+        stream: (todo): write your description
+        coord: (todo): write your description
+        interp: (todo): write your description
+    """
     global FIND_MATCHES_START_OFFSET
 
     if len(params) == 0:

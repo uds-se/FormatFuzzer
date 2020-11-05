@@ -18,12 +18,30 @@ import utils
 
 class TestControlFlow(utils.PfpTestCase):
     def setUp(self):
+        """
+        Sets the result of this thread.
+
+        Args:
+            self: (todo): write your description
+        """
         pass
 
     def tearDown(self):
+        """
+        Tear down the next callable.
+
+        Args:
+            self: (todo): write your description
+        """
         pass
 
     def test_ternary1(self):
+        """
+        Compute test test tests.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -34,6 +52,12 @@ class TestControlFlow(utils.PfpTestCase):
         self.assertEqual(dom.a, 5)
 
     def test_ternary2(self):
+        """
+        Compute test test tests.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -44,6 +68,12 @@ class TestControlFlow(utils.PfpTestCase):
         self.assertEqual(dom.a, 6)
 
     def test_if1(self):
+        """
+        Test if test test test test test test test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -60,6 +90,12 @@ class TestControlFlow(utils.PfpTestCase):
         )
 
     def test_if2(self):
+        """
+        Sets the test test test test test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -76,6 +112,12 @@ class TestControlFlow(utils.PfpTestCase):
         )
 
     def test_if3(self):
+        """
+        Check if3 test test is3
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -92,6 +134,12 @@ class TestControlFlow(utils.PfpTestCase):
         )
 
     def test_for1(self):
+        """
+        Run test test test test test test test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -104,6 +152,12 @@ class TestControlFlow(utils.PfpTestCase):
         )
 
     def test_for2(self):
+        """
+        Run test test test test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -116,6 +170,12 @@ class TestControlFlow(utils.PfpTestCase):
         )
 
     def test_for3(self):
+        """
+        Run test test test test test test test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -129,6 +189,12 @@ class TestControlFlow(utils.PfpTestCase):
         )
 
     def test_for4(self):
+        """
+        Run test test test test test test test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -144,6 +210,12 @@ class TestControlFlow(utils.PfpTestCase):
         )
 
     def test_for5(self):
+        """
+        Test for test test test test test test test test test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -159,6 +231,12 @@ class TestControlFlow(utils.PfpTestCase):
         )
 
     def test_while1(self):
+        """
+        Run test test test test test test test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -172,6 +250,12 @@ class TestControlFlow(utils.PfpTestCase):
         )
 
     def test_while2(self):
+        """
+        The test test test test test test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -188,6 +272,12 @@ class TestControlFlow(utils.PfpTestCase):
         )
 
     def test_while3(self):
+        """
+        Test for test test test test test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -205,6 +295,12 @@ class TestControlFlow(utils.PfpTestCase):
         )
 
     def test_do_while(self):
+        """
+        Parse the test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "abcd\x00",
             """
@@ -220,6 +316,12 @@ class TestControlFlow(utils.PfpTestCase):
         self.assertEqual(dom.str[3], ord("d"))
 
     def test_switch(self):
+        """
+        Switch the test case.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "\x00\x00\x00\x01\x00\x00\x00\x02",
             """
@@ -243,6 +345,12 @@ class TestControlFlow(utils.PfpTestCase):
         self.assertEqual(dom.case_default, 2)
 
     def test_fall_through_no_case_body(self):
+        """
+        Evaluate the test case.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "\x00\x01\x00\x02\x00\x03",
             """
@@ -272,6 +380,12 @@ class TestControlFlow(utils.PfpTestCase):
         self.assertEqual(dom.c, 3)
 
     def test_fall_through_no_case_body2(self):
+        """
+        Sets the test test test case.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -296,6 +410,12 @@ class TestControlFlow(utils.PfpTestCase):
         )
 
     def test_fall_through_no_case_body3(self):
+        """
+        Sets the test case test case.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "AAABBBCCCDDD",
             """
@@ -323,6 +443,12 @@ class TestControlFlow(utils.PfpTestCase):
         )
 
     def test_chained_assignment(self):
+        """
+        Compute assignment.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """

@@ -40,8 +40,19 @@ def native(name, ret, interp=None, send_interp=False):
     """
 
     def native_decorator(func):
+        """
+        Decorator to add a native native native native native native native native native native native native native native native native native native native native native native native native
+
+        Args:
+            func: (todo): write your description
+        """
         @functools.wraps(func)
         def native_wrapper(*args, **kwargs):
+            """
+            Decorator for the decorated decorator.
+
+            Args:
+            """
             return func(*args, **kwargs)
 
         pfp.interp.PfpInterp.add_native(
@@ -53,4 +64,10 @@ def native(name, ret, interp=None, send_interp=False):
 
 
 def predefine(template):
+    """
+    Add a predefine predicate.
+
+    Args:
+        template: (str): write your description
+    """
     pfp.interp.PfpInterp.add_predefine(template)

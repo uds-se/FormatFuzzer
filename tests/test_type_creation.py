@@ -18,12 +18,30 @@ import utils
 
 class TestTypeCreation(utils.PfpTestCase):
     def setUp(self):
+        """
+        Set the endian fields.
+
+        Args:
+            self: (todo): write your description
+        """
         pfp.fields.NumberBase.endian = pfp.fields.LITTLE_ENDIAN
 
     def tearDown(self):
+        """
+        Tear down the next callable.
+
+        Args:
+            self: (todo): write your description
+        """
         pass
 
     def test_atomic(self):
+        """
+        Check if the test is in the test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -35,6 +53,12 @@ class TestTypeCreation(utils.PfpTestCase):
         self.assertEqual(res, 0)
 
     def test_struct(self):
+        """
+        Generate the struct.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """

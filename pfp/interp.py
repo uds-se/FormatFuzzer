@@ -32,6 +32,14 @@ logging.basicConfig(level=logging.CRITICAL)
 
 class Decls(object):
     def __init__(self, decls, coord):
+        """
+        Initialize a new scene
+
+        Args:
+            self: (todo): write your description
+            decls: (todo): write your description
+            coord: (array): write your description
+        """
         self.decls = decls
         self.coord = coord
 
@@ -45,7 +53,22 @@ class StructDecls(Decls):
 
 
 def StructDeclWithParams(scope, struct_cls, struct_args):
+    """
+    Creates a class with a class.
+
+    Args:
+        scope: (str): write your description
+        struct_cls: (str): write your description
+        struct_args: (dict): write your description
+    """
     def _pfp__init(self, stream):
+        """
+        Initialize the superclass.
+
+        Args:
+            self: (todo): write your description
+            stream: (todo): write your description
+        """
         for param in self._pfp__node.args.params:
             param.is_func_param = True
 
@@ -88,6 +111,12 @@ def StructUnionTypeRef(curr_scope, typedef_name, refd_name, interp, node):
         cls = fields.Union
 
     def __new__(cls_, *args, **kwargs):
+        """
+        Create a new class.
+
+        Args:
+            cls_: (todo): write your description
+        """
         refd_type = curr_scope.get_type(refd_name)
         if refd_type is None:
             refd_node = node
@@ -95,6 +124,13 @@ def StructUnionTypeRef(curr_scope, typedef_name, refd_name, interp, node):
             refd_node = refd_type._pfp__node
 
         def merged_init(self, stream):
+            """
+            Merge the stream.
+
+            Args:
+                self: (todo): write your description
+                stream: (str): write your description
+            """
             if six.PY3:
                 cls_._pfp__init(self, stream)
             else:
@@ -121,6 +157,16 @@ def StructUnionTypeRef(curr_scope, typedef_name, refd_name, interp, node):
 
 
 def StructUnionDef(typedef_name, interp, node, overrides=None, cls=None):
+    """
+    A class decorator.
+
+    Args:
+        typedef_name: (str): write your description
+        interp: (todo): write your description
+        node: (todo): write your description
+        overrides: (dict): write your description
+        cls: (todo): write your description
+    """
     if overrides is None:
         overrides = {}
     if isinstance(node, AST.Struct):
@@ -138,6 +184,15 @@ def StructUnionDef(typedef_name, interp, node, overrides=None, cls=None):
     # the new struct to not be added to its parent, and the user would
     # not be able to see how far the script got
     def __init__(self, stream=None, metadata_processor=None, do_init=True):
+        """
+        Initialize the stream.
+
+        Args:
+            self: (todo): write your description
+            stream: (todo): write your description
+            metadata_processor: (str): write your description
+            do_init: (bool): write your description
+        """
         cls.__init__(
             self,
             stream,
@@ -148,6 +203,13 @@ def StructUnionDef(typedef_name, interp, node, overrides=None, cls=None):
             self._pfp__init(stream)
 
     def _pfp__init(self, stream):
+        """
+        Initialize the stream.
+
+        Args:
+            self: (todo): write your description
+            stream: (todo): write your description
+        """
         self._pfp__interp._handle_node(decls, ctxt=self, stream=stream)
 
     cls_members = {
@@ -171,6 +233,14 @@ def StructUnionDef(typedef_name, interp, node, overrides=None, cls=None):
 
 
 def EnumDef(typedef_name, base_cls, enum_vals):
+    """
+    Return a new enum class.
+
+    Args:
+        typedef_name: (str): write your description
+        base_cls: (todo): write your description
+        enum_vals: (int): write your description
+    """
     new_class = type(
         typedef_name,
         (fields.Enum,),
@@ -187,11 +257,26 @@ def EnumDef(typedef_name, base_cls, enum_vals):
 
 
 def ArrayDecl(item_cls, item_count):
+    """
+    Create a new __item__ methods.
+
+    Args:
+        item_cls: (todo): write your description
+        item_count: (int): write your description
+    """
     width = fields.PYVAL(item_count)
     if item_count is None:
         width = 1
 
     def __init__(self, stream=None, metadata_processor=None):
+        """
+        Initialize metadata.
+
+        Args:
+            self: (todo): write your description
+            stream: (todo): write your description
+            metadata_processor: (str): write your description
+        """
         fields.Array.__init__(
             self,
             self.width,
@@ -217,6 +302,13 @@ def LazyField(lookup_name, scope):
     """
 
     def __init__(self, stream=None):
+        """
+        Initialize the stream.
+
+        Args:
+            self: (todo): write your description
+            stream: (todo): write your description
+        """
         base_cls = self._pfp__scope.get_id(self._pfp__lazy_name)
         self.__class__.__bases__ = (base_cls,)
         base_cls.__init__(self, stream)
@@ -267,6 +359,13 @@ def LazyField(lookup_name, scope):
 
 class DebugLogger(object):
     def __init__(self, active=False):
+        """
+        Initialize the active logger.
+
+        Args:
+            self: (todo): write your description
+            active: (bool): write your description
+        """
         self._log = logging.getLogger("")
         self._indent = 0
         self._active = active
@@ -274,6 +373,17 @@ class DebugLogger(object):
             self._log.setLevel(logging.DEBUG)
 
     def debug(self, prefix, msg, indent_change=0, filename=None, coord=None):
+        """
+        Print a debug message
+
+        Args:
+            self: (todo): write your description
+            prefix: (str): write your description
+            msg: (str): write your description
+            indent_change: (str): write your description
+            filename: (str): write your description
+            coord: (todo): write your description
+        """
         if not self._active:
             return
 
@@ -289,26 +399,72 @@ class DebugLogger(object):
         )
 
     def inc(self):
+        """
+        Increment the current position.
+
+        Args:
+            self: (todo): write your description
+        """
         self._indent += 1
 
     def dec(self):
+        """
+        Decor.
+
+        Args:
+            self: (todo): write your description
+        """
         self._indent -= 1
 
 
 class NullStream(object):
     def __init__(self):
+        """
+        Initialize the internal state.
+
+        Args:
+            self: (todo): write your description
+        """
         self._pos = 0
 
     def read(self, num):
+        """
+        Read num
+
+        Args:
+            self: (todo): write your description
+            num: (int): write your description
+        """
         return utils.binary("\x00" * num)
 
     def write(self, data):
+        """
+        Writes data to the output.
+
+        Args:
+            self: (todo): write your description
+            data: (todo): write your description
+        """
         pass
 
     def close(self):
+        """
+        Close the connection.
+
+        Args:
+            self: (todo): write your description
+        """
         pass
 
     def seek(self, pos, seek_type=0):
+        """
+        Set the current file position.
+
+        Args:
+            self: (todo): write your description
+            pos: (dict): write your description
+            seek_type: (str): write your description
+        """
         if seek_type == 0:
             self._pos = pos
         elif seek_type == 1:
@@ -318,6 +474,12 @@ class NullStream(object):
             pass
 
     def tell(self):
+        """
+        Return the current position.
+
+        Args:
+            self: (todo): write your description
+        """
         return self._pos
 
 
@@ -357,12 +519,24 @@ class PfpTypes(object):
         a null-stream to initialize it"""
 
         def wrapper(*args, **kwargs):
+            """
+            Decorator toilio. types.
+
+            Args:
+            """
             # use args for struct arguments??
             return type_cls(stream=self._null_stream)
 
         return wrapper
 
     def __getattr__(self, attr_name):
+        """
+        Return the attribute of an object.
+
+        Args:
+            self: (todo): write your description
+            attr_name: (str): write your description
+        """
         if attr_name in self._types_map:
             return self._wrap_type_instantiation(self._types_map[attr_name])
         else:
@@ -370,6 +544,13 @@ class PfpTypes(object):
             return super(self.__class__, self).__getattribute__(attr_name)
 
     def __getitem__(self, attr_name):
+        """
+        Return the item from the given attribute name.
+
+        Args:
+            self: (todo): write your description
+            attr_name: (str): write your description
+        """
         if attr_name in self._types_map:
             return self._wrap_type_instantiation(self._types_map[attr_name])
         else:
@@ -380,6 +561,14 @@ class Scope(object):
     """A class to keep track of the current scope of the interpreter"""
 
     def __init__(self, logger, parent=None):
+        """
+        Initialize the logger.
+
+        Args:
+            self: (todo): write your description
+            logger: (todo): write your description
+            parent: (todo): write your description
+        """
         super(Scope, self).__init__()
 
         self._log = logger
@@ -583,6 +772,13 @@ class Scope(object):
     # ------------------
 
     def _dlog(self, msg):
+        """
+        Log a message
+
+        Args:
+            self: (todo): write your description
+            msg: (str): write your description
+        """
         self._log.debug(" scope({:08x})".format(id(self)), msg)
 
     def _resolve_name(self, name):
@@ -661,6 +857,16 @@ class PfpInterp(object):
 
 
     def add_decl(self, classname, classnode, node, is_union):
+        """
+        Add a declaration to the class.
+
+        Args:
+            self: (todo): write your description
+            classname: (str): write your description
+            classnode: (todo): write your description
+            node: (todo): write your description
+            is_union: (bool): write your description
+        """
         if classname in self._defined:
             if node.name not in self._defined:
                 self._defined[node.name] = classname
@@ -700,6 +906,13 @@ class PfpInterp(object):
                 self._cpp.append((classname, "\nclass " + classname + ";\n\n"))
 
     def add_string_class(self, classname):
+        """
+        Add a string class to the class.
+
+        Args:
+            self: (todo): write your description
+            classname: (str): write your description
+        """
         if classname not in self._defined:
             self._defined[classname] = None
             cpp = "\n\nclass " + classname + " {\n"
@@ -723,6 +936,15 @@ class PfpInterp(object):
             self._cpp.append((classname, cpp))
 
     def add_native_class(self, classname, classtype, is_bitfield=False):
+        """
+        Add a class to the class to the class
+
+        Args:
+            self: (todo): write your description
+            classname: (str): write your description
+            classtype: (str): write your description
+            is_bitfield: (str): write your description
+        """
         if classname not in self._defined:
             self._defined[classname] = None
             cpp = "\n\nclass " + classname + " {\n"
@@ -773,6 +995,13 @@ class PfpInterp(object):
             self._cpp.append((classname, cpp))
 
     def get_decls(self, node):
+        """
+        Implementation details
+
+        Args:
+            self: (todo): write your description
+            node: (todo): write your description
+        """
         decls = []
         if isinstance(node, AST.Decl):
             return [node]
@@ -813,6 +1042,15 @@ class PfpInterp(object):
 
 
     def add_class(self, classname, classnode, is_union=False):
+        """
+        Add a class to the classnode.
+
+        Args:
+            self: (todo): write your description
+            classname: (str): write your description
+            classnode: (todo): write your description
+            is_union: (bool): write your description
+        """
         if classname in self._defined:
             return
         self._defined[classname] = None
@@ -978,6 +1216,15 @@ class PfpInterp(object):
                 node.type.cpp = classname
 
     def add_class_generate(self, classname, classnode, is_union=False):
+        """
+        Add a class toilor.
+
+        Args:
+            self: (todo): write your description
+            classname: (str): write your description
+            classnode: (todo): write your description
+            is_union: (str): write your description
+        """
         if classname + "::generate" in self._defined:
             return
         self._defined[classname + "::generate"] = None
@@ -1381,12 +1628,26 @@ class PfpInterp(object):
     CPP_ARGS = None
 
     def set_cpp_args(self):
+        """
+        Set the platform args.
+
+        Args:
+            self: (todo): write your description
+        """
         if platform.system() == "Darwin":
             self.CPP_ARGS = "-xc++"
         else:
             self.CPP_ARGS = ""
 
     def _parse_string(self, string, predefines=True):
+        """
+        Parse string.
+
+        Args:
+            self: (todo): write your description
+            string: (str): write your description
+            predefines: (str): write your description
+        """
         if self.CPP_ARGS is None:
             self.set_cpp_args()
         exts = []
@@ -1772,6 +2033,11 @@ class PfpInterp(object):
             #print("decl:metadata")
             # metadata_info = self._handle_metadata(node, scope, ctxt, stream)
             def process_metadata():
+                """
+                Process metadata for a dictionary of metadata.
+
+                Args:
+                """
                 metadata_info = self._handle_metadata(
                     node, scope, ctxt, stream
                 )
@@ -2503,6 +2769,16 @@ class PfpInterp(object):
         return union_cls
 
     def _handle_union_decls(self, node, scope, ctxt, stream):
+        """
+        Handle union union nodes
+
+        Args:
+            self: (todo): write your description
+            node: (todo): write your description
+            scope: (todo): write your description
+            ctxt: (todo): write your description
+            stream: (todo): write your description
+        """
         self._dlog("handling union decls")
         for decl in node.decls:
             decl.type.cpp = "/* TODO union decl*/"
@@ -2604,6 +2880,16 @@ class PfpInterp(object):
             return res
 
     def _handle_struct_decls(self, node, scope, ctxt, stream):
+        """
+        Todo : docstring for _handle_structs_decls
+
+        Args:
+            self: (todo): write your description
+            node: (todo): write your description
+            scope: (todo): write your description
+            ctxt: (todo): write your description
+            stream: (todo): write your description
+        """
         self._dlog("handling struct decls")
         self._locals_stack.append([])
         if node.decls[0] in self._structs:
@@ -2740,6 +3026,13 @@ class PfpInterp(object):
             return int(string)
 
     def _choose_const_int_class(self, val):
+        """
+        Chooses a constant for a field.
+
+        Args:
+            self: (todo): write your description
+            val: (todo): write your description
+        """
         if -0x80000000 < val < 0x80000000:
             return fields.Int
         elif 0 <= val < 0x100000000:
@@ -3004,6 +3297,16 @@ class PfpInterp(object):
         return res
 
     def _handle_post_plus_plus(self, node, scope, ctxt, stream):
+        """
+        Todplus_plus_plus_post_plus_plus_plus
+
+        Args:
+            self: (todo): write your description
+            node: (todo): write your description
+            scope: (todo): write your description
+            ctxt: (todo): write your description
+            stream: (todo): write your description
+        """
         field = self._handle_node(node.expr, scope, ctxt, stream)
         clone = field.__class__()
         clone._pfp__set_value(field)
@@ -3012,6 +3315,16 @@ class PfpInterp(object):
         return clone
 
     def _handle_post_minus_minus(self, node, scope, ctxt, stream):
+        """
+        Todo : docstring for for _handle_minus_minus_minus
+
+        Args:
+            self: (todo): write your description
+            node: (todo): write your description
+            scope: (todo): write your description
+            ctxt: (todo): write your description
+            stream: (todo): write your description
+        """
         field = self._handle_node(node.expr, scope, ctxt, stream)
         clone = field.__class__()
         clone._pfp__set_value(field)
@@ -3128,36 +3441,113 @@ class PfpInterp(object):
         """
 
         def add_op(x, y):
+            """
+            Add a op.
+
+            Args:
+                x: (str): write your description
+                y: (str): write your description
+            """
             x += y
 
         def sub_op(x, y):
+            """
+            R op.
+
+            Args:
+                x: (int): write your description
+                y: (int): write your description
+            """
             x -= y
 
         def div_op(x, y):
+            """
+            Divide x ( x y ).
+
+            Args:
+                x: (int): write your description
+                y: (int): write your description
+            """
             x.__idiv__(y)
 
         def mod_op(x, y):
+            """
+            Modular op.
+
+            Args:
+                x: (int): write your description
+                y: (int): write your description
+            """
             x %= y
 
         def mul_op(x, y):
+            """
+            Mul_op ( x y )
+
+            Args:
+                x: (todo): write your description
+                y: (todo): write your description
+            """
             x *= y
 
         def xor_op(x, y):
+            """
+            Evaluate operator.
+
+            Args:
+                x: (todo): write your description
+                y: (todo): write your description
+            """
             x ^= y
 
         def and_op(x, y):
+            """
+            Evaluate operator.
+
+            Args:
+                x: (array): write your description
+                y: (array): write your description
+            """
             x &= y
 
         def or_op(x, y):
+            """
+            Evaluate operator of x.
+
+            Args:
+                x: (todo): write your description
+                y: (todo): write your description
+            """
             x |= y
 
         def lshift_op(x, y):
+            """
+            Lshift. lshift.
+
+            Args:
+                x: (todo): write your description
+                y: (todo): write your description
+            """
             x <<= y
 
         def rshift_op(x, y):
+            """
+            Returnsures that - value x y and yshift.
+
+            Args:
+                x: (todo): write your description
+                y: (todo): write your description
+            """
             x >>= y
 
         def assign_op(x, y):
+            """
+            Assigns the op.
+
+            Args:
+                x: (todo): write your description
+                y: (array): write your description
+            """
             x._pfp__set_value(y)
 
         switch = {
@@ -3777,6 +4167,13 @@ class PfpInterp(object):
                 break
 
     def _flatten_list(self, l):
+        """
+        Flatten a list.
+
+        Args:
+            self: (todo): write your description
+            l: (todo): write your description
+        """
         for el in l:
             if isinstance(el, list) and not isinstance(el, AST.Node):
                 for sub in self._flatten_list(el):
@@ -3799,6 +4196,13 @@ class PfpInterp(object):
         node.cpp = ""
 
         def exec_case(idx, cases):
+            """
+            Execute the case.
+
+            Args:
+                idx: (int): write your description
+                cases: (todo): write your description
+            """
             # keep executing cases until a break is found,
             # or they've all been executed
             ret = None
@@ -3822,6 +4226,13 @@ class PfpInterp(object):
             return ret
 
         def get_stmts(stmts, res=None):
+            """
+            Return a list of statements.
+
+            Args:
+                stmts: (str): write your description
+                res: (str): write your description
+            """
             if res is None:
                 res = []
 
@@ -3838,6 +4249,13 @@ class PfpInterp(object):
             return res
 
         def get_cases(nodes, acc=None):
+            """
+            Return a list of nodes in a list.
+
+            Args:
+                nodes: (todo): write your description
+                acc: (str): write your description
+            """
             cases = []
 
             stmts = get_stmts(nodes)
@@ -3962,6 +4380,13 @@ class PfpInterp(object):
     # -----------------------------
 
     def _mark_id_as_lazy(self, node):
+        """
+        Mark a node as assigned. _lazy
+
+        Args:
+            self: (todo): write your description
+            node: (todo): write your description
+        """
         curr = node
         while curr is not None and curr.__class__ is not AST.ID:
             if getattr(curr, "type", None) is not None:
@@ -3973,6 +4398,13 @@ class PfpInterp(object):
             curr.is_lazy = True
 
     def _node_is_breakable(self, node):
+        """
+        Determine if a breakable breakable.
+
+        Args:
+            self: (todo): write your description
+            node: (todo): write your description
+        """
         if not self._int3:
             return False
 
@@ -4091,6 +4523,12 @@ class PfpInterp(object):
         return cls
 
 def is_forward_declared_struct(node):
+    """
+    Determine if a module is a forward declaration.
+
+    Args:
+        node: (todo): write your description
+    """
     return (
         isinstance(node, AST.Decl)
         and node.init is None

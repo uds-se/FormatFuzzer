@@ -18,12 +18,30 @@ import utils
 
 class TestIntegerPromotion(utils.PfpTestCase):
     def setUp(self):
+        """
+        Sets the result of this thread.
+
+        Args:
+            self: (todo): write your description
+        """
         pass
 
     def tearDown(self):
+        """
+        Tear down the next callable.
+
+        Args:
+            self: (todo): write your description
+        """
         pass
 
     def test_eq(self):
+        """
+        Check test test test test test test test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -45,6 +63,12 @@ class TestIntegerPromotion(utils.PfpTestCase):
         )
 
     def test_cmp(self):
+        """
+        Run test test test test test test test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -66,6 +90,12 @@ class TestIntegerPromotion(utils.PfpTestCase):
         )
 
     def test_iadd(self):
+        """
+        Add test test test files.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -77,6 +107,12 @@ class TestIntegerPromotion(utils.PfpTestCase):
         )
 
     def test_add(self):
+        """
+        Add test test test test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -90,6 +126,12 @@ class TestIntegerPromotion(utils.PfpTestCase):
         )
 
     def test_isub(self):
+        """
+        Check if the test is a test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -101,6 +143,12 @@ class TestIntegerPromotion(utils.PfpTestCase):
         )
 
     def test_sub(self):
+        """
+        Run test test test test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -114,6 +162,12 @@ class TestIntegerPromotion(utils.PfpTestCase):
         )
 
     def test_imul(self):
+        """
+        Test for test test test
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -125,6 +179,12 @@ class TestIntegerPromotion(utils.PfpTestCase):
         )
 
     def test_mul(self):
+        """
+        Run test test test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -138,6 +198,12 @@ class TestIntegerPromotion(utils.PfpTestCase):
         )
 
     def test_idiv(self):
+        """
+        Sets of the test idiv.
+
+        Args:
+            self: (todo): write your description
+        """
         # NOTE: 010 editor differs from C's integer promotion
         # and handling here. C will output "DEFA: 0", since 0xFADED006 * 10
         # wraps and does not end up being an even multiple of 0xFADED006:
@@ -167,6 +233,12 @@ class TestIntegerPromotion(utils.PfpTestCase):
         )
 
     def test_div(self):
+        """
+        Run test test test test.
+
+        Args:
+            self: (todo): write your description
+        """
         # as with the test_imul test case, 010 editor has differing behavior 
         # from C's integer promotion:
         #
@@ -200,6 +272,12 @@ class TestIntegerPromotion(utils.PfpTestCase):
         )
 
     def test_iand(self):
+        """
+        Test for test test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -211,6 +289,12 @@ class TestIntegerPromotion(utils.PfpTestCase):
         )
 
     def test_and(self):
+        """
+        Run test test test. test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -224,6 +308,12 @@ class TestIntegerPromotion(utils.PfpTestCase):
         )
 
     def test_ixor(self):
+        """
+        Test for test test test files.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -235,6 +325,12 @@ class TestIntegerPromotion(utils.PfpTestCase):
         )
 
     def test_xor(self):
+        """
+        Run xor test test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -248,6 +344,12 @@ class TestIntegerPromotion(utils.PfpTestCase):
         )
 
     def test_ior(self):
+        """
+        Build test test test test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -259,6 +361,12 @@ class TestIntegerPromotion(utils.PfpTestCase):
         )
 
     def test_or(self):
+        """
+        Called by test.
+
+        Args:
+            self: (todo): write your description
+        """
         dom = self._test_parse_build(
             "",
             """
@@ -272,6 +380,12 @@ class TestIntegerPromotion(utils.PfpTestCase):
         )
 
     def test_imod(self):
+        """
+        Run test test test test.
+
+        Args:
+            self: (todo): write your description
+        """
         # C differs from 010 editor here:
         #
         #          #include <stdio.h>
@@ -300,6 +414,12 @@ class TestIntegerPromotion(utils.PfpTestCase):
         )
 
     def test_mod(self):
+        """
+        Run test test test test.
+
+        Args:
+            self: (todo): write your description
+        """
         # oddly enough, 010 editor's behavior on direct mod *DOES* match C's
         # behavior
         dom = self._test_parse_build(

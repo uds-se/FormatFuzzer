@@ -30,13 +30,31 @@ class TestPfpFuzz(unittest.TestCase):
     """
 
     def setUp(self):
+        """
+        Sets the pfp.
+
+        Args:
+            self: (todo): write your description
+        """
         super(TestPfpFuzz, self).setUp()
 
     def tearDown(self):
+        """
+        Tear down the tear variable.
+
+        Args:
+            self: (todo): write your description
+        """
         super(TestPfpFuzz, self).tearDown()
 
     # see #49 - make mutate return the changed fields
     def test_fuzz_yield_fields(self):
+        """
+        Parse fields for fields. yaml file.
+
+        Args:
+            self: (todo): write your description
+        """
         template = """
             struct {
                 struct {
@@ -59,6 +77,12 @@ class TestPfpFuzz(unittest.TestCase):
 
     # see #49 - make mutate return the changed fields
     def test_fuzz_yield_fields_no_yield(self):
+        """
+        Generator which fields that fields as a.
+
+        Args:
+            self: (todo): write your description
+        """
         template = """
             struct {
                 struct {
