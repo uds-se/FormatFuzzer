@@ -1603,9 +1603,10 @@ class PfpInterp(object):
                     is_forward_declared_struct(child):
                 continue
             self._handle_node(child, scope, ctxt, stream)
-            if isinstance(child, AST.Decl) and "local" in child.quals and "const" not in child.quals and hasattr(child.type, "cpp"):
-                self._globals.append((child.name, child.type.cpp + " " + child.name + ";\n"))
-                self._global_locals.append(child.name)
+            for decl in self.get_decls(child):
+                if "local" in decl.quals and "const" not in decl.quals and hasattr(decl.type, "cpp") and decl.name not in self._global_locals:
+                    self._globals.append((decl.name, decl.type.cpp + " " + decl.name + ";\n"))
+                    self._global_locals.append(decl.name)
             if child.cpp:
                 node.cpp1 += "\t" + child.cpp.replace("\n", "\n\t") + ";\n"
 
@@ -3206,7 +3207,7 @@ class PfpInterp(object):
                 print("* EXCEPTION IN ASSIGNMENT " + str(field) + " " + node.op + " " + str(value) + ", in line " + str(node.coord.line))
                 pass
             node.cpp = node.lvalue.cpp + " " + node.op + " " + node.rvalue.cpp
-            if hasattr(field, "width"):
+            if hasattr(field, "width") and hasattr(field, "implicit"):
                 if node.op == "-=":
                     node.cpp = "VectorRemove(" + node.lvalue.cpp + ", { " + node.rvalue.cpp + " })"
                 if node.op == "+=":

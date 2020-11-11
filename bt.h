@@ -309,6 +309,10 @@ extern "C" size_t afl_pre_save_handler(unsigned char* data, size_t size, unsigne
 extern "C" int afl_post_load_handler(unsigned char* data, size_t size, unsigned char** new_data, size_t* new_size) {
 	file_acc.generate = false;
 
+	if (size > MAX_FILE_SIZE) {
+		fprintf(stderr, "File size larger than MAX_FILE_SIZE\n");
+		size = MAX_FILE_SIZE;
+	}
 	if (data != file_acc.file_buffer) {
 		memcpy(file_acc.file_buffer, data, size);
 	}
