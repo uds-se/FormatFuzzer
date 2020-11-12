@@ -121,7 +121,7 @@ class file_accessor {
 		unsigned start_pos = file_pos;
 		assert_cond(file_pos + size <= MAX_FILE_SIZE, "file size exceeded MAX_FILE_SIZE");
 		if (!generate)
-			assert_cond(file_pos + size <= file_size, "reading past the end of file");
+			assert_cond(file_pos + size <= final_file_size, "reading past the end of file");
 		value &= (1LLU << bits) - 1LLU;
 		unsigned new_bits = bits;
 		while (new_bits) {
@@ -131,17 +131,14 @@ class file_accessor {
 			if (new_bits < write_bits)
 				write_bits = new_bits;
 			unsigned char c;
-			int index;
 			unsigned char mask = (1 << write_bits) - 1;
 			if (is_big_endian) {
 				c = value >> (bits - write_bits);
 				value <<= write_bits;
 				value &= (1LLU << bits) - 1LLU;
-				index = file_pos + byte_pos;
 			} else {
 				c = value & ((1 << write_bits) - 1);
 				value >>= write_bits;
-				index = file_pos + size - 1 - byte_pos;
 			}
 			if (is_bitfield_left_to_right[is_big_endian]) {
 				c <<= (8 - bits_pos - write_bits);
@@ -150,6 +147,7 @@ class file_accessor {
 				c <<= bits_pos;
 				mask <<= bits_pos;
 			}
+			int index = file_pos + byte_pos;
 			unsigned char old = file_buffer[index];
 			file_buffer[index] &= ~mask;
 			file_buffer[index] |= c;
@@ -189,7 +187,7 @@ class file_accessor {
 		if (generate) {
 			memcpy(file_buffer + start_pos, buf, size);
 		} else {
-			assert_cond(file_pos <= file_size, "reading past the end of file");
+			assert_cond(file_pos <= final_file_size, "reading past the end of file");
 			assert_cond(memcmp(file_buffer + start_pos, buf, size) == 0, "parsed wrong file contents");
 		}
 
@@ -218,6 +216,7 @@ public:
 	unsigned char file_buffer[MAX_FILE_SIZE];
 	unsigned file_pos = 0;
 	unsigned file_size = 0;
+	unsigned final_file_size = 0;
 	bool has_size = false;
 	bool generate = true;
 	bool lookahead = false;
@@ -290,7 +289,8 @@ public:
 		rand_size = rsize;
 		rand_pos = 0;
 		file_pos = 0;
-		file_size = fsize;
+		file_size = 0;
+		final_file_size = fsize;
 
 		has_size = false;
 		allow_evil_values = true;
@@ -309,7 +309,7 @@ public:
 	}
 
 	int feof() {
-		return rand_int(8, [this](unsigned char* file_buf) -> long long { return file_pos == file_size ? 7 : 0; } ) == 7;
+		return rand_int(8, [this](unsigned char* file_buf) -> long long { return file_pos == final_file_size ? 7 : 0; } ) == 7;
 	}
 
 	template<typename T>
