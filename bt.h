@@ -332,7 +332,7 @@ extern "C" int afl_post_load_handler(unsigned char* data, size_t size, unsigned 
 }
 
 void exit_template(int status) {
-	if (debug_print)
+	if (debug_print || print_errors)
 		fprintf(stderr, "Template exited with code %d\n", status);
 	throw status;
 }
@@ -391,7 +391,7 @@ uint32 Checksum(int checksum_type, int64 start, int64 size) {
 }
 
 void Warning(std::string s) {
-	if (debug_print)
+	if (debug_print || print_errors)
 		fprintf(stderr, "Warning: %s\n", s.c_str());
 }
 
