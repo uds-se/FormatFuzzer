@@ -138,7 +138,9 @@ unsigned long long STR2INT(std::string s) {
 }
 
 constexpr unsigned long long STR2INT(const char * s) {
+#ifndef __clang__
 	assert(strlen(s) <= 8);
+#endif
 	unsigned long long result = 0;
 	while (*s) {
 		result = (result << 8) | *s;
