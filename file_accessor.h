@@ -370,7 +370,7 @@ public:
 		return value;
 	}
 
-	long long file_integer(unsigned size, unsigned bits, bool small = true) {
+	long long file_integer(unsigned size, unsigned bits, int small = 1) {
 		assert_cond(0 < size && size <= 8, "sizeof integer invalid");
 		assert_cond(file_pos + size <= MAX_FILE_SIZE, "file size exceeded MAX_FILE_SIZE");
 
@@ -378,9 +378,9 @@ public:
 		std::function<long long (unsigned char*)> parse = [&size, &bits, this](unsigned char* file_buf) -> long long {
 			return parse_integer(file_buf, size, bits);
 		};
-		if (!small)
+		if (small == 0)
 			value = rand_int(1LLU<<(bits ? bits : 8*size), parse);
-		else {
+		else if (small == 1) {
 			int s = rand_int(256, [&size, &bits, this](unsigned char* file_buf) -> long long {
 				unsigned long long value = parse_integer(file_buf, size, bits);
 				if (value > 0 && value <= 1<<4)
@@ -403,6 +403,12 @@ public:
 					--value;
 					return value;
 				});
+		} else {
+			value = 1+rand_int(1<<4, [&size, &bits, this](unsigned char* file_buf) -> long long {
+				long long value = parse_integer(file_buf, size, bits);
+				--value;
+				return value;
+			});
 		}
 		if (has_bitmap) {
 			for (unsigned i = 0; i < size; ++i) {

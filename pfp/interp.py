@@ -726,7 +726,7 @@ class PfpInterp(object):
         if classname not in self._defined:
             self._defined[classname] = None
             cpp = "\n\nclass " + classname + " {\n"
-            cpp += "\tbool small;\n"
+            cpp += "\tint small;\n"
             cpp += "\tstd::vector<" + classtype + "> known_values;\n"
             cpp += "\t" + classtype + " value;\n"
             cpp += "public:\n"
@@ -734,7 +734,7 @@ class PfpInterp(object):
                 cpp += "\tint64 _startof = 0;\n"
                 cpp += "\tstd::size_t _sizeof = sizeof(" + classtype + ");\n"
             cpp += "\t" + classtype + " operator () () { return value; }\n"
-            cpp += "\t" + classname + "(bool small, std::vector<" + classtype + "> known_values = {}) : small(small), known_values(known_values) {}\n"
+            cpp += "\t" + classname + "(int small, std::vector<" + classtype + "> known_values = {}) : small(small), known_values(known_values) {}\n"
             if is_bitfield:
                 cpp += "\n\t" + classtype + " generate(unsigned bits) {\n"
             else:
@@ -2259,8 +2259,10 @@ class PfpInterp(object):
                         self._defined[node.name] = classnamebits
                         if is_string:
                             self._globals.append((node.name, classname + " " + node.name + ";\n"))
+                        elif node.metadata is not None and "arraylength" in node.metadata.keyvals:
+                            self._globals.append((node.name, classname + " " + node.name + "(2);\n"))
                         else:
-                            self._globals.append((node.name, classname + " " + node.name + "(true);\n"))
+                            self._globals.append((node.name, classname + " " + node.name + "(1);\n"))
                     node.cpp = "GENERATE"
                     if len(self._incomplete_stack) > 1:
                         node.cpp += "_VAR"
@@ -2909,14 +2911,14 @@ class PfpInterp(object):
                                 if n == name:
                                     self._globals[i] = (n, re.sub("_element.*", cpp, c))
                         else:
-                            cpp = "(true, { "
+                            cpp = "(1, { "
                             for value in self._known_values[name]:
                                 cpp += value + ", "
                             cpp = cpp[:-2]
                             cpp += " });"
                             for i, (n, c) in enumerate(self._globals):
                                 if n == name:
-                                    self._globals[i] = (n, re.sub("\(true.*", cpp, c))
+                                    self._globals[i] = (n, re.sub("\(1.*", cpp, c))
 
                 if exp is not None and exp.__class__ == AST.FuncCall:
                     name = exp.name.name

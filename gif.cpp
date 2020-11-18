@@ -7,14 +7,14 @@
 
 
 class char_class {
-	bool small;
+	int small;
 	std::vector<char> known_values;
 	char value;
 public:
 	int64 _startof = 0;
 	std::size_t _sizeof = sizeof(char);
 	char operator () () { return value; }
-	char_class(bool small, std::vector<char> known_values = {}) : small(small), known_values(known_values) {}
+	char_class(int small, std::vector<char> known_values = {}) : small(small), known_values(known_values) {}
 
 	char generate() {
 		_startof = FTell();
@@ -129,14 +129,14 @@ public:
 
 
 class ushort_class {
-	bool small;
+	int small;
 	std::vector<ushort> known_values;
 	ushort value;
 public:
 	int64 _startof = 0;
 	std::size_t _sizeof = sizeof(ushort);
 	ushort operator () () { return value; }
-	ushort_class(bool small, std::vector<ushort> known_values = {}) : small(small), known_values(known_values) {}
+	ushort_class(int small, std::vector<ushort> known_values = {}) : small(small), known_values(known_values) {}
 
 	ushort generate() {
 		_startof = FTell();
@@ -161,12 +161,12 @@ public:
 
 
 class UBYTE_bitfield {
-	bool small;
+	int small;
 	std::vector<UBYTE> known_values;
 	UBYTE value;
 public:
 	UBYTE operator () () { return value; }
-	UBYTE_bitfield(bool small, std::vector<UBYTE> known_values = {}) : small(small), known_values(known_values) {}
+	UBYTE_bitfield(int small, std::vector<UBYTE> known_values = {}) : small(small), known_values(known_values) {}
 
 	UBYTE generate(unsigned bits) {
 		if (known_values.empty()) {
@@ -241,14 +241,14 @@ public:
 
 
 class UBYTE_class {
-	bool small;
+	int small;
 	std::vector<UBYTE> known_values;
 	UBYTE value;
 public:
 	int64 _startof = 0;
 	std::size_t _sizeof = sizeof(UBYTE);
 	UBYTE operator () () { return value; }
-	UBYTE_class(bool small, std::vector<UBYTE> known_values = {}) : small(small), known_values(known_values) {}
+	UBYTE_class(int small, std::vector<UBYTE> known_values = {}) : small(small), known_values(known_values) {}
 
 	UBYTE generate() {
 		_startof = FTell();
@@ -1450,70 +1450,70 @@ public:
 		Version_element(false),
 		Version(Version_element, { "89a" }),
 		GifHeader(GIFHEADER_GifHeader_instances),
-		Width(true),
-		Height(true),
-		GlobalColorTableFlag(true, { 1 }),
-		ColorResolution(true),
-		SortFlag(true),
-		SizeOfGlobalColorTable(true),
+		Width(1),
+		Height(1),
+		GlobalColorTableFlag(1, { 1 }),
+		ColorResolution(1),
+		SortFlag(1),
+		SizeOfGlobalColorTable(1),
 		PackedFields(LOGICALSCREENDESCRIPTOR_PACKEDFIELDS_PackedFields_instances),
-		BackgroundColorIndex(true),
-		PixelAspectRatio(true),
+		BackgroundColorIndex(1),
+		PixelAspectRatio(1),
 		LogicalScreenDescriptor(LOGICALSCREENDESCRIPTOR_LogicalScreenDescriptor_instances),
-		R(true),
-		G(true),
-		B(true),
+		R(1),
+		G(1),
+		B(1),
 		rgb_element(RGB_rgb_element_instances),
 		rgb(rgb_element),
 		GlobalColorTable(GLOBALCOLORTABLE_GlobalColorTable_instances),
-		ImageSeperator(true),
-		ImageLeftPosition(true),
-		ImageTopPosition(true),
-		ImageWidth(true),
-		ImageHeight(true),
-		LocalColorTableFlag(true, { 1 }),
-		InterlaceFlag(true),
-		Reserved(true),
-		SizeOfLocalColorTable(true),
+		ImageSeperator(1),
+		ImageLeftPosition(1),
+		ImageTopPosition(1),
+		ImageWidth(1),
+		ImageHeight(1),
+		LocalColorTableFlag(1, { 1 }),
+		InterlaceFlag(1),
+		Reserved(1),
+		SizeOfLocalColorTable(1),
 		PackedFields_(IMAGEDESCRIPTOR_PACKEDFIELDS_PackedFields__instances),
 		ImageDescriptor(IMAGEDESCRIPTOR_ImageDescriptor_instances),
 		LocalColorTable(LOCALCOLORTABLE_LocalColorTable_instances),
-		LZWMinimumCodeSize(true),
-		Size(true),
+		LZWMinimumCodeSize(1),
+		Size(1),
 		Data_element(false),
 		Data(Data_element),
 		DataSubBlock(DATASUBBLOCK_DataSubBlock_instances),
-		BlockTerminator(true),
+		BlockTerminator(1),
 		DataSubBlocks(DATASUBBLOCKS_DataSubBlocks_instances),
 		ImageData(IMAGEDATA_ImageData_instances),
-		ExtensionIntroducer(true),
-		GraphicControlLabel(true),
-		BlockSize(true),
-		Reserved_(true),
-		DisposalMethod(true),
-		UserInputFlag(true),
-		TransparentColorFlag(true),
+		ExtensionIntroducer(1),
+		GraphicControlLabel(1),
+		BlockSize(1),
+		Reserved_(1),
+		DisposalMethod(1),
+		UserInputFlag(1),
+		TransparentColorFlag(1),
 		PackedFields__(GRAPHICCONTROLEXTENSION_DATASUBBLOCK_PACKEDFIELDS_PackedFields___instances),
-		DelayTime(true),
-		TransparentColorIndex(true),
+		DelayTime(1),
+		TransparentColorIndex(1),
 		GraphicControlSubBlock(GRAPHICCONTROLSUBBLOCK_GraphicControlSubBlock_instances),
 		GraphicControlExtension(GRAPHICCONTROLEXTENSION_GraphicControlExtension_instances),
-		CommentLabel(true),
+		CommentLabel(1),
 		CommentData(DATASUBBLOCKS_CommentData_instances),
 		CommentExtension(COMMENTEXTENSION_CommentExtension_instances),
-		PlainTextLabel(true),
-		TextGridLeftPosition(true),
-		TextGridTopPosition(true),
-		TextGridWidth(true),
-		TextGridHeight(true),
-		CharacterCellWidth(true),
-		CharacterCellHeight(true),
-		TextForegroundColorIndex(true),
-		TextBackgroundColorIndex(true),
+		PlainTextLabel(1),
+		TextGridLeftPosition(1),
+		TextGridTopPosition(1),
+		TextGridWidth(1),
+		TextGridHeight(1),
+		CharacterCellWidth(1),
+		CharacterCellHeight(1),
+		TextForegroundColorIndex(1),
+		TextBackgroundColorIndex(1),
 		PlainTextSubBlock(PLAINTEXTSUBBLOCK_PlainTextSubBlock_instances),
 		PlainTextData(DATASUBBLOCKS_PlainTextData_instances),
 		PlainTextExtension(PLAINTEXTEXTENTION_PlainTextExtension_instances),
-		ApplicationLabel(true),
+		ApplicationLabel(1),
 		ApplicationIdentifier_element(false),
 		ApplicationIdentifier(ApplicationIdentifier_element),
 		ApplicationAuthenticationCode_element(false),
@@ -1521,10 +1521,10 @@ public:
 		ApplicationSubBlock(APPLICATIONSUBBLOCK_ApplicationSubBlock_instances),
 		ApplicationData(DATASUBBLOCKS_ApplicationData_instances),
 		ApplicationExtension(APPLICATIONEXTENTION_ApplicationExtension_instances),
-		Label(true),
+		Label(1),
 		UndefinedData(UNDEFINEDDATA_UndefinedData_instances),
 		Data_(DATA_Data__instances),
-		GIFTrailer(true),
+		GIFTrailer(1),
 		Trailer(TRAILER_Trailer_instances)
 	{}
 };

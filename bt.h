@@ -456,7 +456,7 @@ int FSeek(int64 pos) {
 	if (pos > file_acc.file_size) {
 		file_acc.file_pos = file_acc.file_size;
 		while (file_acc.file_pos < pos) {
-			file_acc.file_integer(1, 0, false);
+			file_acc.file_integer(1, 0, 0);
 		}
 	} else {
 		file_acc.file_pos = pos;
