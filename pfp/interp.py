@@ -706,8 +706,8 @@ class PfpInterp(object):
             cpp += "\tstd::vector<std::string> known_values;\n"
             cpp += "\tstd::string value;\n"
             cpp += "public:\n"
-            cpp += "\tint64 _startof;\n"
-            cpp += "\tstd::size_t _sizeof;\n"
+            cpp += "\tint64 _startof = 0;\n"
+            cpp += "\tstd::size_t _sizeof = 0;\n"
             cpp += "\tstd::string operator () () { return value; }\n"
             cpp += "\t" + classname + "(std::vector<std::string> known_values = {}) : known_values(known_values) {}\n"
             cpp += "\n\tstd::string generate() {\n"
@@ -731,7 +731,7 @@ class PfpInterp(object):
             cpp += "\t" + classtype + " value;\n"
             cpp += "public:\n"
             if not is_bitfield:
-                cpp += "\tint64 _startof;\n"
+                cpp += "\tint64 _startof = 0;\n"
                 cpp += "\tstd::size_t _sizeof = sizeof(" + classtype + ");\n"
             cpp += "\t" + classtype + " operator () () { return value; }\n"
             cpp += "\t" + classname + "(bool small, std::vector<" + classtype + "> known_values = {}) : small(small), known_values(known_values) {}\n"
@@ -919,8 +919,8 @@ class PfpInterp(object):
                 classnode.args = AST.ParamList([])
             classnode.args.params.append(local)
         cpp += "\n\tunsigned char generated = 0;\n"
-        cpp += "\tint64 _startof;\n"
-        cpp += "\tstd::size_t _sizeof;\n"
+        cpp += "\tint64 _startof = 0;\n"
+        cpp += "\tstd::size_t _sizeof = 0;\n"
         cpp += "\t" + classname + "& operator () () { return *instances.back(); }\n"
         cpp += "\t" + classname + "* operator [] (int index) { return instances[index]; }\n"
         cpp += "\t" + classname + "(std::vector<" + classname + "*>& instances) : instances(instances) { instances.push_back(this); }\n"
@@ -1004,7 +1004,8 @@ class PfpInterp(object):
         body += ");\n"
         body += "\t}\n"
         body += "\tif (!generated)\n"
-        body += "\t\tgenerated = 1;\n\n"
+        body += "\t\tgenerated = 1;\n"
+        body += "\t_startof = FTell();\n\n"
         first = True
         for decl in classnode.decls:
             for local in self._struct_locals + params:
@@ -1021,6 +1022,7 @@ class PfpInterp(object):
         if "break;" in body and (classname[-7:] == "_struct" or not ("switch (" in body or "do {" in body or "while (" in body or "for (" in body)):
             body = "do {\n" + body + "} while (false);\n"
         cpp += body
+        cpp += "\n\t_sizeof = FTell() - _startof;\n"
         cpp += "\treturn this;\n"
         cpp += "}\n\n"
         self._generates_cpp += cpp
@@ -2039,7 +2041,7 @@ class PfpInterp(object):
                 if classname == field_name + "_union" and ctxt._pfp__node.name is not None:
                     classname = ctxt._pfp__node.name + "_" + field_name + "_union"
                 node.originalname = node.name
-                while node.name in self._defined and self._defined[node.name] != classname + "_array_class":
+                while node.name in self._defined and self._defined[node.name] != classname.replace(" ", "_") + "_array_class":
                     node.name += "_"
                 is_char_array = False
                 is_string = False
@@ -2057,7 +2059,7 @@ class PfpInterp(object):
                 is_pointer = ""
                 is_native = False
                 if nodetype is None or isinstance(nodetype, list):
-                    element_classname = classname + "_class"
+                    element_classname = classname.replace(" ", "_") + "_class"
                     if is_string:
                         self.add_string_class(element_classname)
                     else:
@@ -2077,7 +2079,7 @@ class PfpInterp(object):
                         self.add_class(classname, classnode, is_union)
 
                 if node.name + "_element" not in self._defined:
-                    self._defined[node.name + "_element"] = classname + "_class"
+                    self._defined[node.name + "_element"] = classname.replace(" ", "_") + "_class"
                     if is_native:
                         self._globals.append((node.name + "_element", element_classname + " " + node.name + "_element(false);\n"))
                     else:
@@ -2085,9 +2087,9 @@ class PfpInterp(object):
                         self._instances += "std::vector<" + element_classname + "*> " + element_classname + "_" + node.name + "_element_instances;\n"
 
                 cpp = ""
-                if classname + "_array_class" not in self._defined:
-                    self._defined[classname + "_array_class"] = None
-                    cpp += "\n\nclass " + classname + "_array_class {\n"
+                if classname.replace(" ", "_") + "_array_class" not in self._defined:
+                    self._defined[classname.replace(" ", "_") + "_array_class"] = None
+                    cpp += "\n\nclass " + classname.replace(" ", "_") + "_array_class {\n"
                     cpp += "\t" + element_classname + "& " + "element;\n"
                     if is_char_array:
                         cpp += "\tstd::vector<std::string> known_values;\n"
@@ -2095,22 +2097,21 @@ class PfpInterp(object):
                         cpp += "\tstd::unordered_map<int, std::vector<" + classname + ">> element_known_values;\n"
                     cpp += "\t" + node.type.cpp + " " + "value;\n"
                     cpp += "public:\n"
-                    cpp += "\tint64 _startof;\n"
-                    cpp += "\tstd::size_t _sizeof;\n"
+                    cpp += "\tint64 _startof = 0;\n"
+                    cpp += "\tstd::size_t _sizeof = 0;\n"
                     cpp += "\t" + node.type.cpp + " operator () () { return value; }\n"
                     cpp += "\t" + classname + " operator [] (int index) { return " + is_pointer + "value[index]; }\n"
                     if is_native:
-                        cpp += "\t" + classname + "_array_class(" + element_classname + "& element, std::unordered_map<int, std::vector<" + classname + ">> element_known_values = {})\n\t\t: element(element), element_known_values(element_known_values) {}\n"
+                        cpp += "\t" + classname.replace(" ", "_") + "_array_class(" + element_classname + "& element, std::unordered_map<int, std::vector<" + classname + ">> element_known_values = {})\n\t\t: element(element), element_known_values(element_known_values) {}\n"
                     else:
-                        cpp += "\t" + classname + "_array_class(" + element_classname + "& element) : element(element) {}\n"
+                        cpp += "\t" + classname.replace(" ", "_") + "_array_class(" + element_classname + "& element) : element(element) {}\n"
                     if is_char_array:
-                        cpp += "\t" + classname + "_array_class(" + element_classname + "& element, std::vector<std::string> known_values)\n\t\t: element(element), known_values(known_values) {}\n"
+                        cpp += "\t" + classname.replace(" ", "_") + "_array_class(" + element_classname + "& element, std::vector<std::string> known_values)\n\t\t: element(element), known_values(known_values) {}\n"
                         cpp += "\n\t" + node.type.cpp + " generate(unsigned size, std::vector<std::string> new_known_values = {}) {\n"
                     else:
                         cpp += "\n\t" + node.type.cpp + " generate(unsigned size) {\n"
                     cpp += "\t\tcheck_array_length(size);\n"
                     cpp += "\t\t_startof = FTell();\n"
-                    cpp += "\t\t_sizeof = 0;\n"
                     if is_char_array:
                         cpp += "\t\tvalue = \"\";\n"
                         cpp += "\t\tfor (auto& known : known_values) {\n"
@@ -2145,16 +2146,16 @@ class PfpInterp(object):
                     cpp += "\t}\n};\n\n"
                 nodecpp = ""
                 if node.name not in self._defined:
-                    self._defined[node.name] = classname + "_array_class"
-                    nodecpp = classname + "_array_class " + node.name + "(" + node.name + "_element"
+                    self._defined[node.name] = classname.replace(" ", "_") + "_array_class"
+                    nodecpp = classname.replace(" ", "_") + "_array_class " + node.name + "(" + node.name + "_element"
                     nodecpp += ");\n"
                 if nodetype is None or isinstance(nodetype, list) or issubclass(nodetype, fields.Enum) or issubclass(nodetype, fields.Union):
-                    self._cpp.append((classname + "_array_class", cpp))
+                    self._cpp.append((classname.replace(" ", "_") + "_array_class", cpp))
                     self._globals.append((node.name, nodecpp))
                 else:
                     self._globals.append((node.name, nodecpp))
                     if classname in self._defined:
-                        self._cpp.append((classname + "_array_class", cpp))
+                        self._cpp.append((classname.replace(" ", "_") + "_array_class", cpp))
                         self.add_class_generate(classname, classnode, is_union)
                     else:
                         if classname not in self._to_define:
@@ -2243,6 +2244,10 @@ class PfpInterp(object):
                     while node.name in self._defined and self._defined[node.name] != classnamebits:
                         node.name += "_"
                     node.type.cpp = " ".join(node.type.type.names)
+                    if node.type.cpp == "long":
+                        node.type.cpp = "LONG"
+                    if node.type.cpp == "unsigned long":
+                        node.type.cpp = "ULONG"
                     is_string = False
                     if node.type.cpp == "string":
                         node.type.cpp = "std::string"
@@ -2870,11 +2875,11 @@ class PfpInterp(object):
                         self._known_values[name][index].append(value)
                         cpp = "_element, { "
                         for index in self._known_values[name]:
-                            cpp += "{ " + index + ", {"
+                            cpp += "{ " + index + ", {{"
                             for value in self._known_values[name][index]:
                                 cpp += value + ", "
                             cpp = cpp[:-2]
-                            cpp += "} }, "
+                            cpp += "}} }, "
                         cpp = cpp[:-2]
                         cpp += " });"
                         for i, (n, c) in enumerate(self._globals):

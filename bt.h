@@ -37,13 +37,13 @@ typedef unsigned short WORD;
 typedef int int32;
 typedef int INT;
 typedef int INT32;
-typedef long LONG;
+typedef int LONG;
 typedef unsigned int uint;
 typedef unsigned int uint32;
-typedef unsigned long ulong;
+//typedef unsigned int ulong;
 typedef unsigned int UINT;
 typedef unsigned int UINT32;
-typedef unsigned long ULONG;
+typedef unsigned int ULONG;
 typedef unsigned int DWORD;
 typedef long long int64;
 typedef long long quad;
@@ -417,7 +417,12 @@ void SPrintf(std::string& s, const char* fmt, ...) {
 
 std::string::size_type Strlen(std::string s) { return s.size(); }
 
+int Strcmp(std::string s1, std::string s2) {
+	return strcmp(s1.c_str(), s2.c_str());
+}
+
 int Strncmp(std::string s1, std::string s2, int n) {
+	assert ((unsigned) n <= s1.length() && (unsigned) n <= s2.length());
 	return strncmp(s1.c_str(), s2.c_str(), n);
 }
 
@@ -428,6 +433,11 @@ std::string SubStr(std::string s, int start, int count = -1) {
 		return std::string(s.c_str() + start, len - start);
 	assert_cond((unsigned)count <= len - start, "SubStr: invalid count");
 	return std::string(s.c_str() + start, count);
+}
+
+int Memcmp(std::string s1, std::string s2, int n) {
+	assert ((unsigned) n <= s1.length() && (unsigned) n <= s2.length());
+	return memcmp(s1.c_str(), s2.c_str(), n);
 }
 
 void Memcpy(std::string& dest, std::string src, int n, int destOffset = 0, int srcOffset = 0) {

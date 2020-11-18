@@ -197,6 +197,8 @@ int test(int argc, char *argv[])
 	print_errors = true;
 	int rand_fd = open("/dev/urandom", O_RDONLY);
 	unsigned char data[MAX_RAND_SIZE];
+	ssize_t r = read(rand_fd, data, MAX_RAND_SIZE);
+	assert(r == MAX_RAND_SIZE);
 	unsigned char contents[65536];
 	unsigned char* file = NULL;
 	size_t file_size;
@@ -250,6 +252,8 @@ int benchmark(int argc, char *argv[])
 {
 	int rand_fd = open("/dev/urandom", O_RDONLY);
 	unsigned char data[MAX_RAND_SIZE];
+	ssize_t r = read(rand_fd, data, MAX_RAND_SIZE);
+	assert(r == MAX_RAND_SIZE);
 	unsigned char* new_data = NULL;
 	int generated = 0;
 	uint64_t total_bytes = 0;
@@ -268,7 +272,8 @@ int benchmark(int argc, char *argv[])
 	uint64_t end = get_cur_time_us();
 	double time = (end - start) / 1.0e6;
 	printf("Generated %d files from %d attempts in %f s.\n", generated, i, time);
-	printf("Average file size %lu bytes.\n", total_bytes / generated);
+	if (generated)
+		printf("Average file size %lu bytes.\n", total_bytes / generated);
 	printf("Speed %f / s.\n", generated / time);
 	return 0;
 }

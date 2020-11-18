@@ -11,7 +11,7 @@ class char_class {
 	std::vector<char> known_values;
 	char value;
 public:
-	int64 _startof;
+	int64 _startof = 0;
 	std::size_t _sizeof = sizeof(char);
 	char operator () () { return value; }
 	char_class(bool small, std::vector<char> known_values = {}) : small(small), known_values(known_values) {}
@@ -44,8 +44,8 @@ class char_array_class {
 	std::unordered_map<int, std::vector<char>> element_known_values;
 	std::string value;
 public:
-	int64 _startof;
-	std::size_t _sizeof;
+	int64 _startof = 0;
+	std::size_t _sizeof = 0;
 	std::string operator () () { return value; }
 	char operator [] (int index) { return value[index]; }
 	char_array_class(char_class& element, std::unordered_map<int, std::vector<char>> element_known_values = {})
@@ -56,7 +56,6 @@ public:
 	std::string generate(unsigned size, std::vector<std::string> new_known_values = {}) {
 		check_array_length(size);
 		_startof = FTell();
-		_sizeof = 0;
 		value = "";
 		for (auto& known : known_values) {
 			new_known_values.push_back(known);
@@ -109,8 +108,8 @@ public:
 	int evil;
 
 	unsigned char generated = 0;
-	int64 _startof;
-	std::size_t _sizeof;
+	int64 _startof = 0;
+	std::size_t _sizeof = 0;
 	GIFHEADER& operator () () { return *instances.back(); }
 	GIFHEADER* operator [] (int index) { return instances[index]; }
 	GIFHEADER(std::vector<GIFHEADER*>& instances) : instances(instances) { instances.push_back(this); }
@@ -134,7 +133,7 @@ class ushort_class {
 	std::vector<ushort> known_values;
 	ushort value;
 public:
-	int64 _startof;
+	int64 _startof = 0;
 	std::size_t _sizeof = sizeof(ushort);
 	ushort operator () () { return value; }
 	ushort_class(bool small, std::vector<ushort> known_values = {}) : small(small), known_values(known_values) {}
@@ -221,8 +220,8 @@ public:
 	}
 
 	unsigned char generated = 0;
-	int64 _startof;
-	std::size_t _sizeof;
+	int64 _startof = 0;
+	std::size_t _sizeof = 0;
 	LOGICALSCREENDESCRIPTOR_PACKEDFIELDS& operator () () { return *instances.back(); }
 	LOGICALSCREENDESCRIPTOR_PACKEDFIELDS* operator [] (int index) { return instances[index]; }
 	LOGICALSCREENDESCRIPTOR_PACKEDFIELDS(std::vector<LOGICALSCREENDESCRIPTOR_PACKEDFIELDS*>& instances) : instances(instances) { instances.push_back(this); }
@@ -246,7 +245,7 @@ class UBYTE_class {
 	std::vector<UBYTE> known_values;
 	UBYTE value;
 public:
-	int64 _startof;
+	int64 _startof = 0;
 	std::size_t _sizeof = sizeof(UBYTE);
 	UBYTE operator () () { return value; }
 	UBYTE_class(bool small, std::vector<UBYTE> known_values = {}) : small(small), known_values(known_values) {}
@@ -311,8 +310,8 @@ public:
 	}
 
 	unsigned char generated = 0;
-	int64 _startof;
-	std::size_t _sizeof;
+	int64 _startof = 0;
+	std::size_t _sizeof = 0;
 	LOGICALSCREENDESCRIPTOR& operator () () { return *instances.back(); }
 	LOGICALSCREENDESCRIPTOR* operator [] (int index) { return instances[index]; }
 	LOGICALSCREENDESCRIPTOR(std::vector<LOGICALSCREENDESCRIPTOR*>& instances) : instances(instances) { instances.push_back(this); }
@@ -357,8 +356,8 @@ public:
 	}
 
 	unsigned char generated = 0;
-	int64 _startof;
-	std::size_t _sizeof;
+	int64 _startof = 0;
+	std::size_t _sizeof = 0;
 	RGB& operator () () { return *instances.back(); }
 	RGB* operator [] (int index) { return instances[index]; }
 	RGB(std::vector<RGB*>& instances) : instances(instances) { instances.push_back(this); }
@@ -381,8 +380,8 @@ class RGB_array_class {
 	RGB& element;
 	std::vector<RGB*> value;
 public:
-	int64 _startof;
-	std::size_t _sizeof;
+	int64 _startof = 0;
+	std::size_t _sizeof = 0;
 	std::vector<RGB*> operator () () { return value; }
 	RGB operator [] (int index) { return *value[index]; }
 	RGB_array_class(RGB& element) : element(element) {}
@@ -390,7 +389,6 @@ public:
 	std::vector<RGB*> generate(unsigned size) {
 		check_array_length(size);
 		_startof = FTell();
-		_sizeof = 0;
 		value = {};
 		for (unsigned i = 0; i < size; ++i) {
 			value.push_back(element.generate());
@@ -420,8 +418,8 @@ public:
 	int size;
 
 	unsigned char generated = 0;
-	int64 _startof;
-	std::size_t _sizeof;
+	int64 _startof = 0;
+	std::size_t _sizeof = 0;
 	GLOBALCOLORTABLE& operator () () { return *instances.back(); }
 	GLOBALCOLORTABLE* operator [] (int index) { return instances[index]; }
 	GLOBALCOLORTABLE(std::vector<GLOBALCOLORTABLE*>& instances) : instances(instances) { instances.push_back(this); }
@@ -481,8 +479,8 @@ public:
 	std::vector<UBYTE> possible_values;
 
 	unsigned char generated = 0;
-	int64 _startof;
-	std::size_t _sizeof;
+	int64 _startof = 0;
+	std::size_t _sizeof = 0;
 	IMAGEDESCRIPTOR_PACKEDFIELDS& operator () () { return *instances.back(); }
 	IMAGEDESCRIPTOR_PACKEDFIELDS* operator [] (int index) { return instances[index]; }
 	IMAGEDESCRIPTOR_PACKEDFIELDS(std::vector<IMAGEDESCRIPTOR_PACKEDFIELDS*>& instances) : instances(instances) { instances.push_back(this); }
@@ -545,8 +543,8 @@ public:
 	}
 
 	unsigned char generated = 0;
-	int64 _startof;
-	std::size_t _sizeof;
+	int64 _startof = 0;
+	std::size_t _sizeof = 0;
 	IMAGEDESCRIPTOR& operator () () { return *instances.back(); }
 	IMAGEDESCRIPTOR* operator [] (int index) { return instances[index]; }
 	IMAGEDESCRIPTOR(std::vector<IMAGEDESCRIPTOR*>& instances) : instances(instances) { instances.push_back(this); }
@@ -583,8 +581,8 @@ public:
 	int size;
 
 	unsigned char generated = 0;
-	int64 _startof;
-	std::size_t _sizeof;
+	int64 _startof = 0;
+	std::size_t _sizeof = 0;
 	LOCALCOLORTABLE& operator () () { return *instances.back(); }
 	LOCALCOLORTABLE* operator [] (int index) { return instances[index]; }
 	LOCALCOLORTABLE(std::vector<LOCALCOLORTABLE*>& instances) : instances(instances) { instances.push_back(this); }
@@ -623,8 +621,8 @@ public:
 	}
 
 	unsigned char generated = 0;
-	int64 _startof;
-	std::size_t _sizeof;
+	int64 _startof = 0;
+	std::size_t _sizeof = 0;
 	DATASUBBLOCK& operator () () { return *instances.back(); }
 	DATASUBBLOCK* operator [] (int index) { return instances[index]; }
 	DATASUBBLOCK(std::vector<DATASUBBLOCK*>& instances) : instances(instances) { instances.push_back(this); }
@@ -667,8 +665,8 @@ public:
 	std::vector<UBYTE> zero;
 
 	unsigned char generated = 0;
-	int64 _startof;
-	std::size_t _sizeof;
+	int64 _startof = 0;
+	std::size_t _sizeof = 0;
 	DATASUBBLOCKS& operator () () { return *instances.back(); }
 	DATASUBBLOCKS* operator [] (int index) { return instances[index]; }
 	DATASUBBLOCKS(std::vector<DATASUBBLOCKS*>& instances) : instances(instances) { instances.push_back(this); }
@@ -707,8 +705,8 @@ public:
 	}
 
 	unsigned char generated = 0;
-	int64 _startof;
-	std::size_t _sizeof;
+	int64 _startof = 0;
+	std::size_t _sizeof = 0;
 	IMAGEDATA& operator () () { return *instances.back(); }
 	IMAGEDATA* operator [] (int index) { return instances[index]; }
 	IMAGEDATA(std::vector<IMAGEDATA*>& instances) : instances(instances) { instances.push_back(this); }
@@ -759,8 +757,8 @@ public:
 	}
 
 	unsigned char generated = 0;
-	int64 _startof;
-	std::size_t _sizeof;
+	int64 _startof = 0;
+	std::size_t _sizeof = 0;
 	GRAPHICCONTROLEXTENSION_DATASUBBLOCK_PACKEDFIELDS& operator () () { return *instances.back(); }
 	GRAPHICCONTROLEXTENSION_DATASUBBLOCK_PACKEDFIELDS* operator [] (int index) { return instances[index]; }
 	GRAPHICCONTROLEXTENSION_DATASUBBLOCK_PACKEDFIELDS(std::vector<GRAPHICCONTROLEXTENSION_DATASUBBLOCK_PACKEDFIELDS*>& instances) : instances(instances) { instances.push_back(this); }
@@ -811,8 +809,8 @@ public:
 	}
 
 	unsigned char generated = 0;
-	int64 _startof;
-	std::size_t _sizeof;
+	int64 _startof = 0;
+	std::size_t _sizeof = 0;
 	GRAPHICCONTROLSUBBLOCK& operator () () { return *instances.back(); }
 	GRAPHICCONTROLSUBBLOCK* operator [] (int index) { return instances[index]; }
 	GRAPHICCONTROLSUBBLOCK(std::vector<GRAPHICCONTROLSUBBLOCK*>& instances) : instances(instances) { instances.push_back(this); }
@@ -863,8 +861,8 @@ public:
 	}
 
 	unsigned char generated = 0;
-	int64 _startof;
-	std::size_t _sizeof;
+	int64 _startof = 0;
+	std::size_t _sizeof = 0;
 	GRAPHICCONTROLEXTENSION& operator () () { return *instances.back(); }
 	GRAPHICCONTROLEXTENSION* operator [] (int index) { return instances[index]; }
 	GRAPHICCONTROLEXTENSION(std::vector<GRAPHICCONTROLEXTENSION*>& instances) : instances(instances) { instances.push_back(this); }
@@ -909,8 +907,8 @@ public:
 	}
 
 	unsigned char generated = 0;
-	int64 _startof;
-	std::size_t _sizeof;
+	int64 _startof = 0;
+	std::size_t _sizeof = 0;
 	COMMENTEXTENSION& operator () () { return *instances.back(); }
 	COMMENTEXTENSION* operator [] (int index) { return instances[index]; }
 	COMMENTEXTENSION(std::vector<COMMENTEXTENSION*>& instances) : instances(instances) { instances.push_back(this); }
@@ -991,8 +989,8 @@ public:
 	}
 
 	unsigned char generated = 0;
-	int64 _startof;
-	std::size_t _sizeof;
+	int64 _startof = 0;
+	std::size_t _sizeof = 0;
 	PLAINTEXTSUBBLOCK& operator () () { return *instances.back(); }
 	PLAINTEXTSUBBLOCK* operator [] (int index) { return instances[index]; }
 	PLAINTEXTSUBBLOCK(std::vector<PLAINTEXTSUBBLOCK*>& instances) : instances(instances) { instances.push_back(this); }
@@ -1043,8 +1041,8 @@ public:
 	}
 
 	unsigned char generated = 0;
-	int64 _startof;
-	std::size_t _sizeof;
+	int64 _startof = 0;
+	std::size_t _sizeof = 0;
 	PLAINTEXTEXTENTION& operator () () { return *instances.back(); }
 	PLAINTEXTEXTENTION* operator [] (int index) { return instances[index]; }
 	PLAINTEXTEXTENTION(std::vector<PLAINTEXTEXTENTION*>& instances) : instances(instances) { instances.push_back(this); }
@@ -1089,8 +1087,8 @@ public:
 	}
 
 	unsigned char generated = 0;
-	int64 _startof;
-	std::size_t _sizeof;
+	int64 _startof = 0;
+	std::size_t _sizeof = 0;
 	APPLICATIONSUBBLOCK& operator () () { return *instances.back(); }
 	APPLICATIONSUBBLOCK* operator [] (int index) { return instances[index]; }
 	APPLICATIONSUBBLOCK(std::vector<APPLICATIONSUBBLOCK*>& instances) : instances(instances) { instances.push_back(this); }
@@ -1141,8 +1139,8 @@ public:
 	}
 
 	unsigned char generated = 0;
-	int64 _startof;
-	std::size_t _sizeof;
+	int64 _startof = 0;
+	std::size_t _sizeof = 0;
 	APPLICATIONEXTENTION& operator () () { return *instances.back(); }
 	APPLICATIONEXTENTION* operator [] (int index) { return instances[index]; }
 	APPLICATIONEXTENTION(std::vector<APPLICATIONEXTENTION*>& instances) : instances(instances) { instances.push_back(this); }
@@ -1187,8 +1185,8 @@ public:
 	}
 
 	unsigned char generated = 0;
-	int64 _startof;
-	std::size_t _sizeof;
+	int64 _startof = 0;
+	std::size_t _sizeof = 0;
 	UNDEFINEDDATA& operator () () { return *instances.back(); }
 	UNDEFINEDDATA* operator [] (int index) { return instances[index]; }
 	UNDEFINEDDATA(std::vector<UNDEFINEDDATA*>& instances) : instances(instances) { instances.push_back(this); }
@@ -1266,8 +1264,8 @@ public:
 	std::vector<UBYTE> values;
 
 	unsigned char generated = 0;
-	int64 _startof;
-	std::size_t _sizeof;
+	int64 _startof = 0;
+	std::size_t _sizeof = 0;
 	DATA& operator () () { return *instances.back(); }
 	DATA* operator [] (int index) { return instances[index]; }
 	DATA(std::vector<DATA*>& instances) : instances(instances) { instances.push_back(this); }
@@ -1300,8 +1298,8 @@ public:
 	}
 
 	unsigned char generated = 0;
-	int64 _startof;
-	std::size_t _sizeof;
+	int64 _startof = 0;
+	std::size_t _sizeof = 0;
 	TRAILER& operator () () { return *instances.back(); }
 	TRAILER* operator [] (int index) { return instances[index]; }
 	TRAILER(std::vector<TRAILER*>& instances) : instances(instances) { instances.push_back(this); }
@@ -1542,11 +1540,14 @@ GIFHEADER* GIFHEADER::generate() {
 	}
 	if (!generated)
 		generated = 1;
+	_startof = FTell();
 
 	evil = SetEvilBit(false);
 	GENERATE_VAR(Signature, ::g->Signature.generate(3));
 	SetEvilBit(evil);
 	GENERATE_VAR(Version, ::g->Version.generate(3, { {"87a"}, {"89a"} }));
+
+	_sizeof = FTell() - _startof;
 	return this;
 }
 
@@ -1559,11 +1560,14 @@ LOGICALSCREENDESCRIPTOR_PACKEDFIELDS* LOGICALSCREENDESCRIPTOR_PACKEDFIELDS::gene
 	}
 	if (!generated)
 		generated = 1;
+	_startof = FTell();
 
 	GENERATE_VAR(GlobalColorTableFlag, ::g->GlobalColorTableFlag.generate(1));
 	GENERATE_VAR(ColorResolution, ::g->ColorResolution.generate(3));
 	GENERATE_VAR(SortFlag, ::g->SortFlag.generate(1));
 	GENERATE_VAR(SizeOfGlobalColorTable, ::g->SizeOfGlobalColorTable.generate(3));
+
+	_sizeof = FTell() - _startof;
 	return this;
 }
 
@@ -1576,6 +1580,7 @@ LOGICALSCREENDESCRIPTOR* LOGICALSCREENDESCRIPTOR::generate() {
 	}
 	if (!generated)
 		generated = 1;
+	_startof = FTell();
 
 	GENERATE_VAR(Width, ::g->Width.generate());
 	GENERATE_VAR(Height, ::g->Height.generate());
@@ -1587,6 +1592,8 @@ LOGICALSCREENDESCRIPTOR* LOGICALSCREENDESCRIPTOR::generate() {
 	} else {
 		GENERATE_VAR(PixelAspectRatio, ::g->PixelAspectRatio.generate({ 0 }));
 	};
+
+	_sizeof = FTell() - _startof;
 	return this;
 }
 
@@ -1599,10 +1606,13 @@ RGB* RGB::generate() {
 	}
 	if (!generated)
 		generated = 1;
+	_startof = FTell();
 
 	GENERATE_VAR(R, ::g->R.generate());
 	GENERATE_VAR(G, ::g->G.generate());
 	GENERATE_VAR(B, ::g->B.generate());
+
+	_sizeof = FTell() - _startof;
 	return this;
 }
 
@@ -1615,12 +1625,15 @@ GLOBALCOLORTABLE* GLOBALCOLORTABLE::generate() {
 	}
 	if (!generated)
 		generated = 1;
+	_startof = FTell();
 
 	size = 1;
 	for (i = 0; (i <= ::g->LogicalScreenDescriptor().PackedFields().SizeOfGlobalColorTable()); i++) {
 		size *= 2;
 	};
 	GENERATE_VAR(rgb, ::g->rgb.generate(size));
+
+	_sizeof = FTell() - _startof;
 	return this;
 }
 
@@ -1633,6 +1646,7 @@ IMAGEDESCRIPTOR_PACKEDFIELDS* IMAGEDESCRIPTOR_PACKEDFIELDS::generate() {
 	}
 	if (!generated)
 		generated = 1;
+	_startof = FTell();
 
 	if ((::g->LogicalScreenDescriptor().PackedFields().GlobalColorTableFlag() == 1)) {
 		possible_values = { 0, 1 };
@@ -1644,6 +1658,8 @@ IMAGEDESCRIPTOR_PACKEDFIELDS* IMAGEDESCRIPTOR_PACKEDFIELDS::generate() {
 	GENERATE_VAR(SortFlag, ::g->SortFlag.generate(1));
 	GENERATE_VAR(Reserved, ::g->Reserved.generate(2));
 	GENERATE_VAR(SizeOfLocalColorTable, ::g->SizeOfLocalColorTable.generate(3));
+
+	_sizeof = FTell() - _startof;
 	return this;
 }
 
@@ -1656,6 +1672,7 @@ IMAGEDESCRIPTOR* IMAGEDESCRIPTOR::generate() {
 	}
 	if (!generated)
 		generated = 1;
+	_startof = FTell();
 
 	GENERATE_VAR(ImageSeperator, ::g->ImageSeperator.generate());
 	GENERATE_VAR(ImageLeftPosition, ::g->ImageLeftPosition.generate());
@@ -1663,6 +1680,8 @@ IMAGEDESCRIPTOR* IMAGEDESCRIPTOR::generate() {
 	GENERATE_VAR(ImageWidth, ::g->ImageWidth.generate());
 	GENERATE_VAR(ImageHeight, ::g->ImageHeight.generate());
 	GENERATE_VAR(PackedFields, ::g->PackedFields_.generate());
+
+	_sizeof = FTell() - _startof;
 	return this;
 }
 
@@ -1675,12 +1694,15 @@ LOCALCOLORTABLE* LOCALCOLORTABLE::generate() {
 	}
 	if (!generated)
 		generated = 1;
+	_startof = FTell();
 
 	size = 1;
 	for (i = 0; (i <= ::g->ImageDescriptor().PackedFields().SizeOfLocalColorTable()); i++) {
 		size *= 2;
 	};
 	GENERATE_VAR(rgb, ::g->rgb.generate(size));
+
+	_sizeof = FTell() - _startof;
 	return this;
 }
 
@@ -1693,9 +1715,12 @@ DATASUBBLOCK* DATASUBBLOCK::generate(UBYTE& size) {
 	}
 	if (!generated)
 		generated = 1;
+	_startof = FTell();
 
 	GENERATE_VAR(Size, ::g->Size.generate());
 	GENERATE_VAR(Data, ::g->Data.generate(size));
+
+	_sizeof = FTell() - _startof;
 	return this;
 }
 
@@ -1708,6 +1733,7 @@ DATASUBBLOCKS* DATASUBBLOCKS::generate() {
 	}
 	if (!generated)
 		generated = 1;
+	_startof = FTell();
 
 	size = ReadUByte(FTell());
 	while ((size != 0)) {
@@ -1716,6 +1742,8 @@ DATASUBBLOCKS* DATASUBBLOCKS::generate() {
 		size = ReadUByte(FTell(), zero);
 	};
 	GENERATE_VAR(BlockTerminator, ::g->BlockTerminator.generate());
+
+	_sizeof = FTell() - _startof;
 	return this;
 }
 
@@ -1728,9 +1756,12 @@ IMAGEDATA* IMAGEDATA::generate() {
 	}
 	if (!generated)
 		generated = 1;
+	_startof = FTell();
 
 	GENERATE_VAR(LZWMinimumCodeSize, ::g->LZWMinimumCodeSize.generate({ 8 }));
 	GENERATE_VAR(DataSubBlocks, ::g->DataSubBlocks.generate());
+
+	_sizeof = FTell() - _startof;
 	return this;
 }
 
@@ -1743,11 +1774,14 @@ GRAPHICCONTROLEXTENSION_DATASUBBLOCK_PACKEDFIELDS* GRAPHICCONTROLEXTENSION_DATAS
 	}
 	if (!generated)
 		generated = 1;
+	_startof = FTell();
 
 	GENERATE_VAR(Reserved, ::g->Reserved_.generate(3));
 	GENERATE_VAR(DisposalMethod, ::g->DisposalMethod.generate(3));
 	GENERATE_VAR(UserInputFlag, ::g->UserInputFlag.generate(1));
 	GENERATE_VAR(TransparentColorFlag, ::g->TransparentColorFlag.generate(1));
+
+	_sizeof = FTell() - _startof;
 	return this;
 }
 
@@ -1760,11 +1794,14 @@ GRAPHICCONTROLSUBBLOCK* GRAPHICCONTROLSUBBLOCK::generate() {
 	}
 	if (!generated)
 		generated = 1;
+	_startof = FTell();
 
 	GENERATE_VAR(BlockSize, ::g->BlockSize.generate());
 	GENERATE_VAR(PackedFields, ::g->PackedFields__.generate());
 	GENERATE_VAR(DelayTime, ::g->DelayTime.generate());
 	GENERATE_VAR(TransparentColorIndex, ::g->TransparentColorIndex.generate());
+
+	_sizeof = FTell() - _startof;
 	return this;
 }
 
@@ -1777,11 +1814,14 @@ GRAPHICCONTROLEXTENSION* GRAPHICCONTROLEXTENSION::generate() {
 	}
 	if (!generated)
 		generated = 1;
+	_startof = FTell();
 
 	GENERATE_VAR(ExtensionIntroducer, ::g->ExtensionIntroducer.generate());
 	GENERATE_VAR(GraphicControlLabel, ::g->GraphicControlLabel.generate());
 	GENERATE_VAR(GraphicControlSubBlock, ::g->GraphicControlSubBlock.generate());
 	GENERATE_VAR(BlockTerminator, ::g->BlockTerminator.generate());
+
+	_sizeof = FTell() - _startof;
 	return this;
 }
 
@@ -1794,10 +1834,13 @@ COMMENTEXTENSION* COMMENTEXTENSION::generate() {
 	}
 	if (!generated)
 		generated = 1;
+	_startof = FTell();
 
 	GENERATE_VAR(ExtensionIntroducer, ::g->ExtensionIntroducer.generate());
 	GENERATE_VAR(CommentLabel, ::g->CommentLabel.generate());
 	GENERATE_VAR(CommentData, ::g->CommentData.generate());
+
+	_sizeof = FTell() - _startof;
 	return this;
 }
 
@@ -1810,6 +1853,7 @@ PLAINTEXTSUBBLOCK* PLAINTEXTSUBBLOCK::generate() {
 	}
 	if (!generated)
 		generated = 1;
+	_startof = FTell();
 
 	GENERATE_VAR(BlockSize, ::g->BlockSize.generate());
 	GENERATE_VAR(TextGridLeftPosition, ::g->TextGridLeftPosition.generate());
@@ -1820,6 +1864,8 @@ PLAINTEXTSUBBLOCK* PLAINTEXTSUBBLOCK::generate() {
 	GENERATE_VAR(CharacterCellHeight, ::g->CharacterCellHeight.generate());
 	GENERATE_VAR(TextForegroundColorIndex, ::g->TextForegroundColorIndex.generate());
 	GENERATE_VAR(TextBackgroundColorIndex, ::g->TextBackgroundColorIndex.generate());
+
+	_sizeof = FTell() - _startof;
 	return this;
 }
 
@@ -1832,11 +1878,14 @@ PLAINTEXTEXTENTION* PLAINTEXTEXTENTION::generate() {
 	}
 	if (!generated)
 		generated = 1;
+	_startof = FTell();
 
 	GENERATE_VAR(ExtensionIntroducer, ::g->ExtensionIntroducer.generate());
 	GENERATE_VAR(PlainTextLabel, ::g->PlainTextLabel.generate());
 	GENERATE_VAR(PlainTextSubBlock, ::g->PlainTextSubBlock.generate());
 	GENERATE_VAR(PlainTextData, ::g->PlainTextData.generate());
+
+	_sizeof = FTell() - _startof;
 	return this;
 }
 
@@ -1849,10 +1898,13 @@ APPLICATIONSUBBLOCK* APPLICATIONSUBBLOCK::generate() {
 	}
 	if (!generated)
 		generated = 1;
+	_startof = FTell();
 
 	GENERATE_VAR(BlockSize, ::g->BlockSize.generate());
 	GENERATE_VAR(ApplicationIdentifier, ::g->ApplicationIdentifier.generate(8));
 	GENERATE_VAR(ApplicationAuthenticationCode, ::g->ApplicationAuthenticationCode.generate(3));
+
+	_sizeof = FTell() - _startof;
 	return this;
 }
 
@@ -1865,11 +1917,14 @@ APPLICATIONEXTENTION* APPLICATIONEXTENTION::generate() {
 	}
 	if (!generated)
 		generated = 1;
+	_startof = FTell();
 
 	GENERATE_VAR(ExtensionIntroducer, ::g->ExtensionIntroducer.generate());
 	GENERATE_VAR(ApplicationLabel, ::g->ApplicationLabel.generate());
 	GENERATE_VAR(ApplicationSubBlock, ::g->ApplicationSubBlock.generate());
 	GENERATE_VAR(ApplicationData, ::g->ApplicationData.generate());
+
+	_sizeof = FTell() - _startof;
 	return this;
 }
 
@@ -1882,10 +1937,13 @@ UNDEFINEDDATA* UNDEFINEDDATA::generate() {
 	}
 	if (!generated)
 		generated = 1;
+	_startof = FTell();
 
 	GENERATE_VAR(ExtensionIntroducer, ::g->ExtensionIntroducer.generate());
 	GENERATE_VAR(Label, ::g->Label.generate());
 	GENERATE_VAR(DataSubBlocks, ::g->DataSubBlocks.generate());
+
+	_sizeof = FTell() - _startof;
 	return this;
 }
 
@@ -1898,6 +1956,7 @@ DATA* DATA::generate() {
 	}
 	if (!generated)
 		generated = 1;
+	_startof = FTell();
 
 	values = { 0x2C };
 	ReadUByte(FTell(), values);
@@ -1941,6 +2000,8 @@ DATA* DATA::generate() {
 		};
 		};
 	};
+
+	_sizeof = FTell() - _startof;
 	return this;
 }
 
@@ -1953,8 +2014,11 @@ TRAILER* TRAILER::generate() {
 	}
 	if (!generated)
 		generated = 1;
+	_startof = FTell();
 
 	GENERATE_VAR(GIFTrailer, ::g->GIFTrailer.generate());
+
+	_sizeof = FTell() - _startof;
 	return this;
 }
 
