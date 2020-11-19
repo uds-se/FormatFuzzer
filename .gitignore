@@ -1,4 +1,5 @@
 # editors
+.idea
 .*.sw[mnop]
 tags
 

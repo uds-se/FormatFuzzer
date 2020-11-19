@@ -1,0 +1,669 @@
+//------------------------------------------------
+//--- 010 Editor v2.0 Binary Template
+//
+//      File: ZIPAdv.bt
+//    Author: SweetScape Software
+//   Version: 2.6
+//   Purpose: Defines a template for
+//            parsing ZIP files. Handles more
+//            complex ZIP data such as ZIP64
+//            that the base ZIP.bt cannot read.
+//  Category: Archive
+// File Mask: *.zip
+//  ID Bytes: 50 4B //PK
+//   History:  
+//   2.6   2015-07-18  SweetScape: Updated header for repository submission.
+//   2.5   G Woods:    Handle zero compressed size in header with ZIPDATADESCR header 
+//                     after compressed data.
+//   2.3   DCeres:     Added write function for VERECORD structure.
+//                     Added write function for ZIP64ENDLOCATORRECORD structure.
+//                     Added write function for ZIP64ENDLOCATOR structure.
+//                     Added write function for EXTRAFIELD structure.
+//   2.2   S.Gibson    Fix for entry comment field
+//                     Fix for parsing data descriptors
+//   2.1   SweetScape  Added write function for ZIPFILERECORD structure
+//   2.0   SweetScape  Added read functions
+//   1.0   SweetScape  Initial release
+//
+// More information available at:
+//  https://en.wikipedia.org/wiki/Zip_%28file_format%29
+//------------------------------------------------
+
+// Define structures used in ZIP files
+
+typedef enum <uint> {
+	S_ZIPFILERECORD 		= 0x04034b50,
+	S_ZIPDATADESCR 			= 0x08074b50,
+	S_ZIPDIRENTRY 			= 0x02014b50, 
+	S_ZIPDIGITALSIG 		= 0x05054b50,
+	S_ZIP64ENDLOCATORRECORD = 0x06064b50,
+	S_ZIP64ENDLOCATOR 		= 0x07064b50,
+	S_ZIPENDLOCATOR 		= 0x06054b50
+} SignatureTYPE <format=hex>;
+
+typedef enum <byte> {
+	OS_FAT      = 0,
+	OS_AMIGA    = 1,
+	OS_VMS      = 2,  // VAX/VMS
+	OS_Unix     = 3,
+	OS_VM_CMS   = 4,
+	OS_Atari    = 5,  // what if it's a minix filesystem? [cjh]
+	OS_HPFS     = 6,  // filesystem used by OS/2 (and NT 3.x)
+	OS_Mac      = 7,
+	OS_Z_System = 8,
+	OS_CPM      = 9,
+	OS_TOPS20   = 10, // pkzip 2.50 NTFS
+	OS_NTFS     = 11, // filesystem used by Windows NT
+	OS_QDOS     = 12, // SMS/QDOS
+	OS_Acorn    = 13, // Archimedes Acorn RISC OS
+	OS_VFAT     = 14, // filesystem used by Windows 95, NT
+	OS_MVS      = 15,
+	OS_BeOS     = 16, // hybrid POSIX/database filesystem
+	OS_Tandem   = 17,
+	OS_OS400    = 18,
+	OS_OSX      = 19 
+} HOSTOSTYPE;
+
+typedef byte VERSIONTYPE <read=read_VERSIONTYPE>;
+
+string read_VERSIONTYPE (local VERSIONTYPE &af) {
+	local string s = "";  
+	SPrintf (s, "%1.1f", (float)af / 10);  
+	return s;
+}
+
+typedef struct{
+	VERSIONTYPE Version;
+	HOSTOSTYPE HostOS;
+} VERECORD <read=read_VERECORD>;
+
+string read_VERECORD (local VERECORD &af) {
+	local string s = "";  
+	SPrintf (s, "Ver %1.1f, ", (float)af.Version / 10);  
+	s +=  EnumToString(  af.HostOS);
+	return s;
+}
+
+//enum used for compression format
+typedef enum <short> { 
+	COMP_STORED    		= 0,
+	COMP_SHRUNK    		= 1,
+	COMP_REDUCED1  		= 2,
+	COMP_REDUCED2  		= 3,
+	COMP_REDUCED3  		= 4,
+	COMP_REDUCED4  		= 5,
+	COMP_IMPLODED  		= 6,
+	COMP_TOKEN     		= 7,
+	COMP_DEFLATE   		= 8, // Deflate - standard ZIP codec, used from the start, also found in regular ZIP files
+	COMP_DEFLATE64 		= 9,
+	COMP_PKImploding 	= 10,
+	
+	COMP_BZip2			= 12, // BZIP2 - Newer than deflate, with better compression and slightly slower speed.
+	COMP_LZMA 			= 14, // LZMA - advanced ZIPX codec, taken from open source 7-zip format
+	COMP_Terse 			= 18,
+	COMP_Lz77 			= 19,
+	
+	COMP_Jpeg 			= 0x60, // Jpeg - Codec added by WinZip for specific support of jpeg images ( http://www.winzip.com/wz_jpg_comp.pdf )
+	COMP_WavPack		= 0x61, // WavPack - Codec for compressing specifically wav files. ( http://www.wavpack.com )
+	COMP_PPMd 			= 0x62, // PPMd - context modeling based codec, also featured in new ZIP standard. We use it in our Optimized method for text file compression. ( http://www.compression.ru/ds/ )
+	COMP_WzAES 			= 0x63  // WZAES encryption methods
+} COMPTYPE;
+
+typedef enum <ushort>{ 
+	FLAG_Encrypted             = 0x0001, //Bit 0: If set, indicates that the file is encrypted.
+	FLAG_CompressionFlagBit1   = 0x0002, 
+	FLAG_CompressionFlagBit2   = 0x0004,
+	FLAG_DescriptorUsedMask    = 0x0008,
+	FLAG_Reserved1             = 0x0010,
+	FLAG_Reserved2             = 0x0020,
+	FLAG_StrongEncrypted       = 0x0040, //Bit 6: Strong encryption
+	FLAG_CurrentlyUnused1      = 0x0080,
+	FLAG_CurrentlyUnused2      = 0x0100,
+	FLAG_CurrentlyUnused3      = 0x0200,
+	FLAG_CurrentlyUnused4      = 0x0400,
+	FLAG_Utf8                  = 0x0800, // Bit 11: filename and comment encoded using UTF-8
+	FLAG_ReservedPKWARE1       = 0x1000,
+	FLAG_CDEncrypted           = 0x2000, // Bit 13: Used when encrypting the Central Directory to indicate selected data values in the Local Header are masked to hide their actual values.
+	FLAG_ReservedPKWARE2       = 0x4000,
+	FLAG_ReservedPKWARE3       = 0x8000,
+
+} FLAGTYPE <read=read_FLAGTYPE>;
+
+string read_FLAGTYPE (local FLAGTYPE &af) {
+	local string s = "";
+	local int commaNeeded = 0;
+	local FLAGTYPE i = 1;
+
+	SPrintf (s, "%d: ", af);  
+	while (i < FLAG_ReservedPKWARE3) 
+	{
+		if (af & i)
+		{
+			if (commaNeeded) 
+			{ s += ", "; }
+			s +=  EnumToString(i);
+			commaNeeded = 1;
+		}
+		i = i << 1;
+	}
+	return s;
+}
+
+typedef enum <ushort>{ 
+	EH_Zip64 = 					0x0001,		//Zip64 extended information extra field
+	EH_AVInfo = 				0x0007,		//AV Info
+	EH_ExtLanguage = 			0x0008,		//Reserved for extended language encoding data (PFS)
+	EH_OS2 = 					0x0009,		//OS/2
+	EH_NTFS = 					0x000a,		//NTFS 
+	EH_OpenVMS = 				0x000c,		//OpenVMS
+	EH_UNIX = 					0x000d,		//UNIX
+	EH_fileStream = 			0x000e,		//Reserved for file stream and fork descriptors
+	EH_PatchDescriptor = 		0x000f,		//Patch Descriptor
+	EH_PKCS7X509 = 				0x0014,		//PKCS#7 Store for X.509 Certificates
+	EH_X509IDSignature = 		0x0015,		//X.509 Certificate ID and Signature for individual file
+	EH_X509IDCD = 				0x0016,		//X.509 Certificate ID for Central Directory
+	EH_StrongEncryption = 		0x0017,		//Strong Encryption Header
+	EH_RecordManagement = 		0x0018,		//Record Management Controls
+	EH_PKCS7List = 				0x0019,		//PKCS#7 Encryption Recipient Certificate List
+	EH_Attributes = 			0x0065,		//IBM S/390 (Z390), AS/400 (I400) attributes uncompressed
+	EH_ReservedAttributes = 	0x0066,		//Reserved for IBM S/390 (Z390), AS/400 (I400) attributes - compressed
+	EH_POSZIP4690 = 			0x4690,		//POSZIP 4690 (reserved) 
+	EH_Mac = 					0x07c8,		//Macintosh
+	EH_ZipItMac1 = 				0x2605,		//ZipIt Macintosh
+	EH_ZipItMac2 = 				0x2705,		//ZipIt Macintosh 1.3.5+
+	EH_ZipItMac3 = 				0x2805,		//ZipIt Macintosh 1.3.5+
+	EH_InfoZIPMac = 			0x334d,		//Info-ZIP Macintosh
+	EH_Acorn = 					0x4341,		//Acorn/SparkFS 
+	EH_WinNTSecurity = 			0x4453,		//Windows NT security descriptor (binary ACL)
+	EH_VM_CMS = 				0x4704,		//VM/CMS
+	EH_MVS = 					0x470f,		//MVS
+	EH_FWKCS = 					0x4b46,		//FWKCS MD5 (see below)
+	EH_OS2AccessList = 			0x4c41,		//OS/2 access control list (text ACL)
+	EH_InfoZIPOpenVMS = 		0x4d49,		//Info-ZIP OpenVMS
+	EH_Xceed = 					0x4f4c,		//Xceed original location extra field
+	EH_AOSVS = 					0x5356,		//AOS/VS (ACL)
+	EH_extTimestamp = 			0x5455,		//extended timestamp
+	EH_XceedUnicode = 			0x554e,		//Xceed unicode extra field
+	EH_InfoZIPUNIX = 			0x5855,		//Info-ZIP UNIX (original, also OS/2, NT, etc)
+	EH_InfoZIPUnicodeComment = 	0x6375,		//Info-ZIP Unicode Comment Extra Field
+	EH_BeOS = 					0x6542,		//BeOS/BeBox
+	EH_InfoZIPUnicodePath = 	0x7075,		//Info-ZIP Unicode Path Extra Field
+	EH_ASiUNIX = 				0x756e,		//ASi UNIX
+	EH_InfoZIPUNIXNew = 		0x7855,		//Info-ZIP UNIX (16-bit UID/GID info)
+	EH_InfoZIPUNIXNew3rd = 		0x7875,     //Info-ZIP UNIX 3rd generation (generic UID/GID, ...)
+	EH_WinGrowth = 				0xa220,		//Microsoft Open Packaging Growth Hint
+	EH_SMSQDOS = 				0xfd4a, 	//SMS/QDOS
+    EH_WzAES                =   0x9901,      //
+} HEADERFLAG;
+
+typedef enum <ushort>{ 
+    AlgID_DES       = 0x6601, //- DES
+    AlgID_RC2OLD    = 0x6602, //- RC2 (version needed to extract < 5.2)
+    AlgID_3DES168   = 0x6603, //- 3DES 168
+    AlgID_3DES112   = 0x6609, //- 3DES 112
+    AlgID_AES128    = 0x660E, //- AES 128 
+    AlgID_AES192    = 0x660F, //- AES 192 
+    AlgID_AES256    = 0x6610, //- AES 256 
+    AlgID_RC2       = 0x6702, //- RC2 (version needed to extract >= 5.2)
+    AlgID_Blowfish  = 0x6720, //- Blowfish
+    AlgID_Twofish   = 0x6721, //- Twofish
+    AlgID_RC4       = 0x6801, //- RC4
+    AlgID_Unknown   = 0xFFFF, //- Unknown algorithm
+} ALGFLAG;
+
+typedef enum <byte>{ 
+    AES128 = 0x01, 	//128-bit encryption key
+    AES192 = 0x02, 	//192-bit encryption key
+    AES256 = 0x03, 	//256-bit encryption key
+} AESMODE;
+
+typedef enum <ushort>{ 
+    pfPassword  = 0x0001, //- Password is required to decrypt
+    pfCertificates = 0x0002, //- Certificates only
+    pfPasswordCertificates = 0x0003, //- Password or certificate required to decrypt
+}   PRCFLAG;
+
+typedef struct {
+	HEADERFLAG  efHeaderID;
+	ushort  efDataSize;
+
+	Printf("%d", efHeaderID);
+	switch (efHeaderID)
+	{
+	case EH_Zip64:
+		uint64 efOriginalSize;
+		uint64 efCompressedSize;
+		//uint64 efHeaderOffset;
+		//uint   efDiskNumberStart;
+		break;
+	case EH_InfoZIPUnicodePath:
+		byte efVersion;
+		uint efNameCRC32;
+		if(efDataSize > 0 )
+		    char efUnicodeName[efDataSize - 5];
+		break;
+    case EH_NTFS:
+        int Reserved;   //4 bytes    Reserved for future use
+	    local int len = efDataSize - 4;
+	    while (len > 0)
+        {
+            ushort Tag;        //2 bytes    NTFS attribute tag value #1
+            ushort Size;       //2 bytes    Size of attribute #1, in bytes
+            if (Tag == 0x001)
+            {
+                FILETIME Mtime;      //8 bytes    File last modification time
+                FILETIME Atime;      //8 bytes    File last access time
+                FILETIME Ctime;     //8 bytes    File creation time                
+            }
+            else
+                byte Data[Size]; //(var.)     Size1      Attribute #1 data
+    		len -= Size + 4;
+        }
+        break;
+    case EH_StrongEncryption:
+        ushort  Format;    //2 bytes  Format definition for this record
+        ALGFLAG AlgID;     //2 bytes  Encryption algorithm identifier
+        ushort  Bitlen;    //2 bytes  Bit length of encryption key
+        PRCFLAG Flags;     //2 bytes  Processing flags
+        if (efDataSize > 8)
+            byte    CertData[efDataSize - 8];  //TSize-8  Certificate decryption extra field data        
+        break;
+    case EH_WzAES:
+        ushort version;         //2 bytes   Integer version number specific to the zip vendor
+        char VendorID[2];       //2 bytes 	2-character vendor ID
+        AESMODE Strength;       //1 bytes   Integer mode value indicating AES encryption strength
+        COMPTYPE deCompression; //2 bytes The actual compression method used to compress the file
+        break;
+	default:
+		if(efDataSize > 0 )
+		    char efData[ efDataSize ];
+        break;
+	}
+} EXTRAFIELD <read=read_EXTRAFIELD>;
+
+string read_EXTRAFIELD (local EXTRAFIELD &af) 
+{
+	return EnumToString(af.efHeaderID);
+}
+
+typedef struct {
+	HEADERFLAG  efHeaderID;
+	uint  efDataSize;
+
+	Printf("%d", efHeaderID);
+	switch (efHeaderID)
+	{
+	case EH_Zip64:
+		uint64 efOriginalSize;
+		uint64 efCompressedSize;
+		//uint64 efHeaderOffset;
+		//uint   efDiskNumberStart;
+		break;
+	case EH_InfoZIPUnicodePath:
+		byte efVersion;
+		uint efNameCRC32;
+		if(efDataSize > 0 )
+		    char efUnicodeName[efDataSize - 5];
+		break;
+	default:
+		if(efDataSize > 0 )
+		    char efData[ efDataSize ];
+        break;
+	}
+} EXTRA64FIELD;
+
+typedef enum <uint>{
+	FA_READONLY             = 0x00000001,  
+	FA_HIDDEN               = 0x00000002,  
+	FA_SYSTEM               = 0x00000004,  
+	FA_DIRECTORY            = 0x00000010,  
+	FA_ARCHIVE              = 0x00000020,  
+	FA_DEVICE               = 0x00000040,  
+	FA_NORMAL               = 0x00000080,  
+	FA_TEMPORARY            = 0x00000100,  
+	FA_SPARSE_FILE          = 0x00000200,  
+	FA_REPARSE_POINT        = 0x00000400,  
+	FA_COMPRESSED           = 0x00000800,  
+	FA_OFFLINE              = 0x00001000,  
+	FA_NOT_CONTENT_INDEXED  = 0x00002000,  
+	FA_ENCRYPTED            = 0x00004000,  
+	FA_VIRTUAL              = 0x00010000,  
+
+    kIFMT   =   0170000 << 16,     /* Unix file type mask */
+    
+    kIFDIR  =   0040000 << 16,     /* Unix directory */
+    kIFREG  =   0100000 << 16,     /* Unix regular file */
+    kIFSOCK =   0140000 << 16,     /* Unix socket (BSD, not SysV or Amiga) */
+    kIFLNK  =   0120000 << 16,     /* Unix symbolic link (not SysV, Amiga) */
+    kIFBLK  =   0060000 << 16,     /* Unix block special       (not Amiga) */
+    kIFCHR  =   0020000 << 16,     /* Unix character special   (not Amiga) */
+    kIFIFO  =   0010000 << 16,     /* Unix fifo    (BCC, not MSC or Amiga) */
+    
+    kISUID  =   04000 << 16,       /* Unix set user id on execution */
+    kISGID  =   02000 << 16,       /* Unix set group id on execution */
+    kISVTX  =   01000 << 16,       /* Unix directory permissions control */
+    kIRWXU  =   00700 << 16,       /* Unix read, write, execute: owner */
+    kIRUSR  =   00400 << 16,       /* Unix read permission: owner */
+    kIWUSR  =   00200 << 16,       /* Unix write permission: owner */
+    kIXUSR  =   00100 << 16,       /* Unix execute permission: owner */
+    kIRWXG  =   00070 << 16,       /* Unix read, write, execute: group */
+    kIRGRP  =   00040 << 16,       /* Unix read permission: group */
+    kIWGRP  =   00020 << 16,       /* Unix write permission: group */
+    kIXGRP  =   00010 << 16,       /* Unix execute permission: group */
+    kIRWXO  =   00007 << 16,       /* Unix read, write, execute: other */
+    kIROTH  =   00004 << 16,       /* Unix read permission: other */
+    kIWOTH  =   00002 << 16,       /* Unix write permission: other */
+    kIXOTH  =   00001 << 16        /* Unix execute permission: other */
+} FILEATTRIBUTE <read=read_FILEATTRIBUTE>;
+
+string read_FILEATTRIBUTE (local FILEATTRIBUTE &af) {
+	local string s = "";
+	local int commaNeeded = 0;
+	local FILEATTRIBUTE i = 1;
+
+	SPrintf (s, "0x%X: ", af);  
+	while (i < 	0xFFFFFF - 2) 
+	{
+		if (af & i)
+		{
+			if (commaNeeded) 
+			{ 
+                s += ", ";
+            }
+			s +=  EnumToString(i);
+			commaNeeded = 1;
+		}
+		i = i << 1;
+	}
+	return s;
+}
+
+// Defintes the Data descriptor
+typedef struct {
+	SignatureTYPE ddSignature; //0x08074b50
+	uint ddCRC <format=hex>;
+	uint ddCompressedSize;
+	uint ddUncompressedSize;
+} ZIPDATADESCR;
+
+// Defines a file record
+typedef struct {
+	// Header for the file
+	SignatureTYPE frSignature;    //0x04034b50
+	VERECORD frVersion;
+	FLAGTYPE frFlags;
+	COMPTYPE frCompression;
+	ushort  frFileTime;
+	ushort  frFileDate;
+	uint     frCrc     <format=hex>;
+	uint     frCompressedSize;
+	uint     frUncompressedSize;
+	ushort   frFileNameLength;
+	ushort   frExtraFieldLength;
+	if( frFileNameLength > 0 )
+	char     frFileName[ frFileNameLength ];
+	
+	local int len = frExtraFieldLength;
+	while (len > 0)
+	{
+		EXTRAFIELD frExtraField;
+		len -= frExtraField.efDataSize + 4;
+	}
+	// Compressed data
+	SetBackColor( cNone );
+
+    if ((frFlags & FLAG_Encrypted) && ( frFlags & FLAG_StrongEncrypted))
+    {
+        struct
+        {
+            ushort  IVSize;
+            byte    IVData[IVSize];
+            uint    Size;
+            ushort  Format;
+            ALGFLAG AlgID;
+            ushort  BitLen;
+            ushort  Flags;
+            ushort  ErdSize;
+            byte    ErdData[ErdSize];
+            uint    Reserved;
+            ushort  VSize;
+            byte    VData[VSize - 4];
+            uint    VCRC32;
+        } StrongEncryptedHeader;
+        char    frData[ frCompressedSize - StrongEncryptedHeader.IVSize - StrongEncryptedHeader.Size - 6];
+    }
+    else if ((frFlags & FLAG_Encrypted) && ( frCompression == COMP_WzAES ))
+    {
+        local int lenSalt = 0;
+        if (frExtraField.efHeaderID == EH_WzAES)
+        {
+            switch (frExtraField.Strength)
+            {
+            case AES128: 
+                lenSalt = 8;
+                break;
+            case AES192: 
+                lenSalt = 12;
+                break;
+            case AES256: 
+                lenSalt = 16;
+                break;
+            }
+        }
+        uchar   SaltValue[lenSalt];
+        ushort  PassVerification;
+		uchar   frData[ frCompressedSize - 12 - lenSalt];
+		uchar   AuthenticationCode[ 10];
+    }
+	else if( (frCompressedSize > 0) && (frCompressedSize < 0xFFFFFFFF))
+    {
+		uchar    frData[ frCompressedSize ];
+    }
+    else if (frCompressedSize == 0 && (frFlags & FLAG_DescriptorUsedMask))
+    {
+		// If bit 3 (0x08) of the flags field is set, then the CRC-32 and file sizes were not known when the header was written.
+		// Instead there is an additional header ZIPDATADESCR appended after the compressed data.
+		// We look for the next signature of the appended header here. 
+        local int64 posCurrent = FTell();
+        local int64 posNext =  FindFirst(S_ZIPDATADESCR,true,false,false,0.0,1,posCurrent);
+        if (posNext >= posCurrent) 
+        {
+            uchar frData[posNext - posCurrent];
+
+    		SetBackColor( cLtGreen );
+		    ZIPDATADESCR dataDescr;
+        }
+    }
+
+} ZIPFILERECORD <read=ReadZIPFILERECORD, write=WriteZIPFILERECORD>;
+
+// Defines an entry in the directory table
+typedef struct {
+	SignatureTYPE deSignature;     //0x02014b50
+	VERECORD deVersionMadeBy;
+	VERECORD deVersionToExtract;
+	FLAGTYPE deFlags;
+	COMPTYPE deCompression;
+	ushort  deFileTime;
+	ushort  deFileDate;
+	uint     deCrc     <format=hex>;
+	uint     deCompressedSize;
+	uint     deUncompressedSize;
+	ushort   deFileNameLength;
+	ushort   deExtraFieldLength;
+	ushort   deFileCommentLength;
+	ushort   deDiskNumberStart;
+	ushort   deInternalAttributes;
+	FILEATTRIBUTE deExternalAttributes;
+	uint     deHeaderOffset;
+	if( deFileNameLength > 0 )
+		char     deFileName[ deFileNameLength ];
+	local int len = deExtraFieldLength;
+	while (len > 0)
+	{
+		EXTRAFIELD deExtraField;
+		len -= deExtraField.efDataSize + 4;
+	}
+	if( deFileCommentLength > 0 )
+		uchar    deFileComment[ deFileCommentLength ];
+} ZIPDIRENTRY <read=ReadZIPDIRENTRY>;
+
+// Defines the digital signature
+typedef struct {
+	SignatureTYPE dsSignature;    //0x05054b50
+	ushort   dsDataLength;
+	if( dsDataLength > 0 )
+		uchar 	dsData[ dsDataLength ];
+} ZIPDIGITALSIG;
+
+// Zip64 end of central directory record
+typedef struct {
+	SignatureTYPE elr64Signature; //0x06064b50
+		int64       elr64DirectoryRecordSize;
+	if (elr64DirectoryRecordSize > 1)
+		VERECORD    elr64VersionMadeBy;
+	if (elr64DirectoryRecordSize > 2)
+		VERECORD    elr64VersionToExtract;
+	if (elr64DirectoryRecordSize > 4)
+		uint        el64DiskNumber;
+	if (elr64DirectoryRecordSize > 8)
+		uint        el64StartDiskNumber;
+	if (elr64DirectoryRecordSize > 12)
+		int64       el64EntriesOnDisk;
+	if (elr64DirectoryRecordSize > 20)
+		int64       el64EntriesInDirectory;
+	if (elr64DirectoryRecordSize > 28)
+		int64       el64DirectorySize;
+	if (elr64DirectoryRecordSize > 36)
+		int64       el64DirectoryOffset;
+	if (elr64DirectoryRecordSize > 44)
+	{
+        char DataSect [elr64DirectoryRecordSize - 44];
+//	    local int len = elr64DirectoryRecordSize - 44;
+//	    while (len > 0)
+//	    {
+//		    EXTRA64FIELD frExtraField;
+//		    len -= frExtraField.efDataSize + 4;
+//	    }
+
+    }
+} ZIP64ENDLOCATORRECORD;
+
+//Zip64 end of central directory locator
+typedef struct {
+	SignatureTYPE elSignature;    //0x07064b50
+	uint     elStartDiskNumber;
+	int64    elDirectoryOffset;
+	uint     elEntriesInDirectory;
+}  ZIP64ENDLOCATOR;
+
+// Defines the end of central directory locator
+typedef struct {
+	SignatureTYPE elSignature;    //0x06054b50
+	ushort   elDiskNumber;
+	ushort   elStartDiskNumber;
+	ushort   elEntriesOnDisk;
+	ushort   elEntriesInDirectory;
+	uint     elDirectorySize;
+	uint     elDirectoryOffset;
+	ushort   elCommentLength;
+	if( elCommentLength > 0 )
+		char elComment[ elCommentLength ];
+} ZIPENDLOCATOR;
+
+//--------------------------------------------
+
+// Custom read functions that allows the name of the
+//  of the file to appear in the Template Results.
+
+string ReadZIPFILERECORD( ZIPFILERECORD &file )
+{
+	if( exists( file.frFileName ) )
+		return file.frFileName;
+	else
+		return "";
+}
+
+string ReadZIPDIRENTRY( ZIPDIRENTRY &entry )
+{
+	if( exists( entry.deFileName ) )
+		return entry.deFileName;
+	else
+		return "";
+}
+
+// Custom write function that allows changing
+//  the name of the file - note that the file
+//  name size cannot be increased
+
+void WriteZIPFILERECORD( ZIPFILERECORD &file, string s )
+{
+	local int len = Strlen( s );
+	if( exists( file.frFileName ) )
+	{
+		Strncpy( file.frFileName, s, file.frFileNameLength );
+		if( len < file.frFileNameLength )
+		file.frFileName[len] = 0; //null terminate        
+	}
+}
+
+//--------------------------------------------
+
+// Define the file
+local uint tag;
+LittleEndian(); 
+while( !FEof() )
+{
+	// Read a tag
+	tag = ReadUInt( FTell() );
+
+	// Read data depending upon tag - should start with 'PK'.
+	// Note that when duplicate variables are defined, they
+	// are made into an array (see 'Using Templates and Structs'
+	// in the help file).
+	if( tag == S_ZIPFILERECORD )
+	{
+		SetBackColor( cLtGray );
+		ZIPFILERECORD record;
+		if (record.frExtraFieldLength > 0 && record.frExtraField.efHeaderID == EH_Zip64)
+		{
+			//Printf("%Lu", record.frExtraField.efCompressedSize);
+			FSkip(record.frExtraField.efCompressedSize);
+		}
+	}
+	else if( tag == S_ZIPDATADESCR )
+	{
+		SetBackColor( cLtGreen );
+		ZIPDATADESCR dataDescr;
+	}
+	else if( tag == S_ZIPDIRENTRY )
+	{
+		SetBackColor( cLtPurple );
+		ZIPDIRENTRY dirEntry;
+	}
+	else if( tag == S_ZIPDIGITALSIG )
+	{
+		SetBackColor( cLtBlue );
+		ZIPDIGITALSIG digitalSig;
+	}
+	else if( tag == S_ZIP64ENDLOCATORRECORD )
+	{
+		SetBackColor( cYellow );
+		ZIP64ENDLOCATORRECORD end64Locator;
+	}
+	else if( tag == S_ZIP64ENDLOCATOR )
+	{
+		SetBackColor( cDkYellow );
+		ZIP64ENDLOCATOR end64Locator;
+	}
+	else if( tag == S_ZIPENDLOCATOR )
+	{
+		SetBackColor( cLtYellow );
+		ZIPENDLOCATOR endLocator;
+	}
+	else
+	{
+		Warning( "Unknown ZIP tag encountered. Template stopped." );
+		return -1;
+	}
+}
