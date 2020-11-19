@@ -384,18 +384,18 @@ public:
 			int s = rand_int(256, [&size, &bits, this](unsigned char* file_buf) -> long long {
 				unsigned long long value = parse_integer(file_buf, size, bits);
 				if (value > 0 && value <= 1<<4)
-					return 32;
+					return 0;
 				if (value < 1<<8)
-					return 8;
+					return 256 - 32;
 				if (value < 1<<16)
-					return 2;
-				return 0;
+					return 256 - 8;
+				return 256 - 2;
 			});
-			if (s < 2)
+			if (s >= 256 - 2)
 				value = rand_int(1LLU<<(bits ? bits : 8*size), parse);
-			else if (s < 8)
+			else if (s >= 256 - 8)
 				value = rand_int(1<<16, parse);
-			else if (s < 32)
+			else if (s >= 256 - 32)
 				value = rand_int(1<<8, parse);
 			else
 				value = 1+rand_int(1<<4, [&size, &bits, this](unsigned char* file_buf) -> long long {
@@ -404,11 +404,20 @@ public:
 					return value;
 				});
 		} else {
-			value = 1+rand_int(1<<4, [&size, &bits, this](unsigned char* file_buf) -> long long {
-				long long value = parse_integer(file_buf, size, bits);
-				--value;
-				return value;
+			int s = rand_int(256, [&size, &bits, this](unsigned char* file_buf) -> long long {
+				unsigned long long value = parse_integer(file_buf, size, bits);
+				if (value > 0 && value <= 1<<4)
+					return 0;
+				return 255;
 			});
+			if (s == 255)
+				value = rand_int(1LLU<<(bits ? bits : 8*size), parse);
+			else
+				value = 1+rand_int(1<<4, [&size, &bits, this](unsigned char* file_buf) -> long long {
+					long long value = parse_integer(file_buf, size, bits);
+					--value;
+					return value;
+				});
 		}
 		if (has_bitmap) {
 			for (unsigned i = 0; i < size; ++i) {

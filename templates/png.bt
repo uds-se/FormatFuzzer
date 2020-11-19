@@ -317,7 +317,7 @@ local uint32 CHUNK_CNT = 0;
 
 // Generic Chunks
 typedef struct {
-    uint32  length;                      // Number of data bytes (not including length,type, or crc)
+    uint32  length<arraylength=true>;                      // Number of data bytes (not including length,type, or crc)
     local int64 pos_start = FTell();
     CTYPE   type <fgcolor=cDkBlue>;        // Type of chunk
     if (type.cname == "IHDR")
