@@ -1885,7 +1885,7 @@ public:
 		frCompressedSize(2),
 		frUncompressedSize(1),
 		frFileNameLength(2),
-		frExtraFieldLength(1),
+		frExtraFieldLength(2),
 		frFileName_element(false),
 		frFileName(frFileName_element),
 		efDataSize(2),
@@ -2047,7 +2047,6 @@ EXTRAFIELD* EXTRAFIELD::generate() {
 
 	GENERATE_VAR(efHeaderID, HEADERFLAG_generate());
 	GENERATE_VAR(efDataSize, ::g->efDataSize.generate());
-	Printf("%d", efHeaderID());
 	switch (efHeaderID()) {
 	case EH_Zip64:
 		GENERATE_VAR(efOriginalSize, ::g->efOriginalSize.generate());
@@ -2398,14 +2397,18 @@ void generate_file() {
 		SetEvilBit(::g->evil_state);
 		switch (STR2INT(::g->current_tag)) {
 		case STR2INT("PK\x03\x04"):
-			Printf("frIndex: %d\n", ::g->frIndex);
 			SetBackColor(cLtGray);
 			GENERATE(record, ::g->record.generate());
 			if (((::g->record().frExtraFieldLength() > 0) && (::g->record().frExtraField().efHeaderID() == EH_Zip64))) {
 				FSkip(::g->record().frExtraField().efCompressedSize());
 			};
-			::g->preferred_tags = { "PK\x01\x02" };
-			::g->possible_tags = { "PK\x01\x02", "PK\x03\x04" };
+			if ((::g->frIndex > 0)) {
+				::g->preferred_tags = { "PK\x01\x02" };
+				::g->possible_tags = { "PK\x01\x02", "PK\x03\x04" };
+			} else {
+				::g->preferred_tags = { "PK\x03\x04" };
+				::g->possible_tags = { "PK\x01\x02", "PK\x03\x04" };
+			};
 			::g->frIndex++;
 			break;
 		case STR2INT("PK\x01\x02"):
@@ -2431,10 +2434,14 @@ void generate_file() {
 		case STR2INT("PK\x06\x06"):
 			SetBackColor(cYellow);
 			GENERATE(end64Locator, ::g->end64Locator.generate());
+			::g->preferred_tags = { "PK\x06\x07" };
+			::g->possible_tags = { "PK\x06\x07" };
 			break;
 		case STR2INT("PK\x06\x07"):
 			SetBackColor(cDkYellow);
 			GENERATE(end64Locator, ::g->end64Locator_.generate());
+			::g->preferred_tags = { "PK\x05\x06" };
+			::g->possible_tags = { "PK\x05\x06" };
 			break;
 		case STR2INT("PK\x05\x06"):
 			SetBackColor(cLtYellow);

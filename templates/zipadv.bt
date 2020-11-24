@@ -31,6 +31,14 @@
 
 // Define structures used in ZIP files
 
+#define T_ZIPFILERECORD         "PK\x03\x04"
+#define T_ZIPDIRENTRY           "PK\x01\x02"
+#define T_ZIPDATADESCR          "PK\x07\x08"
+#define T_ZIPDIGITALSIG         "PK\x05\x05"
+#define T_ZIP64ENDLOCATORRECORD "PK\x06\x06"
+#define T_ZIP64ENDLOCATOR       "PK\x06\x07"
+#define T_ZIPENDLOCATOR         "PK\x05\x06"
+
 typedef enum <uint> {
 	S_ZIPFILERECORD 		= 0x04034b50,
 	S_ZIPDATADESCR 			= 0x08074b50,
@@ -227,7 +235,7 @@ typedef struct {
 	HEADERFLAG  efHeaderID;
 	ushort  efDataSize<arraylength=true>;
 
-	Printf("%d", efHeaderID);
+	//Printf("%d", efHeaderID);
 	switch (efHeaderID)
 	{
 	case EH_Zip64:
@@ -240,6 +248,7 @@ typedef struct {
 		byte efVersion;
 		uint efNameCRC32;
 		if(efDataSize > 0 )
+		    //Array Bounds Check
 		    char efUnicodeName[efDataSize - 5];
 		break;
     case EH_NTFS:
@@ -266,6 +275,7 @@ typedef struct {
         ushort  Bitlen;    //2 bytes  Bit length of encryption key
         PRCFLAG Flags;     //2 bytes  Processing flags
         if (efDataSize > 8)
+            //Array Bounds Check
             byte    CertData[efDataSize - 8];  //TSize-8  Certificate decryption extra field data        
         break;
     case EH_WzAES:
@@ -290,7 +300,7 @@ typedef struct {
 	HEADERFLAG  efHeaderID;
 	uint  efDataSize<arraylength=true>;
 
-	Printf("%d", efHeaderID);
+	//Printf("%d", efHeaderID);
 	switch (efHeaderID)
 	{
 	case EH_Zip64:
@@ -303,6 +313,7 @@ typedef struct {
 		byte efVersion;
 		uint efNameCRC32;
 		if(efDataSize > 0 )
+            //Array Bounds Check
 		    char efUnicodeName[efDataSize - 5];
 		break;
 	default:
@@ -399,7 +410,7 @@ typedef struct {
 	uint     frCompressedSize<arraylength=true>;
 	uint     frUncompressedSize;
 	ushort   frFileNameLength<arraylength=true>;
-	ushort   frExtraFieldLength;
+	ushort   frExtraFieldLength<arraylength=true>;
 	if( frFileNameLength > 0 )
 	char     frFileName[ frFileNameLength ];
 	
@@ -430,6 +441,7 @@ typedef struct {
             byte    VData[VSize - 4];
             uint    VCRC32;
         } StrongEncryptedHeader;
+        //Array Bounds Check TODO
         char    frData[ frCompressedSize - StrongEncryptedHeader.IVSize - StrongEncryptedHeader.Size - 6];
     }
     else if ((frFlags & FLAG_Encrypted) && ( frCompression == COMP_WzAES ))
@@ -452,6 +464,7 @@ typedef struct {
         }
         uchar   SaltValue[lenSalt];
         ushort  PassVerification;
+        //Array Bounds Check TODO
 		uchar   frData[ frCompressedSize - 12 - lenSalt];
 		uchar   AuthenticationCode[ 10];
     }
@@ -596,15 +609,13 @@ string ReadZIPDIRENTRY( ZIPDIRENTRY &entry )
 //  the name of the file - note that the file
 //  name size cannot be increased
 
-void WriteZIPFILERECORD( ZIPFILERECORD &file, string s )
-{
-	local int len = Strlen( s );
-	if( exists( file.frFileName ) )
-	{
-		Strncpy( file.frFileName, s, file.frFileNameLength );
-		if( len < file.frFileNameLength )
-		file.frFileName[len] = 0; //null terminate        
-	}
+void WriteZIPFILERECORD( ZIPFILERECORD &file, string s ) {
+    local int len = Strlen(s);
+    if (exists(file.frFileName)) {
+        Strncpy(file.frFileName, s, file.frFileNameLength);
+        if (len < file.frFileNameLength)
+            file.frFileName[len] = 0; //null terminate
+    }
 }
 
 LittleEndian();
@@ -613,8 +624,8 @@ local char current_tag[4];
 local int frIndex = 0;
 local int deIndex = 0;
 
-local string preferred_tags[] = { "PK\x03\x04" /*ZIPFILERECORD*/ }; //TODO
-local string possible_tags[] = { "PK\x03\x04" /*ZIPFILERECORD*/, "PK\x05\x06" /*ZIPENDLOCATOR*/ }; //TODO
+local string preferred_tags[] = { T_ZIPFILERECORD };
+local string possible_tags[] = { T_ZIPFILERECORD, T_ZIPENDLOCATOR };
 
 local int evil_state = SetEvilBit(false);
 
@@ -623,53 +634,61 @@ while(ReadBytes(current_tag, FTell(), 4, preferred_tags, possible_tags)) {
     SetEvilBit(evil_state);
 
     switch(current_tag) {
-    case "PK\x03\x04": //ZIPFILERECORD TODO
-        Printf("frIndex: %d\n", frIndex);
+    case T_ZIPFILERECORD:
         SetBackColor(cLtGray);
         ZIPFILERECORD record;
         if (record.frExtraFieldLength > 0
          && record.frExtraField.efHeaderID == EH_Zip64) {
             FSkip(record.frExtraField.efCompressedSize);
         }
-        local string preferred_tags[] = { "PK\x01\x02" /*ZIPDIRENTRY*/ };
-        local string possible_tags[] = { "PK\x01\x02" /*ZIPDIRENTRY*/, "PK\x03\x04" /*ZIPFILERECORD*/ };
+        if (frIndex > 0) {
+            local string preferred_tags[] = { T_ZIPDIRENTRY };
+            local string possible_tags[] = { T_ZIPDIRENTRY, T_ZIPFILERECORD };
+        } else {
+            local string preferred_tags[] = { T_ZIPFILERECORD };
+            local string possible_tags[] = { T_ZIPFILERECORD, T_ZIPFILERECORD };
+        }
         frIndex++;
         break;
-    case "PK\x01\x02": //ZIPDIRENTRY TODO
+    case T_ZIPDIRENTRY:
         SetBackColor(cLtPurple);
         ZIPDIRENTRY dirEntry;
         deIndex++;
         if (deIndex == frIndex) { //Got dir entry for each file records
-            local string preferred_tags[] = { "PK\x05\x06" /*ZIPENDLOCATOR*/ };
-            local string possible_tags[] = { "PK\x05\x06" /*ZIPENDLOCATOR*/ };
+            local string preferred_tags[] = { T_ZIPENDLOCATOR };
+            local string possible_tags[] = { T_ZIPENDLOCATOR };
         } else { //Need more dir entries
-            local string preferred_tags[] = { "PK\x01\x02" /*ZIPDIRENTRY*/ };
-            local string possible_tags[] = { "PK\x01\x02" /*ZIPDIRENTRY*/ };
+            local string preferred_tags[] = { T_ZIPDIRENTRY };
+            local string possible_tags[] = { T_ZIPDIRENTRY };
         }
         break;
-    case "PK\x07\x08": //ZIPDATADESCR TODO
+    case T_ZIPDATADESCR:
         SetBackColor(cLtGreen);
         ZIPDATADESCR dataDescr;
         break;
-    case "PK\x05\x05": //ZIPDIGITALSIG TODO
+    case T_ZIPDIGITALSIG:
         SetBackColor(cLtBlue);
         ZIPDIGITALSIG digitalSig;
         break;
-    case "PK\x06\x06": //ZIP64ENDLOCATORRECORD TODO
+    case T_ZIP64ENDLOCATORRECORD:
         SetBackColor(cYellow);
         ZIP64ENDLOCATORRECORD end64Locator;
+        local string preferred_tags[] = { T_ZIP64ENDLOCATOR };
+        local string possible_tags[] = { T_ZIP64ENDLOCATOR };
         break;
-    case "PK\x06\x07": //ZIP64ENDLOCATOR TODO
+    case T_ZIP64ENDLOCATOR:
         SetBackColor(cDkYellow);
         ZIP64ENDLOCATOR end64Locator;
+        local string preferred_tags[] = { T_ZIPENDLOCATOR };
+        local string possible_tags[] = { T_ZIPENDLOCATOR };
         break;
-    case "PK\x05\x06": //ZIPENDLOCATOR TODO
+    case T_ZIPENDLOCATOR:
         SetBackColor(cLtYellow);
         ZIPENDLOCATOR endLocator;
         local string preferred_tags[0];
         local string possible_tags[0];
         break;
-    default: //Invalid ZIP Tag
+    default:
         Printf("Invalid ZIP tag occurred!\n");
         return -1;
     }
