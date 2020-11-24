@@ -652,7 +652,8 @@ def Printf(params, ctxt, scope, stream, coord, interp):
             parts.append(PYSTR(part))
         else:
             parts.append(PYVAL(part))
-
+    if interp._generate:
+        return 0
     to_print = PYSTR(params[0]) % tuple(parts)
     res = len(to_print)
 

@@ -169,6 +169,8 @@ public:
 	UBYTE_bitfield(int small, std::vector<UBYTE> known_values = {}) : small(small), known_values(known_values) {}
 
 	UBYTE generate(unsigned bits) {
+		if (!bits)
+			return 0;
 		if (known_values.empty()) {
 			value = file_acc.file_integer(sizeof(UBYTE), bits, small);
 		} else {
@@ -178,6 +180,8 @@ public:
 	}
 
 	UBYTE generate(unsigned bits, std::vector<UBYTE> new_known_values) {
+		if (!bits)
+			return 0;
 		for (auto& known : known_values) {
 			new_known_values.push_back(known);
 		}
@@ -2026,6 +2030,7 @@ TRAILER* TRAILER::generate() {
 
 void generate_file() {
 	::g = new globals_class();
+
 	LittleEndian();
 	SetBackColor(0xFFFFFF);
 	GENERATE(GifHeader, ::g->GifHeader.generate());
@@ -2043,6 +2048,8 @@ void generate_file() {
 	GENERATE(Data, ::g->Data_.generate());
 	SetBackColor(0xFFFFFF);
 	GENERATE(Trailer, ::g->Trailer.generate());
+
+	file_acc.finish();
 	delete_globals();
 }
 

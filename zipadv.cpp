@@ -1876,6 +1876,7 @@ public:
 
 
 	globals_class() :
+		current_tag(4, 0),
 		Version(1),
 		frVersion(VERECORD_frVersion_instances),
 		frFileTime(1),
@@ -2386,6 +2387,7 @@ ZIPENDLOCATOR* ZIPENDLOCATOR::generate() {
 
 void generate_file() {
 	::g = new globals_class();
+
 	LittleEndian();
 	::g->frIndex = 0;
 	::g->deIndex = 0;
@@ -2446,6 +2448,8 @@ void generate_file() {
 		};
 		::g->evil_state = SetEvilBit(false);
 	};
+
+	file_acc.finish();
 	delete_globals();
 }
 

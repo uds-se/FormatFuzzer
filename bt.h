@@ -299,6 +299,12 @@ extern "C" size_t afl_pre_save_handler(unsigned char* data, size_t size, unsigne
 	file_acc.seed(data, size, 0);
 	try {
 		generate_file();
+	} catch (int status) {
+		delete_globals();
+		if (status) {
+			*new_data = NULL;
+			return 0;
+		}
 	} catch (...) {
 		delete_globals();
 		*new_data = NULL;
@@ -323,6 +329,10 @@ extern "C" int afl_post_load_handler(unsigned char* data, size_t size, unsigned 
 	bool success = true;
 	try {
 		generate_file();
+	} catch (int status) {
+		delete_globals();
+		if (status)
+			success = false;
 	} catch (...) {
 		delete_globals();
 		success = false;
@@ -339,6 +349,12 @@ void exit_template(int status) {
 	throw status;
 }
 
+void exit_template(std::string message) {
+	if (debug_print || print_errors)
+		fprintf(stderr, "Template exited with message: %s\n", message.c_str());
+	throw -1;
+}
+
 bool change_array_length = false;
 
 void check_array_length(unsigned& size) {
@@ -346,7 +362,6 @@ void check_array_length(unsigned& size) {
 		unsigned new_size = file_acc.rand_int(16, NULL);
 		if (debug_print)
 			fprintf(stderr, "Array length too large: %d, replaced with %u\n", (signed)size, new_size);
-		// throw 0;
 		size = new_size;
 	}
 }
@@ -377,6 +392,11 @@ void BitfieldDisablePadding() {
 
 void SetBackColor(int color) { }
 
+void DisplayFormatBinary() { }
+void DisplayFormatDecimal() { }
+void DisplayFormatHex() { }
+void DisplayFormatOctal() { }
+
 int SetEvilBit(int allow) {
 	return file_acc.set_evil_bit(allow);
 }
@@ -392,9 +412,15 @@ uint32 Checksum(int checksum_type, int64 start, int64 size) {
 	}
 }
 
-void Warning(std::string s) {
-	if (debug_print || print_errors)
-		fprintf(stderr, "Warning: %s\n", s.c_str());
+void Warning(const std::string fmt, ...) {
+	if (!debug_print && !print_errors)
+		return;
+	fprintf(stderr, "Warning: ");
+	va_list args;
+	va_start(args,fmt);
+	vfprintf(stderr, fmt.c_str(), args);
+	va_end(args);
+	fprintf(stderr, "\n");
 }
 
 void Printf(const std::string fmt, ...) {
@@ -454,10 +480,14 @@ int64 FTell() { return file_acc.file_pos; }
 int FSeek(int64 pos) {
 	assert_cond(0 <= pos && pos <= MAX_FILE_SIZE, "FSeek/FSkip: invalid position");
 	if (pos > file_acc.file_size) {
+		if (debug_print)
+			fprintf(stderr, "Padding file from %u to %lld\n", file_acc.file_size, pos);
 		file_acc.file_pos = file_acc.file_size;
+		file_acc.is_padding = true;
 		while (file_acc.file_pos < pos) {
 			file_acc.file_integer(1, 0, 0);
 		}
+		file_acc.is_padding = false;
 	} else {
 		file_acc.file_pos = pos;
 	}
@@ -528,7 +558,7 @@ bool ReadBytes(std::string& s, int64 pos, int n) {
 	return true;
 }
 
-bool ReadBytes(std::string& s, int64 pos, int n, std::vector<std::string> preferred_values, std::vector<std::string> new_known_values = {}) {
+bool ReadBytes(std::string& s, int64 pos, int n, std::vector<std::string> preferred_values, std::vector<std::string> new_known_values = {}, double p = 0.25) {
 	assert_cond(n > 0, "ReadBytes: invalid number of bytes");
 	int64 original_pos = FTell();
 	file_acc.file_pos = pos;
@@ -544,16 +574,16 @@ bool ReadBytes(std::string& s, int64 pos, int n, std::vector<std::string> prefer
 	std::function<long long (unsigned char*)> parse;
 	if (preferred_values.size()) {
 		parse = [&preferred_values, &n](unsigned char* file_buf) -> long long {
-	                	return std::find(preferred_values.begin(), preferred_values.end(), std::string((char*)file_buf, n)) == preferred_values.end();
+	                	return 255 * (std::find(preferred_values.begin(), preferred_values.end(), std::string((char*)file_buf, n)) == preferred_values.end());
 	                };
 	} else {
 		parse = [&new_known_values, &n](unsigned char* file_buf) -> long long {
-	                	return std::find(new_known_values.begin(), new_known_values.end(), std::string((char*)file_buf, n)) != new_known_values.end();
+	                	return 255 * (std::find(new_known_values.begin(), new_known_values.end(), std::string((char*)file_buf, n)) != new_known_values.end());
 	                };
 		evil = SetEvilBit(false);
 	}
 	
-	if (file_acc.rand_int(4, parse) == 0) {
+	if (file_acc.rand_int(256, parse) < 255 * p) {
 		if (preferred_values.size())
 			s = file_acc.file_string(preferred_values);
 		else {

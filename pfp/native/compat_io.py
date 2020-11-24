@@ -153,6 +153,8 @@ def FSeek(params, ctxt, scope, stream, coord):
             "FSeek accepts only one argument",
         )
 
+    if params[0] is None:
+        return 0
     pos = PYVAL(params[0])
     curr_pos = stream.tell()
 

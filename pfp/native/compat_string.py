@@ -309,6 +309,8 @@ def Strcmp(params, ctxt, scope, stream, coord):
     str1 = PYSTR(params[0])
     str2 = PYSTR(params[1])
 
+    if params[0] is None or params[1] is None:
+        return 0
     return _cmp(str1, str2)
 
 

@@ -73,6 +73,12 @@ int fuzz(int argc, char **argv)
 			generate_file();
 			success = true;
 		}
+		catch (int status)
+		{
+			delete_globals();
+			if (status == 0)
+				success = true;
+		}
 		catch (...)
 		{
 			delete_globals();
@@ -144,6 +150,12 @@ int parse(int argc, char **argv)
 		{
 			generate_file();
 			success = true;
+		}
+		catch (int status)
+		{
+			delete_globals();
+			if (status == 0)
+				success = true;
 		}
 		catch (...)
 		{

@@ -650,6 +650,7 @@ class PfpInterp(object):
     _cpp = []
     _functions_cpp = []
     _read_funcs = set()
+    _fstat_funcs = set()
     _generates_cpp = ""
     _known_values = {}
     _defined = {"time" : None}
@@ -737,6 +738,8 @@ class PfpInterp(object):
             cpp += "\t" + classname + "(int small, std::vector<" + classtype + "> known_values = {}) : small(small), known_values(known_values) {}\n"
             if is_bitfield:
                 cpp += "\n\t" + classtype + " generate(unsigned bits) {\n"
+                cpp += "\t\tif (!bits)\n"
+                cpp += "\t\t\treturn 0;\n"
             else:
                 cpp += "\n\t" + classtype + " generate() {\n"
             if not is_bitfield:
@@ -756,6 +759,8 @@ class PfpInterp(object):
             cpp += "\t}\n"
             if is_bitfield:
                 cpp += "\n\t" + classtype + " generate(unsigned bits, std::vector<" + classtype + "> new_known_values) {\n"
+                cpp += "\t\tif (!bits)\n"
+                cpp += "\t\t\treturn 0;\n"
             else:
                 cpp += "\n\t" + classtype + " generate(std::vector<" + classtype + "> new_known_values) {\n"
             if not is_bitfield:
@@ -1607,7 +1612,11 @@ class PfpInterp(object):
             self._handle_node(child, scope, ctxt, stream)
             for decl in self.get_decls(child):
                 if "local" in decl.quals and "const" not in decl.quals and hasattr(decl.type, "cpp") and decl.name not in self._global_locals:
-                    self._globals.append((decl.name, decl.type.cpp + " " + decl.name + ";\n"))
+                    cpp = decl.type.cpp + " " + decl.name
+                    if hasattr(decl, "constructor"):
+                        cpp += decl.constructor
+                    cpp += ";\n"
+                    self._globals.append((decl.name, cpp))
                     self._global_locals.append(decl.name)
             if child.cpp:
                 node.cpp1 += "\t" + child.cpp.replace("\n", "\n\t") + ";\n"
@@ -1659,8 +1668,9 @@ class PfpInterp(object):
             node.cpp += c
         node.cpp += self._generates_cpp
         node.cpp += "\n\nvoid generate_file() {\n"
-        node.cpp += "\t::g = new globals_class();\n"
+        node.cpp += "\t::g = new globals_class();\n\n"
         node.cpp += node.cpp1
+        node.cpp += "\n\tfile_acc.finish();\n"
         node.cpp += "\tdelete_globals();\n"
         node.cpp += "}\n"
         node.cpp += "\nvoid delete_globals() { delete ::g; }\n"
@@ -1688,6 +1698,11 @@ class PfpInterp(object):
                 print("\nMined interesting values:\n")
             for var in sorted(self._known_values):
                 print(var + ":", self._known_values[var])
+            if self._fstat_funcs:
+                print("\nFile stat functions found:\n")
+            for f in self._fstat_funcs:
+                print(f)
+            print()
             sys.exit(0)
 
         ctxt._pfp__process_fields_metadata()
@@ -1782,6 +1797,8 @@ class PfpInterp(object):
 
             metadata_processor = process_metadata
 
+        if not node.name and node.bitsize:
+            node.name = "_".join(node.type.type.names) + "_bitfield_padding"
         field_name = self._get_node_name(node)
         #print("handling decl")
         #print(field_name)
@@ -1879,7 +1896,7 @@ class PfpInterp(object):
                 classname = " ".join(node.type.type.type.names)
                 if classname == "string":
                     classname = "std::string"
-                if classname in ["uchar", "char"]:
+                if classname in ["char", "uchar", "unsigned char", "CHAR", "UCHAR"]:
                     node.type.cpp += "std::string"
                 else:
                     node.type.cpp += "std::vector<" + classname + ">"
@@ -1889,8 +1906,10 @@ class PfpInterp(object):
                 else:
                     node.cpp = node.type.cpp + " " + node.name
                 if node.init is None and node.type.dim.cpp != "0":
-                    if classname in ["uchar", "char"]:
-                        node.cpp += "(" + node.type.dim.cpp + ", 0)"
+                    if classname in ["char", "uchar", "unsigned char", "CHAR", "UCHAR"]:
+                        node.constructor = "(" + node.type.dim.cpp + ", 0)"
+                    else:
+                        node.constructor = "(" + node.type.dim.cpp + ")"
                     if in_struct:
                         node.cpp = ""
                 else:
@@ -2281,7 +2300,7 @@ class PfpInterp(object):
                     if node.metadata is not None and "values" in node.metadata.keyvals:
                         if is_bitfield:
                             node.cpp += ", "
-                        node.cpp += node.metadata.keyvals["values"].split(",")[0]
+                        node.cpp += "/**/" + node.metadata.keyvals["values"].split(",")[0] + "()"
                     node.cpp += "))"
                 elif issubclass(nodetype, fields.Enum):
                     node.cpp = "GENERATE"
@@ -2934,7 +2953,7 @@ class PfpInterp(object):
             try:
                 res = switch[node.op](left_val, right_val)
             except:
-                print("* EXCEPTION IN BINARY OP " + str(left_val) + " " + node.op + " " + str(right_val) + ", in line " + str(node.coord.line))
+                #print("* EXCEPTION IN BINARY OP " + str(left_val) + " " + node.op + " " + str(right_val) + ", in line " + str(node.coord.line))
                 pass
 
         node.cpp = "(" + node.left.cpp + " " + node.op + " " + node.right.cpp + ")"
@@ -2983,11 +3002,15 @@ class PfpInterp(object):
         if node.op not in switch and node.op not in special_switch:
             raise errors.UnsupportedUnaryOperator(node.coord, node.op)
 
-        if node.op == "exists" and node.expr.__class__ == AST.StructRef:
-            node.cpp = node.expr.name.name + "." + node.expr.field.name + "_exists"
 
         if node.op in special_switch:
-            return special_switch[node.op](node, scope, ctxt, stream)
+            result = special_switch[node.op](node, scope, ctxt, stream)
+            if node.op == "exists" and node.expr.__class__ == AST.StructRef:
+                if node.expr.name.__class__ == AST.ArrayRef:
+                    node.cpp = node.expr.name.cpp + "->" + node.expr.field.name + "_exists"
+                else:
+                    node.cpp = node.expr.name.cpp + "." + node.expr.field.name + "_exists"
+            return result
 
         field = self._handle_node(node.expr, scope, ctxt, stream)
         if node.op == "sizeof":
@@ -3307,6 +3330,8 @@ class PfpInterp(object):
         if node.name.name.startswith("Read"):
             self._read_funcs.add(node.name.name)
         node.cpp = "" + node.name.name + "("
+        if node.name.name in ["FEof", "FSeek", "FSkip", "FileSize"]:
+            self._fstat_funcs.add(node.name.name)
         if node.name.name in ["Printf", "SPrintf"]:
             is_sprintf = 1 if node.name.name == "SPrintf" else 0
             fmt = node.args.exprs[is_sprintf].cpp
@@ -3318,7 +3343,7 @@ class PfpInterp(object):
                     continue
                 i += 1
                 if fmt[index + 1] == "s":
-                    node.args.exprs[is_sprintf + i].cpp += ".c_str()"
+                    node.args.exprs[is_sprintf + i].cpp = "std::string(" + node.args.exprs[is_sprintf + i].cpp + ").c_str()"
                 index = fmt.find("%", index + 2)
             if is_sprintf + i + 1 != len(node.args.exprs):
                 print("Warning: wrong number of % formats in " + node.name.name)
@@ -3419,6 +3444,7 @@ class PfpInterp(object):
                     raise ret
                 else:
                     node.cpp = node.cpp.replace("return ", "exit_template")
+                    node.cpp = node.cpp.replace("return;", "exit_template(0);")
 
         # in case a return occurs, be sure to pop the scope
         # (returns are implemented by raising an exception)
@@ -3653,6 +3679,7 @@ class PfpInterp(object):
                     raise ret
                 else:
                     node.cpp = node.cpp.replace("return ", "exit_template")
+                    node.cpp = node.cpp.replace("return;", "exit_template(0);")
             if node.iffalse is not None and not cond:
                 return false_branch
             else:
@@ -3783,6 +3810,12 @@ class PfpInterp(object):
                 break
             if self._generate:
                 break
+        node.cpp = "do {\n"
+        if node.stmt.__class__ == AST.Compound:
+            node.cpp += node.stmt.cpp
+        else:
+            node.cpp += "\t" + node.stmt.cpp + ";\n"
+        node.cpp += "} while (" + node.cond.cpp + ")"
 
     def _flatten_list(self, l):
         for el in l:
@@ -3919,6 +3952,7 @@ class PfpInterp(object):
                     raise ret
                 else:
                     node.cpp = node.cpp.replace("return ", "exit_template")
+                    node.cpp = node.cpp.replace("return;", "exit_template(0);")
 
     def _handle_break(self, node, scope, ctxt, stream):
         """Handle break node

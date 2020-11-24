@@ -50,7 +50,7 @@ void assert_cond(bool cond, const char* error_msg) {
 	if (!cond) {
 		if (debug_print || print_errors)
 			fprintf(stderr, "Error: %s\n", error_msg);
-		throw 0;
+		throw -1;
 	}
 }
 
@@ -72,6 +72,7 @@ class file_accessor {
 				new_bitfield_bits = 0;
 			}
 
+			unsigned initial_bitfield_bits = new_bitfield_bits;
 			unsigned new_bits = bits;
 			while (new_bits) {
 				unsigned byte_pos = new_bitfield_bits / 8;
@@ -82,9 +83,9 @@ class file_accessor {
 				unsigned b1;
 				unsigned b2;
 				if (is_big_endian) {
-					b2 = bits - write_bits - (new_bitfield_bits - bitfield_bits);
+					b2 = bits - write_bits - (new_bitfield_bits - initial_bitfield_bits);
 				} else {
-					b2 = new_bitfield_bits - bitfield_bits;
+					b2 = new_bitfield_bits - initial_bitfield_bits;
 				}
 				if (is_bitfield_left_to_right[is_big_endian]) {
 					b1 = (8 - bits_pos - write_bits);
@@ -102,26 +103,26 @@ class file_accessor {
 
 			return value;
 		}
+		unsigned start_pos = bitfield_bits ? bitfield_size : 0;
 		if (is_big_endian) {
 			unsigned char* dest = (unsigned char*) &value;
 			for (unsigned i = 0; i < size; ++i)
-				dest[i] = file_buf[size-1-i];
+				dest[i] = file_buf[start_pos + size-1-i];
 		} else {
-			memcpy(&value, file_buf, size);
+			memcpy(&value, file_buf + start_pos, size);
 		}
 		return value;
 	}
 
 	void write_file_bits(unsigned long long value, size_t size, unsigned bits) {
-		if (is_padded_bitfield && (bitfield_bits + bits > 8 * bitfield_size || size != bitfield_size)) {
-			file_pos += bitfield_size;
-			bitfield_size = 0;
-			bitfield_bits = 0;
+		if (is_padded_bitfield && bitfield_size && (bitfield_bits + bits > 8 * bitfield_size || size != bitfield_size)) {
+			is_padding = true;
+			file_integer(bitfield_size, 8 * bitfield_size - bitfield_bits, 0);
+			is_padding = false;
 		}
 		unsigned start_pos = file_pos;
 		assert_cond(file_pos + size <= MAX_FILE_SIZE, "file size exceeded MAX_FILE_SIZE");
-		if (!generate)
-			assert_cond(file_pos + size <= final_file_size, "reading past the end of file");
+		assert_cond(!has_size || file_pos + size <= file_size, "file size exceeded known size");
 		value &= (1LLU << bits) - 1LLU;
 		unsigned new_bits = bits;
 		while (new_bits) {
@@ -147,7 +148,9 @@ class file_accessor {
 				c <<= bits_pos;
 				mask <<= bits_pos;
 			}
-			int index = file_pos + byte_pos;
+			unsigned index = file_pos + byte_pos;
+			if (!generate)
+				assert_cond(index < final_file_size, "reading past the end of file");
 			unsigned char old = file_buffer[index];
 			file_buffer[index] &= ~mask;
 			file_buffer[index] |= c;
@@ -166,7 +169,7 @@ class file_accessor {
 
 		if (file_size < file_pos)
 			file_size = file_pos;
-		if (!get_parse_tree)
+		if (!get_parse_tree || is_padding)
 			return;
 		if (start_pos < generator_stack.back().min)
 			generator_stack.back().min = start_pos;
@@ -177,13 +180,14 @@ class file_accessor {
 
 	void write_file(const void *buf, size_t size) {
 		if (bitfield_bits) {
-			file_pos += bitfield_size;
-			bitfield_size = 0;
-			bitfield_bits = 0;
+			is_padding = true;
+			file_integer(bitfield_size, 8 * bitfield_size - bitfield_bits, 0);
+			is_padding = false;
 		}
 		unsigned start_pos = file_pos;
 		file_pos += size;
 		assert_cond(file_pos <= MAX_FILE_SIZE, "file size exceeded MAX_FILE_SIZE");
+		assert_cond(!has_size || file_pos <= file_size, "file size exceeded known size");
 		if (generate) {
 			memcpy(file_buffer + start_pos, buf, size);
 		} else {
@@ -220,6 +224,7 @@ public:
 	bool has_size = false;
 	bool generate = true;
 	bool lookahead = false;
+	bool is_padding = false;
 
 	file_accessor() : bitmap(MAX_FILE_SIZE) {}
 
@@ -275,6 +280,14 @@ public:
 		return (*p) % x;
 	}
 
+	void finish() {
+		if (bitfield_bits) {
+			is_padding = true;
+			file_integer(bitfield_size, 8 * bitfield_size - bitfield_bits, 0);
+			is_padding = false;
+		}
+	}
+
 	std::string rand_bytes(int size) {
 		std::string result;
 		for (int i = 0; i < size; ++i) {
@@ -297,6 +310,7 @@ public:
 		bitfield_size = 0;
 		bitfield_bits = 0;
 		lookahead = false;
+		is_padding = false;
 		if (has_bitmap)
 			std::fill(bitmap.begin(), bitmap.end(), false);
 		has_bitmap = false;
@@ -304,12 +318,21 @@ public:
 		is_bitfield_left_to_right[0] = false;
 		is_bitfield_left_to_right[1] = true;
 		is_padded_bitfield = true;
-		if (get_parse_tree)
+		if (get_parse_tree) {
+			generator_stack.erase(generator_stack.begin() + 1, generator_stack.end());
 			generator_stack[0].clear();
+		}
 	}
 
 	int feof() {
-		return rand_int(8, [this](unsigned char* file_buf) -> long long { return file_pos == final_file_size ? 7 : 0; } ) == 7;
+		if (file_pos < file_size)
+			return 0;
+		if (has_size)
+			return 1;
+		int is_feof = rand_int(8, [this](unsigned char* file_buf) -> long long { return file_pos == final_file_size ? 7 : 0; } ) == 7;
+		if (is_feof)
+			has_size = true;
+		return is_feof;
 	}
 
 	template<typename T>
@@ -374,12 +397,14 @@ public:
 		assert_cond(0 < size && size <= 8, "sizeof integer invalid");
 		assert_cond(file_pos + size <= MAX_FILE_SIZE, "file size exceeded MAX_FILE_SIZE");
 
+		unsigned long long range = bits ? bits : 8*size;
+		range = range == 64 ? 0 : 1LLU << range;
 		long long value;
 		std::function<long long (unsigned char*)> parse = [&size, &bits, this](unsigned char* file_buf) -> long long {
 			return parse_integer(file_buf, size, bits);
 		};
 		if (small == 0)
-			value = rand_int(1LLU<<(bits ? bits : 8*size), parse);
+			value = rand_int(range, parse);
 		else if (small == 1) {
 			int s = rand_int(256, [&size, &bits, this](unsigned char* file_buf) -> long long {
 				unsigned long long value = parse_integer(file_buf, size, bits);
@@ -392,7 +417,7 @@ public:
 				return 256 - 2;
 			});
 			if (s >= 256 - 2)
-				value = rand_int(1LLU<<(bits ? bits : 8*size), parse);
+				value = rand_int(range, parse);
 			else if (s >= 256 - 8)
 				value = rand_int(1<<16, parse);
 			else if (s >= 256 - 32)
@@ -411,7 +436,7 @@ public:
 				return 255;
 			});
 			if (s == 255)
-				value = rand_int(1LLU<<(bits ? bits : 8*size), parse);
+				value = rand_int(range, parse);
 			else
 				value = 1+rand_int(1<<4, [&size, &bits, this](unsigned char* file_buf) -> long long {
 					long long value = parse_integer(file_buf, size, bits);
