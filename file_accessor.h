@@ -235,7 +235,9 @@ public:
 	}
 
 	bool evil(std::function<bool (unsigned char*)> parse) {
-		return rand_int(127 + allow_evil_values, [&parse](unsigned char* file_buf) -> long long { return parse(file_buf) ? 127 : 0; } ) == 127;
+		bool is_evil = rand_int(127 + allow_evil_values, [&parse](unsigned char* file_buf) -> long long { return parse(file_buf) ? 127 : 0; } ) == 127;
+		assert_cond(!(!generate && !allow_evil_values && rand_buffer[rand_pos-1] == 127), "Evil bit is disabled, but an evil decision is required to parse this file");
+		return is_evil;
 	}
 
 	long long rand_int(unsigned long long x, std::function<long long (unsigned char*)> parse) {
