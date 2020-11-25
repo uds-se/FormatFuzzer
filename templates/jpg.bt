@@ -64,7 +64,7 @@ local DWORD clr = 0;
 local DWORD jetMap[6*3] = { // blue, red green
 	0x0000cc,0x0000ff,0x0033ff,0x0066ff,0x0099ff,0x00ccff,
 	0x00ffff,0x33ffcc,0x66ff99,0x99ff66,0xccff33,0xffff00,
-	0xffcc00,0xff9900,0xff6600,0xff3300,0xff0000,0xcc0000
+	0xffcc00,0xff9900,0xff6600,0xff3300,0xff0000,0xcc0000 
 };
 local char CameraMake[32];
 local char CameraModel[40];
@@ -1119,7 +1119,7 @@ typedef struct tagApp0 {
 } APP0;
 
 typedef struct tgAPP1 {
-	M_ID marker;
+	M_ID marker = {0xFFE0};
 	WORD szSection;
 
 	local string values5[] = { "Exif\0", "http:" };
@@ -1188,7 +1188,7 @@ typedef struct tgAPP1 {
 } APP1;
 
 typedef struct tgAPP2 {
-	M_ID marker;
+	M_ID marker = {0xFFE2};
 	WORD szSection;
 
 	local string values5[] = { "FPXR\0", "ICC_P" };
@@ -1568,11 +1568,39 @@ typedef struct tgJPGFile {
 	local int was_bigendian = IsBigEndian();
 	BigEndian(); 		
 		
-	uint16 StartMarker = {65496};
+	uint16 StartMarker = {M_SOI};
 	
-	//APP0 section
-	APP0 app0;
+	local ushort possibleValues[] = {M_APP0, M_DQT};
+	while(ReadUShort(FTell(),possibleValues) != M_DQT){
+		local ushort nextMarker = ReadUShort(FTell(),possibleValues);
+		switch(nextMarker){
+			case M_APP0:
+				APP0 app0;
+				break;
+			case M_APP1:
+				APP1 app1;
+				break;
+			case M_APP2:
+				APP2 app2;
+				break;
+			case M_APP12:
+				APP12 app0;
+				break;
+			case M_APP13:
+				APP13 app1;
+				break;
+			case M_APP14:
+				APP14 app2;
+				break;			
+			case M_COMM:
+				COMMENT comment;
+				break;
+		}	
+		possibleValues -= nextMarker;
 
+	}
+			
+	//APP0 section
 	//TODO optional more APPn sections
 	//TODO optional comment section
 
