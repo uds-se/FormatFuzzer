@@ -536,8 +536,9 @@ int64 FindFirst(T data, int matchcase=true, int wholeword=false, int method=0, d
 
 }
 
-void VectorRemove(std::vector<std::string>& vec, std::unordered_set<std::string> set) {
-	vec.erase(std::remove_if(vec.begin(), vec.end(), [&set](std::string s) { return set.find(s) != set.end(); }), vec.end());
+template<typename T>
+void VectorRemove(std::vector<T>& vec, std::unordered_set<T> set) {
+	vec.erase(std::remove_if(vec.begin(), vec.end(), [&set](T s) { return set.find(s) != set.end(); }), vec.end());
 }
 
 extern std::vector<std::string> ReadBytesInitValues;
