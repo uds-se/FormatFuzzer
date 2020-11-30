@@ -1,5 +1,6 @@
 # editors
 .idea
+.vscode
 .*.sw[mnop]
 tags
 

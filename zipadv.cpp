@@ -1752,8 +1752,10 @@ std::vector<ZIPENDLOCATOR*> ZIPENDLOCATOR_endLocator_instances;
 class globals_class {
 public:
 	/*local*/ std::string current_tag;
-	/*local*/ int frIndex;
-	/*local*/ int deIndex;
+	/*local*/ uint frIndex;
+	/*local*/ uint deIndex;
+	/*local*/ uint dirOffset;
+	/*local*/ uint dirSize;
 	/*local*/ std::vector<std::string> preferred_tags;
 	/*local*/ std::vector<std::string> possible_tags;
 	/*local*/ int evil_state;
@@ -1951,7 +1953,7 @@ public:
 		deCrc(1),
 		deCompressedSize(1),
 		deUncompressedSize(1),
-		deFileNameLength(2),
+		deFileNameLength(1),
 		deExtraFieldLength(1),
 		deFileCommentLength(2),
 		deDiskNumberStart(1),
@@ -2236,6 +2238,8 @@ ZIPDIRENTRY* ZIPDIRENTRY::generate() {
 		generated = 1;
 	_startof = FTell();
 
+	Printf("Dir entry referencing record %d\n", ::g->deIndex);
+	Printf("Record %d comp type %d\n", ::g->deIndex, ::g->record()[::g->deIndex]->frCompression());
 	GENERATE_VAR(deSignature, SignatureTYPE_generate());
 	GENERATE_VAR(deVersionMadeBy, ::g->deVersionMadeBy.generate());
 	GENERATE_VAR(deVersionToExtract, ::g->deVersionToExtract.generate());
@@ -2243,10 +2247,14 @@ ZIPDIRENTRY* ZIPDIRENTRY::generate() {
 	GENERATE_VAR(deCompression, COMPTYPE_generate());
 	GENERATE_VAR(deFileTime, ::g->deFileTime.generate());
 	GENERATE_VAR(deFileDate, ::g->deFileDate.generate());
-	GENERATE_VAR(deCrc, ::g->deCrc.generate());
-	GENERATE_VAR(deCompressedSize, ::g->deCompressedSize.generate());
-	GENERATE_VAR(deUncompressedSize, ::g->deUncompressedSize.generate());
-	GENERATE_VAR(deFileNameLength, ::g->deFileNameLength.generate());
+	GENERATE_VAR(deCrc, ::g->deCrc.generate({ ::g->deIndex }));
+	if ((::g->record()[::g->deIndex]->frCompressedSize() > 0)) {
+		GENERATE_VAR(deCompressedSize, ::g->deCompressedSize.generate({ ::g->record()[::g->deIndex]->frCompressedSize() }));
+	} else {
+		GENERATE_VAR(deCompressedSize, ::g->deCompressedSize.generate());
+	};
+	GENERATE_VAR(deUncompressedSize, ::g->deUncompressedSize.generate({ ::g->record()[::g->deIndex]->frUncompressedSize() }));
+	GENERATE_VAR(deFileNameLength, ::g->deFileNameLength.generate({ ::g->record()[::g->deIndex]->frFileNameLength() }));
 	GENERATE_VAR(deExtraFieldLength, ::g->deExtraFieldLength.generate());
 	GENERATE_VAR(deFileCommentLength, ::g->deFileCommentLength.generate());
 	GENERATE_VAR(deDiskNumberStart, ::g->deDiskNumberStart.generate());
@@ -2254,7 +2262,7 @@ ZIPDIRENTRY* ZIPDIRENTRY::generate() {
 	GENERATE_VAR(deExternalAttributes, FILEATTRIBUTE_generate());
 	GENERATE_VAR(deHeaderOffset, ::g->deHeaderOffset.generate());
 	if ((deFileNameLength() > 0)) {
-		GENERATE_VAR(deFileName, ::g->deFileName.generate(deFileNameLength()));
+		GENERATE_VAR(deFileName, ::g->deFileName.generate(deFileNameLength(), { ::g->record()[::g->deIndex]->frFileName() }));
 	};
 	len = deExtraFieldLength();
 	while ((len > 0)) {
@@ -2367,12 +2375,12 @@ ZIPENDLOCATOR* ZIPENDLOCATOR::generate() {
 	_startof = FTell();
 
 	GENERATE_VAR(elSignature, SignatureTYPE_generate());
-	GENERATE_VAR(elDiskNumber, ::g->elDiskNumber.generate());
-	GENERATE_VAR(elStartDiskNumber, ::g->elStartDiskNumber_.generate());
-	GENERATE_VAR(elEntriesOnDisk, ::g->elEntriesOnDisk.generate());
-	GENERATE_VAR(elEntriesInDirectory, ::g->elEntriesInDirectory_.generate());
-	GENERATE_VAR(elDirectorySize, ::g->elDirectorySize.generate());
-	GENERATE_VAR(elDirectoryOffset, ::g->elDirectoryOffset_.generate());
+	GENERATE_VAR(elDiskNumber, ::g->elDiskNumber.generate({ 0 }));
+	GENERATE_VAR(elStartDiskNumber, ::g->elStartDiskNumber_.generate({ 0 }));
+	GENERATE_VAR(elEntriesOnDisk, ::g->elEntriesOnDisk.generate({ (ushort)::g->frIndex }));
+	GENERATE_VAR(elEntriesInDirectory, ::g->elEntriesInDirectory_.generate({ (ushort)::g->deIndex }));
+	GENERATE_VAR(elDirectorySize, ::g->elDirectorySize.generate({ ::g->dirSize }));
+	GENERATE_VAR(elDirectoryOffset, ::g->elDirectoryOffset_.generate({ ::g->dirOffset }));
 	GENERATE_VAR(elCommentLength, ::g->elCommentLength.generate());
 	if ((elCommentLength() > 0)) {
 		GENERATE_VAR(elComment, ::g->elComment.generate(elCommentLength()));
@@ -2390,6 +2398,8 @@ void generate_file() {
 	LittleEndian();
 	::g->frIndex = 0;
 	::g->deIndex = 0;
+	::g->dirOffset = 0;
+	::g->dirSize = 0;
 	::g->preferred_tags = { "PK\x03\x04" };
 	::g->possible_tags = { "PK\x03\x04", "PK\x05\x06" };
 	::g->evil_state = SetEvilBit(false);
@@ -2399,23 +2409,29 @@ void generate_file() {
 		case STR2INT("PK\x03\x04"):
 			SetBackColor(cLtGray);
 			GENERATE(record, ::g->record.generate());
+			Printf("Generated record %d\n", ::g->frIndex);
+			::g->frIndex++;
 			if (((::g->record().frExtraFieldLength() > 0) && (::g->record().frExtraField().efHeaderID() == EH_Zip64))) {
 				FSkip(::g->record().frExtraField().efCompressedSize());
 			};
-			if ((::g->frIndex > 0)) {
+			if ((::g->frIndex > 1)) {
 				::g->preferred_tags = { "PK\x01\x02" };
 				::g->possible_tags = { "PK\x01\x02", "PK\x03\x04" };
 			} else {
 				::g->preferred_tags = { "PK\x03\x04" };
-				::g->possible_tags = { "PK\x01\x02", "PK\x03\x04" };
+				::g->possible_tags = { "PK\x03\x04", "PK\x03\x04" };
 			};
-			::g->frIndex++;
 			break;
 		case STR2INT("PK\x01\x02"):
+			if ((::g->deIndex == 0)) {
+				::g->dirOffset = FTell();
+			};
 			SetBackColor(cLtPurple);
 			GENERATE(dirEntry, ::g->dirEntry.generate());
+			Printf("Generated dir entry %d\n", ::g->deIndex);
 			::g->deIndex++;
 			if ((::g->deIndex == ::g->frIndex)) {
+				::g->dirSize = (FTell() - ::g->dirOffset);
 				::g->preferred_tags = { "PK\x05\x06" };
 				::g->possible_tags = { "PK\x05\x06" };
 			} else {

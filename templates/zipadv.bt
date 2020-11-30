@@ -492,17 +492,23 @@ typedef struct {
 
 // Defines an entry in the directory table
 typedef struct {
+	Printf("Dir entry referencing record %d\n", deIndex);
+	Printf("Record %d comp type %d\n", deIndex, record[deIndex].frCompression);
 	SignatureTYPE deSignature;     //0x02014b50
 	VERECORD deVersionMadeBy;
 	VERECORD deVersionToExtract;
 	FLAGTYPE deFlags;
-	COMPTYPE deCompression;
+	COMPTYPE deCompression = { record[deIndex].frCompression };
 	ushort  deFileTime;
 	ushort  deFileDate;
-	uint     deCrc     <format=hex>;
-	uint     deCompressedSize;
-	uint     deUncompressedSize;
-	ushort   deFileNameLength<arraylength=true>;
+	uint     deCrc={deIndex};//     <format=hex>;
+	if (record[deIndex].frCompressedSize > 0) {
+		uint	deCompressedSize = { record[deIndex].frCompressedSize };
+	} else {
+		uint	deCompressedSize;
+	}
+	uint     deUncompressedSize = { record[deIndex].frUncompressedSize };
+	ushort   deFileNameLength = { record[deIndex].frFileNameLength };
 	ushort   deExtraFieldLength;
 	ushort   deFileCommentLength<arraylength=true>;
 	ushort   deDiskNumberStart;
@@ -510,7 +516,7 @@ typedef struct {
 	FILEATTRIBUTE deExternalAttributes;
 	uint     deHeaderOffset;
 	if( deFileNameLength > 0 )
-		char     deFileName[ deFileNameLength ];
+		char     deFileName[ deFileNameLength ] = { record[deIndex].frFileName };
 	local int len = deExtraFieldLength;
 	while (len > 0)
 	{
@@ -573,12 +579,12 @@ typedef struct {
 // Defines the end of central directory locator
 typedef struct {
 	SignatureTYPE elSignature;    //0x06054b50
-	ushort   elDiskNumber;
-	ushort   elStartDiskNumber;
-	ushort   elEntriesOnDisk;
-	ushort   elEntriesInDirectory;
-	uint     elDirectorySize;
-	uint     elDirectoryOffset;
+	ushort   elDiskNumber = { 0 };
+	ushort   elStartDiskNumber = { 0 };
+	ushort   elEntriesOnDisk = { (ushort)frIndex };
+	ushort   elEntriesInDirectory = { (ushort)frIndex };
+	uint     elDirectorySize = { dirSize };
+	uint     elDirectoryOffset = { dirOffset };
 	ushort   elCommentLength<arraylength=true>;
 	if( elCommentLength > 0 )
 		char elComment[ elCommentLength ];
@@ -621,8 +627,10 @@ void WriteZIPFILERECORD( ZIPFILERECORD &file, string s ) {
 LittleEndian();
 
 local char current_tag[4];
-local int frIndex = 0;
-local int deIndex = 0;
+local uint frIndex = 0;
+local uint deIndex = 0;
+local uint dirOffset = 0;
+local uint dirSize = 0;
 
 local string preferred_tags[] = { T_ZIPFILERECORD };
 local string possible_tags[] = { T_ZIPFILERECORD, T_ZIPENDLOCATOR };
@@ -637,24 +645,29 @@ while(ReadBytes(current_tag, FTell(), 4, preferred_tags, possible_tags)) {
     case T_ZIPFILERECORD:
         SetBackColor(cLtGray);
         ZIPFILERECORD record;
+		Printf("Generated record %d\n", frIndex);
+		frIndex++;
         if (record.frExtraFieldLength > 0
          && record.frExtraField.efHeaderID == EH_Zip64) {
             FSkip(record.frExtraField.efCompressedSize);
         }
-        if (frIndex > 0) {
+        if (frIndex > 1) {
             local string preferred_tags[] = { T_ZIPDIRENTRY };
             local string possible_tags[] = { T_ZIPDIRENTRY, T_ZIPFILERECORD };
         } else {
             local string preferred_tags[] = { T_ZIPFILERECORD };
             local string possible_tags[] = { T_ZIPFILERECORD, T_ZIPFILERECORD };
         }
-        frIndex++;
         break;
     case T_ZIPDIRENTRY:
+		if (deIndex == 0) {
+			local uint dirOffset = FTell();
+		}
         SetBackColor(cLtPurple);
         ZIPDIRENTRY dirEntry;
         deIndex++;
         if (deIndex == frIndex) { //Got dir entry for each file records
+			local uint dirSize = FTell() - dirOffset;
             local string preferred_tags[] = { T_ZIPENDLOCATOR };
             local string possible_tags[] = { T_ZIPENDLOCATOR };
         } else { //Need more dir entries
