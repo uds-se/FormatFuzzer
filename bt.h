@@ -564,42 +564,76 @@ bool ReadBytes(std::string& s, int64 pos, int n, std::vector<std::string> prefer
 	int64 original_pos = FTell();
 	file_acc.file_pos = pos;
 	file_acc.lookahead = true;
-	for (auto& known : preferred_values) {
-		new_known_values.push_back(known);
-	}
-	for (auto& known : ReadBytesInitValues) {
-		new_known_values.push_back(known);
-	}
 
-	int evil = true;
-	std::function<long long (unsigned char*)> parse;
-	if (preferred_values.size()) {
-		parse = [&preferred_values, &n](unsigned char* file_buf) -> long long {
-	                	return 255 * (std::find(preferred_values.begin(), preferred_values.end(), std::string((char*)file_buf, n)) == preferred_values.end());
-	                };
-	} else {
-		parse = [&new_known_values, &n](unsigned char* file_buf) -> long long {
-	                	return 255 * (std::find(new_known_values.begin(), new_known_values.end(), std::string((char*)file_buf, n)) != new_known_values.end());
-	                };
-		evil = SetEvilBit(false);
-	}
-	
-	if (file_acc.rand_int(256, parse) < 255 * p) {
-		if (preferred_values.size())
-			s = file_acc.file_string(preferred_values);
-		else {
-			s = "";
+	int evil = SetEvilBit(false);
+	if (new_known_values.size() && ReadBytesInitValues.size()) {
+		std::function<long long (unsigned char*)> parse;
+		if (preferred_values.size()) {
+			parse = [&preferred_values, &new_known_values, &n](unsigned char* file_buf) -> long long {
+			        	if (std::find(preferred_values.begin(), preferred_values.end(), std::string((char*)file_buf, n)) != preferred_values.end())
+			        		return 0;
+			        	if (std::find(new_known_values.begin(), new_known_values.end(), std::string((char*)file_buf, n)) != new_known_values.end())
+			        		return 254;
+			        	return 255;
+			        };
+		} else {
+			parse = [&new_known_values, &n](unsigned char* file_buf) -> long long {
+			        	if (std::find(new_known_values.begin(), new_known_values.end(), std::string((char*)file_buf, n)) != new_known_values.end())
+			        		return 254;
+			        	if (std::find(ReadBytesInitValues.begin(), ReadBytesInitValues.end(), std::string((char*)file_buf, n)) != ReadBytesInitValues.end())
+			        		return 255;
+			        	return 0;
+			        };
 		}
-	} else {
-		if (new_known_values.size())
+		int choice = file_acc.rand_int(256, parse);
+		if (choice < 255 * p) {
+			if (preferred_values.size())
+				s = file_acc.file_string(preferred_values);
+			else {
+				s = "";
+			}
+		} else if (choice < 255) {
+			if (preferred_values.size())
+				SetEvilBit(evil);
 			s = file_acc.file_string(new_known_values);
-		else {
+		} else {
+			if (preferred_values.size())
+				SetEvilBit(evil);
+			s = file_acc.file_string(ReadBytesInitValues);
+		}
+	} else if (!new_known_values.size() && !ReadBytesInitValues.size()) {
+		if (preferred_values.size()) {
+			SetEvilBit(evil);
+			s = file_acc.file_string(preferred_values);
+		} else {
 			s = "";
 		}
+	} else {
+		std::vector<std::string>& possible_values = new_known_values.size() ? new_known_values : ReadBytesInitValues;
+		std::function<long long (unsigned char*)> parse;
+		if (preferred_values.size()) {
+			parse = [&preferred_values, &n](unsigned char* file_buf) -> long long {
+			        	return 255 * (std::find(preferred_values.begin(), preferred_values.end(), std::string((char*)file_buf, n)) == preferred_values.end());
+			        };
+		} else {
+			parse = [&possible_values, &n](unsigned char* file_buf) -> long long {
+			        	return 255 * (std::find(possible_values.begin(), possible_values.end(), std::string((char*)file_buf, n)) != possible_values.end());
+			        };
+		}
+		int choice = file_acc.rand_int(256, parse);
+		if (choice < 255 * p) {
+			if (preferred_values.size())
+				s = file_acc.file_string(preferred_values);
+			else {
+				s = "";
+			}
+		} else {
+			if (preferred_values.size())
+				SetEvilBit(evil);
+			s = file_acc.file_string(possible_values);
+		}
 	}
-
-	if (preferred_values.size() == 0)
-		SetEvilBit(evil);
+	SetEvilBit(evil);
 
 	file_acc.lookahead = false;
 	file_acc.file_pos = original_pos;
