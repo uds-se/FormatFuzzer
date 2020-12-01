@@ -402,17 +402,18 @@ typedef struct {
 	// Header for the file
 	SignatureTYPE frSignature;    //0x04034b50
 	VERECORD frVersion;
-	FLAGTYPE frFlags;
-	COMPTYPE frCompression;
+	FLAGTYPE frFlags = { 0 };
+	COMPTYPE frCompression = { COMP_STORED };
 	ushort  frFileTime;
 	ushort  frFileDate;
+	local uint frCrcStart = FTell();
 	uint     frCrc     <format=hex>;
 	uint     frCompressedSize<arraylength=true>;
-	uint     frUncompressedSize;
+	uint     frUncompressedSize = { frCompressedSize };
 	ushort   frFileNameLength<arraylength=true>;
 	ushort   frExtraFieldLength<arraylength=true>;
 	if( frFileNameLength > 0 )
-	char     frFileName[ frFileNameLength ];
+		char frFileName[ frFileNameLength ];
 	
 	local int len = frExtraFieldLength;
 	while (len > 0)
@@ -470,7 +471,12 @@ typedef struct {
     }
 	else if( (frCompressedSize > 0) && (frCompressedSize < 0xFFFFFFFF))
     {
+		local uint frDataStart = FTell();
 		uchar    frData[ frCompressedSize ];
+
+		FSeek(frCrcStart);
+		uint frCrc = { Checksum(CHECKSUM_CRC32, frDataStart, frCompressedSize) };
+		FSeek(frDataStart + frCompressedSize);
     }
     else if (frCompressedSize == 0 && (frFlags & FLAG_DescriptorUsedMask))
     {
@@ -511,10 +517,10 @@ typedef struct {
 	ushort   deFileNameLength = { record[deIndex].frFileNameLength };
 	ushort   deExtraFieldLength;
 	ushort   deFileCommentLength<arraylength=true>;
-	ushort   deDiskNumberStart;
+	ushort   deDiskNumberStart = { 0 };
 	ushort   deInternalAttributes;
 	FILEATTRIBUTE deExternalAttributes;
-	uint     deHeaderOffset;
+	uint     deHeaderOffset = { 0 };
 	if( deFileNameLength > 0 )
 		char     deFileName[ deFileNameLength ] = { record[deIndex].frFileName };
 	local int len = deExtraFieldLength;

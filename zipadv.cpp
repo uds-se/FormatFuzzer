@@ -1228,8 +1228,10 @@ public:
 	}
 
 	/* locals */
+	uint frCrcStart;
 	int len;
 	int lenSalt;
+	uint frDataStart;
 	int64 posCurrent;
 	int64 posNext;
 
@@ -2169,9 +2171,10 @@ ZIPFILERECORD* ZIPFILERECORD::generate() {
 	GENERATE_VAR(frCompression, COMPTYPE_generate());
 	GENERATE_VAR(frFileTime, ::g->frFileTime.generate());
 	GENERATE_VAR(frFileDate, ::g->frFileDate.generate());
+	frCrcStart = FTell();
 	GENERATE_VAR(frCrc, ::g->frCrc.generate());
 	GENERATE_VAR(frCompressedSize, ::g->frCompressedSize.generate());
-	GENERATE_VAR(frUncompressedSize, ::g->frUncompressedSize.generate());
+	GENERATE_VAR(frUncompressedSize, ::g->frUncompressedSize.generate({ frCompressedSize() }));
 	GENERATE_VAR(frFileNameLength, ::g->frFileNameLength.generate());
 	GENERATE_VAR(frExtraFieldLength, ::g->frExtraFieldLength.generate());
 	if ((frFileNameLength() > 0)) {
@@ -2208,7 +2211,11 @@ ZIPFILERECORD* ZIPFILERECORD::generate() {
 		GENERATE_VAR(AuthenticationCode, ::g->AuthenticationCode.generate(10));
 	} else {
 	if (((frCompressedSize() > 0) && (frCompressedSize() < 0xFFFFFFFF))) {
+		frDataStart = FTell();
 		GENERATE_VAR(frData, ::g->frData_.generate(frCompressedSize()));
+		FSeek(frCrcStart);
+		GENERATE_VAR(frCrc, ::g->frCrc.generate({ Checksum(CHECKSUM_CRC32, frDataStart, frCompressedSize()) }));
+		FSeek((frDataStart + frCompressedSize()));
 	} else {
 	if (((frCompressedSize() == 0) && (frFlags() & FLAG_DescriptorUsedMask))) {
 		posCurrent = FTell();
@@ -2257,10 +2264,10 @@ ZIPDIRENTRY* ZIPDIRENTRY::generate() {
 	GENERATE_VAR(deFileNameLength, ::g->deFileNameLength.generate({ ::g->record()[::g->deIndex]->frFileNameLength() }));
 	GENERATE_VAR(deExtraFieldLength, ::g->deExtraFieldLength.generate());
 	GENERATE_VAR(deFileCommentLength, ::g->deFileCommentLength.generate());
-	GENERATE_VAR(deDiskNumberStart, ::g->deDiskNumberStart.generate());
+	GENERATE_VAR(deDiskNumberStart, ::g->deDiskNumberStart.generate({ 0 }));
 	GENERATE_VAR(deInternalAttributes, ::g->deInternalAttributes.generate());
 	GENERATE_VAR(deExternalAttributes, FILEATTRIBUTE_generate());
-	GENERATE_VAR(deHeaderOffset, ::g->deHeaderOffset.generate());
+	GENERATE_VAR(deHeaderOffset, ::g->deHeaderOffset.generate({ 0 }));
 	if ((deFileNameLength() > 0)) {
 		GENERATE_VAR(deFileName, ::g->deFileName.generate(deFileNameLength(), { ::g->record()[::g->deIndex]->frFileName() }));
 	};
@@ -2378,7 +2385,7 @@ ZIPENDLOCATOR* ZIPENDLOCATOR::generate() {
 	GENERATE_VAR(elDiskNumber, ::g->elDiskNumber.generate({ 0 }));
 	GENERATE_VAR(elStartDiskNumber, ::g->elStartDiskNumber_.generate({ 0 }));
 	GENERATE_VAR(elEntriesOnDisk, ::g->elEntriesOnDisk.generate({ (ushort)::g->frIndex }));
-	GENERATE_VAR(elEntriesInDirectory, ::g->elEntriesInDirectory_.generate({ (ushort)::g->deIndex }));
+	GENERATE_VAR(elEntriesInDirectory, ::g->elEntriesInDirectory_.generate({ (ushort)::g->frIndex }));
 	GENERATE_VAR(elDirectorySize, ::g->elDirectorySize.generate({ ::g->dirSize }));
 	GENERATE_VAR(elDirectoryOffset, ::g->elDirectoryOffset_.generate({ ::g->dirOffset }));
 	GENERATE_VAR(elCommentLength, ::g->elCommentLength.generate());
@@ -2428,7 +2435,6 @@ void generate_file() {
 			};
 			SetBackColor(cLtPurple);
 			GENERATE(dirEntry, ::g->dirEntry.generate());
-			Printf("Generated dir entry %d\n", ::g->deIndex);
 			::g->deIndex++;
 			if ((::g->deIndex == ::g->frIndex)) {
 				::g->dirSize = (FTell() - ::g->dirOffset);
