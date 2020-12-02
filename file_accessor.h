@@ -514,6 +514,7 @@ public:
 	}
 	
 	std::string file_string(int size = 0) {
+		assert_cond(file_pos + size <= MAX_FILE_SIZE, "file size exceeded MAX_FILE_SIZE");
 		if (rand_int(8, [&size](unsigned char* file_buf) -> long long {
 			int len = size ? size : INT_MAX;
 			for (int i = 0; i < len && (size || file_buf[i]); ++i)
@@ -550,6 +551,7 @@ public:
 	}
 
 	std::string file_latin1_string(int size = 0) {
+		assert_cond(file_pos + size <= MAX_FILE_SIZE, "file size exceeded MAX_FILE_SIZE");
 		unsigned char buf[4096];
 		ssize_t len = size;
 		if (!len)
