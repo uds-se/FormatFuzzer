@@ -514,7 +514,9 @@ typedef struct {
 		uint	deCompressedSize;
 	}
 	uint     deUncompressedSize = { record[deIndex].frUncompressedSize };
+	local int evil_state = SetEvilBit(false);
 	ushort   deFileNameLength = { record[deIndex].frFileNameLength };
+	SetEvilBit(evil_state);
 	ushort   deExtraFieldLength;
 	ushort   deFileCommentLength<arraylength=true>;
 	ushort   deDiskNumberStart = { 0 };

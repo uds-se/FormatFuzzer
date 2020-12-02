@@ -439,11 +439,13 @@ public:
 			new_known_values.push_back(known);
 		}
 		if (new_known_values.size()) {
-			std::string res = file_acc.file_string(new_known_values);
-			assert(res.length() == size);
-			for (unsigned i = 0; i < size; ++i) {
-				value.push_back(res[i]);
-			}
+			value = file_acc.file_string(new_known_values);
+			assert(value.length() == size);
+			_sizeof = size;
+			return value;
+		}
+		if (!element_known_values.size()) {
+			value = file_acc.file_string(size);
 			_sizeof = size;
 			return value;
 		}
@@ -658,11 +660,8 @@ public:
 			new_known_values.push_back(known);
 		}
 		if (new_known_values.size()) {
-			std::string res = file_acc.file_string(new_known_values);
-			assert(res.length() == size);
-			for (unsigned i = 0; i < size; ++i) {
-				value.push_back(res[i]);
-			}
+			value = file_acc.file_string(new_known_values);
+			assert(value.length() == size);
 			_sizeof = size;
 			return value;
 		}
@@ -1030,11 +1029,13 @@ public:
 			new_known_values.push_back(known);
 		}
 		if (new_known_values.size()) {
-			std::string res = file_acc.file_string(new_known_values);
-			assert(res.length() == size);
-			for (unsigned i = 0; i < size; ++i) {
-				value.push_back(res[i]);
-			}
+			value = file_acc.file_string(new_known_values);
+			assert(value.length() == size);
+			_sizeof = size;
+			return value;
+		}
+		if (!element_known_values.size()) {
+			value = file_acc.file_string(size);
 			_sizeof = size;
 			return value;
 		}
@@ -1388,6 +1389,7 @@ public:
 	}
 
 	/* locals */
+	int evil_state;
 	int len;
 
 	unsigned char generated = 0;
@@ -2261,7 +2263,9 @@ ZIPDIRENTRY* ZIPDIRENTRY::generate() {
 		GENERATE_VAR(deCompressedSize, ::g->deCompressedSize.generate());
 	};
 	GENERATE_VAR(deUncompressedSize, ::g->deUncompressedSize.generate({ ::g->record()[::g->deIndex]->frUncompressedSize() }));
+	evil_state = SetEvilBit(false);
 	GENERATE_VAR(deFileNameLength, ::g->deFileNameLength.generate({ ::g->record()[::g->deIndex]->frFileNameLength() }));
+	SetEvilBit(evil_state);
 	GENERATE_VAR(deExtraFieldLength, ::g->deExtraFieldLength.generate());
 	GENERATE_VAR(deFileCommentLength, ::g->deFileCommentLength.generate());
 	GENERATE_VAR(deDiskNumberStart, ::g->deDiskNumberStart.generate({ 0 }));
