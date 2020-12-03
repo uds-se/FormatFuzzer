@@ -2210,7 +2210,15 @@ class PfpInterp(object):
                 node.cpp = "GENERATE"
                 if len(self._incomplete_stack) > 1:
                     node.cpp += "_VAR"
-                node.cpp += "(" + node.name + ", " + classname + "_generate())"
+                node.cpp += "(" + node.name + ", " + classname + "_generate("
+                if node.init is not None:
+                    self._handle_node(node.init, scope, ctxt, stream)
+                    node.cpp += "{ "
+                    for expr in node.init.exprs:
+                        node.cpp += expr.cpp + ", "
+                    node.cpp = node.cpp[:-2]
+                    node.cpp += " }"
+                node.cpp += "))"
                 node.type.cpp = " ".join(node.type.type.type.names)
                 if classname not in self._defined:
                     self._defined[classname] = None
@@ -2230,6 +2238,7 @@ class PfpInterp(object):
                 if classname + "_generate" not in self._defined:
                     self._defined[classname + "_generate"] = None
                     cpp = "\n" + classname + " " + classname + "_generate() {\n\treturn (" + classname + ") file_acc.file_integer(sizeof(" + " ".join(node.type.type.type.names) + "), 0, " + classname + "_values);\n}\n"
+                    cpp += "\n" + classname + " " + classname + "_generate(std::vector<" + " ".join(node.type.type.type.names) + "> known_values) {\n\treturn (" + classname + ") file_acc.file_integer(sizeof(" + " ".join(node.type.type.type.names) + "), 0, known_values);\n}\n"
                     self._cpp.append((classname + "_generate", cpp))
             elif isinstance(node.type.type, AST.Union) or isinstance(node.type.type, AST.Struct):
                 if hasattr(node.type.type, "name"):
@@ -2309,11 +2318,20 @@ class PfpInterp(object):
                     node.cpp = "GENERATE"
                     if len(self._incomplete_stack) > 1:
                         node.cpp += "_VAR"
-                    node.cpp += "(" + node.name + ", " + classname + "_generate())"
+                    node.cpp += "(" + node.name + ", " + classname + "_generate("
+                    if node.init is not None:
+                        self._handle_node(node.init, scope, ctxt, stream)
+                        node.cpp += "{ "
+                        for expr in node.init.exprs:
+                            node.cpp += expr.cpp + ", "
+                        node.cpp = node.cpp[:-2]
+                        node.cpp += " }"
+                    node.cpp += "))"
                     node.type.cpp = nodetype.typename
                     if classname + "_generate" not in self._defined:
                         self._defined[classname + "_generate"] = None
                         cpp = "\n" + classname + " " + classname + "_generate() {\n\treturn (" + classname + ") file_acc.file_integer(sizeof(" + nodetype.typename + "), 0, " + classname + "_values);\n}\n"
+                        cpp += "\n" + classname + " " + classname + "_generate(std::vector<" + nodetype.typename + "> known_values) {\n\treturn (" + classname + ") file_acc.file_integer(sizeof(" + nodetype.typename + "), 0, known_values);\n}\n"
                         self._cpp.append((classname + "_generate", cpp))
                 else:
                     if hasattr(nodetype, "_pfp__node"):

@@ -235,6 +235,10 @@ SignatureTYPE SignatureTYPE_generate() {
 	return (SignatureTYPE) file_acc.file_integer(sizeof(uint), 0, SignatureTYPE_values);
 }
 
+SignatureTYPE SignatureTYPE_generate(std::vector<uint> known_values) {
+	return (SignatureTYPE) file_acc.file_integer(sizeof(uint), 0, known_values);
+}
+
 
 class VERSIONTYPE_class {
 	int small;
@@ -269,6 +273,10 @@ public:
 
 HOSTOSTYPE HOSTOSTYPE_generate() {
 	return (HOSTOSTYPE) file_acc.file_integer(sizeof(byte), 0, HOSTOSTYPE_values);
+}
+
+HOSTOSTYPE HOSTOSTYPE_generate(std::vector<byte> known_values) {
+	return (HOSTOSTYPE) file_acc.file_integer(sizeof(byte), 0, known_values);
 }
 
 
@@ -315,8 +323,16 @@ FLAGTYPE FLAGTYPE_generate() {
 	return (FLAGTYPE) file_acc.file_integer(sizeof(ushort), 0, FLAGTYPE_values);
 }
 
+FLAGTYPE FLAGTYPE_generate(std::vector<ushort> known_values) {
+	return (FLAGTYPE) file_acc.file_integer(sizeof(ushort), 0, known_values);
+}
+
 COMPTYPE COMPTYPE_generate() {
 	return (COMPTYPE) file_acc.file_integer(sizeof(short), 0, COMPTYPE_values);
+}
+
+COMPTYPE COMPTYPE_generate(std::vector<short> known_values) {
+	return (COMPTYPE) file_acc.file_integer(sizeof(short), 0, known_values);
 }
 
 
@@ -466,6 +482,10 @@ public:
 
 HEADERFLAG HEADERFLAG_generate() {
 	return (HEADERFLAG) file_acc.file_integer(sizeof(ushort), 0, HEADERFLAG_values);
+}
+
+HEADERFLAG HEADERFLAG_generate(std::vector<ushort> known_values) {
+	return (HEADERFLAG) file_acc.file_integer(sizeof(ushort), 0, known_values);
 }
 
 
@@ -684,12 +704,24 @@ ALGFLAG ALGFLAG_generate() {
 	return (ALGFLAG) file_acc.file_integer(sizeof(ushort), 0, ALGFLAG_values);
 }
 
+ALGFLAG ALGFLAG_generate(std::vector<ushort> known_values) {
+	return (ALGFLAG) file_acc.file_integer(sizeof(ushort), 0, known_values);
+}
+
 PRCFLAG PRCFLAG_generate() {
 	return (PRCFLAG) file_acc.file_integer(sizeof(ushort), 0, PRCFLAG_values);
 }
 
+PRCFLAG PRCFLAG_generate(std::vector<ushort> known_values) {
+	return (PRCFLAG) file_acc.file_integer(sizeof(ushort), 0, known_values);
+}
+
 AESMODE AESMODE_generate() {
 	return (AESMODE) file_acc.file_integer(sizeof(byte), 0, AESMODE_values);
+}
+
+AESMODE AESMODE_generate(std::vector<byte> known_values) {
+	return (AESMODE) file_acc.file_integer(sizeof(byte), 0, known_values);
 }
 
 
@@ -1258,6 +1290,10 @@ public:
 
 FILEATTRIBUTE FILEATTRIBUTE_generate() {
 	return (FILEATTRIBUTE) file_acc.file_integer(sizeof(uint), 0, FILEATTRIBUTE_values);
+}
+
+FILEATTRIBUTE FILEATTRIBUTE_generate(std::vector<uint> known_values) {
+	return (FILEATTRIBUTE) file_acc.file_integer(sizeof(uint), 0, known_values);
 }
 
 
@@ -2169,8 +2205,8 @@ ZIPFILERECORD* ZIPFILERECORD::generate() {
 
 	GENERATE_VAR(frSignature, SignatureTYPE_generate());
 	GENERATE_VAR(frVersion, ::g->frVersion.generate());
-	GENERATE_VAR(frFlags, FLAGTYPE_generate());
-	GENERATE_VAR(frCompression, COMPTYPE_generate());
+	GENERATE_VAR(frFlags, FLAGTYPE_generate({ 0 }));
+	GENERATE_VAR(frCompression, COMPTYPE_generate({ COMP_STORED }));
 	GENERATE_VAR(frFileTime, ::g->frFileTime.generate());
 	GENERATE_VAR(frFileDate, ::g->frFileDate.generate());
 	frCrcStart = FTell();
@@ -2253,7 +2289,7 @@ ZIPDIRENTRY* ZIPDIRENTRY::generate() {
 	GENERATE_VAR(deVersionMadeBy, ::g->deVersionMadeBy.generate());
 	GENERATE_VAR(deVersionToExtract, ::g->deVersionToExtract.generate());
 	GENERATE_VAR(deFlags, FLAGTYPE_generate());
-	GENERATE_VAR(deCompression, COMPTYPE_generate());
+	GENERATE_VAR(deCompression, COMPTYPE_generate({ ::g->record()[::g->deIndex]->frCompression() }));
 	GENERATE_VAR(deFileTime, ::g->deFileTime.generate());
 	GENERATE_VAR(deFileDate, ::g->deFileDate.generate());
 	GENERATE_VAR(deCrc, ::g->deCrc.generate({ ::g->deIndex }));
