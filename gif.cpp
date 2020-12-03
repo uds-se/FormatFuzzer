@@ -61,11 +61,13 @@ public:
 			new_known_values.push_back(known);
 		}
 		if (new_known_values.size()) {
-			std::string res = file_acc.file_string(new_known_values);
-			assert(res.length() == size);
-			for (unsigned i = 0; i < size; ++i) {
-				value.push_back(res[i]);
-			}
+			value = file_acc.file_string(new_known_values);
+			assert(value.length() == size);
+			_sizeof = size;
+			return value;
+		}
+		if (!element_known_values.size()) {
+			value = file_acc.file_string(size);
 			_sizeof = size;
 			return value;
 		}
@@ -1265,7 +1267,9 @@ public:
 	}
 
 	/* locals */
-	std::vector<UBYTE> values;
+	std::vector<std::string> required;
+	std::vector<std::string> possible;
+	std::string chunk_type;
 
 	unsigned char generated = 0;
 	int64 _startof = 0;
@@ -1962,15 +1966,15 @@ DATA* DATA::generate() {
 		generated = 1;
 	_startof = FTell();
 
-	values = { 0x2C };
-	ReadUByte(FTell(), values);
+	required = { "," };
 	if ((::g->GifHeader().Version() == "89a")) {
-		values = { 0x3B, 0x2C, 0x21 };
+		possible = { ",", "!" };
 	} else {
-		values = { 0x3B, 0x2C };
+		possible = { "," };
 	};
-	while ((ReadUByte(FTell(), values) != 0x3B)) {
+	while (ReadBytes(chunk_type, FTell(), 1, required, possible)) {
 		if ((ReadUByte(FTell()) == 0x2C)) {
+			VectorRemove(required, { "," });
 			SetBackColor(0xE0FFE0);
 			GENERATE_VAR(ImageDescriptor, ::g->ImageDescriptor.generate());
 			if ((ImageDescriptor().PackedFields().LocalColorTableFlag() == 1)) {
@@ -2020,7 +2024,7 @@ TRAILER* TRAILER::generate() {
 		generated = 1;
 	_startof = FTell();
 
-	GENERATE_VAR(GIFTrailer, ::g->GIFTrailer.generate());
+	GENERATE_VAR(GIFTrailer, ::g->GIFTrailer.generate({ 0x3B }));
 
 	_sizeof = FTell() - _startof;
 	return this;

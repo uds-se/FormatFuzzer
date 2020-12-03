@@ -14,7 +14,7 @@
 //   1.2   2007-09-25 SweetScape: Added bug fixes for reading local color table and
 //                                changed ReadShort to ReadUShort.
 //   1.1   2007-05-02 SweetScape: Added bug fixes for reading global color table.
-//   1.0   BJ Wever:  Initial release. 
+//   1.0   BJ Wever:  Initial release.
 //------------------------------------------------
 
 // From GIF89a Specification:
@@ -41,20 +41,23 @@ string ReadRGB( RGB &color )
     SPrintf( s, "#%02X%02X%02X", color.R, color.G, color.B );
     return s;
 }
-typedef struct { 
+typedef struct {
 	local UBYTE size = ReadUByte(FTell());
 	while (size != 0) {
 		struct DATASUBBLOCK {
-			UBYTE	size;
-			char	data[size];
+			UBYTE	Size;
+			char	Data[size];
 		} DataSubBlock;
-		size = ReadUByte(FTell());
+		local UBYTE zero[] = { 0 };
+		size = ReadUByte(FTell(), zero);
 	}
 	UBYTE	BlockTerminator;
 } DATASUBBLOCKS;
 
 typedef struct {
-	char	Signature[3]= {{"GIF"}};
+	local int evil = SetEvilBit(false);
+	char	Signature[3];
+	SetEvilBit(evil);
 	char	Version[3] = { {"87a"}, {"89a"} };
 } GIFHEADER;
 
@@ -79,7 +82,11 @@ typedef struct {
 // Header
 SetBackColor( 0xFFFFFF );
 GIFHEADER GifHeader;
-
+if( GifHeader.Signature != "GIF" )
+{
+	Warning( "File is not a valid GIF. Template stopped." );
+	return -1;
+}
 //<Logical Screen> ::=      Logical Screen Descriptor [Global Color Table]
 // Logical Screen Descriptor
 SetBackColor( 0xE0E0E0 );
