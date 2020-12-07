@@ -515,13 +515,16 @@ public:
 	
 	std::string file_string(int size = 0) {
 		assert_cond(file_pos + size <= MAX_FILE_SIZE, "file size exceeded MAX_FILE_SIZE");
-		if (rand_int(8, [&size](unsigned char* file_buf) -> long long {
+		int choice = rand_int(16, [&size](unsigned char* file_buf) -> long long {
 			int len = size ? size : INT_MAX;
 			for (int i = 0; i < len && (size || file_buf[i]); ++i)
-				if (file_buf[i] < 32 || (127 <= file_buf[i] && file_buf[i] < 161))
-					return 7;
+				if (file_buf[i] < 32 || file_buf[i] >= 127)
+					return 15;
 			return 0;
-		} ) != 7) {
+		});
+		if (choice < 14) {
+			return file_ascii_string(size);
+		} else if (choice == 14) {
 			return file_latin1_string(size);
 		}
 		unsigned char buf[4096];
@@ -534,6 +537,31 @@ public:
 				buf[i] = rand_int(255, [&i](unsigned char* file_buf) -> long long { return file_buf[i] - 1; } ) + 1;
 			else
 				buf[i] = rand_int(256, [&i](unsigned char* file_buf) -> long long { return file_buf[i]; } );
+		}
+		buf[len] = '\0';
+		if (has_bitmap) {
+			for (int i = 0; i < len; ++i) {
+				if (bitmap[file_pos + i]) {
+					buf[i] = file_buffer[file_pos + i];
+				}
+			}
+		}
+		std::string value((char*)buf, len);
+		if (size == 0)
+			++len;
+		write_file(value.c_str(), len);
+		return value;
+	}
+
+	std::string file_ascii_string(int size = 0) {
+		assert_cond(file_pos + size <= MAX_FILE_SIZE, "file size exceeded MAX_FILE_SIZE");
+		unsigned char buf[4096];
+		ssize_t len = size;
+		if (!len)
+			len = rand_int(80, [](unsigned char* file_buf) -> long long { return strlen((char*)file_buf); } );
+		assert_cond(len < 4096, "string too large");
+		for (int i = 0; i < len; ++i) {
+			buf[i] = rand_int(95, [&i](unsigned char* file_buf) -> long long { return file_buf[i] - 32; } ) + 32;
 		}
 		buf[len] = '\0';
 		if (has_bitmap) {
