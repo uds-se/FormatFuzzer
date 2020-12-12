@@ -1261,6 +1261,7 @@ public:
 	}
 
 	/* locals */
+	uint offset;
 	uint frCrcStart;
 	int len;
 	int lenSalt;
@@ -2203,6 +2204,7 @@ ZIPFILERECORD* ZIPFILERECORD::generate() {
 		generated = 1;
 	_startof = FTell();
 
+	offset = FTell();
 	GENERATE_VAR(frSignature, SignatureTYPE_generate());
 	GENERATE_VAR(frVersion, ::g->frVersion.generate());
 	GENERATE_VAR(frFlags, FLAGTYPE_generate({ 0 }));
@@ -2292,7 +2294,7 @@ ZIPDIRENTRY* ZIPDIRENTRY::generate() {
 	GENERATE_VAR(deCompression, COMPTYPE_generate({ ::g->record()[::g->deIndex]->frCompression() }));
 	GENERATE_VAR(deFileTime, ::g->deFileTime.generate());
 	GENERATE_VAR(deFileDate, ::g->deFileDate.generate());
-	GENERATE_VAR(deCrc, ::g->deCrc.generate({ ::g->deIndex }));
+	GENERATE_VAR(deCrc, ::g->deCrc.generate({ ::g->record()[::g->deIndex]->frCrc() }));
 	if ((::g->record()[::g->deIndex]->frCompressedSize() > 0)) {
 		GENERATE_VAR(deCompressedSize, ::g->deCompressedSize.generate({ ::g->record()[::g->deIndex]->frCompressedSize() }));
 	} else {
@@ -2307,7 +2309,7 @@ ZIPDIRENTRY* ZIPDIRENTRY::generate() {
 	GENERATE_VAR(deDiskNumberStart, ::g->deDiskNumberStart.generate({ 0 }));
 	GENERATE_VAR(deInternalAttributes, ::g->deInternalAttributes.generate());
 	GENERATE_VAR(deExternalAttributes, FILEATTRIBUTE_generate());
-	GENERATE_VAR(deHeaderOffset, ::g->deHeaderOffset.generate({ 0 }));
+	GENERATE_VAR(deHeaderOffset, ::g->deHeaderOffset.generate({ ::g->record()[::g->deIndex]->offset }));
 	if ((deFileNameLength() > 0)) {
 		GENERATE_VAR(deFileName, ::g->deFileName.generate(deFileNameLength(), { ::g->record()[::g->deIndex]->frFileName() }));
 	};

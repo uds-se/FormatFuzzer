@@ -400,6 +400,9 @@ typedef struct {
 // Defines a file record
 typedef struct {
 	// Header for the file
+
+	local uint offset = FTell();
+
 	SignatureTYPE frSignature;    //0x04034b50
 	VERECORD frVersion;
 	FLAGTYPE frFlags = { 0 };
@@ -507,7 +510,7 @@ typedef struct {
 	COMPTYPE deCompression = { record[deIndex].frCompression };
 	ushort  deFileTime;
 	ushort  deFileDate;
-	uint     deCrc={deIndex};//     <format=hex>;
+	uint     deCrc={ record[deIndex].frCrc };//     <format=hex>;
 	if (record[deIndex].frCompressedSize > 0) {
 		uint	deCompressedSize = { record[deIndex].frCompressedSize };
 	} else {
@@ -522,7 +525,9 @@ typedef struct {
 	ushort   deDiskNumberStart = { 0 };
 	ushort   deInternalAttributes;
 	FILEATTRIBUTE deExternalAttributes;
-	uint     deHeaderOffset = { 0 };
+
+	uint     deHeaderOffset = { record[deIndex].offset };
+
 	if( deFileNameLength > 0 )
 		char     deFileName[ deFileNameLength ] = { record[deIndex].frFileName };
 	local int len = deExtraFieldLength;
