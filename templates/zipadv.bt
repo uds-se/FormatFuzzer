@@ -414,16 +414,32 @@ typedef struct {
 	uint     frCompressedSize<arraylength=true>;
 	uint     frUncompressedSize = { frCompressedSize };
 	ushort   frFileNameLength<arraylength=true>;
+	//TODO: Fix Extrafields
+	local int frExtraFieldLengthStart = FTell();
 	ushort   frExtraFieldLength<arraylength=true>;
 	if( frFileNameLength > 0 )
 		char frFileName[ frFileNameLength ];
 	
+
 	local int len = frExtraFieldLength;
+	local int frExtraFieldStart = FTell();
 	while (len > 0)
 	{
 		EXTRAFIELD frExtraField;
 		len -= frExtraField.efDataSize + 4;
 	}
+
+	//Correct ExtraFieldLength
+	local int frExtraFieldEnd = FTell();
+	local ushort frExtraFieldRealLength = frExtraFieldEnd - frExtraFieldStart;
+	FSeek(frExtraFieldLengthStart);
+	local int evil_state = SetEvilBit(false);
+	ushort frExtraFieldLength = { frExtraFieldRealLength };
+	SetEvilBit(evil_state);
+	FSeek(frExtraFieldEnd);
+	//End Correct ExtraFieldLength
+	
+
 	// Compressed data
 	SetBackColor( cNone );
 
@@ -520,22 +536,40 @@ typedef struct {
 	local int evil_state = SetEvilBit(false);
 	ushort   deFileNameLength = { record[deIndex].frFileNameLength };
 	SetEvilBit(evil_state);
-	ushort   deExtraFieldLength;
+	//TODO: Fix Extrafields
+	local int deExtraFieldLengthStart = FTell();
+	ushort   deExtraFieldLength<arraylength=true>;
 	ushort   deFileCommentLength<arraylength=true>;
 	ushort   deDiskNumberStart = { 0 };
 	ushort   deInternalAttributes;
-	FILEATTRIBUTE deExternalAttributes;
+	//TODO: Remove the static value
+	FILEATTRIBUTE deExternalAttributes;// = { 0x81A40000 };
 
 	uint     deHeaderOffset = { record[deIndex].offset };
 
 	if( deFileNameLength > 0 )
 		char     deFileName[ deFileNameLength ] = { record[deIndex].frFileName };
+
+
 	local int len = deExtraFieldLength;
+	local int deExtraFieldStart = FTell();
 	while (len > 0)
 	{
 		EXTRAFIELD deExtraField;
 		len -= deExtraField.efDataSize + 4;
 	}
+
+	//Correct ExtraFieldLength
+	local int deExtraFieldEnd = FTell();
+	local ushort deExtraFieldRealLength = (deExtraFieldEnd - deExtraFieldStart);
+	FSeek(deExtraFieldLengthStart);
+	local int evil_state = SetEvilBit(false);
+	ushort deExtraFieldLength = { deExtraFieldRealLength };
+	SetEvilBit(evil_state);
+	FSeek(deExtraFieldEnd);
+	//End Correct ExtraFieldLength
+
+
 	if( deFileCommentLength > 0 )
 		uchar    deFileComment[ deFileCommentLength ];
 } ZIPDIRENTRY <read=ReadZIPDIRENTRY>;

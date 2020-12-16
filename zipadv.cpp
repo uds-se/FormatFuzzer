@@ -1263,7 +1263,12 @@ public:
 	/* locals */
 	uint offset;
 	uint frCrcStart;
+	int frExtraFieldLengthStart;
 	int len;
+	int frExtraFieldStart;
+	int frExtraFieldEnd;
+	ushort frExtraFieldRealLength;
+	int evil_state;
 	int lenSalt;
 	uint frDataStart;
 	int64 posCurrent;
@@ -1427,7 +1432,11 @@ public:
 
 	/* locals */
 	int evil_state;
+	int deExtraFieldLengthStart;
 	int len;
+	int deExtraFieldStart;
+	int deExtraFieldEnd;
+	ushort deExtraFieldRealLength;
 
 	unsigned char generated = 0;
 	int64 _startof = 0;
@@ -1995,7 +2004,7 @@ public:
 		deCompressedSize(1),
 		deUncompressedSize(1),
 		deFileNameLength(1),
-		deExtraFieldLength(1),
+		deExtraFieldLength(2),
 		deFileCommentLength(2),
 		deDiskNumberStart(1),
 		deInternalAttributes(1),
@@ -2216,15 +2225,24 @@ ZIPFILERECORD* ZIPFILERECORD::generate() {
 	GENERATE_VAR(frCompressedSize, ::g->frCompressedSize.generate());
 	GENERATE_VAR(frUncompressedSize, ::g->frUncompressedSize.generate({ frCompressedSize() }));
 	GENERATE_VAR(frFileNameLength, ::g->frFileNameLength.generate());
+	frExtraFieldLengthStart = FTell();
 	GENERATE_VAR(frExtraFieldLength, ::g->frExtraFieldLength.generate());
 	if ((frFileNameLength() > 0)) {
 		GENERATE_VAR(frFileName, ::g->frFileName.generate(frFileNameLength()));
 	};
 	len = frExtraFieldLength();
+	frExtraFieldStart = FTell();
 	while ((len > 0)) {
 		GENERATE_VAR(frExtraField, ::g->frExtraField.generate());
 		len -= (frExtraField().efDataSize() + 4);
 	};
+	frExtraFieldEnd = FTell();
+	frExtraFieldRealLength = (frExtraFieldEnd - frExtraFieldStart);
+	FSeek(frExtraFieldLengthStart);
+	evil_state = SetEvilBit(false);
+	GENERATE_VAR(frExtraFieldLength, ::g->frExtraFieldLength.generate({ frExtraFieldRealLength }));
+	SetEvilBit(evil_state);
+	FSeek(frExtraFieldEnd);
 	SetBackColor(cNone);
 	if (((frFlags() & FLAG_Encrypted) && (frFlags() & FLAG_StrongEncrypted))) {
 		GENERATE_VAR(StrongEncryptedHeader, ::g->StrongEncryptedHeader.generate());
@@ -2304,6 +2322,7 @@ ZIPDIRENTRY* ZIPDIRENTRY::generate() {
 	evil_state = SetEvilBit(false);
 	GENERATE_VAR(deFileNameLength, ::g->deFileNameLength.generate({ ::g->record()[::g->deIndex]->frFileNameLength() }));
 	SetEvilBit(evil_state);
+	deExtraFieldLengthStart = FTell();
 	GENERATE_VAR(deExtraFieldLength, ::g->deExtraFieldLength.generate());
 	GENERATE_VAR(deFileCommentLength, ::g->deFileCommentLength.generate());
 	GENERATE_VAR(deDiskNumberStart, ::g->deDiskNumberStart.generate({ 0 }));
@@ -2314,10 +2333,18 @@ ZIPDIRENTRY* ZIPDIRENTRY::generate() {
 		GENERATE_VAR(deFileName, ::g->deFileName.generate(deFileNameLength(), { ::g->record()[::g->deIndex]->frFileName() }));
 	};
 	len = deExtraFieldLength();
+	deExtraFieldStart = FTell();
 	while ((len > 0)) {
 		GENERATE_VAR(deExtraField, ::g->deExtraField.generate());
 		len -= (deExtraField().efDataSize() + 4);
 	};
+	deExtraFieldEnd = FTell();
+	deExtraFieldRealLength = (deExtraFieldEnd - deExtraFieldStart);
+	FSeek(deExtraFieldLengthStart);
+	evil_state = SetEvilBit(false);
+	GENERATE_VAR(deExtraFieldLength, ::g->deExtraFieldLength.generate({ deExtraFieldRealLength }));
+	SetEvilBit(evil_state);
+	FSeek(deExtraFieldEnd);
 	if ((deFileCommentLength() > 0)) {
 		GENERATE_VAR(deFileComment, ::g->deFileComment.generate(deFileCommentLength()));
 	};
