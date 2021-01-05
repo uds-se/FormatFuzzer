@@ -1,0 +1,220 @@
+//------------------------------------------------
+//--- 010 Editor v3.0.3 Binary Template
+//
+//      File: PCAP.bt
+//   Authors: Didier Stevens
+//   Website: https://DidierStevens.com
+//   Version: 0.5 
+//   Purpose: Parse a PCAP network capture file.
+//  Category: Network
+// File Mask: *.pcap
+//  ID Bytes: D4 C3 B2 A1
+//   History:
+//   0.5   2019-12-24 Tony Saigut: fix L2 padding.
+//   0.4   2019-05-22 S Gorbov: support for VLAN header.
+//   0.3   2018-03-15 Banny: support raw data pcap file.
+//   0.2   2016-02-12 SweetScape Software: Updated header for repository submission.
+//   0.1   D Stevens: Initial release.
+//
+// References:
+//  http://wiki.wireshark.org/Development/LibpcapFileFormat
+//------------------------------------------------
+
+typedef struct {
+        uint32 magic_number <format=hex>;   /* magic number */
+        if(magic_number != 0xA1B2C3D4) {
+            Warning("Not a valid PCAP file");
+            return 1;
+        }
+        uint16 version_major;  /* major version number */
+        uint16 version_minor;  /* minor version number */
+        int32  thiszone;       /* GMT to local correction */
+        uint32 sigfigs;        /* accuracy of timestamps */
+        uint32 snaplen;        /* max length of captured packets, in octets */
+        uint32 network;        /* data link type */
+} PCAPHEADER;
+
+typedef struct 
+{
+    uchar Byte[6];
+} MACaddr<read=MACname>;
+
+typedef struct 
+{
+        MACaddr DstMac<name="Destination MAC">;
+        MACaddr SrcMac<name="Source MAC">;
+        uint16 L3type<name="Layer 3 Protocol">;
+} Layer_2 <size=14>;
+
+typedef struct 
+{
+        uint16 priority:3;
+        uint16 dei:1;
+        uint16 id:12<name="Vlan Id">;
+        uint16 L3type<name="Layer 3 Protocol">;
+} Dot1q <size=4>;
+
+typedef struct 
+{
+    uchar Byte[4];
+} IPv4addr<read=IPv4addrName>;
+
+string IPv4addrName(IPv4addr &IP)
+{
+    string strReturn;
+    SPrintf(strReturn,"%d.%d.%d.%d",IP.Byte[0],IP.Byte[1],IP.Byte[2],IP.Byte[3]);
+    return strReturn;
+}
+typedef struct (uint16 proto_type)
+{
+     uchar version:4;
+     uchar ip_hdr_len:4;
+     local int hdr_length = ip_hdr_len*4;
+     BYTE DiffServField;
+     uint16 total_length;
+     if (proto_type == 0x0800)    // IP
+     {
+        uint16 Identification;   
+        uint16 Flags;
+        BYTE   TTL;
+        BYTE   L4proto<name="Layer 4 Protocol",read=L4protoName>;
+        uint16 HdrChecksum;
+        IPv4addr SRC_IP<name="Source IP">;
+        IPv4addr DST_IP<name="Dest IP">;
+     }
+     else
+     {
+        BYTE Unknown[hdr_length-4];
+      }
+} Layer_3;
+
+typedef struct (ushort VER_HDR,uint16 total_length,uint L4proto)
+{    
+    local uint16 ip_hdr_length = VER_HDR*4;
+
+    if (L4proto == 0x11) // UDP
+    {
+        uint16 SrcPort<name="Source Port">;
+        uint16 DstPort<name="Destination Port">;
+        uint16 udp_hdr_len<name="Datagram Length">;
+        uint16 ChkSum<name="Checksum">;
+    }
+    else if (L4proto == 0x6) // TCP
+    {
+        uint16 SrcPort<name="Source Port">;
+        uint16 DstPort<name="Destination Port">;
+        uint32 SEQ;
+        uint32 ACK; 
+        uchar tcp_hdr_len:4;
+        uchar Reserved:4;
+        BYTE Crap[tcp_hdr_len*4-13];
+    }
+    else
+    {
+          BYTE packet[total_length-ip_hdr_length]<name="Unknown Layer 4 Data">;
+    }
+    
+} Layer_4;
+
+string L4protoName(BYTE val)
+{
+    if (val == 0x06)
+    {
+        return "TCP";
+    }
+    else if (val == 0x11)
+    {
+        return "UDP";
+    }
+    else
+    {
+        return "Unknown";
+    }
+}
+
+typedef struct (uint32 network) {
+        local uint32 len_before_l3;
+        time_t ts_sec;         /* timestamp seconds */
+        uint32 ts_usec;        /* timestamp microseconds */
+        uint32 incl_len;       /* number of octets of packet saved in file */
+        uint32 orig_len;       /* actual length of packet */
+        BigEndian();
+
+        len_before_l3 = 0;
+        if (network == 101) { // Raw IP; the packet begins with an IPv4 or IPv6 header
+            Layer_3 L3(0x0800) <name="Layer 3">;
+        } else { // other wise create L2 header
+            Layer_2 L2 <name="Layer 2">;
+            len_before_l3 += 14;
+            if (L2.L3type == 0x0800) {
+                Layer_3 L3(L2.L3type) <name="Layer 3">;
+            }
+            else if (L2.L3type == 0x8100) {
+                Dot1q d1q <name="802.1Q Vitual LAN">;
+                len_before_l3 += 4;
+                Layer_3 L3(d1q.L3type) <name="Layer 3">;
+            }
+        }
+        Layer_4 L4(L3.ip_hdr_len,L3.total_length,L3.L4proto)<name="Layer 4">;
+
+        if (L3.L4proto == 0x6)
+        {
+            local uint16 AppDataLen = L3.total_length - L3.ip_hdr_len*4 - L4.tcp_hdr_len*4;
+            if (AppDataLen > 0)
+            {
+                BYTE AppData[AppDataLen]<name="TCP Application Data">;
+            }
+        }
+        else if (L3.L4proto == 0x11)
+        {
+            local uint AppDataLen = L4.udp_hdr_len-8;
+            if (AppDataLen > 0)
+            {
+                BYTE AppData[AppDataLen]<name="UDP Application Data">;
+            }
+        }
+        if (len_before_l3 + L3.total_length < incl_len) {
+            uchar padding[incl_len - len_before_l3 - L3.total_length]<name="Layer 2 Padding">;
+        }
+        LittleEndian();
+} PCAPRECORD <read=ReadPCAPRECORD,comment=PCAPcomments>;
+
+string PCAPcomments(PCAPRECORD &P)
+{
+    local uint16 L4_proto = P.L3.L4proto;
+    string strReturn;
+    local uint16 AppDataLen = 0;
+    if (L4_proto == 0x6)
+    {
+        AppDataLen = P.L3.total_length - P.L3.ip_hdr_len*4 - P.L4.tcp_hdr_len*4;
+    }
+    else if (L4_proto == 0x11)
+    {
+        AppDataLen = P.L4.udp_hdr_len - 8;
+    }   
+    SPrintf(strReturn,"%s:%d -> %s:%d  %s %s",IPv4addrName(P.L3.SRC_IP),P.L4.SrcPort,IPv4addrName(P.L3.DST_IP),P.L4.DstPort,L4protoName(L4_proto), AppDataLen > 0 ? "***" : "");
+    return strReturn;
+}
+string ReadPCAPRECORD(PCAPRECORD &record)
+{
+	string strReturn;
+	
+	SPrintf(strReturn, "%s.%06u", TimeTToString(record.ts_sec), record.ts_usec);
+	return strReturn;
+}
+
+string MACname(MACaddr &addr)
+{
+    string strReturn;
+    SPrintf(strReturn,"%.02x:%.02x:%.02x:%.02x:%.02x:%.02x",addr.Byte[0],addr.Byte[1],addr.Byte[2],addr.Byte[3],addr.Byte[4],addr.Byte[5]);
+    return strReturn;
+}
+
+// Define the headers
+LittleEndian();
+PCAPHEADER header;
+
+while( !FEof() )
+{
+	PCAPRECORD record(header.network) <name="Frame">;
+}

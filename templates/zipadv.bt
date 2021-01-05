@@ -438,7 +438,7 @@ typedef struct {
 	SetEvilBit(evil_state);
 	FSeek(frExtraFieldEnd);
 	//End Correct ExtraFieldLength
-	
+
 
 	// Compressed data
 	SetBackColor( cNone );

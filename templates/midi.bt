@@ -1,0 +1,306 @@
+//------------------------------------------------
+//--- 010 Editor Binary Template
+//
+//      File: MIDI.bt
+//   Authors: Jack Andersen
+//   Version: 1.2
+//   Purpose: General MIDI sound file template. Complete with 
+//            delta-time and BPM evaluation into local variables. 
+//  Category: Audio
+// File Mask: *.mid
+//  ID Bytes: 4D 54 68 64 //MThd
+//   History: 
+//   1.2   2016-05-17 J Andersen: Correctly interpret unset status-bit as repeat message.
+//   1.1   2016-02-12 SweetScape Software: Updated header for repository submission.
+//   1.0   J Andersen: Initial release.
+//------------------------------------------------
+
+BigEndian();
+
+local uint track_index = 0;
+local uint message_index = 0;
+
+struct MidiHeader
+{
+    char m_magic[4] = { "MThd" }; //<format = hex>;
+    uint m_seclen;
+    enum <short> 
+    {
+        MIDI_SINGLE = 0,
+        MIDI_MULTIPLE = 1,
+        MIDI_PATTERN = 2
+    } m_format;
+    short m_ntracks<arraylength=true>;
+    short m_tickdiv;
+    Printf("---MIDI header---\n\tMagic: %s\n\tSection length: %d"
+        "\n\tTracks: %d\n\tTick div: %d\n", m_magic, m_seclen, m_ntracks, m_tickdiv);
+};
+
+struct DeltaTime
+{
+    local uint total = 0;
+    char t0 = { 0 };
+    total += t0 & 0x7f;
+    if (!(t0 & 0x80))
+        break;
+
+    total <<= 7;
+    char t1;
+    total += t1 & 0x7f;
+    if (!(t1 & 0x80))
+        break;
+
+    total <<= 7;
+    char t2;
+    total += t2 & 0x7f;
+    if (!(t2 & 0x80))
+        break;
+
+    total <<= 7;
+    char t3;
+    total += t3 & 0x7f;
+    if (!(t3 & 0x80))
+        break;
+};
+
+local char lastStatus = 0;
+
+struct MidiMessage
+{
+    DeltaTime m_dtime;
+    char m_status;
+    if (m_status & 0x80)
+        lastStatus = m_status;
+    else
+        FSeek(FTell()-1);
+    
+    Printf("\t---MIDI Message (%d,%d)---\n\t\tStatus: %c\n", track_index, message_index, m_status);
+
+    local char m_channel = lastStatus & 0xf;
+    if ((lastStatus & 0xf0) == 0x80)
+    {
+        Printf("\t\tnote_off_event\n");
+        struct 
+        {
+            char m_note;
+            char m_velocity;
+        } note_off_event;
+        Printf("\t\tNote: %c\n\t\tVelocity: %c\n", note_off_event.m_note, note_off_event.m_velocity);
+    }
+    else if ((lastStatus & 0xf0) == 0x90) 
+    {
+        Printf("\t\tnote_on_event\n");
+        struct 
+        {
+            char m_note;
+            char m_velocity;
+        } note_on_event;
+        Printf("\t\tNote: %c\n\t\tVelocity: %c\n", note_on_event.m_note, note_on_event.m_velocity);
+    }
+    else if ((lastStatus & 0xf0) == 0xA0) 
+    {
+        Printf("\t\tnote_pressure_event\n");
+        struct 
+        {
+            char m_note;
+            char m_pressure;
+        } note_pressure_event;
+        Printf("\t\tNote: %c\n\t\tPressure: %c\n", note_pressure_event.m_note, note_pressure_event.m_pressure);
+    }
+    else if ((lastStatus & 0xf0) == 0xB0) 
+    {
+        Printf("\t\tcontroller_event\n");
+        struct 
+        {
+            char m_controller;
+            char m_value;
+        } controller_event;
+        Printf("\t\tController: %c\n\t\tValue: %c\n", controller_event.m_controller, controller_event.m_value);
+    }
+    else if ((lastStatus & 0xf0) == 0xC0) 
+    {
+        Printf("\t\tprogram_event\n");
+        struct 
+        {
+            char m_program;
+        } program_event;
+        Printf("\t\tProgram: %c\n", program_event.m_program);
+    }
+    else if ((lastStatus & 0xf0) == 0xD0) 
+    {
+        Printf("\t\tchannel_pressure_event\n");
+        struct 
+        {
+            char m_pressure;
+        } channel_pressure_event;
+        Printf("\t\tPressure: %c\n", channel_pressure_event.m_pressure);
+    }
+    else if ((lastStatus & 0xf0) == 0xE0) 
+    {
+        Printf("\t\tpitch_bend_event\n");
+        struct 
+        {
+            char m_lsb;
+            char m_msb;
+        } pitch_bend_event;
+        Printf("\t\tLSB: %c\n\t\tMSB: %c\n", pitch_bend_event.m_lsb, pitch_bend_event.m_msb);
+    }
+    else if (lastStatus == -1) 
+    {
+        Printf("\t\tmeta_event\n");
+        struct 
+        {
+            enum <char> 
+            {
+                META_SEQUENCE_NUM = 0,
+                META_TEXT = 1,
+                META_COPYRIGHT = 2,
+                META_SEQUENCE_NAME = 3,
+                META_INSTRUMENT_NAME = 4,
+                META_LYRIC = 5,
+                META_MARKER = 6,
+                META_CUE_POINT = 7,
+                META_PROGRAM_NAME = 8,
+                META_DEVICE_NAME = 9,
+                META_MIDI_CHANNEL_PREFIX = 0x20,
+                META_MIDI_PORT = 0x21,
+                META_END_OF_TRACK = 0x2f,
+                META_TEMPO = 0x51,
+                META_SMPTE_OFFSET = 0x54,
+                META_TIME_SIGNATURE = 0x58,
+                META_KEY_SIGNATURE = 0x59,
+                META_SEQUENCER_EVENT = 0x7f
+            } m_type;
+            DeltaTime m_length;
+            if (m_type == META_SEQUENCE_NUM)
+            {
+                short m_seqNum;
+            }
+            else if (m_type == META_TEXT)
+            {
+                char m_text[m_length.total];
+            }
+            else if (m_type == META_COPYRIGHT)
+            {
+                char m_copyright[m_length.total];
+            }
+            else if (m_type == META_SEQUENCE_NAME)
+            {
+                char m_name[m_length.total];
+            }
+            else if (m_type == META_INSTRUMENT_NAME)
+            {
+                char m_name[m_length.total];
+            }
+            else if (m_type == META_LYRIC)
+            {
+                char m_lyric[m_length.total];
+            }
+            else if (m_type == META_MARKER)
+            {
+                char m_marker[m_length.total];
+            }
+            else if (m_type == META_CUE_POINT)
+            {
+                char m_cuePoint[m_length.total];
+            }
+            else if (m_type == META_PROGRAM_NAME)
+            {
+                char m_programName[m_length.total];
+            }
+            else if (m_type == META_DEVICE_NAME)
+            {
+                char m_deviceName[m_length.total];
+            }
+            else if (m_type == META_MIDI_CHANNEL_PREFIX)
+            {
+                char m_channelPrefix;
+            }
+            else if (m_type == META_MIDI_PORT)
+            {
+                char m_port;
+            }
+            else if (m_type == META_END_OF_TRACK)
+            {
+            }
+            else if (m_type == META_TEMPO)
+            {
+                uint m_usecPerQuarterNote : 24;
+                // local uint m_bpm = 60000000 / m_usecPerQuarterNote;
+                FSeek(FTell() - 1);
+            }
+            else if (m_type == META_SMPTE_OFFSET)
+            {
+                char m_hours;
+                char m_mins;
+                char m_secs;
+                char m_fps;
+                char m_fracFrames;
+            }
+            else if (m_type == META_TIME_SIGNATURE)
+            {
+                char m_numerator;
+                char m_denominator;
+                char m_clocksPerClick;
+                char m_32ndPer4th;
+            }
+            else if (m_type == META_KEY_SIGNATURE)
+            {
+                char m_flatsSharps;
+                char m_majorMinor;
+            }
+            else
+            {
+                char m_data[m_length.total];
+            }
+        } meta_event;
+        Printf("\t\tType: %c\n", meta_event.m_type);
+    }
+    else if ((lastStatus & 0xf0) == 0xF0) 
+    {
+        struct 
+        {
+            DeltaTime m_length;
+            Printf("\t\tsysex_event m_length: %d\n", m_length.total);
+            char m_message[m_length.total];
+            Printf("\t\tMessage: %s\n", m_message);
+        } sysex_event;
+    }
+};
+
+struct MidiTrack
+{
+    char m_magic[4] = { "MTrk" };//<format = hex>;
+    local uint m_seclen_pos = FTell();
+    uint m_seclen<arraylength=true>;
+    local uint remaining = m_seclen;
+    local uint message_index = 0;
+
+    Printf("---MIDI Track (%d)---\n\tMagic: %s\n\tSection length: %d\n", track_index, m_magic, m_seclen);
+
+    local uint sec_start = FTell();
+    while (remaining) {
+        MidiMessage message;
+        local uint message_len = sizeof(message);
+        if (message_len > remaining) {
+            //Correct m_seclen value
+            local uint remaining = 0;
+            local uint sec_end = FTell();
+            FSeek(m_seclen_pos);
+            local int evil_state = SetEvilBit(false);
+            uint m_seclen = { sec_end - sec_start };
+            SetEvilBit(evil_state);
+            FSeek(sec_end);
+            break;
+        }
+        remaining -= message_len;
+        message_index++;
+    }
+    track_index++;
+};
+
+struct 
+{
+    MidiHeader header;
+    MidiTrack tracks[header.m_ntracks] <optimize=false>;
+} file;

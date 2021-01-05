@@ -8,8 +8,11 @@
 #include <functional>
 #include <zlib.h>
 
-#define MAX_RAND_SIZE 65536
-#define MAX_FILE_SIZE 4096
+//#define MAX_RAND_SIZE 65536
+//#define MAX_FILE_SIZE 4096
+
+#define MAX_RAND_SIZE 1000000000
+#define MAX_FILE_SIZE 1000000000
 
 bool is_big_endian = false;
 bool is_bitfield_left_to_right[2] = {false, true};
