@@ -24,12 +24,15 @@
 //https://wiki.wireshark.org/Development/LibpcapFileFormat
 //https://github.com/hokiespurs/velodyne-copter/wiki/PCAP-format
 
+typedef enum <uint16> {
+	L3TYPE_IPV4 = 0x0800,
+	L3TYPE_IPV6 = 0x86dd,
+    L3TYPE_VLAN = 0x8100
+} L3TypeT <format=hex>;
 
 typedef struct {
 
-        local uint evil_state = SetEvilBit(false);
-        uint32 magic_number = { 0xA1B2C3D4 }; /* magic number */
-        SetEvilBit(evil_state);
+        uint32 magic_number;/* magic number */
 
         if(magic_number != 0xA1B2C3D4) {
             Warning("Not a valid PCAP file");
@@ -52,7 +55,7 @@ typedef struct
 {
         MACaddr DstMac<name="Destination MAC">;
         MACaddr SrcMac<name="Source MAC">;
-        uint16 L3type = { 0x0800, 0x8100 };//<name="Layer 3 Protocol">;
+        uint16 L3type<name="Layer 3 Protocol">;
 } Layer_2 <size=14>;
 
 typedef struct 
@@ -68,6 +71,10 @@ typedef struct
     uchar Byte[4];
 } IPv4addr<read=IPv4addrName>;
 
+typedef struct {
+    uchar Byte[16];
+} IPv6addr<read=IPv6addrName>;
+
 string IPv4addrName(IPv4addr &IP)
 {
     string strReturn;
@@ -75,15 +82,25 @@ string IPv4addrName(IPv4addr &IP)
     return strReturn;
 }
 
+string IPv6addrName(IPv6addr &IP) {
+    string strReturn;
+    SPrintf(strReturn, "%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x", 
+        IP.Byte[0], IP.Byte[1], IP.Byte[2], IP.Byte[3], IP.Byte[4], IP.Byte[5], IP.Byte[6], IP.Byte[7],
+        IP.Byte[8], IP.Byte[9], IP.Byte[10], IP.Byte[11], IP.Byte[12], IP.Byte[13], IP.Byte[14], IP.Byte[15]
+    );
+    return strReturn;
+}
+
 typedef struct (uint16 proto_type)
 {
-    uchar version:4;
-    uchar ip_hdr_len:4;
-    local int hdr_length = ip_hdr_len*4;
-    BYTE DiffServField;
-    uint16 total_length<arraylength=true>;
-    if (proto_type == 0x0800)    // IP
+    
+    if (proto_type == 0x0800)    // IPv4
     {
+        uchar version:4;
+        uchar ip_hdr_len:4;
+        local int hdr_length = ip_hdr_len*4;
+        BYTE DiffServField;
+        uint16 total_length;
         uint16 Identification;   
         uint16 Flags;
         BYTE   TTL;
@@ -92,9 +109,20 @@ typedef struct (uint16 proto_type)
         IPv4addr SRC_IP<name="Source IP">;
         IPv4addr DST_IP<name="Dest IP">;
     }
+    else if (proto_type == 0x86dd) { //IPv6
+        uchar version:4;
+        char flow_label[3];
+        uint16 payload_length;
+        uchar next_hdr;
+        uchar hop_limit;
+        IPv6addr SRC_IP<name="Source IP">;
+        IPv6addr DST_IP<name="Dest IP">;
+    }
     else
     {
-        BYTE Unknown[hdr_length-4];
+        Printf("Unsupported proto type!");
+        return -1;
+        //BYTE Unknown[hdr_length-4];
     }
 } Layer_3;
 
@@ -144,6 +172,7 @@ string L4protoName(BYTE val)
 }
 
 typedef struct (uint32 network) {
+
         local uint32 len_before_l3;
         uint32 /*time_t*/ ts_sec;         /* timestamp seconds */
         uint32 ts_usec;        /* timestamp microseconds */
@@ -151,32 +180,34 @@ typedef struct (uint32 network) {
         uint32 orig_len;       /* actual length of packet */
         BigEndian();
 
+
         len_before_l3 = 0;
         if (network == 101) { // Raw IP; the packet begins with an IPv4 or IPv6 header
             Layer_3 L3(0x0800) <name="Layer 3">;
         } else { // other wise create L2 header
             Layer_2 L2 <name="Layer 2">;
             len_before_l3 += 14;
-            if (L2.L3type == 0x0800) {
+            if (L2.L3type == L3TYPE_IPV4) {
                 Layer_3 L3(L2.L3type) <name="Layer 3">;
             }
-            else if (L2.L3type == 0x8100) {
+            else if (L2.L3type == L3TYPE_VLAN) {
                 Dot1q d1q <name="802.1Q Vitual LAN">;
                 len_before_l3 += 4;
                 Layer_3 L3(d1q.L3type) <name="Layer 3">;
             }
-            else if (L2.L3type == 0x86dd) {
-                Printf("IPv6 is not yet supported!");
-                return -1;
+            else if (L2.L3type == L3TYPE_IPV6) {
+                Layer_3 L3(L2.L3type) <name="Layer 3">;
+                //Printf("IPv6 is not yet supported!");
+                //return -1;
             }
             else {
                 Printf("Unsupported L3 Type: 0x%x", L2.L3type);
                 return -1;
             }
         }
+
         
         Layer_4 L4(L3.ip_hdr_len,L3.total_length,L3.L4proto)<name="Layer 4">;
-
         if (L3.L4proto == 0x6)
         {
             local uint16 AppDataLen = L3.total_length - L3.ip_hdr_len*4 - L4.tcp_hdr_len*4;
@@ -198,7 +229,10 @@ typedef struct (uint32 network) {
         if (len_before_l3 + L3.total_length < incl_len) {
             uchar padding[incl_len - len_before_l3 - L3.total_length]<name="Layer 2 Padding">;
         }
+
+
         LittleEndian();
+
 } PCAPRECORD <read=ReadPCAPRECORD,comment=PCAPcomments>;
 
 string PCAPcomments(PCAPRECORD &P)
@@ -236,13 +270,8 @@ string MACname(MACaddr &addr)
 LittleEndian();
 PCAPHEADER header;
 
-local uint max_records = 20;
-local uint len_records = 0;
-
-while( len_records < max_records )//|| !FEof() )
+while( !FEof() )
 {
     SetBackColor( cLtGreen );
-    Printf("Generating frame %d...\n", len_records);
 	PCAPRECORD record(header.network) <name="Frame">;
-    len_records++;
 }

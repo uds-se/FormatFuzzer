@@ -151,6 +151,9 @@ public:
 		return network_var;
 	}
 
+	/* locals */
+	uint evil_state;
+
 	unsigned char generated = 0;
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
@@ -168,38 +171,6 @@ public:
 		}
 	}
 	PCAPHEADER* generate();
-};
-
-
-
-class time_t_class {
-	int small;
-	std::vector<time_t> known_values;
-	time_t value;
-public:
-	int64 _startof = 0;
-	std::size_t _sizeof = sizeof(time_t);
-	time_t operator () () { return value; }
-	time_t_class(int small, std::vector<time_t> known_values = {}) : small(small), known_values(known_values) {}
-
-	time_t generate() {
-		_startof = FTell();
-		if (known_values.empty()) {
-			value = file_acc.file_integer(sizeof(time_t), 0, small);
-		} else {
-			value = file_acc.file_integer(sizeof(time_t), 0, known_values);
-		}
-		return value;
-	}
-
-	time_t generate(std::vector<time_t> new_known_values) {
-		_startof = FTell();
-		for (auto& known : known_values) {
-			new_known_values.push_back(known);
-		}
-		value = file_acc.file_integer(sizeof(time_t), 0, new_known_values);
-		return value;
-	}
 };
 
 
@@ -788,7 +759,7 @@ public:
 class PCAPRECORD {
 	std::vector<PCAPRECORD*>& instances;
 
-	time_t ts_sec_var;
+	uint32 ts_sec_var;
 	uint32 ts_usec_var;
 	uint32 incl_len_var;
 	uint32 orig_len_var;
@@ -811,7 +782,7 @@ public:
 	bool AppData_exists = false;
 	bool padding_exists = false;
 
-	time_t ts_sec() {
+	uint32 ts_sec() {
 		assert_cond(ts_sec_exists, "struct field ts_sec does not exist");
 		return ts_sec_var;
 	}
@@ -913,7 +884,9 @@ public:
 	uint32_class snaplen;
 	uint32_class network;
 	PCAPHEADER header;
-	time_t_class ts_sec;
+	/*local*/ uint max_records;
+	/*local*/ uint len_records;
+	uint32_class ts_sec;
 	uint32_class ts_usec;
 	uint32_class incl_len;
 	uint32_class orig_len;
@@ -977,7 +950,7 @@ public:
 		version(1),
 		ip_hdr_len(1),
 		DiffServField(1),
-		total_length(1),
+		total_length(2),
 		Identification(1),
 		Flags(1),
 		TTL(1),
@@ -992,7 +965,7 @@ public:
 		L3(Layer_3_L3_instances),
 		DstMac(MACaddr_DstMac_instances),
 		SrcMac(MACaddr_SrcMac_instances),
-		L3type(1, { 0x0800, 0x8100 }),
+		L3type(1, { 0x0800, 0x8100, 0x86dd }),
 		L2(Layer_2_L2_instances),
 		priority(1),
 		dei(1),
@@ -1032,7 +1005,9 @@ PCAPHEADER* PCAPHEADER::generate() {
 		generated = 1;
 	_startof = FTell();
 
+	evil_state = SetEvilBit(false);
 	GENERATE_VAR(magic_number, ::g->magic_number.generate({ 0xA1B2C3D4 }));
+	SetEvilBit(evil_state);
 	if ((magic_number() != 0xA1B2C3D4)) {
 		Warning("Not a valid PCAP file");
 		exit_template(1);
@@ -1127,7 +1102,7 @@ Layer_2* Layer_2::generate() {
 
 	GENERATE_VAR(DstMac, ::g->DstMac.generate());
 	GENERATE_VAR(SrcMac, ::g->SrcMac.generate());
-	GENERATE_VAR(L3type, ::g->L3type.generate());
+	GENERATE_VAR(L3type, ::g->L3type.generate({ 0x0800, 0x8100 }));
 
 	_sizeof = FTell() - _startof;
 	return this;
@@ -1180,6 +1155,7 @@ Layer_4* Layer_4::generate(ushort VER_HDR, uint16 total_length, uint L4proto) {
 		GENERATE_VAR(Reserved, ::g->Reserved.generate(4));
 		GENERATE_VAR(Crap, ::g->Crap.generate(((tcp_hdr_len() * 4) - 13)));
 	} else {
+		SetBackColor(cNone);
 		GENERATE_VAR(packet, ::g->packet.generate((total_length - ip_hdr_length)));
 	};
 	};
@@ -1217,6 +1193,14 @@ PCAPRECORD* PCAPRECORD::generate(uint32 network) {
 			GENERATE_VAR(d1q, ::g->d1q.generate());
 			len_before_l3 += 4;
 			GENERATE_VAR(L3, ::g->L3.generate(d1q().L3type()));
+		} else {
+		if ((L2().L3type() == 0x86dd)) {
+			Printf("IPv6 is not yet supported!");
+			exit_template(-1);
+		} else {
+			Printf("Unsupported L3 Type: 0x%x", L2().L3type());
+			exit_template(-1);
+		};
 		};
 		};
 	};
@@ -1224,12 +1208,14 @@ PCAPRECORD* PCAPRECORD::generate(uint32 network) {
 	if ((L3().L4proto() == 0x6)) {
 		AppDataLen = ((L3().total_length() - (L3().ip_hdr_len() * 4)) - (L4().tcp_hdr_len() * 4));
 		if ((AppDataLen > 0)) {
+			SetBackColor(cNone);
 			GENERATE_VAR(AppData, ::g->AppData.generate(AppDataLen));
 		};
 	} else {
 	if ((L3().L4proto() == 0x11)) {
 		AppDataLen = (L4().udp_hdr_len() - 8);
 		if ((AppDataLen > 0)) {
+			SetBackColor(cNone);
 			GENERATE_VAR(AppData, ::g->AppData.generate(AppDataLen));
 		};
 	};
@@ -1250,8 +1236,13 @@ void generate_file() {
 
 	LittleEndian();
 	GENERATE(header, ::g->header.generate());
-	while (!FEof()) {
+	::g->max_records = 20;
+	::g->len_records = 0;
+	while ((::g->len_records < ::g->max_records)) {
+		SetBackColor(cLtGreen);
+		Printf("Generating frame %d...\n", ::g->len_records);
 		GENERATE(record, ::g->record.generate(::g->header().network()));
+		::g->len_records++;
 	};
 
 	file_acc.finish();
