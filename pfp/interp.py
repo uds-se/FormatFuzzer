@@ -2279,6 +2279,8 @@ class PfpInterp(object):
                         node.type.cpp = "LONG"
                     if node.type.cpp == "unsigned long":
                         node.type.cpp = "ULONG"
+                    if node.type.cpp == "time_t":
+                        node.type.cpp = "uint32"
                     is_string = False
                     if node.type.cpp == "string":
                         node.type.cpp = "std::string"
