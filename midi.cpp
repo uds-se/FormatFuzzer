@@ -1047,8 +1047,8 @@ public:
 	file_struct* generate();
 };
 
-std::vector<char> ReadByteInitValues;
-std::vector<uchar> ReadUByteInitValues;
+std::vector<byte> ReadByteInitValues;
+std::vector<ubyte> ReadUByteInitValues;
 std::vector<short> ReadShortInitValues;
 std::vector<ushort> ReadUShortInitValues;
 std::vector<int> ReadIntInitValues;
@@ -1160,7 +1160,7 @@ public:
 		m_magic_element(false),
 		m_magic(m_magic_element),
 		m_seclen(1),
-		m_ntracks(1),
+		m_ntracks(2),
 		m_tickdiv(1),
 		header(MidiHeader_header_instances),
 		t0(1),

@@ -288,6 +288,8 @@ public:
 			file_integer(bitfield_size, 8 * bitfield_size - bitfield_bits, 0);
 			is_padding = false;
 		}
+		if (!generate)
+			assert_cond(file_size == final_file_size, "unparsed bytes left at the end of file");
 	}
 
 	std::string rand_bytes(int size) {

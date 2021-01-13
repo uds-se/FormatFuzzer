@@ -1324,8 +1324,8 @@ public:
 	TRAILER* generate();
 };
 
-std::vector<char> ReadByteInitValues;
-std::vector<uchar> ReadUByteInitValues = {  };
+std::vector<byte> ReadByteInitValues;
+std::vector<ubyte> ReadUByteInitValues = {  };
 std::vector<short> ReadShortInitValues;
 std::vector<ushort> ReadUShortInitValues = { 0xF921, 0xFE21, 0x0121, 0xFF21 };
 std::vector<int> ReadIntInitValues;

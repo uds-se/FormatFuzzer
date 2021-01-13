@@ -168,25 +168,27 @@ void end_generation() {
 		return;
 	stack_cell& back = generator_stack.back();
 	stack_cell& prev = generator_stack[generator_stack.size() - 2];
-	printf("%u,%u,", back.min, back.max);
-	bool first = true;
-	stack_cell* parent = NULL;
-	for (auto& cell : generator_stack) {
-		if (first) {
-			printf("%s", cell.name);
-			first = false;
-		} else {
-			printf("~%s", cell.name);
-			if (parent->counts[cell.name])
-				printf("_%u", parent->counts[cell.name]);
+	if (back.min <= back.max) {
+		printf("%u,%u,", back.min, back.max);
+		bool first = true;
+		stack_cell* parent = NULL;
+		for (auto& cell : generator_stack) {
+			if (first) {
+				printf("%s", cell.name);
+				first = false;
+			} else {
+				printf("~%s", cell.name);
+				if (parent->counts[cell.name])
+					printf("_%u", parent->counts[cell.name]);
+			}
+			parent = &cell;
 		}
-		parent = &cell;
+		printf(",Enabled\n");
+		if (back.min < prev.min)
+			prev.min = back.min;
+		if (back.max > prev.max)
+			prev.max = back.max;
 	}
-	printf(",Enabled\n");
-	if (back.min < prev.min)
-		prev.min = back.min;
-	if (back.max > prev.max)
-		prev.max = back.max;
 	++prev.counts[back.name];
 	generator_stack.pop_back();
 }
@@ -640,39 +642,39 @@ bool ReadBytes(std::string& s, int64 pos, int n, std::vector<std::string> prefer
 	return s.length() != 0;
 }
 
-extern std::vector<char> ReadByteInitValues;
+extern std::vector<byte> ReadByteInitValues;
 
-char ReadByte(int64 pos = FTell(), std::vector<char> new_known_values = {}) {
+byte ReadByte(int64 pos = FTell(), std::vector<byte> new_known_values = {}) {
 	int64 original_pos = FTell();
 	FSeek(pos);
 	file_acc.lookahead = true;
-	char value;
+	byte value;
 	for (auto& known : ReadByteInitValues) {
 		new_known_values.push_back(known);
 	}
 	if (new_known_values.size())
-		value = file_acc.file_integer(sizeof(char), 0, new_known_values);
+		value = file_acc.file_integer(sizeof(byte), 0, new_known_values);
 	else
-		value = file_acc.file_integer(sizeof(char), 0);
+		value = file_acc.file_integer(sizeof(byte), 0);
 	file_acc.lookahead = false;
 	FSeek(original_pos);
 	return value;
 }
 
-extern std::vector<uchar> ReadUByteInitValues;
+extern std::vector<ubyte> ReadUByteInitValues;
 
-uchar ReadUByte(int64 pos = FTell(), std::vector<uchar> new_known_values = {}) {
+ubyte ReadUByte(int64 pos = FTell(), std::vector<ubyte> new_known_values = {}) {
 	int64 original_pos = FTell();
 	FSeek(pos);
 	file_acc.lookahead = true;
-	uchar value;
+	ubyte value;
 	for (auto& known : ReadUByteInitValues) {
 		new_known_values.push_back(known);
 	}
 	if (new_known_values.size())
-		value = file_acc.file_integer(sizeof(uchar), 0, new_known_values);
+		value = file_acc.file_integer(sizeof(ubyte), 0, new_known_values);
 	else
-		value = file_acc.file_integer(sizeof(uchar), 0);
+		value = file_acc.file_integer(sizeof(ubyte), 0);
 	file_acc.lookahead = false;
 	FSeek(original_pos);
 	return value;

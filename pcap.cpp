@@ -846,8 +846,8 @@ public:
 	PCAPRECORD* generate(uint32 network);
 };
 
-std::vector<char> ReadByteInitValues;
-std::vector<uchar> ReadUByteInitValues;
+std::vector<byte> ReadByteInitValues;
+std::vector<ubyte> ReadUByteInitValues;
 std::vector<short> ReadShortInitValues;
 std::vector<ushort> ReadUShortInitValues;
 std::vector<int> ReadIntInitValues;
