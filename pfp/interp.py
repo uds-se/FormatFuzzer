@@ -1624,8 +1624,8 @@ class PfpInterp(object):
         for n, c in self._cpp:
             #node.cpp += "/*" + n + "*/\n"
             node.cpp += c
-        readfunctions = [["char", "Byte"],
-                         ["uchar", "UByte"],
+        readfunctions = [["byte", "Byte"],
+                         ["ubyte", "UByte"],
                          ["short", "Short"],
                          ["ushort", "UShort"],
                          ["int", "Int"],

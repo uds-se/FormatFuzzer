@@ -174,30 +174,30 @@ public:
 
 class time_t_class {
 	int small;
-	std::vector<time_t> known_values;
-	time_t value;
+	std::vector<uint32> known_values;
+	uint32 value;
 public:
 	int64 _startof = 0;
-	std::size_t _sizeof = sizeof(time_t);
-	time_t operator () () { return value; }
-	time_t_class(int small, std::vector<time_t> known_values = {}) : small(small), known_values(known_values) {}
+	std::size_t _sizeof = sizeof(uint32);
+	uint32 operator () () { return value; }
+	time_t_class(int small, std::vector<uint32> known_values = {}) : small(small), known_values(known_values) {}
 
-	time_t generate() {
+	uint32 generate() {
 		_startof = FTell();
 		if (known_values.empty()) {
-			value = file_acc.file_integer(sizeof(time_t), 0, small);
+			value = file_acc.file_integer(sizeof(uint32), 0, small);
 		} else {
-			value = file_acc.file_integer(sizeof(time_t), 0, known_values);
+			value = file_acc.file_integer(sizeof(uint32), 0, known_values);
 		}
 		return value;
 	}
 
-	time_t generate(std::vector<time_t> new_known_values) {
+	uint32 generate(std::vector<uint32> new_known_values) {
 		_startof = FTell();
 		for (auto& known : known_values) {
 			new_known_values.push_back(known);
 		}
-		value = file_acc.file_integer(sizeof(time_t), 0, new_known_values);
+		value = file_acc.file_integer(sizeof(uint32), 0, new_known_values);
 		return value;
 	}
 };
@@ -788,7 +788,7 @@ public:
 class PCAPRECORD {
 	std::vector<PCAPRECORD*>& instances;
 
-	time_t ts_sec_var;
+	uint32 ts_sec_var;
 	uint32 ts_usec_var;
 	uint32 incl_len_var;
 	uint32 orig_len_var;
@@ -811,7 +811,7 @@ public:
 	bool AppData_exists = false;
 	bool padding_exists = false;
 
-	time_t ts_sec() {
+	uint32 ts_sec() {
 		assert_cond(ts_sec_exists, "struct field ts_sec does not exist");
 		return ts_sec_var;
 	}
@@ -875,8 +875,8 @@ public:
 	PCAPRECORD* generate(uint32 network);
 };
 
-std::vector<char> ReadByteInitValues;
-std::vector<uchar> ReadUByteInitValues;
+std::vector<byte> ReadByteInitValues;
+std::vector<ubyte> ReadUByteInitValues;
 std::vector<short> ReadShortInitValues;
 std::vector<ushort> ReadUShortInitValues;
 std::vector<int> ReadIntInitValues;
