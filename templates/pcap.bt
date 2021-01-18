@@ -25,6 +25,8 @@
 //https://github.com/hokiespurs/velodyne-copter/wiki/PCAP-format
 
 
+//ChangeArrayLength();
+
 typedef struct {
 
         local uint evil_state = SetEvilBit(false);
@@ -35,12 +37,12 @@ typedef struct {
             Warning("Not a valid PCAP file");
             return 1;
         }
-        uint16 version_major;  /* major version number */
-        uint16 version_minor;  /* minor version number */
-        int32  thiszone;       /* GMT to local correction */
-        uint32 sigfigs;        /* accuracy of timestamps */
-        uint32 snaplen;        /* max length of captured packets, in octets */
-        uint32 network;        /* data link type */
+        uint16 version_major = {2};  /* major version number */
+        uint16 version_minor = {4};  /* minor version number */
+        int32  thiszone = {0};       /* GMT to local correction */
+        uint32 sigfigs = {0};        /* accuracy of timestamps */
+        uint32 snaplen = {262144};        /* max length of captured packets, in octets */
+        uint32 network = {1};        /* data link type */
 } PCAPHEADER;
 
 typedef struct 
@@ -52,7 +54,9 @@ typedef struct
 {
         MACaddr DstMac<name="Destination MAC">;
         MACaddr SrcMac<name="Source MAC">;
+        local uint evil_state = SetEvilBit(false);
         uint16 L3type = { 0x0800, 0x8100 };//<name="Layer 3 Protocol">;
+        SetEvilBit(evil_state);
 } Layer_2 <size=14>;
 
 typedef struct 
@@ -94,7 +98,9 @@ typedef struct (uint16 proto_type)
     }
     else
     {
-        BYTE Unknown[hdr_length-4];
+        local uint UnknownLength = hdr_length-4;
+        Printf("UnknownLength = %d", UnknownLength);
+        BYTE Unknown[UnknownLength];
     }
 } Layer_3;
 
@@ -115,9 +121,12 @@ typedef struct (ushort VER_HDR,uint16 total_length,uint L4proto)
         uint16 DstPort<name="Destination Port">;
         uint32 SEQ;
         uint32 ACK; 
-        uchar tcp_hdr_len:4;
+        local uchar possible_values[] = {4, 5, 6};
+        uchar tcp_hdr_len:4 <values=possible_values>;
         uchar Reserved:4;
-        BYTE Crap[tcp_hdr_len*4-13];
+        local uint CrapSize = tcp_hdr_len*4-13;
+        Printf("Crap size: %d", CrapSize);
+        BYTE Crap[CrapSize];
     }
     else
     {
@@ -145,13 +154,18 @@ string L4protoName(BYTE val)
 
 typedef struct (uint32 network) {
         local uint32 len_before_l3;
-        uint32 /*time_t*/ ts_sec;         /* timestamp seconds */
+        time_t ts_sec;         /* timestamp seconds */
         uint32 ts_usec;        /* timestamp microseconds */
+
+        //vvvvvvvvvvvvvvvvvvvvvvv TODO: Lengths vvvvvvvvvvvvvvvvvvvvvvvvvvvvv
         uint32 incl_len;       /* number of octets of packet saved in file */
         uint32 orig_len;       /* actual length of packet */
+        //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
         BigEndian();
 
         len_before_l3 = 0;
+        local uint start_pos = FTell();
         if (network == 101) { // Raw IP; the packet begins with an IPv4 or IPv6 header
             Layer_3 L3(0x0800) <name="Layer 3">;
         } else { // other wise create L2 header
@@ -180,6 +194,7 @@ typedef struct (uint32 network) {
         if (L3.L4proto == 0x6)
         {
             local uint16 AppDataLen = L3.total_length - L3.ip_hdr_len*4 - L4.tcp_hdr_len*4;
+            Printf("0x6 AppDataLen = %d - %d - %d = %d", L3.total_length, L3.ip_hdr_len*4, L4.tcp_hdr_len*4, AppDataLen);
             if (AppDataLen > 0)
             {
                 SetBackColor( cNone );
@@ -189,6 +204,7 @@ typedef struct (uint32 network) {
         else if (L3.L4proto == 0x11)
         {
             local uint AppDataLen = L4.udp_hdr_len-8;
+            Printf("0x11 AppDataLen = %d", AppDataLen);
             if (AppDataLen > 0)
             {
                 SetBackColor( cNone );
@@ -196,8 +212,18 @@ typedef struct (uint32 network) {
             }
         }
         if (len_before_l3 + L3.total_length < incl_len) {
-            uchar padding[incl_len - len_before_l3 - L3.total_length]<name="Layer 2 Padding">;
+            local uint PaddingLength = incl_len - len_before_l3 - L3.total_length;
+            Printf("PaddingLength = %d - %d - %d = %d", incl_len, len_before_l3, L3.total_length, PaddingLength);
+            uchar padding[PaddingLength]<name="Layer 2 Padding">;
         }
+
+        local uint end_pos = FTell();
+        local uint frame_length = end_pos - start_pos;
+        FSeek(start_pos - 8);
+        uint32 incl_len = { frame_length };
+        uint32 orig_len = { frame_length };
+        FSeek(end_pos);
+
         LittleEndian();
 } PCAPRECORD <read=ReadPCAPRECORD,comment=PCAPcomments>;
 
@@ -239,10 +265,10 @@ PCAPHEADER header;
 local uint max_records = 20;
 local uint len_records = 0;
 
-while( len_records < max_records )//|| !FEof() )
+while( !FEof())//len_records < max_records )//|| !FEof() )
 {
     SetBackColor( cLtGreen );
-    Printf("Generating frame %d...\n", len_records);
+    //Printf("Generating frame %d...\n", len_records);
 	PCAPRECORD record(header.network) <name="Frame">;
     len_records++;
 }

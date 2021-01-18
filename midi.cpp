@@ -1160,7 +1160,7 @@ public:
 		m_magic_element(false),
 		m_magic(m_magic_element),
 		m_seclen(1),
-		m_ntracks(1),
+		m_ntracks(2),
 		m_tickdiv(1),
 		header(MidiHeader_header_instances),
 		t0(1),

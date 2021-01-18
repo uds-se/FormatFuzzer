@@ -31,19 +31,19 @@ typedef enum <uint16> {
 } L3TypeT <format=hex>;
 
 typedef struct {
+    SetBackColor( cLtPurple );
+    uint32 magic_number;/* magic number */
 
-        uint32 magic_number;/* magic number */
-
-        if(magic_number != 0xA1B2C3D4) {
-            Warning("Not a valid PCAP file");
-            return 1;
-        }
-        uint16 version_major;  /* major version number */
-        uint16 version_minor;  /* minor version number */
-        int32  thiszone;       /* GMT to local correction */
-        uint32 sigfigs;        /* accuracy of timestamps */
-        uint32 snaplen;        /* max length of captured packets, in octets */
-        uint32 network;        /* data link type */
+    if(magic_number != 0xA1B2C3D4) {
+        Warning("Not a valid PCAP file");
+        return 1;
+    }
+    uint16 version_major;  /* major version number */
+    uint16 version_minor;  /* minor version number */
+    int32  thiszone;       /* GMT to local correction */
+    uint32 sigfigs;        /* accuracy of timestamps */
+    uint32 snaplen;        /* max length of captured packets, in octets */
+    uint32 network;        /* data link type */
 } PCAPHEADER;
 
 typedef struct 
@@ -53,17 +53,19 @@ typedef struct
 
 typedef struct 
 {
-        MACaddr DstMac<name="Destination MAC">;
-        MACaddr SrcMac<name="Source MAC">;
-        uint16 L3type<name="Layer 3 Protocol">;
+    SetBackColor( cLtGreen );
+    MACaddr DstMac<name="Destination MAC">;
+    MACaddr SrcMac<name="Source MAC">;
+    uint16 L3type<name="Layer 3 Protocol">;
 } Layer_2 <size=14>;
 
 typedef struct 
 {
-        uint16 priority:3;
-        uint16 dei:1;
-        uint16 id:12<name="Vlan Id">;
-        uint16 L3type<name="Layer 3 Protocol">;
+    SetBackColor( cLtOrange );
+    uint16 priority:3;
+    uint16 dei:1;
+    uint16 id:12<name="Vlan Id">;
+    uint16 L3type<name="Layer 3 Protocol">;
 } Dot1q <size=4>;
 
 typedef struct 
@@ -93,7 +95,7 @@ string IPv6addrName(IPv6addr &IP) {
 
 typedef struct (uint16 proto_type)
 {
-    
+    SetBackColor( cLtYellow );
     if (proto_type == 0x0800)    // IPv4
     {
         uchar version:4;
@@ -128,6 +130,7 @@ typedef struct (uint16 proto_type)
 
 typedef struct (ushort VER_HDR,uint16 total_length,uint L4proto)
 {    
+    SetBackColor( cLtRed );
     local uint16 ip_hdr_length = VER_HDR*4;
 
     if (L4proto == 0x11) // UDP
@@ -149,7 +152,6 @@ typedef struct (ushort VER_HDR,uint16 total_length,uint L4proto)
     }
     else
     {
-        SetBackColor( cNone );
         BYTE packet[total_length-ip_hdr_length]<name="Unknown Layer 4 Data">;
     }
     
@@ -172,6 +174,8 @@ string L4protoName(BYTE val)
 }
 
 typedef struct (uint32 network) {
+
+        SetBackColor( cLtBlue );
 
         local uint32 len_before_l3;
         uint32 /*time_t*/ ts_sec;         /* timestamp seconds */
@@ -208,12 +212,14 @@ typedef struct (uint32 network) {
 
         
         Layer_4 L4(L3.ip_hdr_len,L3.total_length,L3.L4proto)<name="Layer 4">;
+
+        SetBackColor( cNone );
+
         if (L3.L4proto == 0x6)
         {
             local uint16 AppDataLen = L3.total_length - L3.ip_hdr_len*4 - L4.tcp_hdr_len*4;
             if (AppDataLen > 0)
             {
-                SetBackColor( cNone );
                 BYTE AppData[AppDataLen]<name="TCP Application Data">;
             }
         }
@@ -222,7 +228,6 @@ typedef struct (uint32 network) {
             local uint AppDataLen = L4.udp_hdr_len-8;
             if (AppDataLen > 0)
             {
-                SetBackColor( cNone );
                 BYTE AppData[AppDataLen]<name="UDP Application Data">;
             }
         }
@@ -272,6 +277,6 @@ PCAPHEADER header;
 
 while( !FEof() )
 {
-    SetBackColor( cLtGreen );
+    
 	PCAPRECORD record(header.network) <name="Frame">;
 }

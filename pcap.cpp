@@ -175,6 +175,38 @@ public:
 
 
 
+class time_t_class {
+	int small;
+	std::vector<uint32> known_values;
+	uint32 value;
+public:
+	int64 _startof = 0;
+	std::size_t _sizeof = sizeof(uint32);
+	uint32 operator () () { return value; }
+	time_t_class(int small, std::vector<uint32> known_values = {}) : small(small), known_values(known_values) {}
+
+	uint32 generate() {
+		_startof = FTell();
+		if (known_values.empty()) {
+			value = file_acc.file_integer(sizeof(uint32), 0, small);
+		} else {
+			value = file_acc.file_integer(sizeof(uint32), 0, known_values);
+		}
+		return value;
+	}
+
+	uint32 generate(std::vector<uint32> new_known_values) {
+		_startof = FTell();
+		for (auto& known : known_values) {
+			new_known_values.push_back(known);
+		}
+		value = file_acc.file_integer(sizeof(uint32), 0, new_known_values);
+		return value;
+	}
+};
+
+
+
 class uchar_bitfield {
 	int small;
 	std::vector<uchar> known_values;
@@ -479,6 +511,7 @@ public:
 
 	/* locals */
 	int hdr_length;
+	uint UnknownLength;
 
 	unsigned char generated = 0;
 	int64 _startof = 0;
@@ -559,6 +592,9 @@ public:
 		assert_cond(L3type_exists, "struct field L3type does not exist");
 		return L3type_var;
 	}
+
+	/* locals */
+	uint evil_state;
 
 	unsigned char generated = 0;
 	int64 _startof = 0;
@@ -734,6 +770,8 @@ public:
 
 	/* locals */
 	uint16 ip_hdr_length;
+	std::string possible_values;
+	uint CrapSize;
 
 	unsigned char generated = 0;
 	int64 _startof = 0;
@@ -825,7 +863,11 @@ public:
 
 	/* locals */
 	uint32 len_before_l3;
+	uint start_pos;
 	uint16 AppDataLen;
+	uint PaddingLength;
+	uint end_pos;
+	uint frame_length;
 
 	unsigned char generated = 0;
 	int64 _startof = 0;
@@ -886,7 +928,7 @@ public:
 	PCAPHEADER header;
 	/*local*/ uint max_records;
 	/*local*/ uint len_records;
-	uint32_class ts_sec;
+	time_t_class ts_sec;
 	uint32_class ts_usec;
 	uint32_class incl_len;
 	uint32_class orig_len;
@@ -1012,12 +1054,12 @@ PCAPHEADER* PCAPHEADER::generate() {
 		Warning("Not a valid PCAP file");
 		exit_template(1);
 	};
-	GENERATE_VAR(version_major, ::g->version_major.generate());
-	GENERATE_VAR(version_minor, ::g->version_minor.generate());
-	GENERATE_VAR(thiszone, ::g->thiszone.generate());
-	GENERATE_VAR(sigfigs, ::g->sigfigs.generate());
-	GENERATE_VAR(snaplen, ::g->snaplen.generate());
-	GENERATE_VAR(network, ::g->network.generate());
+	GENERATE_VAR(version_major, ::g->version_major.generate({ 2 }));
+	GENERATE_VAR(version_minor, ::g->version_minor.generate({ 4 }));
+	GENERATE_VAR(thiszone, ::g->thiszone.generate({ 0 }));
+	GENERATE_VAR(sigfigs, ::g->sigfigs.generate({ 0 }));
+	GENERATE_VAR(snaplen, ::g->snaplen.generate({ 262144 }));
+	GENERATE_VAR(network, ::g->network.generate({ 1 }));
 
 	_sizeof = FTell() - _startof;
 	return this;
@@ -1065,7 +1107,9 @@ Layer_3* Layer_3::generate(uint16 proto_type) {
 		GENERATE_VAR(SRC_IP, ::g->SRC_IP.generate());
 		GENERATE_VAR(DST_IP, ::g->DST_IP.generate());
 	} else {
-		GENERATE_VAR(Unknown, ::g->Unknown.generate((hdr_length - 4)));
+		UnknownLength = (hdr_length - 4);
+		Printf("UnknownLength = %d", UnknownLength);
+		GENERATE_VAR(Unknown, ::g->Unknown.generate(UnknownLength));
 	};
 
 	_sizeof = FTell() - _startof;
@@ -1102,7 +1146,9 @@ Layer_2* Layer_2::generate() {
 
 	GENERATE_VAR(DstMac, ::g->DstMac.generate());
 	GENERATE_VAR(SrcMac, ::g->SrcMac.generate());
+	evil_state = SetEvilBit(false);
 	GENERATE_VAR(L3type, ::g->L3type.generate({ 0x0800, 0x8100 }));
+	SetEvilBit(evil_state);
 
 	_sizeof = FTell() - _startof;
 	return this;
@@ -1151,9 +1197,12 @@ Layer_4* Layer_4::generate(ushort VER_HDR, uint16 total_length, uint L4proto) {
 		GENERATE_VAR(DstPort, ::g->DstPort.generate());
 		GENERATE_VAR(SEQ, ::g->SEQ.generate());
 		GENERATE_VAR(ACK, ::g->ACK.generate());
+		possible_values = { 4, 5, 6 };
 		GENERATE_VAR(tcp_hdr_len, ::g->tcp_hdr_len.generate(4));
 		GENERATE_VAR(Reserved, ::g->Reserved.generate(4));
-		GENERATE_VAR(Crap, ::g->Crap.generate(((tcp_hdr_len() * 4) - 13)));
+		CrapSize = ((tcp_hdr_len() * 4) - 13);
+		Printf("Crap size: %d", CrapSize);
+		GENERATE_VAR(Crap, ::g->Crap.generate(CrapSize));
 	} else {
 		SetBackColor(cNone);
 		GENERATE_VAR(packet, ::g->packet.generate((total_length - ip_hdr_length)));
@@ -1181,6 +1230,7 @@ PCAPRECORD* PCAPRECORD::generate(uint32 network) {
 	GENERATE_VAR(orig_len, ::g->orig_len.generate());
 	BigEndian();
 	len_before_l3 = 0;
+	start_pos = FTell();
 	if ((network == 101)) {
 		GENERATE_VAR(L3, ::g->L3.generate(0x0800));
 	} else {
@@ -1207,6 +1257,7 @@ PCAPRECORD* PCAPRECORD::generate(uint32 network) {
 	GENERATE_VAR(L4, ::g->L4.generate(L3().ip_hdr_len(), L3().total_length(), L3().L4proto()));
 	if ((L3().L4proto() == 0x6)) {
 		AppDataLen = ((L3().total_length() - (L3().ip_hdr_len() * 4)) - (L4().tcp_hdr_len() * 4));
+		Printf("0x6 AppDataLen = %d - %d - %d = %d", L3().total_length(), (L3().ip_hdr_len() * 4), (L4().tcp_hdr_len() * 4), AppDataLen);
 		if ((AppDataLen > 0)) {
 			SetBackColor(cNone);
 			GENERATE_VAR(AppData, ::g->AppData.generate(AppDataLen));
@@ -1214,6 +1265,7 @@ PCAPRECORD* PCAPRECORD::generate(uint32 network) {
 	} else {
 	if ((L3().L4proto() == 0x11)) {
 		AppDataLen = (L4().udp_hdr_len() - 8);
+		Printf("0x11 AppDataLen = %d", (L4().udp_hdr_len() - 8));
 		if ((AppDataLen > 0)) {
 			SetBackColor(cNone);
 			GENERATE_VAR(AppData, ::g->AppData.generate(AppDataLen));
@@ -1221,8 +1273,16 @@ PCAPRECORD* PCAPRECORD::generate(uint32 network) {
 	};
 	};
 	if (((len_before_l3 + L3().total_length()) < incl_len())) {
-		GENERATE_VAR(padding, ::g->padding.generate(((incl_len() - len_before_l3) - L3().total_length())));
+		PaddingLength = ((incl_len() - len_before_l3) - L3().total_length());
+		Printf("PaddingLength = %d - %d - %d = %d", incl_len(), len_before_l3, L3().total_length(), PaddingLength);
+		GENERATE_VAR(padding, ::g->padding.generate(PaddingLength));
 	};
+	end_pos = FTell();
+	frame_length = (end_pos - start_pos);
+	FSeek((start_pos - 8));
+	GENERATE_VAR(incl_len, ::g->incl_len.generate({ frame_length }));
+	GENERATE_VAR(orig_len, ::g->orig_len.generate({ frame_length }));
+	FSeek(end_pos);
 	LittleEndian();
 
 	_sizeof = FTell() - _startof;
@@ -1238,9 +1298,8 @@ void generate_file() {
 	GENERATE(header, ::g->header.generate());
 	::g->max_records = 20;
 	::g->len_records = 0;
-	while ((::g->len_records < ::g->max_records)) {
+	while (!FEof()) {
 		SetBackColor(cLtGreen);
-		Printf("Generating frame %d...\n", ::g->len_records);
 		GENERATE(record, ::g->record.generate(::g->header().network()));
 		::g->len_records++;
 	};
