@@ -160,7 +160,9 @@ void generate_file();
 void start_generation(const char* name) {
 	if (!get_parse_tree)
 		return;
-	generator_stack.emplace_back(name);
+	generator_stack.emplace_back(name, file_acc.rand_prev, file_acc.rand_pos);
+	file_acc.rand_prev = file_acc.rand_pos;
+	file_acc.rand_last = UINT_MAX;
 }
 
 void end_generation() {
@@ -168,7 +170,27 @@ void end_generation() {
 		return;
 	stack_cell& back = generator_stack.back();
 	stack_cell& prev = generator_stack[generator_stack.size() - 2];
+	file_acc.rand_prev = file_acc.rand_pos;
+	
+	if (smart_mutation && back.rand_start == rand_start && (is_optional || strcmp(back.name, chunk_name) == 0)) {
+		unsigned size = MAX_RAND_SIZE - file_acc.rand_pos;
+		if (size > MAX_RAND_SIZE - (rand_end + 1))
+			size = MAX_RAND_SIZE - (rand_end + 1);
+		memmove(file_acc.rand_buffer + file_acc.rand_pos, file_acc.rand_buffer + rand_end + 1, size);
+		rand_end = file_acc.rand_pos - 1;
+	}
+
+	if (back.min < prev.min)
+		prev.min = back.min;
+	if (back.max > prev.max)
+		prev.max = back.max;
+
+	if (back.min > back.max) {
+		back.min = file_acc.file_pos;
+		back.max = file_acc.file_pos - 1;
+	}
 	if (back.min <= back.max) {
+		// printf("%u,%u, ", back.rand_start, file_acc.rand_pos - 1);
 		printf("%u,%u,", back.min, back.max);
 		bool first = true;
 		stack_cell* parent = NULL;
@@ -183,12 +205,39 @@ void end_generation() {
 			}
 			parent = &cell;
 		}
-		printf(",Enabled\n");
-		if (back.min < prev.min)
-			prev.min = back.min;
-		if (back.max > prev.max)
-			prev.max = back.max;
+		if (file_acc.rand_last != UINT_MAX)
+			printf(",Appendable");
+		if (back.rand_start != back.rand_start2)
+			printf(",Optional\n");
+		else
+			printf("\n");
 	}
+
+	if (get_chunk && back.min == chunk_start && back.max == chunk_end) {
+		printf("TARGET CHUNK FOUND\n");
+		rand_start = back.rand_start;
+		rand_end = file_acc.rand_pos - 1;
+		is_optional = back.rand_start != back.rand_start2;
+		chunk_name = back.name;
+		if (is_delete) {
+			is_following = true;
+		}
+	}
+
+	if (get_chunk && chunk_end == UINT_MAX && back.max == chunk_start - 1 && file_acc.rand_last != UINT_MAX) {
+		printf("APPENDABLE CHUNK FOUND\n");
+		rand_start = file_acc.rand_last;
+		chunk_name = back.name;
+	}
+	
+	if (get_chunk && chunk_end == UINT_MAX && back.min == chunk_start && back.rand_start != back.rand_start2) {
+		printf("OPTIONAL CHUNK FOUND\n");
+		rand_start = back.rand_start;
+		chunk_name = back.name;
+	}
+
+	file_acc.rand_last = UINT_MAX;
+
 	++prev.counts[back.name];
 	generator_stack.pop_back();
 }
@@ -204,6 +253,10 @@ char* get_bin_name(char* arg) {
 
 void set_parser() {
 	file_acc.generate = false;
+}
+
+void set_generator() {
+	file_acc.generate = true;
 }
 
 
@@ -293,6 +346,11 @@ void save_output(const char* filename) {
     
 	if (file_fd != STDOUT_FILENO)
         close(file_fd);
+}
+
+unsigned copy_rand(unsigned char *dest) {
+	memcpy(dest, file_acc.rand_buffer, file_acc.rand_pos);
+	return file_acc.rand_pos;
 }
 
 void delete_globals();
@@ -502,7 +560,13 @@ int FSkip(int64 offset) {
 
 int64 FileSize() {
 	if (!file_acc.has_size) {
+		file_acc.lookahead = true;
 		unsigned new_file_size = file_acc.file_size + file_acc.rand_int(MAX_FILE_SIZE + 1 - file_acc.file_size, [](unsigned char* file_buf) -> long long { return file_acc.final_file_size - file_acc.file_size; } );
+		file_acc.lookahead = false;
+		if (is_following) {
+			following_is_optional = true;
+			is_following = false;
+		}
 		int64 original_pos = FTell();
 		FSeek(new_file_size);
 		FSeek(original_pos);
@@ -517,9 +581,11 @@ int64 FindFirst(T data, int matchcase=true, int wholeword=false, int method=0, d
 	assert(matchcase == true && wholeword == false && method == 0 && tolerance == 0.0 && dir == 1 && size == 0 && wildcardMatchLength == 24);
 	T newdata = data;
 	swap_bytes(&newdata, sizeof(T));
+	file_acc.lookahead = true;
 	if (file_acc.evil( [&start, &newdata](unsigned char* file_buf) -> bool {
 			return memmem(file_acc.file_buffer + start, file_acc.final_file_size - start, &newdata, sizeof(T)) == NULL;
 		} )) {
+		file_acc.lookahead = false;
 		return -1;
 	}
 	int64 pos = start + file_acc.rand_int(MAX_FILE_SIZE + 1 - sizeof(T) - start, [&start, &newdata](unsigned char* file_buf) -> long long {
@@ -527,7 +593,6 @@ int64 FindFirst(T data, int matchcase=true, int wholeword=false, int method=0, d
 		} );
 	int64 original_pos = FTell();
 	FSeek(pos);
-	file_acc.lookahead = true;
 	std::vector<T> values = { data };
 	bool evil = file_acc.set_evil_bit(false);
 	file_acc.file_integer(sizeof(T), 0, values);
@@ -572,6 +637,8 @@ bool ReadBytes(std::string& s, int64 pos, int n, std::vector<std::string> prefer
 		std::function<long long (unsigned char*)> parse;
 		if (preferred_values.size()) {
 			parse = [&preferred_values, &new_known_values, &n](unsigned char* file_buf) -> long long {
+					if (file_acc.file_pos + n > file_acc.final_file_size)
+						return 0;
 			        	if (std::find(preferred_values.begin(), preferred_values.end(), std::string((char*)file_buf, n)) != preferred_values.end())
 			        		return 0;
 			        	if (std::find(new_known_values.begin(), new_known_values.end(), std::string((char*)file_buf, n)) != new_known_values.end())
@@ -580,6 +647,8 @@ bool ReadBytes(std::string& s, int64 pos, int n, std::vector<std::string> prefer
 			        };
 		} else {
 			parse = [&new_known_values, &n](unsigned char* file_buf) -> long long {
+					if (file_acc.file_pos + n > file_acc.final_file_size)
+						return 0;
 			        	if (std::find(new_known_values.begin(), new_known_values.end(), std::string((char*)file_buf, n)) != new_known_values.end())
 			        		return 254;
 			        	if (std::find(ReadBytesInitValues.begin(), ReadBytesInitValues.end(), std::string((char*)file_buf, n)) != ReadBytesInitValues.end())
@@ -615,10 +684,14 @@ bool ReadBytes(std::string& s, int64 pos, int n, std::vector<std::string> prefer
 		std::function<long long (unsigned char*)> parse;
 		if (preferred_values.size()) {
 			parse = [&preferred_values, &n](unsigned char* file_buf) -> long long {
+					if (file_acc.file_pos + n > file_acc.final_file_size)
+						return 0;
 			        	return 255 * (std::find(preferred_values.begin(), preferred_values.end(), std::string((char*)file_buf, n)) == preferred_values.end());
 			        };
 		} else {
 			parse = [&possible_values, &n](unsigned char* file_buf) -> long long {
+					if (file_acc.file_pos + n > file_acc.final_file_size)
+						return 0;
 			        	return 255 * (std::find(possible_values.begin(), possible_values.end(), std::string((char*)file_buf, n)) != possible_values.end());
 			        };
 		}

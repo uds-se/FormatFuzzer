@@ -673,6 +673,7 @@ class PfpInterp(object):
             node.cpp = "GENERATE"
             if len(self._incomplete_stack) > 1:
                 node.cpp += "_VAR"
+            self._variable_types[node.name] = classname
             node.cpp += "(" + name + ", ::g->" + node.name + ".generate("
             arg_num = 0
             if hasattr(node.type, "args") and node.type.args:
@@ -964,6 +965,7 @@ class PfpInterp(object):
                 node.cpp = "GENERATE"
                 if is_var:
                     node.cpp += "_VAR"
+                self._variable_types[field_name] = classname
                 node.cpp += "(" + name + ", ::g->" + field_name + ".generate("
                 arg_num = 0
                 if hasattr(node.type, "args") and node.type.args:
@@ -1123,6 +1125,7 @@ class PfpInterp(object):
         self._global_locals = []
         self._global_consts = []
         self._globals = []
+        self._variable_types = {}
         self._instances = ""
         self._locals_stack = [[]]
         self._incomplete_stack = [False]
@@ -1649,6 +1652,10 @@ class PfpInterp(object):
             if "Read" + n in self._read_funcs:
                 lookahead.append("Read" + n)
         node.cpp += "\n\n" + self._instances
+        node.cpp += "\n\nstd::unordered_map<std::string, std::string> variable_types = { "
+        for var in self._variable_types:
+            node.cpp += '{ "' + var + '", "' + self._variable_types[var] + '" }, '
+        node.cpp = node.cpp[:-2] + " };"
         node.cpp += "\n\nclass globals_class {\npublic:\n"
         for n, c in self._globals:
             #node.cpp += "/*" + n + "*/\n"
@@ -2190,6 +2197,7 @@ class PfpInterp(object):
                 node.cpp = "GENERATE"
                 if len(self._incomplete_stack) > 1:
                     node.cpp += "_VAR"
+                self._variable_types[node.name] = classname.replace(" ", "_") + "_array_class"
                 node.cpp += "(" + node.originalname + ", ::g->" + node.name + ".generate("
                 if node.type.dim is not None:
                     node.cpp += node.type.dim.cpp
@@ -2210,6 +2218,7 @@ class PfpInterp(object):
                 node.cpp = "GENERATE"
                 if len(self._incomplete_stack) > 1:
                     node.cpp += "_VAR"
+                self._variable_types[node.name] = classname
                 node.cpp += "(" + node.name + ", " + classname + "_generate("
                 if node.init is not None:
                     self._handle_node(node.init, scope, ctxt, stream)
@@ -2299,6 +2308,7 @@ class PfpInterp(object):
                     node.cpp = "GENERATE"
                     if len(self._incomplete_stack) > 1:
                         node.cpp += "_VAR"
+                    self._variable_types[node.name] = classnamebits
                     node.cpp += "(" + node.originalname + ", ::g->" + node.name + ".generate("
                     if is_bitfield:
                         node.cpp += node.bitsize.cpp
@@ -2320,6 +2330,7 @@ class PfpInterp(object):
                     node.cpp = "GENERATE"
                     if len(self._incomplete_stack) > 1:
                         node.cpp += "_VAR"
+                    self._variable_types[node.name] = classname
                     node.cpp += "(" + node.name + ", " + classname + "_generate("
                     if node.init is not None:
                         self._handle_node(node.init, scope, ctxt, stream)

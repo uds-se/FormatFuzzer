@@ -15,6 +15,19 @@ bool is_big_endian = false;
 bool is_bitfield_left_to_right[2] = {false, true};
 bool is_padded_bitfield = true;
 
+bool is_following = false;
+bool following_is_optional = false;
+
+const char* chunk_name;
+
+bool get_chunk = false;
+bool smart_mutation = false;
+unsigned chunk_start;
+unsigned chunk_end;
+unsigned rand_start;
+unsigned rand_end;
+bool is_optional = false;
+bool is_delete = false;
 
 void swap_bytes(void* b, unsigned size) {
 	char* buf = (char*) b;
@@ -33,16 +46,18 @@ bool get_parse_tree = false;
 struct stack_cell {
 	const char* name;
 	std::unordered_map<std::string, int> counts;
+	unsigned rand_start = 0;
+	unsigned rand_start2 = 0;
 	unsigned min = UINT_MAX;
 	unsigned max = 0;
-	stack_cell(const char* name) : name(name) {}
+	stack_cell(const char* name, unsigned rand_start, unsigned rand_start2) : name(name), rand_start(rand_start), rand_start2(rand_start2) {}
 	void clear() {
 		counts.clear();
 		min = UINT_MAX;
 		max = 0;
 	}
 };
-stack_cell root_cell("file");
+stack_cell root_cell("file", 0, 0);
 std::vector<stack_cell> generator_stack = {root_cell};
 
 
@@ -169,8 +184,15 @@ class file_accessor {
 
 		if (file_size < file_pos)
 			file_size = file_pos;
-		if (!get_parse_tree || is_padding)
+		if (is_padding)
 			return;
+		if (!generate && parsed_file_size < file_pos)
+			parsed_file_size = file_pos;
+		if (!get_parse_tree)
+			return;
+		if (is_following) {
+			is_following = false;
+		}
 		if (start_pos < generator_stack.back().min)
 			generator_stack.back().min = start_pos;
 		unsigned end = bitfield_size ? file_pos + ((bitfield_bits - 1) / 8) : file_pos - 1;
@@ -205,6 +227,14 @@ class file_accessor {
 				bitmap[original_pos + i] = true;
 		}
 
+		if (is_following && !is_padding) {
+			following_is_optional = lookahead;
+			is_following = false;
+		}
+		if (is_padding || lookahead)
+			return;
+		if (!generate && parsed_file_size < file_pos)
+			parsed_file_size = file_pos;
 		if (!get_parse_tree)
 			return;
 		if (start_pos < generator_stack.back().min)
@@ -221,6 +251,9 @@ public:
 	unsigned file_pos = 0;
 	unsigned file_size = 0;
 	unsigned final_file_size = 0;
+	unsigned parsed_file_size = 0;
+	unsigned rand_prev = 0;
+	unsigned rand_last = UINT_MAX;
 	bool has_size = false;
 	bool generate = true;
 	bool lookahead = false;
@@ -244,6 +277,14 @@ public:
 		unsigned long long max = x-1;
 		if (!max)
 			return 0;
+		if (get_parse_tree) {
+			if (lookahead || is_padding) {
+				if (rand_last == UINT_MAX)
+					rand_last = rand_pos;
+			} else {
+				rand_last = UINT_MAX;
+			}
+		}
 		if (!(max>>8)) {
 			assert_cond(rand_pos + 1 <= rand_size, "random size exceeded rand_size");
 			unsigned char* p = (unsigned char*) &rand_buffer[rand_pos];
@@ -288,8 +329,16 @@ public:
 			file_integer(bitfield_size, 8 * bitfield_size - bitfield_bits, 0);
 			is_padding = false;
 		}
-		if (!generate)
+		if (!generate) {
 			assert_cond(file_size == final_file_size, "unparsed bytes left at the end of file");
+			assert_cond(parsed_file_size == final_file_size, "unparsed (lookahead) bytes left at the end of file");
+
+			if (get_parse_tree && get_chunk && chunk_end == UINT_MAX && file_pos == chunk_start && rand_last != UINT_MAX) {
+				printf("FILE IS APPENDABLE\n");
+				rand_start = rand_last;
+				chunk_name = "file";
+			}
+		}
 	}
 
 	std::string rand_bytes(int size) {
@@ -308,6 +357,10 @@ public:
 		file_pos = 0;
 		file_size = 0;
 		final_file_size = fsize;
+		parsed_file_size = 0;
+		rand_prev = 0;
+		rand_last = UINT_MAX;
+		following_is_optional = false;
 
 		has_size = false;
 		allow_evil_values = true;
@@ -333,7 +386,13 @@ public:
 			return 0;
 		if (has_size)
 			return 1;
+		if (is_following) {
+			following_is_optional = true;
+			is_following = false;
+		}
+		lookahead = true;
 		int is_feof = rand_int(8, [this](unsigned char* file_buf) -> long long { return file_pos == final_file_size ? 7 : 0; } ) == 7;
+		lookahead = false;
 		if (is_feof)
 			has_size = true;
 		return is_feof;
