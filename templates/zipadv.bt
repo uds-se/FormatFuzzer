@@ -235,6 +235,7 @@ typedef struct {
 	HEADERFLAG  efHeaderID;
 	ushort  efDataSize<arraylength=true>;
 
+	local int efDataStart = FTell();
 	//Printf("%d", efHeaderID);
 	switch (efHeaderID)
 	{
@@ -258,6 +259,7 @@ typedef struct {
         {
             ushort Tag;        //2 bytes    NTFS attribute tag value #1
             ushort Size<arraylength=true>;       //2 bytes    Size of attribute #1, in bytes
+            local int SizeStart = FTell();
             if (Tag == 0x001)
             {
                 FILETIME Mtime;      //8 bytes    File last modification time
@@ -266,6 +268,15 @@ typedef struct {
             }
             else
                 byte Data[Size]; //(var.)     Size1      Attribute #1 data
+            //Correct Size
+            local int SizeEnd = FTell();
+            local ushort SizeReal = SizeEnd - SizeStart;
+            FSeek(SizeStart - 2);
+            local int evil_state = SetEvilBit(false);
+            ushort  Size = { SizeReal };
+            SetEvilBit(evil_state);
+            FSeek(SizeEnd);
+            //End Correct Size
     		len -= Size + 4;
         }
         break;
@@ -289,6 +300,17 @@ typedef struct {
 		    char efData[ efDataSize ];
         break;
 	}
+
+	//Correct efDataSize
+	local int efDataEnd = FTell();
+	local ushort efDataSizeReal = efDataEnd - efDataStart;
+	FSeek(efDataStart - 2);
+	local int evil_state = SetEvilBit(false);
+	ushort  efDataSize = { efDataSizeReal };
+	SetEvilBit(evil_state);
+	FSeek(efDataEnd);
+	//End Correct efDataSize
+
 } EXTRAFIELD <read=read_EXTRAFIELD>;
 
 string read_EXTRAFIELD (local EXTRAFIELD &af) 

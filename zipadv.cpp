@@ -877,7 +877,14 @@ public:
 	}
 
 	/* locals */
+	int efDataStart;
 	int len;
+	int SizeStart;
+	int SizeEnd;
+	ushort SizeReal;
+	int evil_state;
+	int efDataEnd;
+	ushort efDataSizeReal;
 
 	unsigned char generated = 0;
 	int64 _startof = 0;
@@ -1799,6 +1806,10 @@ std::vector<ZIP64ENDLOCATOR*> ZIP64ENDLOCATOR_end64Locator__instances;
 std::vector<ZIPENDLOCATOR*> ZIPENDLOCATOR_endLocator_instances;
 
 
+std::unordered_map<std::string, std::string> variable_types = { { "frSignature", "SignatureTYPE" }, { "Version", "VERSIONTYPE_class" }, { "HostOS", "HOSTOSTYPE" }, { "frVersion", "VERECORD" }, { "frFlags", "FLAGTYPE" }, { "frCompression", "COMPTYPE" }, { "frFileTime", "ushort_class" }, { "frFileDate", "ushort_class" }, { "frCrc", "uint_class" }, { "frCompressedSize", "uint_class" }, { "frUncompressedSize", "uint_class" }, { "frFileNameLength", "ushort_class" }, { "frExtraFieldLength", "ushort_class" }, { "frFileName", "char_array_class" }, { "efHeaderID", "HEADERFLAG" }, { "efDataSize", "ushort_class" }, { "efOriginalSize", "uint64_class" }, { "efCompressedSize", "uint64_class" }, { "efVersion", "byte_class" }, { "efNameCRC32", "uint_class" }, { "efUnicodeName", "char_array_class" }, { "Reserved", "int_class" }, { "Tag", "ushort_class" }, { "Size", "ushort_class" }, { "dwLowDateTime", "DWORD_class" }, { "dwHighDateTime", "DWORD_class" }, { "Mtime", "FILETIME" }, { "Atime", "FILETIME" }, { "Ctime", "FILETIME" }, { "Data", "byte_array_class" }, { "Format", "ushort_class" }, { "AlgID", "ALGFLAG" }, { "Bitlen", "ushort_class" }, { "Flags", "ushort_class" }, { "CertData", "byte_array_class" }, { "version", "ushort_class" }, { "VendorID", "char_array_class" }, { "Strength", "AESMODE" }, { "deCompression", "COMPTYPE" }, { "efData", "char_array_class" }, { "frExtraField", "EXTRAFIELD" }, { "IVSize", "ushort_class" }, { "IVData", "byte_array_class" }, { "Size_", "uint_class" }, { "BitLen", "ushort_class" }, { "ErdSize", "ushort_class" }, { "ErdData", "byte_array_class" }, { "Reserved_", "uint_class" }, { "VSize", "ushort_class" }, { "VData", "byte_array_class" }, { "VCRC32", "uint_class" }, { "StrongEncryptedHeader", "StrongEncryptedHeader_struct" }, { "frData", "char_array_class" }, { "SaltValue", "uchar_array_class" }, { "PassVerification", "ushort_class" }, { "frData_", "uchar_array_class" }, { "AuthenticationCode", "uchar_array_class" }, { "ddSignature", "SignatureTYPE" }, { "ddCRC", "uint_class" }, { "ddCompressedSize", "uint_class" }, { "ddUncompressedSize", "uint_class" }, { "dataDescr", "ZIPDATADESCR" }, { "record", "ZIPFILERECORD" }, { "deSignature", "SignatureTYPE" }, { "deVersionMadeBy", "VERECORD" }, { "deVersionToExtract", "VERECORD" }, { "deFlags", "FLAGTYPE" }, { "deFileTime", "ushort_class" }, { "deFileDate", "ushort_class" }, { "deCrc", "uint_class" }, { "deCompressedSize", "uint_class" }, { "deUncompressedSize", "uint_class" }, { "deFileNameLength", "ushort_class" }, { "deExtraFieldLength", "ushort_class" }, { "deFileCommentLength", "ushort_class" }, { "deDiskNumberStart", "ushort_class" }, { "deInternalAttributes", "ushort_class" }, { "deExternalAttributes", "FILEATTRIBUTE" }, { "deHeaderOffset", "uint_class" }, { "deFileName", "char_array_class" }, { "deExtraField", "EXTRAFIELD" }, { "deFileComment", "uchar_array_class" }, { "dirEntry", "ZIPDIRENTRY" }, { "dsSignature", "SignatureTYPE" }, { "dsDataLength", "ushort_class" }, { "dsData", "uchar_array_class" }, { "digitalSig", "ZIPDIGITALSIG" }, { "elr64Signature", "SignatureTYPE" }, { "elr64DirectoryRecordSize", "int64_class" }, { "elr64VersionMadeBy", "VERECORD" }, { "elr64VersionToExtract", "VERECORD" }, { "el64DiskNumber", "uint_class" }, { "el64StartDiskNumber", "uint_class" }, { "el64EntriesOnDisk", "int64_class" }, { "el64EntriesInDirectory", "int64_class" }, { "el64DirectorySize", "int64_class" }, { "el64DirectoryOffset", "int64_class" }, { "DataSect", "char_array_class" }, { "end64Locator", "ZIP64ENDLOCATORRECORD" }, { "elSignature", "SignatureTYPE" }, { "elStartDiskNumber", "uint_class" }, { "elDirectoryOffset", "int64_class" }, { "elEntriesInDirectory", "uint_class" }, { "end64Locator_", "ZIP64ENDLOCATOR" }, { "elDiskNumber", "ushort_class" }, { "elStartDiskNumber_", "ushort_class" }, { "elEntriesOnDisk", "ushort_class" }, { "elEntriesInDirectory_", "ushort_class" }, { "elDirectorySize", "uint_class" }, { "elDirectoryOffset_", "uint_class" }, { "elCommentLength", "ushort_class" }, { "elComment", "char_array_class" }, { "endLocator", "ZIPENDLOCATOR" } };
+
+std::vector<std::vector<int>> integer_ranges = { { 1, 16 } };
+
 class globals_class {
 public:
 	/*local*/ std::string current_tag;
@@ -2099,6 +2110,7 @@ EXTRAFIELD* EXTRAFIELD::generate() {
 
 	GENERATE_VAR(efHeaderID, HEADERFLAG_generate());
 	GENERATE_VAR(efDataSize, ::g->efDataSize.generate());
+	efDataStart = FTell();
 	switch (efHeaderID()) {
 	case EH_Zip64:
 		GENERATE_VAR(efOriginalSize, ::g->efOriginalSize.generate());
@@ -2117,6 +2129,7 @@ EXTRAFIELD* EXTRAFIELD::generate() {
 		while ((len > 0)) {
 			GENERATE_VAR(Tag, ::g->Tag.generate());
 			GENERATE_VAR(Size, ::g->Size.generate());
+			SizeStart = FTell();
 			if ((Tag() == 0x001)) {
 				GENERATE_VAR(Mtime, ::g->Mtime.generate());
 				GENERATE_VAR(Atime, ::g->Atime.generate());
@@ -2124,6 +2137,13 @@ EXTRAFIELD* EXTRAFIELD::generate() {
 			} else {
 				GENERATE_VAR(Data, ::g->Data.generate(Size()));
 			};
+			SizeEnd = FTell();
+			SizeReal = (SizeEnd - SizeStart);
+			FSeek((SizeStart - 2));
+			evil_state = SetEvilBit(false);
+			GENERATE_VAR(Size, ::g->Size.generate({ SizeReal }));
+			SetEvilBit(evil_state);
+			FSeek(SizeEnd);
 			len -= (Size() + 4);
 		};
 		break;
@@ -2148,6 +2168,13 @@ EXTRAFIELD* EXTRAFIELD::generate() {
 		};
 		break;
 	};
+	efDataEnd = FTell();
+	efDataSizeReal = (efDataEnd - efDataStart);
+	FSeek((efDataStart - 2));
+	evil_state = SetEvilBit(false);
+	GENERATE_VAR(efDataSize, ::g->efDataSize.generate({ efDataSizeReal }));
+	SetEvilBit(evil_state);
+	FSeek(efDataEnd);
 
 	_sizeof = FTell() - _startof;
 	return this;

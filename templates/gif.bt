@@ -218,6 +218,7 @@ struct DATA {
 	}
 } Data;
 SetBackColor( 0xFFFFFF );
+SetEvilBit(false);
 struct TRAILER {
 	UBYTE GIFTrailer = {0x3B};
 } Trailer;
