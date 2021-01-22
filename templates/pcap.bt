@@ -64,7 +64,7 @@ typedef struct
         uint16 priority:3;
         uint16 dei:1;
         uint16 id:12<name="Vlan Id">;
-        uint16 L3type<name="Layer 3 Protocol">;
+        uint16 L3type = {0x0800} <name="Layer 3 Protocol">;
 } Dot1q <size=4>;
 
 typedef struct 
@@ -81,11 +81,24 @@ string IPv4addrName(IPv4addr &IP)
 
 typedef struct (uint16 proto_type)
 {
-    uchar version:4;
-    uchar ip_hdr_len:4;
+
+    //TODO (done): Known values
+    local ubyte valid_versions[] = {4};
+    local ubyte valid_hdr_lengths[] = {5};
+
+    uchar version:4<values=valid_versions>;
+    uchar ip_hdr_len:4<values=valid_hdr_lengths>;
     local int hdr_length = ip_hdr_len*4;
     BYTE DiffServField;
-    uint16 total_length<arraylength=true>;
+
+    //FIXME: Check if this does what is intended
+    uint16 total_length<arraylength = true>;
+    Printf("L3 Total Length Orig: %d\n", total_length);
+    FSeek(FTell() - 2);
+    local uint16 total_length_safe = total_length + hdr_length + 20; //Possible L3 data 20b
+    uint16 total_length = { total_length_safe };
+    Printf("L3 Total Length Fixed: %d\n", total_length);
+
     if (proto_type == 0x0800)    // IP
     {
         uint16 Identification;   
@@ -104,27 +117,35 @@ typedef struct (uint16 proto_type)
     }
 } Layer_3;
 
-typedef struct (ushort VER_HDR,uint16 total_length,uint L4proto)
+typedef struct (ushort VER_HDR,uint16 total_length,uint L4proto) //L4(L3.ip_hdr_len,L3.total_length,L3.L4proto)
 {    
-    local uint16 ip_hdr_length = VER_HDR*4;
 
-    if (L4proto == 0x11) // UDP
+    local uint16 ip_hdr_length = VER_HDR*4;// => 20
+
+    if (L4proto == 0x11) // UDP (AppDataLen = L4.udp_hdr_len-8)
     {
         uint16 SrcPort<name="Source Port">;
         uint16 DstPort<name="Destination Port">;
-        uint16 udp_hdr_len<name="Datagram Length">;
+        local uint16 dgram_len = total_length - ip_hdr_length;
+        Printf("L4 UDP DGRAM Length: %d\n", dgram_len);
+        uint16 udp_hdr_len = {dgram_len} <name="Datagram Length">;
         uint16 ChkSum<name="Checksum">;
     }
-    else if (L4proto == 0x6) // TCP
+    else if (L4proto == 0x6) // TCP (AppDataLen = L3.total_length - L3.ip_hdr_len*4 - L4.TCP_BITFIELDS.tcp_hdr_len*4)
     {
+
         uint16 SrcPort<name="Source Port">;
         uint16 DstPort<name="Destination Port">;
         uint32 SEQ;
-        uint32 ACK; 
-        local uchar possible_values[] = {4, 5, 6};
-        uchar tcp_hdr_len:4 <values=possible_values>;
-        uchar Reserved:4;
-        local uint CrapSize = tcp_hdr_len*4-13;
+        uint32 ACK;
+
+        struct {
+            local ubyte possible_lengths[] = { 5 };
+            uchar tcp_hdr_len:4<values=possible_lengths>;
+            uchar Reserved:4;
+        } TCP_BITFIELDS;
+
+        local uint CrapSize = TCP_BITFIELDS.tcp_hdr_len*4-13;
         Printf("Crap size: %d", CrapSize);
         BYTE Crap[CrapSize];
     }
@@ -157,10 +178,10 @@ typedef struct (uint32 network) {
         time_t ts_sec;         /* timestamp seconds */
         uint32 ts_usec;        /* timestamp microseconds */
 
-        //vvvvvvvvvvvvvvvvvvvvvvv TODO: Lengths vvvvvvvvvvvvvvvvvvvvvvvvvvvvv
         uint32 incl_len;       /* number of octets of packet saved in file */
         uint32 orig_len;       /* actual length of packet */
-        //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+        //Printf("incl: %d, orig: %d\n", incl_len, orig_len);
 
         BigEndian();
 
@@ -176,7 +197,7 @@ typedef struct (uint32 network) {
             }
             else if (L2.L3type == 0x8100) {
                 Dot1q d1q <name="802.1Q Vitual LAN">;
-                len_before_l3 += 4;
+                len_before_l3 += 4; //len(d1q) = 4
                 Layer_3 L3(d1q.L3type) <name="Layer 3">;
             }
             else if (L2.L3type == 0x86dd) {
@@ -191,18 +212,20 @@ typedef struct (uint32 network) {
         
         Layer_4 L4(L3.ip_hdr_len,L3.total_length,L3.L4proto)<name="Layer 4">;
 
-        if (L3.L4proto == 0x6)
+        if (L3.L4proto == 0x6) //Application Layer is TCP
         {
-            local uint16 AppDataLen = L3.total_length - L3.ip_hdr_len*4 - L4.tcp_hdr_len*4;
-            Printf("0x6 AppDataLen = %d - %d - %d = %d", L3.total_length, L3.ip_hdr_len*4, L4.tcp_hdr_len*4, AppDataLen);
+            //FIXME: Bounds check
+            local uint16 AppDataLen = L3.total_length - L3.ip_hdr_len*4 - L4.TCP_BITFIELDS.tcp_hdr_len*4;
+            Printf("0x6 AppDataLen = %d - %d - %d = %d", L3.total_length, L3.ip_hdr_len*4, L4.TCP_BITFIELDS.tcp_hdr_len*4, AppDataLen);
             if (AppDataLen > 0)
             {
                 SetBackColor( cNone );
                 BYTE AppData[AppDataLen]<name="TCP Application Data">;
             }
         }
-        else if (L3.L4proto == 0x11)
+        else if (L3.L4proto == 0x11) //Application Layer is UDP
         {
+            //FIXME: Bounds check
             local uint AppDataLen = L4.udp_hdr_len-8;
             Printf("0x11 AppDataLen = %d", AppDataLen);
             if (AppDataLen > 0)
@@ -211,18 +234,25 @@ typedef struct (uint32 network) {
                 BYTE AppData[AppDataLen]<name="UDP Application Data">;
             }
         }
-        if (len_before_l3 + L3.total_length < incl_len) {
+
+        local uint end_pos = FTell();
+        //("frame_length = %d - %d\n", end_pos, start_pos);
+        local uint frame_length = end_pos - start_pos;
+
+        FSeek(start_pos - 8);
+        LittleEndian();
+        uint32 incl_len = { frame_length };
+        uint32 orig_len = { frame_length };
+        BigEndian();
+        FSeek(end_pos);
+
+        //Printf("incl: %d, orig: %d\n", incl_len, orig_len);
+
+        if (len_before_l3 + L3.total_length < incl_len) { //Data is less than frame length, add padding
             local uint PaddingLength = incl_len - len_before_l3 - L3.total_length;
             Printf("PaddingLength = %d - %d - %d = %d", incl_len, len_before_l3, L3.total_length, PaddingLength);
             uchar padding[PaddingLength]<name="Layer 2 Padding">;
         }
-
-        local uint end_pos = FTell();
-        local uint frame_length = end_pos - start_pos;
-        FSeek(start_pos - 8);
-        uint32 incl_len = { frame_length };
-        uint32 orig_len = { frame_length };
-        FSeek(end_pos);
 
         LittleEndian();
 } PCAPRECORD <read=ReadPCAPRECORD,comment=PCAPcomments>;
@@ -234,7 +264,7 @@ string PCAPcomments(PCAPRECORD &P)
     local uint16 AppDataLen = 0;
     if (L4_proto == 0x6)
     {
-        AppDataLen = P.L3.total_length - P.L3.ip_hdr_len*4 - P.L4.tcp_hdr_len*4;
+        AppDataLen = P.L3.total_length - P.L3.ip_hdr_len*4 - P.L4.TCP_BITFIELDS.tcp_hdr_len*4;
     }
     else if (L4_proto == 0x11)
     {
@@ -262,13 +292,9 @@ string MACname(MACaddr &addr)
 LittleEndian();
 PCAPHEADER header;
 
-local uint max_records = 20;
-local uint len_records = 0;
-
-while( !FEof())//len_records < max_records )//|| !FEof() )
+while( !FEof() )
 {
     SetBackColor( cLtGreen );
     //Printf("Generating frame %d...\n", len_records);
 	PCAPRECORD record(header.network) <name="Frame">;
-    len_records++;
 }

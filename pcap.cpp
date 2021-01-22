@@ -510,7 +510,10 @@ public:
 	}
 
 	/* locals */
+	std::vector<ubyte> valid_versions;
+	std::vector<ubyte> valid_hdr_lengths;
 	int hdr_length;
+	uint16 total_length_safe;
 	uint UnknownLength;
 
 	unsigned char generated = 0;
@@ -701,6 +704,49 @@ public:
 
 
 
+class TCP_BITFIELDS_struct {
+	std::vector<TCP_BITFIELDS_struct*>& instances;
+
+	uchar tcp_hdr_len_var : 4;
+	uchar Reserved_var : 4;
+
+public:
+	bool tcp_hdr_len_exists = false;
+	bool Reserved_exists = false;
+
+	uchar tcp_hdr_len() {
+		assert_cond(tcp_hdr_len_exists, "struct field tcp_hdr_len does not exist");
+		return tcp_hdr_len_var;
+	}
+	uchar Reserved() {
+		assert_cond(Reserved_exists, "struct field Reserved does not exist");
+		return Reserved_var;
+	}
+
+	/* locals */
+	std::vector<ubyte> possible_lengths;
+
+	unsigned char generated = 0;
+	int64 _startof = 0;
+	std::size_t _sizeof = 0;
+	TCP_BITFIELDS_struct& operator () () { return *instances.back(); }
+	TCP_BITFIELDS_struct* operator [] (int index) { return instances[index]; }
+	TCP_BITFIELDS_struct(std::vector<TCP_BITFIELDS_struct*>& instances) : instances(instances) { instances.push_back(this); }
+	~TCP_BITFIELDS_struct() {
+		if (generated == 2)
+			return;
+		while (instances.size()) {
+			TCP_BITFIELDS_struct* instance = instances.back();
+			instances.pop_back();
+			if (instance->generated == 2)
+				delete instance;
+		}
+	}
+	TCP_BITFIELDS_struct* generate();
+};
+
+
+
 class Layer_4 {
 	std::vector<Layer_4*>& instances;
 
@@ -710,8 +756,7 @@ class Layer_4 {
 	uint16 ChkSum_var;
 	uint32 SEQ_var;
 	uint32 ACK_var;
-	uchar tcp_hdr_len_var : 4;
-	uchar Reserved_var : 4;
+	TCP_BITFIELDS_struct* TCP_BITFIELDS_var;
 	std::string Crap_var;
 	std::string packet_var;
 
@@ -722,8 +767,7 @@ public:
 	bool ChkSum_exists = false;
 	bool SEQ_exists = false;
 	bool ACK_exists = false;
-	bool tcp_hdr_len_exists = false;
-	bool Reserved_exists = false;
+	bool TCP_BITFIELDS_exists = false;
 	bool Crap_exists = false;
 	bool packet_exists = false;
 
@@ -751,13 +795,9 @@ public:
 		assert_cond(ACK_exists, "struct field ACK does not exist");
 		return ACK_var;
 	}
-	uchar tcp_hdr_len() {
-		assert_cond(tcp_hdr_len_exists, "struct field tcp_hdr_len does not exist");
-		return tcp_hdr_len_var;
-	}
-	uchar Reserved() {
-		assert_cond(Reserved_exists, "struct field Reserved does not exist");
-		return Reserved_var;
+	TCP_BITFIELDS_struct& TCP_BITFIELDS() {
+		assert_cond(TCP_BITFIELDS_exists, "struct field TCP_BITFIELDS does not exist");
+		return *TCP_BITFIELDS_var;
 	}
 	std::string Crap() {
 		assert_cond(Crap_exists, "struct field Crap does not exist");
@@ -770,7 +810,7 @@ public:
 
 	/* locals */
 	uint16 ip_hdr_length;
-	std::string possible_values;
+	uint16 dgram_len;
 	uint CrapSize;
 
 	unsigned char generated = 0;
@@ -865,9 +905,9 @@ public:
 	uint32 len_before_l3;
 	uint start_pos;
 	uint16 AppDataLen;
-	uint PaddingLength;
 	uint end_pos;
 	uint frame_length;
+	uint PaddingLength;
 
 	unsigned char generated = 0;
 	int64 _startof = 0;
@@ -912,6 +952,7 @@ std::vector<MACaddr*> MACaddr_DstMac_instances;
 std::vector<MACaddr*> MACaddr_SrcMac_instances;
 std::vector<Layer_2*> Layer_2_L2_instances;
 std::vector<Dot1q*> Dot1q_d1q_instances;
+std::vector<TCP_BITFIELDS_struct*> TCP_BITFIELDS_struct_TCP_BITFIELDS_instances;
 std::vector<Layer_4*> Layer_4_L4_instances;
 std::vector<PCAPRECORD*> PCAPRECORD_record_instances;
 
@@ -926,8 +967,6 @@ public:
 	uint32_class snaplen;
 	uint32_class network;
 	PCAPHEADER header;
-	/*local*/ uint max_records;
-	/*local*/ uint len_records;
 	time_t_class ts_sec;
 	uint32_class ts_usec;
 	uint32_class incl_len;
@@ -964,6 +1003,7 @@ public:
 	uint32_class ACK;
 	uchar_bitfield tcp_hdr_len;
 	uchar_bitfield Reserved;
+	TCP_BITFIELDS_struct TCP_BITFIELDS;
 	BYTE_class Crap_element;
 	BYTE_array_class Crap;
 	BYTE_class packet_element;
@@ -1021,6 +1061,7 @@ public:
 		ACK(1),
 		tcp_hdr_len(1),
 		Reserved(1),
+		TCP_BITFIELDS(TCP_BITFIELDS_struct_TCP_BITFIELDS_instances),
 		Crap_element(false),
 		Crap(Crap_element),
 		packet_element(false),
@@ -1093,11 +1134,18 @@ Layer_3* Layer_3::generate(uint16 proto_type) {
 		generated = 1;
 	_startof = FTell();
 
-	GENERATE_VAR(version, ::g->version.generate(4));
-	GENERATE_VAR(ip_hdr_len, ::g->ip_hdr_len.generate(4));
+	valid_versions = { 4 };
+	valid_hdr_lengths = { 5 };
+	GENERATE_VAR(version, ::g->version.generate(4, valid_versions));
+	GENERATE_VAR(ip_hdr_len, ::g->ip_hdr_len.generate(4, valid_hdr_lengths));
 	hdr_length = (ip_hdr_len() * 4);
 	GENERATE_VAR(DiffServField, ::g->DiffServField.generate());
 	GENERATE_VAR(total_length, ::g->total_length.generate());
+	Printf("L3 Total Length Orig: %d\n", total_length());
+	FSeek((FTell() - 2));
+	total_length_safe = ((total_length() + hdr_length) + 20);
+	GENERATE_VAR(total_length, ::g->total_length.generate({ total_length_safe }));
+	Printf("L3 Total Length Fixed: %d\n", total_length());
 	if ((proto_type == 0x0800)) {
 		GENERATE_VAR(Identification, ::g->Identification.generate());
 		GENERATE_VAR(Flags, ::g->Flags.generate());
@@ -1168,7 +1216,26 @@ Dot1q* Dot1q::generate() {
 	GENERATE_VAR(priority, ::g->priority.generate(3));
 	GENERATE_VAR(dei, ::g->dei.generate(1));
 	GENERATE_VAR(id, ::g->id.generate(12));
-	GENERATE_VAR(L3type, ::g->L3type.generate());
+	GENERATE_VAR(L3type, ::g->L3type.generate({ 0x0800 }));
+
+	_sizeof = FTell() - _startof;
+	return this;
+}
+
+
+TCP_BITFIELDS_struct* TCP_BITFIELDS_struct::generate() {
+	if (generated == 1) {
+		TCP_BITFIELDS_struct* new_instance = new TCP_BITFIELDS_struct(instances);
+		new_instance->generated = 2;
+		return new_instance->generate();
+	}
+	if (!generated)
+		generated = 1;
+	_startof = FTell();
+
+	possible_lengths = { 5 };
+	GENERATE_VAR(tcp_hdr_len, ::g->tcp_hdr_len.generate(4, possible_lengths));
+	GENERATE_VAR(Reserved, ::g->Reserved.generate(4));
 
 	_sizeof = FTell() - _startof;
 	return this;
@@ -1189,7 +1256,9 @@ Layer_4* Layer_4::generate(ushort VER_HDR, uint16 total_length, uint L4proto) {
 	if ((L4proto == 0x11)) {
 		GENERATE_VAR(SrcPort, ::g->SrcPort.generate());
 		GENERATE_VAR(DstPort, ::g->DstPort.generate());
-		GENERATE_VAR(udp_hdr_len, ::g->udp_hdr_len.generate());
+		dgram_len = (total_length - ip_hdr_length);
+		Printf("L4 UDP DGRAM Length: %d\n", dgram_len);
+		GENERATE_VAR(udp_hdr_len, ::g->udp_hdr_len.generate({ dgram_len }));
 		GENERATE_VAR(ChkSum, ::g->ChkSum.generate());
 	} else {
 	if ((L4proto == 0x6)) {
@@ -1197,10 +1266,8 @@ Layer_4* Layer_4::generate(ushort VER_HDR, uint16 total_length, uint L4proto) {
 		GENERATE_VAR(DstPort, ::g->DstPort.generate());
 		GENERATE_VAR(SEQ, ::g->SEQ.generate());
 		GENERATE_VAR(ACK, ::g->ACK.generate());
-		possible_values = { 4, 5, 6 };
-		GENERATE_VAR(tcp_hdr_len, ::g->tcp_hdr_len.generate(4));
-		GENERATE_VAR(Reserved, ::g->Reserved.generate(4));
-		CrapSize = ((tcp_hdr_len() * 4) - 13);
+		GENERATE_VAR(TCP_BITFIELDS, ::g->TCP_BITFIELDS.generate());
+		CrapSize = ((TCP_BITFIELDS().tcp_hdr_len() * 4) - 13);
 		Printf("Crap size: %d", CrapSize);
 		GENERATE_VAR(Crap, ::g->Crap.generate(CrapSize));
 	} else {
@@ -1256,8 +1323,8 @@ PCAPRECORD* PCAPRECORD::generate(uint32 network) {
 	};
 	GENERATE_VAR(L4, ::g->L4.generate(L3().ip_hdr_len(), L3().total_length(), L3().L4proto()));
 	if ((L3().L4proto() == 0x6)) {
-		AppDataLen = ((L3().total_length() - (L3().ip_hdr_len() * 4)) - (L4().tcp_hdr_len() * 4));
-		Printf("0x6 AppDataLen = %d - %d - %d = %d", L3().total_length(), (L3().ip_hdr_len() * 4), (L4().tcp_hdr_len() * 4), AppDataLen);
+		AppDataLen = ((L3().total_length() - (L3().ip_hdr_len() * 4)) - (L4().TCP_BITFIELDS().tcp_hdr_len() * 4));
+		Printf("0x6 AppDataLen = %d - %d - %d = %d", L3().total_length(), (L3().ip_hdr_len() * 4), (L4().TCP_BITFIELDS().tcp_hdr_len() * 4), AppDataLen);
 		if ((AppDataLen > 0)) {
 			SetBackColor(cNone);
 			GENERATE_VAR(AppData, ::g->AppData.generate(AppDataLen));
@@ -1265,24 +1332,26 @@ PCAPRECORD* PCAPRECORD::generate(uint32 network) {
 	} else {
 	if ((L3().L4proto() == 0x11)) {
 		AppDataLen = (L4().udp_hdr_len() - 8);
-		Printf("0x11 AppDataLen = %d", (L4().udp_hdr_len() - 8));
+		Printf("0x11 AppDataLen = %d", AppDataLen);
 		if ((AppDataLen > 0)) {
 			SetBackColor(cNone);
 			GENERATE_VAR(AppData, ::g->AppData.generate(AppDataLen));
 		};
 	};
 	};
+	end_pos = FTell();
+	frame_length = (end_pos - start_pos);
+	FSeek((start_pos - 8));
+	LittleEndian();
+	GENERATE_VAR(incl_len, ::g->incl_len.generate({ frame_length }));
+	GENERATE_VAR(orig_len, ::g->orig_len.generate({ frame_length }));
+	BigEndian();
+	FSeek(end_pos);
 	if (((len_before_l3 + L3().total_length()) < incl_len())) {
 		PaddingLength = ((incl_len() - len_before_l3) - L3().total_length());
 		Printf("PaddingLength = %d - %d - %d = %d", incl_len(), len_before_l3, L3().total_length(), PaddingLength);
 		GENERATE_VAR(padding, ::g->padding.generate(PaddingLength));
 	};
-	end_pos = FTell();
-	frame_length = (end_pos - start_pos);
-	FSeek((start_pos - 8));
-	GENERATE_VAR(incl_len, ::g->incl_len.generate({ frame_length }));
-	GENERATE_VAR(orig_len, ::g->orig_len.generate({ frame_length }));
-	FSeek(end_pos);
 	LittleEndian();
 
 	_sizeof = FTell() - _startof;
@@ -1296,12 +1365,9 @@ void generate_file() {
 
 	LittleEndian();
 	GENERATE(header, ::g->header.generate());
-	::g->max_records = 20;
-	::g->len_records = 0;
 	while (!FEof()) {
 		SetBackColor(cLtGreen);
 		GENERATE(record, ::g->record.generate(::g->header().network()));
-		::g->len_records++;
 	};
 
 	file_acc.finish();

@@ -23,7 +23,7 @@ local uint message_index = 0;
 struct MidiHeader
 {
     char m_magic[4] = { "MThd" }; //<format = hex>;
-    uint m_seclen;
+    uint m_seclen = { 6 }; //3x short
     enum <short> 
     {
         MIDI_SINGLE = 0,
@@ -39,7 +39,7 @@ struct MidiHeader
 struct DeltaTime
 {
     local uint total = 0;
-    char t0 = { 0 };
+    char t0<arraylength=true>;//; = { 0 };
     total += t0 & 0x7f;
     if (!(t0 & 0x80))
         break;
@@ -68,13 +68,13 @@ local char lastStatus = 0;
 struct MidiMessage
 {
     DeltaTime m_dtime;
-    char m_status;
+    char m_status;// = { 0x8F, 0x90, 0xA0, 0xB0, 0xC0, 0xD0, 0xE0, 0xE0, 0xF0 };
     if (m_status & 0x80)
         lastStatus = m_status;
     else
         FSeek(FTell()-1);
     
-    Printf("\t---MIDI Message (%d,%d)---\n\t\tStatus: %c\n", track_index, message_index, m_status);
+    Printf("\t---MIDI Message (%d,%d)---\n\t\tStatus: 0x%x\n\t\tLast Status: 0x%x\n", track_index, message_index, m_status, lastStatus);
 
     local char m_channel = lastStatus & 0xf;
     if ((lastStatus & 0xf0) == 0x80)
@@ -270,32 +270,26 @@ struct MidiMessage
 
 struct MidiTrack
 {
-    char m_magic[4] = { "MTrk" };//<format = hex>;
-    local uint m_seclen_pos = FTell();
+    char m_magic[4] = { "MTrk" };
     uint m_seclen<arraylength=true>;
-    local uint remaining = m_seclen;
-    local uint message_index = 0;
 
     Printf("---MIDI Track (%d)---\n\tMagic: %s\n\tSection length: %d\n", track_index, m_magic, m_seclen);
 
-    local uint sec_start = FTell();
-    while (remaining) {
+    local uint real_seclen = 0;
+    while (real_seclen < m_seclen) {
+        local uint message_start = FTell();
+        //ReadBytes()
         MidiMessage message;
-        local uint message_len = sizeof(message);
-        if (message_len > remaining) {
-            //Correct m_seclen value
-            local uint remaining = 0;
-            local uint sec_end = FTell();
-            FSeek(m_seclen_pos);
-            local int evil_state = SetEvilBit(false);
-            uint m_seclen = { sec_end - sec_start };
-            SetEvilBit(evil_state);
-            FSeek(sec_end);
-            break;
-        }
-        remaining -= message_len;
+        real_seclen += FTell() - message_start;
         message_index++;
     }
+
+    FSeek(FTell() - real_seclen - 4);
+    local uint evil_state = SetEvilBit(false);
+    uint m_seclen = { real_seclen };
+    SetEvilBit(evil_state);
+    FSeek(FTell() + real_seclen);
+
     track_index++;
 };
 

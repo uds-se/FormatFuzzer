@@ -925,7 +925,7 @@ public:
 				delete instance;
 		}
 	}
-	MidiMessage* generate(uint& message_index);
+	MidiMessage* generate();
 };
 
 
@@ -956,13 +956,9 @@ public:
 	}
 
 	/* locals */
-	uint m_seclen_pos;
-	uint remaining;
-	uint message_index;
-	uint sec_start;
-	uint message_len;
-	uint sec_end;
-	int evil_state;
+	uint real_seclen;
+	uint message_start;
+	uint evil_state;
 
 	unsigned char generated = 0;
 	int64 _startof = 0;
@@ -1163,7 +1159,7 @@ public:
 		m_ntracks(2),
 		m_tickdiv(1),
 		header(MidiHeader_header_instances),
-		t0(1),
+		t0(2),
 		t1(1),
 		t2(1),
 		t3(1),
@@ -1243,7 +1239,7 @@ MidiHeader* MidiHeader::generate() {
 	_startof = FTell();
 
 	GENERATE_VAR(m_magic, ::g->m_magic.generate(4, { "MThd" }));
-	GENERATE_VAR(m_seclen, ::g->m_seclen.generate());
+	GENERATE_VAR(m_seclen, ::g->m_seclen.generate({ 6 }));
 	GENERATE_VAR(m_format, m_format_enum_generate());
 	GENERATE_VAR(m_ntracks, ::g->m_ntracks.generate());
 	GENERATE_VAR(m_tickdiv, ::g->m_tickdiv.generate());
@@ -1266,7 +1262,7 @@ do {
 	_startof = FTell();
 
 	total = 0;
-	GENERATE_VAR(t0, ::g->t0.generate({ 0 }));
+	GENERATE_VAR(t0, ::g->t0.generate());
 	total += (t0() & 0x7f);
 	if (!(t0() & 0x80)) {
 	break;
@@ -1536,11 +1532,11 @@ MidiMessage_sysex_event_struct* MidiMessage_sysex_event_struct::generate() {
 }
 
 
-MidiMessage* MidiMessage::generate(uint& message_index) {
+MidiMessage* MidiMessage::generate() {
 	if (generated == 1) {
 		MidiMessage* new_instance = new MidiMessage(instances);
 		new_instance->generated = 2;
-		return new_instance->generate(message_index);
+		return new_instance->generate();
 	}
 	if (!generated)
 		generated = 1;
@@ -1553,7 +1549,7 @@ MidiMessage* MidiMessage::generate(uint& message_index) {
 	} else {
 	FSeek((FTell() - 1));
 	};
-	Printf("\t---MIDI Message (%d,%d)---\n\t\tStatus: %c\n", ::g->track_index, message_index, m_status());
+	Printf("\t---MIDI Message (%d,%d)---\n\t\tStatus: 0x%x\n\t\tLast Status: 0x%x\n", ::g->track_index, ::g->message_index, m_status(), ::g->lastStatus);
 	m_channel = (::g->lastStatus & 0xf);
 	if (((::g->lastStatus & 0xf0) == 0x80)) {
 		Printf("\t\tnote_off_event\n");
@@ -1623,28 +1619,20 @@ MidiTrack* MidiTrack::generate() {
 	_startof = FTell();
 
 	GENERATE_VAR(m_magic, ::g->m_magic.generate(4, { "MTrk" }));
-	m_seclen_pos = FTell();
 	GENERATE_VAR(m_seclen, ::g->m_seclen.generate());
-	remaining = m_seclen();
-	message_index = 0;
 	Printf("---MIDI Track (%d)---\n\tMagic: %s\n\tSection length: %d\n", ::g->track_index, std::string(m_magic()).c_str(), m_seclen());
-	sec_start = FTell();
-	while (remaining) {
-		GENERATE_VAR(message, ::g->message.generate(message_index));
-		message_len = message()._sizeof;
-		if ((message_len > remaining)) {
-			remaining = 0;
-			sec_end = FTell();
-			FSeek(m_seclen_pos);
-			evil_state = SetEvilBit(false);
-			GENERATE_VAR(m_seclen, ::g->m_seclen.generate({ (sec_end - sec_start) }));
-			SetEvilBit(evil_state);
-			FSeek(sec_end);
-			break;
-		};
-		remaining -= message_len;
-		message_index++;
+	real_seclen = 0;
+	while ((real_seclen < m_seclen())) {
+		message_start = FTell();
+		GENERATE_VAR(message, ::g->message.generate());
+		real_seclen += (FTell() - message_start);
+		::g->message_index++;
 	};
+	FSeek(((FTell() - real_seclen) - 4));
+	evil_state = SetEvilBit(false);
+	GENERATE_VAR(m_seclen, ::g->m_seclen.generate({ real_seclen }));
+	SetEvilBit(evil_state);
+	FSeek((FTell() + real_seclen));
 	::g->track_index++;
 
 	_sizeof = FTell() - _startof;
