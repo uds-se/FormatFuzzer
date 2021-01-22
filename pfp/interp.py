@@ -692,7 +692,11 @@ class PfpInterp(object):
             if classname not in self._to_define:
                 self._to_define[classname] = []
             self._to_define[classname].append((node.name, node, len(self._incomplete_stack) > 1))
-            node.cpp = "/*TODO field " + node.name + "*/"
+            node.cpp = "/*TODO field " + node.name + "("
+            if hasattr(node.type, "args") and node.type.args:
+                for arg in node.type.args.exprs:
+                    node.cpp += arg.cpp + ", "
+            node.cpp += ")*/"
             node.type.cpp = classname
             if not self._incomplete:
                 self.add_class(classname, classnode, is_union)
@@ -968,10 +972,13 @@ class PfpInterp(object):
                 self._variable_types[field_name] = classname
                 node.cpp += "(" + name + ", ::g->" + field_name + ".generate("
                 arg_num = 0
+                todofield = "/*TODO field " + field_name + "("
                 if hasattr(node.type, "args") and node.type.args:
                     for arg in node.type.args.exprs:
                         arg_num += 1
                         node.cpp += arg.cpp + ", "
+                        todofield += arg.cpp + ", "
+                todofield += ")*/"
                 if hasattr(classnode, "args") and classnode.args is not None:
                     for i in range(arg_num, len(classnode.args.params)):
                         arg_num += 1
@@ -980,8 +987,8 @@ class PfpInterp(object):
                     node.cpp = node.cpp[:-2]
                 node.cpp += "))"
                 for decl in classnode.decls:
-                    decl.cpp = decl.cpp.replace("/*TODO field " + field_name + "*/", node.cpp)
-                self._to_replace.append(("/*TODO field " + field_name + "*/", node.cpp))
+                    decl.cpp = decl.cpp.replace(todofield, node.cpp)
+                self._to_replace.append((todofield, node.cpp))
                 node.type.cpp = classname
 
     def add_class_generate(self, classname, classnode, is_union=False):
