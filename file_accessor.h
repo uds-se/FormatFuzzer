@@ -11,6 +11,8 @@
 #define MAX_RAND_SIZE 65536
 #define MAX_FILE_SIZE 4096
 
+extern std::vector<std::vector<int>> integer_ranges;
+
 bool is_big_endian = false;
 bool is_bitfield_left_to_right[2] = {false, true};
 bool is_padded_bitfield = true;
@@ -468,9 +470,12 @@ public:
 		};
 		if (small == 0)
 			value = rand_int(range, parse);
-		else if (small == 1) {
-			int s = rand_int(256, [&size, &bits, this](unsigned char* file_buf) -> long long {
-				unsigned long long value = parse_integer(file_buf, size, bits);
+		else if (small == 1 || (small >= 2 && integer_ranges[small-2][1] == INT_MAX)) {
+			int min = 0;
+			if (small >= 2)
+				min = integer_ranges[small-2][0];
+			int s = rand_int(256, [&size, &bits, &min, this](unsigned char* file_buf) -> long long {
+				unsigned long long value = parse_integer(file_buf, size, bits) - min;
 				if (value > 0 && value <= 1<<4)
 					return 0;
 				if (value < 1<<8)
@@ -491,19 +496,22 @@ public:
 					--value;
 					return value;
 				});
+			value += min;
 		} else {
-			int s = rand_int(256, [&size, &bits, this](unsigned char* file_buf) -> long long {
-				unsigned long long value = parse_integer(file_buf, size, bits);
-				if (value > 0 && value <= 1<<4)
+			int min = integer_ranges[small-2][0];
+			int max = integer_ranges[small-2][1];
+			int s = rand_int(256, [&size, &bits, &min, &max, this](unsigned char* file_buf) -> long long {
+				long long value = parse_integer(file_buf, size, bits);
+				if (value >= min && value <= max)
 					return 0;
 				return 255;
 			});
 			if (s == 255)
 				value = rand_int(range, parse);
 			else
-				value = 1+rand_int(1<<4, [&size, &bits, this](unsigned char* file_buf) -> long long {
+				value = min + rand_int(max + 1 - min, [&size, &bits, &min, this](unsigned char* file_buf) -> long long {
 					long long value = parse_integer(file_buf, size, bits);
-					--value;
+					value -= min;
 					return value;
 				});
 		}

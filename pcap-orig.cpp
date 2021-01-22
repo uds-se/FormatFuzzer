@@ -905,6 +905,8 @@ std::vector<PCAPRECORD*> PCAPRECORD_record_instances;
 
 std::unordered_map<std::string, std::string> variable_types = { { "magic_number", "uint32_class" }, { "version_major", "uint16_class" }, { "version_minor", "uint16_class" }, { "thiszone", "int32_class" }, { "sigfigs", "uint32_class" }, { "snaplen", "uint32_class" }, { "network", "uint32_class" }, { "header", "PCAPHEADER" }, { "ts_sec", "time_t_class" }, { "ts_usec", "uint32_class" }, { "incl_len", "uint32_class" }, { "orig_len", "uint32_class" }, { "version", "uchar_bitfield4" }, { "ip_hdr_len", "uchar_bitfield4" }, { "DiffServField", "BYTE_class" }, { "total_length", "uint16_class" }, { "Identification", "uint16_class" }, { "Flags", "uint16_class" }, { "TTL", "BYTE_class" }, { "L4proto", "BYTE_class" }, { "HdrChecksum", "uint16_class" }, { "Byte", "uchar_array_class" }, { "SRC_IP", "IPv4addr" }, { "DST_IP", "IPv4addr" }, { "Unknown", "BYTE_array_class" }, { "L3", "Layer_3" }, { "DstMac", "MACaddr" }, { "SrcMac", "MACaddr" }, { "L3type", "uint16_class" }, { "L2", "Layer_2" }, { "priority", "uint16_bitfield3" }, { "dei", "uint16_bitfield1" }, { "id", "uint16_bitfield12" }, { "d1q", "Dot1q" }, { "SrcPort", "uint16_class" }, { "DstPort", "uint16_class" }, { "udp_hdr_len", "uint16_class" }, { "ChkSum", "uint16_class" }, { "SEQ", "uint32_class" }, { "ACK", "uint32_class" }, { "tcp_hdr_len", "uchar_bitfield4" }, { "Reserved", "uchar_bitfield4" }, { "Crap", "BYTE_array_class" }, { "packet", "BYTE_array_class" }, { "L4", "Layer_4" }, { "AppData", "BYTE_array_class" }, { "padding", "uchar_array_class" }, { "record", "PCAPRECORD" } };
 
+std::vector<std::vector<int>> integer_ranges = { { 1, 16 } };
+
 class globals_class {
 public:
 	uint32_class magic_number;

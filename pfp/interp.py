@@ -1133,6 +1133,7 @@ class PfpInterp(object):
         self._global_consts = []
         self._globals = []
         self._variable_types = {}
+        self._integer_ranges = [("1", "16")]
         self._instances = ""
         self._locals_stack = [[]]
         self._incomplete_stack = [False]
@@ -1662,6 +1663,10 @@ class PfpInterp(object):
         node.cpp += "\n\nstd::unordered_map<std::string, std::string> variable_types = { "
         for var in self._variable_types:
             node.cpp += '{ "' + var + '", "' + self._variable_types[var] + '" }, '
+        node.cpp = node.cpp[:-2] + " };"
+        node.cpp += "\n\nstd::vector<std::vector<int>> integer_ranges = { "
+        for (a, b) in self._integer_ranges:
+            node.cpp += '{ ' + a + ', ' + b + ' }, '
         node.cpp = node.cpp[:-2] + " };"
         node.cpp += "\n\nclass globals_class {\npublic:\n"
         for n, c in self._globals:
@@ -2310,6 +2315,20 @@ class PfpInterp(object):
                             self._globals.append((node.name, classname + " " + node.name + ";\n"))
                         elif node.metadata is not None and "arraylength" in node.metadata.keyvals:
                             self._globals.append((node.name, classname + " " + node.name + "(2);\n"))
+                        elif node.metadata is not None and "max" in node.metadata.keyvals:
+                            maxint = node.metadata.keyvals["max"].split(",")[0]
+                            minint = "0"
+                            if "min" in node.metadata.keyvals:
+                                minint = node.metadata.keyvals["min"].split(",")[0]
+                            else:
+                                assert(int(maxint) >= 0)
+                            self._integer_ranges.append((minint, maxint))
+                            self._globals.append((node.name, classname + " " + node.name + "(" + str(len(self._integer_ranges)+1) + ");\n"))
+                        elif node.metadata is not None and "min" in node.metadata.keyvals:
+                            maxint = "INT_MAX"
+                            minint = node.metadata.keyvals["min"].split(",")[0]
+                            self._integer_ranges.append((minint, maxint))
+                            self._globals.append((node.name, classname + " " + node.name + "(" + str(len(self._integer_ranges)+1) + ");\n"))
                         else:
                             self._globals.append((node.name, classname + " " + node.name + "(1);\n"))
                     node.cpp = "GENERATE"
