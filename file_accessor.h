@@ -7,9 +7,7 @@
 #include <algorithm>
 #include <functional>
 #include <zlib.h>
-
-#define MAX_RAND_SIZE 65536
-#define MAX_FILE_SIZE 4096
+#include "formatfuzzer.h"
 
 extern std::vector<std::vector<int>> integer_ranges;
 
@@ -32,12 +30,10 @@ bool is_optional = false;
 bool is_delete = false;
 
 void swap_bytes(void* b, unsigned size) {
-	char* buf = (char*) b;
-	char newbuf[8];
 	if (is_big_endian) {
-		for (unsigned i = 0; i < size; ++i)
-			newbuf[i] = buf[size-1-i];
-		memcpy(buf, newbuf, size);
+		char* start = (char*) b;
+		char* end = start + size;
+		std::reverse(start, end);
 	}
 }
 
@@ -71,6 +67,7 @@ void assert_cond(bool cond, const char* error_msg) {
 	}
 }
 
+unsigned char *rand_buffer;
 
 class file_accessor {
 	bool allow_evil_values = true;
@@ -249,7 +246,7 @@ public:
 	unsigned char* rand_buffer;
 	unsigned rand_pos = 0;
 	unsigned rand_size = 0;
-	unsigned char file_buffer[MAX_FILE_SIZE];
+	unsigned char *file_buffer;
 	unsigned file_pos = 0;
 	unsigned file_size = 0;
 	unsigned final_file_size = 0;
@@ -261,7 +258,15 @@ public:
 	bool lookahead = false;
 	bool is_padding = false;
 
-	file_accessor() : bitmap(MAX_FILE_SIZE) {}
+	file_accessor() : bitmap(MAX_FILE_SIZE) {
+		file_buffer = new unsigned char[MAX_FILE_SIZE];
+		::rand_buffer = new unsigned char[MAX_RAND_SIZE];
+	}
+	
+	~file_accessor() {
+		delete[] file_buffer;
+		delete[] ::rand_buffer;
+	}
 
 	bool set_evil_bit(bool allow) {
 		bool old = allow_evil_values;
@@ -269,13 +274,19 @@ public:
 		return old;
 	}
 
-	bool evil(std::function<bool (unsigned char*)> parse) {
-		bool is_evil = rand_int(127 + allow_evil_values, [&parse](unsigned char* file_buf) -> long long { return parse(file_buf) ? 127 : 0; } ) == 127;
+	std::function<bool (unsigned char*)> evil_parse;
+
+	bool evil(std::function<bool (unsigned char*)>& evil_parse) {
+		if (!generate)
+			parse = [&evil_parse](unsigned char* file_buf) -> long long { return evil_parse(file_buf) ? 127 : 0; };
+		bool is_evil = rand_int(127 + allow_evil_values, parse) == 127;
 		assert_cond(!(!generate && !allow_evil_values && rand_buffer[rand_pos-1] == 127), "Evil bit is disabled, but an evil decision is required to parse this file");
 		return is_evil;
 	}
 
-	long long rand_int(unsigned long long x, std::function<long long (unsigned char*)> parse) {
+	std::function<long long (unsigned char*)> parse;
+
+	long long rand_int(unsigned long long x, std::function<long long (unsigned char*)>& parse) {
 		unsigned long long max = x-1;
 		if (!max)
 			return 0;
@@ -346,7 +357,7 @@ public:
 	std::string rand_bytes(int size) {
 		std::string result;
 		for (int i = 0; i < size; ++i) {
-			unsigned char byte = rand_int(256, NULL);
+			unsigned char byte = rand_int(256, parse);
 			result += byte;
 		}
 		return result;
@@ -393,7 +404,9 @@ public:
 			is_following = false;
 		}
 		lookahead = true;
-		int is_feof = rand_int(8, [this](unsigned char* file_buf) -> long long { return file_pos == final_file_size ? 7 : 0; } ) == 7;
+		if (!generate)
+			parse = [this](unsigned char* file_buf) -> long long { return file_pos == final_file_size ? 7 : 0; };
+		int is_feof = rand_int(8, parse) == 7;
 		lookahead = false;
 		if (is_feof)
 			has_size = true;
@@ -436,16 +449,23 @@ public:
 		}
 		std::vector<T>& good = match ? compatible : known;
 
-		if ((match && compatible.empty()) || evil( [&size, &bits, &good, this](unsigned char* file_buf) -> bool {
+		if (!generate)
+			evil_parse = [&size, &bits, &good, this](unsigned char* file_buf) -> bool {
 				T value = (T)parse_integer(file_buf, size, bits);
 				return std::find(good.begin(), good.end(), value) == good.end();
-			} )) {
+			};
+
+		if ((match && compatible.empty()) || evil(evil_parse)) {
 			return file_integer(size, bits);
 		}
-		T value = good[rand_int(good.size(), [&size, &bits, &good, this](unsigned char* file_buf) -> long long {
-			T value = (T)parse_integer(file_buf, size, bits);
-			return std::find(good.begin(), good.end(), value) - good.begin();
-		} )];
+
+		if (!generate)
+			parse = [&size, &bits, &good, this](unsigned char* file_buf) -> long long {
+				T value = (T)parse_integer(file_buf, size, bits);
+				return std::find(good.begin(), good.end(), value) - good.begin();
+			};
+
+		T value = good[rand_int(good.size(), parse)];
 		T newvalue = value;
 		if (bits) {
 			value = (T)((unsigned long long)value & ((1LLU << bits) - 1LLU));
@@ -465,55 +485,68 @@ public:
 		unsigned long long range = bits ? bits : 8*size;
 		range = range == 64 ? 0 : 1LLU << range;
 		long long value;
-		std::function<long long (unsigned char*)> parse = [&size, &bits, this](unsigned char* file_buf) -> long long {
-			return parse_integer(file_buf, size, bits);
-		};
+		if (!generate)
+			parse = [&size, &bits, this](unsigned char* file_buf) -> long long {
+				return parse_integer(file_buf, size, bits);
+			};
 		if (small == 0)
 			value = rand_int(range, parse);
 		else if (small == 1 || (small >= 2 && integer_ranges[small-2][1] == INT_MAX)) {
 			int min = 0;
 			if (small >= 2)
 				min = integer_ranges[small-2][0];
-			int s = rand_int(256, [&size, &bits, &min, this](unsigned char* file_buf) -> long long {
-				unsigned long long value = parse_integer(file_buf, size, bits) - min;
-				if (value > 0 && value <= 1<<4)
-					return 0;
-				if (value < 1<<8)
-					return 256 - 32;
-				if (value < 1<<16)
-					return 256 - 8;
-				return 256 - 2;
-			});
+			std::function<long long (unsigned char*)> choice_parse;
+			if (!generate)
+				choice_parse = [&size, &bits, &min, this](unsigned char* file_buf) -> long long {
+					unsigned long long value = parse_integer(file_buf, size, bits) - min;
+					if (value > 0 && value <= 1<<4)
+						return 0;
+					if (value < 1<<8)
+						return 256 - 32;
+					if (value < 1<<16)
+						return 256 - 8;
+					return 256 - 2;
+				};
+			int s = rand_int(256, choice_parse);
 			if (s >= 256 - 2)
 				value = rand_int(range, parse);
 			else if (s >= 256 - 8)
 				value = rand_int(1<<16, parse);
 			else if (s >= 256 - 32)
 				value = rand_int(1<<8, parse);
-			else
-				value = 1+rand_int(1<<4, [&size, &bits, this](unsigned char* file_buf) -> long long {
-					long long value = parse_integer(file_buf, size, bits);
-					--value;
-					return value;
-				});
+			else {
+				if (!generate)
+					parse = [&size, &bits, this](unsigned char* file_buf) -> long long {
+						long long value = parse_integer(file_buf, size, bits);
+						--value;
+						return value;
+					};
+				value = 1+rand_int(1<<4, parse);
+			}
 			value += min;
 		} else {
 			int min = integer_ranges[small-2][0];
 			int max = integer_ranges[small-2][1];
-			int s = rand_int(256, [&size, &bits, &min, &max, this](unsigned char* file_buf) -> long long {
-				long long value = parse_integer(file_buf, size, bits);
-				if (value >= min && value <= max)
-					return 0;
-				return 255;
-			});
+			std::function<long long (unsigned char*)> choice_parse;
+			if (!generate)
+				choice_parse = [&size, &bits, &min, &max, this](unsigned char* file_buf) -> long long {
+					long long value = parse_integer(file_buf, size, bits);
+					if (value >= min && value <= max)
+						return 0;
+					return 255;
+				};
+			int s = rand_int(256, choice_parse);
 			if (s == 255)
 				value = rand_int(range, parse);
-			else
-				value = min + rand_int(max + 1 - min, [&size, &bits, &min, this](unsigned char* file_buf) -> long long {
-					long long value = parse_integer(file_buf, size, bits);
-					value -= min;
-					return value;
-				});
+			else {
+				if (!generate)
+					parse = [&size, &bits, &min, this](unsigned char* file_buf) -> long long {
+						long long value = parse_integer(file_buf, size, bits);
+						value -= min;
+						return value;
+					};
+				value = min + rand_int(max + 1 - min, parse);
+			}
 		}
 		if (has_bitmap) {
 			for (unsigned i = 0; i < size; ++i) {
@@ -567,16 +600,20 @@ public:
 		}
 		std::vector<std::string>& good = match ? compatible : known;
 
-		if ((match && compatible.empty()) || evil( [&good](unsigned char* file_buf) -> bool {
+		if (!generate)
+			evil_parse = [&good](unsigned char* file_buf) -> bool {
 				std::string value((char*) file_buf, good[0].length());
 				return std::find(good.begin(), good.end(), value) == good.end();
-			} )) {
+			};
+		if ((match && compatible.empty()) || evil(evil_parse)) {
 			return file_string(size);
 		}
-		std::string value = good[rand_int(good.size(), [&good](unsigned char* file_buf) -> long long {
+		if (!generate)
+			parse = [&good](unsigned char* file_buf) -> long long {
 				std::string value((char*) file_buf, good[0].length());
 				return std::find(good.begin(), good.end(), value) - good.begin();
-			} )];
+			};
+		std::string value = good[rand_int(good.size(), parse)];
 		ssize_t len = value.length();
 		write_file(value.c_str(), len);
 		return value;
@@ -584,13 +621,15 @@ public:
 	
 	std::string file_string(int size = 0) {
 		assert_cond(file_pos + size <= MAX_FILE_SIZE, "file size exceeded MAX_FILE_SIZE");
-		int choice = rand_int(16, [&size](unsigned char* file_buf) -> long long {
-			int len = size ? size : INT_MAX;
-			for (int i = 0; i < len && (size || file_buf[i]); ++i)
-				if (file_buf[i] < 32 || file_buf[i] >= 127)
-					return 15;
-			return 0;
-		});
+		if (!generate)
+			parse = [&size](unsigned char* file_buf) -> long long {
+				int len = size ? size : INT_MAX;
+				for (int i = 0; i < len && (size || file_buf[i]); ++i)
+					if (file_buf[i] < 32 || file_buf[i] >= 127)
+						return 15;
+				return 0;
+			};
+		int choice = rand_int(16, parse);
 		if (choice < 14) {
 			return file_ascii_string(size);
 		} else if (choice == 14) {
@@ -598,14 +637,22 @@ public:
 		}
 		unsigned char buf[4096];
 		ssize_t len = size;
-		if (!len)
-			len = rand_int(80, [](unsigned char* file_buf) -> long long { return strlen((char*)file_buf); } );
+		if (!len) {
+			if (!generate)
+				parse = [](unsigned char* file_buf) -> long long { return strlen((char*)file_buf); };
+			len = rand_int(80, parse);
+		}
 		assert_cond(len < 4096, "string too large");
 		for (int i = 0; i < len; ++i) {
-			if (size == 0)
-				buf[i] = rand_int(255, [&i](unsigned char* file_buf) -> long long { return file_buf[i] - 1; } ) + 1;
-			else
-				buf[i] = rand_int(256, [&i](unsigned char* file_buf) -> long long { return file_buf[i]; } );
+			if (size == 0) {
+				if (!generate)
+					parse = [&i](unsigned char* file_buf) -> long long { return file_buf[i] - 1; };
+				buf[i] = rand_int(255, parse) + 1;
+			} else {
+				if (!generate)
+					parse = [&i](unsigned char* file_buf) -> long long { return file_buf[i]; };
+				buf[i] = rand_int(256, parse);
+			}
 		}
 		buf[len] = '\0';
 		if (has_bitmap) {
@@ -626,11 +673,16 @@ public:
 		assert_cond(file_pos + size <= MAX_FILE_SIZE, "file size exceeded MAX_FILE_SIZE");
 		unsigned char buf[4096];
 		ssize_t len = size;
-		if (!len)
-			len = rand_int(80, [](unsigned char* file_buf) -> long long { return strlen((char*)file_buf); } );
+		if (!len) {
+			if (!generate)
+				parse = [](unsigned char* file_buf) -> long long { return strlen((char*)file_buf); };
+			len = rand_int(80, parse);
+		}
 		assert_cond(len < 4096, "string too large");
 		for (int i = 0; i < len; ++i) {
-			buf[i] = rand_int(95, [&i](unsigned char* file_buf) -> long long { return file_buf[i] - 32; } ) + 32;
+			if (!generate)
+				parse = [&i](unsigned char* file_buf) -> long long { return file_buf[i] - 32; };
+			buf[i] = rand_int(95, parse) + 32;
 		}
 		buf[len] = '\0';
 		if (has_bitmap) {
@@ -651,11 +703,16 @@ public:
 		assert_cond(file_pos + size <= MAX_FILE_SIZE, "file size exceeded MAX_FILE_SIZE");
 		unsigned char buf[4096];
 		ssize_t len = size;
-		if (!len)
-			len = rand_int(80, [](unsigned char* file_buf) -> long long { return strlen((char*)file_buf); } );
+		if (!len) {
+			if (!generate)
+				parse = [](unsigned char* file_buf) -> long long { return strlen((char*)file_buf); };
+			len = rand_int(80, parse);
+		}
 		assert_cond(len < 4096, "string too large");
 		for (int i = 0; i < len; ++i) {
-			buf[i] = rand_int(190, [&i](unsigned char* file_buf) -> long long { return file_buf[i] >= 161 ? file_buf[i] - 66 : file_buf[i] - 32; } ) + 32;
+			if (!generate)
+				parse = [&i](unsigned char* file_buf) -> long long { return file_buf[i] >= 161 ? file_buf[i] - 66 : file_buf[i] - 32; };
+			buf[i] = rand_int(190, parse) + 32;
 			if (buf[i] >= 127)
 				buf[i] += 34;
 		}

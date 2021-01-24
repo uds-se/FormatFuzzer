@@ -296,7 +296,7 @@ typedef struct //str_sidx
 local uint32 sharedSamplecountVar = 0;
 local uint32 mdatPosition = 0;
 local byte isVideo = false;
-local string ReadBytesInitValues2[] = { "btrt", "dinf", "edts", "mdia", "minf", "moov", "moof", "stbl", "trak", "udta", "traf", "mvex", "sinf", "schi", "frma", "tenc", "schm", "pssh", "senc", "saio", "saiz", "trun", "tfhd", "mfhd", "sidx",  "pasp", "trex", "mehd", "stsd", "enca", "stts", "stsc", "stco", "co64", "stsz", "stss", "elst", "ftyp", "hdlr", "mdhd", "mvhd", "smhd", "tkhd", "vmhd" , "ilst"};
+local string ReadBytesInitValues[] = { "btrt", "dinf", "edts", "mdia", "minf", "moov", "moof", "stbl", "trak", "udta", "traf", "mvex", "sinf", "schi", "frma", "tenc", "schm", "pssh", "senc", "saio", "saiz", "trun", "tfhd", "mfhd", "sidx",  "pasp", "trex", "mehd", "stsd", "enca", "stts", "stsc", "stco", "co64", "stsz", "stss", "elst", "ftyp", "hdlr", "mdhd", "mvhd", "smhd", "tkhd", "vmhd" , "ilst"};
 
 typedef struct //mp4box
 {    
@@ -325,7 +325,7 @@ typedef struct //mp4box
         case "moov":
 			local char chunk_type[4];
 			local string preferred_blocks[] = { "mvhd", "trak"};
-			local string possible_blocks[] = { "mvhd", "trak"}; //TODO implement and check "udta" "iods", "meta"
+			local string possible_blocks[] = { "mvhd", "trak", "udta" }; //TODO implement and check "udta" "iods", "meta"
 			while (ReadBytes(chunk_type, FTell() + 4, 4, preferred_blocks, possible_blocks)) {
 				switch(chunk_type){
 					case "mvhd":
@@ -336,7 +336,6 @@ typedef struct //mp4box
 					case "trak":
 						mp4box trak_block;
 						preferred_blocks -= "trak";	
-						possible_blocks -= "trak";	
 						break;
 					case "iods":
 						mp4box iods_block;
@@ -417,7 +416,7 @@ typedef struct //mp4box
 		case "mdat":
 			mdatPosition = FTell();
 			if(size < 8){
-				uint32 length;
+				uint32 length<arraylength=true>;
 				byte data[length]; //TODO maybe look into a sensefull encoding of the data
 			}
 			else{
@@ -557,11 +556,16 @@ typedef struct //mp4box
             break;
 		case "edts":
 			local char chunk_type[4];
-			local string preferred_blocks[0];
+			local string preferred_blocks[] = { "elst" };
 			local string possible_blocks[] = { "elst"};
+			if(startOffset + size == (uint64) FTell()){
+				break;
+			}
 			if(ReadBytes(chunk_type, FTell() + 4, 4, preferred_blocks, possible_blocks)){
 				if(chunk_type == "elst"){
 					mp4box elst_block;
+				} else {
+					mp4box unknown_block;
 				}
 			}				
 			break;
@@ -679,7 +683,7 @@ typedef struct //mp4box
         case "stbl":
 			local char chunk_type[4];
 			local string preferred_blocks[] = {"stts", "stsd", "stsc", "stco"}; //TODO add "stsz" and "stz2" as alternative to "stsz", reenable "co64"
-			local string possible_blocks[] = {"stts", "stsd", "stsc",  "stco"}; //TODO add "stsz", "ctts", "stss", "stsh", "stdb", "sdtp", "sbgp", "sgpd", "subs",
+			local string possible_blocks[] = {"stts", "stsd", "stsc",  "stco", "stss"}; //TODO add "stsz", "ctts", "stsh", "stdb", "sdtp", "sbgp", "sgpd", "subs",
 
 			while (ReadBytes(chunk_type, FTell() + 4, 4, preferred_blocks, possible_blocks)) {
 				switch(chunk_type){
@@ -836,7 +840,8 @@ typedef struct //mp4box
 			for (j=0; j< numOfPictureParameterSets;  j++) {
 				uint16 pictureParameterSetLength = {0x06};
 				byte  pictureParameterSetNALUnit[pictureParameterSetLength];
-			}	
+			}
+			break;	
 		case "mp4a":
 			uint32 reserved_a = {0};
 			uint16 reserved_b = {0};
@@ -969,8 +974,7 @@ typedef struct //mp4box
 						
 			for (i=1; i <= entry_count; i++) {
 				uint32 first_chunk = {currentIndex};
-				local uint32 nextIndex;
-				currentIndex = currentIndex + nextIndex;
+				currentIndex = currentIndex + 1;
 				uint32 samples_per_chunk;
 				sampleCount = sampleCount + samples_per_chunk;
 				uint32 sample_description_index = {i};
@@ -1184,8 +1188,20 @@ typedef struct //mp4box
         case "stss":
             byte version;
             byte flag[3];
+            local int64 before_entry_count = FTell();
             uint32 entry_count;
+            ChangeArrayLength();
             uint32 sample_number[entry_count];
+            EndChangeArrayLength();
+            local int64 after = FTell();
+            local uint32 correct_count = (after - before_entry_count - 4) / 4;
+            if (entry_count != correct_count) {
+            	FSeek(before_entry_count);
+            	local int evil = SetEvilBit(false);
+		uint32 entry_count = { correct_count };
+		SetEvilBit(evil);
+		FSeek(after);
+            }
             break; 
         default:
             ChangeArrayLength();
@@ -1193,7 +1209,14 @@ typedef struct //mp4box
             EndChangeArrayLength();
             break;     
     }
-	
+	if (IsParsing())
+	{
+		if (FTell() != endOffset) {
+			local uint32 parsedSize = FTell() - startOffset;
+			Warning("Parsed %u bytes and expected %u bytes in chunk %s", parsedSize, size, type.value);
+			FSeek(endOffset);
+		}
+	}
 	local uint64 writePosition = FTell();
 	FSeek(startOffset);
 	local uint32 newSize = writePosition-startOffset;
@@ -1212,13 +1235,13 @@ typedef struct{ //mp4file
 		switch(chunk_type){
 			case "ftyp": 
 				mp4box ftyp_block;
-				local string preferred_blocks[] = { "mdat" };
-				local string possible_blocks[] = { "mdat",  "free" }; 
+				local string preferred_blocks[] = { "mdat", "moov" };
+				local string possible_blocks[] = { "mdat",  "moov",  "free" }; 
 				break;
 			case "mdat":
 				mp4box mdat_block;
-				local string preferred_blocks[] = { "moov" };
-				local string possible_blocks[] = { "moov",  "free" }; 
+				preferred_blocks -= "mdat";	
+				possible_blocks -= "mdat";
 				break;
 			case "moov":
 				mp4box moov_block;

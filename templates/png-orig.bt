@@ -110,8 +110,8 @@ typedef enum <byte> {
 
 // Chunk Type
 typedef union {
-    uint32  ctype <format=hex>; // Chunk Type
     char    cname[4];           // character representation
+    uint32  ctype <format=hex>; // Chunk Type
 } CTYPE <read=readCTYPE>;
 
 string readCTYPE(local CTYPE &t) {

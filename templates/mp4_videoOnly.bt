@@ -1115,7 +1115,6 @@ typedef struct //mp4box
 
 //added structs
 typedef struct{ //mp4file
-	SetEvilBit(0);
 	local char chunk_type[4];
 	local string preferred_blocks[] = { "ftyp" };
 	local string possible_blocks[] = { "ftyp" };

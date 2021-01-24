@@ -747,7 +747,7 @@ typedef enum <WORD> tagDataFormat {
 	uByte = 1,
 	ascString,
 	uShort,
-	uLong,
+	uLong1,
 	uRatio,
 	sByte,
 	undefined = 7,
@@ -774,7 +774,7 @@ typedef struct tgDIRENTRY {
 	}
 	DataFormat dataFormat;
 	DWORD nComponent;
-	local int j = 0;
+	local unsigned int j = 0;
 	local int length = -1;
 
 	if (1 <= dataFormat && dataFormat < 13)
@@ -893,7 +893,7 @@ typedef struct tgDIRENTRY {
 						for (j = 0; j < nComponent; j++)
 							ushort usValue;
 						break;
-					case uLong:
+					case uLong1:
 						if (nComponent == 1)
 							ulong ulValue;
 						break;
@@ -977,7 +977,7 @@ typedef struct tgIFD {
 							ushort usValue[dirEntry[i].nComponent];
 						} strUShort;
 						break;
-					case uLong:
+					case uLong1:
 						struct {
 							ulong ulValue[dirEntry[i].nComponent];
 						} strULong;
@@ -1052,12 +1052,12 @@ typedef struct tgIFD {
 				if(!Strncmp("CASIO COMPUTER CO.,LTD",CameraMake,22) &&
 						!Strncmp("QV-R62",CameraModel,6)) {
 					FSeek(offset + dirEntry[i].ulValue);
-					struct {
+					//struct {
 						char Header[6];
 						Stack_push(stack_IFD_dirtype, IFD_TYPE_CASIO_QV_R62);
 						struct IFD CasioIFD;
 						Stack_pop(stack_IFD_dirtype);
-					} CasioMake;
+					//} CasioMake;
 				}
 				break;
 			case CasioPreviewThumbnail:
@@ -1100,7 +1100,7 @@ typedef struct tagApp0 {
 	M_ID marker;
 	WORD szSection;
 
-	if (ReadStringN(FTell(), 5) == "JFIF") {
+	if (ReadStringN(FTell(), 5) == "JFIF\0") {
 		// JFIF Main
 		char  App0Type[5];
 		short versionHigh:8;
@@ -1115,7 +1115,7 @@ typedef struct tagApp0 {
 				uchar r, g, b;
 			} rgb[(ushort)xThumbnail * yThumbnail];
 		}
-	} else if(ReadStringN(FTell(), 5) == "JFXX") {
+	} else if(ReadStringN(FTell(), 5) == "JFXX\0") {
 		// JFIF Extension
 		char  App0Type[5];
 		byte extension_code <format=hex>;
@@ -1175,7 +1175,7 @@ typedef struct tgAPP1 {
 	M_ID marker;
 	WORD szSection;
 
-	if (ReadStringN(FTell(), 5) == "Exif") {
+	if (ReadStringN(FTell(), 5) == "Exif\0") {
 		char EXIF[6];
 		local quad offset = FTell();
 		byte align[2];
@@ -1198,7 +1198,7 @@ typedef struct tgAPP1 {
 			local int thumbOffset = 0;
 			local int thumbLength = 0;
 			local int compression = 10;
-			for(i;i<ifdThumbnailImage.nDirEntry;i++) {
+			for(;i<ifdThumbnailImage.nDirEntry;i++) {
 				switch(ifdThumbnailImage.dirEntry[i].tagNumber) {
 					case Compression:
 						compression = ifdThumbnailImage.dirEntry[i].usValue;
@@ -1228,7 +1228,7 @@ typedef struct tgAPP1 {
 		}
 		FSeek(offset + szSection - 8);
 		if(align[0]=='I') { BigEndian(); }
-	} else if (ReadStringN(FTell(), 29) == "http://ns.adobe.com/xap/1.0/") {
+	} else if (ReadStringN(FTell(), 29) == "http://ns.adobe.com/xap/1.0/\0") {
 		// http://www.adobe.com/products/xmp/
 		char XAP[29];
 		char remain[szSection - 31];
@@ -1242,12 +1242,12 @@ typedef struct tgAPP2 {
 	M_ID marker;
 	WORD szSection;
 
-	if (ReadStringN(FTell(), 5) == "FPXR") {
+	if (ReadStringN(FTell(), 5) == "FPXR\0") {
 			char FPXR[5];
 			uchar version;
 			char remain[szSection - 8];
 			//Warning("Unknown FPXR");
-	} else if (ReadStringN(FTell(), 12) == "ICC_PROFILE") {
+	} else if (ReadStringN(FTell(), 12) == "ICC_PROFILE\0") {
 			char ICC_PROFILE[12];
 			uchar block_num;
 			uchar block_total;
@@ -1312,7 +1312,7 @@ typedef struct tagAPP13 {
 	M_ID marker;
 	WORD szSection;
 
-	if (ReadStringN(FTell(), 14) == "Photoshop 3.0") {
+	if (ReadStringN(FTell(), 14) == "Photoshop 3.0\0") {
 		// refer to ExifTool Photoshop.pm
 		char photoshop30[14];
 		local int remainsize = szSection - 16;
@@ -1352,7 +1352,7 @@ typedef struct tagAPP13 {
 			} block;
 			remainsize -= sizeof(block);
 		}
-	} else if (ReadStringN(FTell(), 9) == "Adobe_CM") {
+	} else if (ReadStringN(FTell(), 9) == "Adobe_CM\0") {
 		char adobe_cm[9];
 		uchar AdobeCMType;
 		if (szSection != 12)
@@ -1422,7 +1422,7 @@ typedef struct tagDHT {
 			ubyte length[16];
 			local int sumLen = 0;
 			local int i = 0;
-			for(i;i<16;i++) {
+			for(;i<16;i++) {
 				sumLen += length[i];
 			}
 			ubyte HTV[sumLen];

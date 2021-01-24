@@ -20,6 +20,8 @@
 
 static const char *bin_name = "formatfuzzer";
 
+extern bool get_parse_tree;
+
 // Each command comes as if it were invoked from the command line
 
 // fuzz - generate random inputs
@@ -36,7 +38,7 @@ int fuzz(int argc, char **argv)
 				{"decisions", required_argument, 0, 'd'},
 				{0, 0, 0, 0}};
 		int option_index = 0;
-		int c = getopt_long(argc, argv, "d:",
+		int c = getopt_long(argc, argv, "d:p",
 							long_options, &option_index);
 
 		// Detect the end of the options.
@@ -51,10 +53,14 @@ int fuzz(int argc, char **argv)
 			fprintf(stderr, "Outputs random data to given FILES (or `-' for standard output).\n");
 			fprintf(stderr, "Options:\n");
 			fprintf(stderr, "--decisions SOURCE: Use SOURCE for generation decisions (default %s)\n", decision_source);
+			fprintf(stderr, "-p: print parse tree\n");
 			return 0;
 
 		case 'd':
 			decision_source = optarg;
+			break;
+		case 'p':
+			get_parse_tree = true;
 			break;
 		}
 	}
@@ -220,8 +226,6 @@ void write_file(const char* filename, unsigned char* data, size_t size) {
 	close(file_fd);
 }
 
-#define MAX_RAND_SIZE 65536
-
 // smart_replace - apply a smart replacement
 int smart_replace(int argc, char **argv)
 {
@@ -238,8 +242,8 @@ int smart_replace(int argc, char **argv)
 
 	bool success = false;
 
-	unsigned char rand_t[MAX_RAND_SIZE];
-	unsigned char rand_s[MAX_RAND_SIZE];
+	unsigned char *rand_t = new unsigned char[MAX_RAND_SIZE];
+	unsigned char *rand_s = new unsigned char[MAX_RAND_SIZE];
 	unsigned len_t;
 	// Process options
 	while (1)
@@ -437,6 +441,8 @@ number of decision bytes in file_t than it did in file_s.
 		fprintf(stderr, "Warning: Consumed %u less decision bytes than expected while generating chunk.\n", rand_end0 - rand_end);
 	fprintf(stderr, "%s: %s created\n", bin_name, out);
 
+	delete[] rand_t;
+	delete[] rand_s;
 	return (rand_end > rand_end0) - (rand_end < rand_end0);
 }
 
@@ -454,7 +460,7 @@ int smart_delete(int argc, char **argv)
 
 	bool success = false;
 
-	unsigned char rand_t[MAX_RAND_SIZE];
+	unsigned char *rand_t = new unsigned char[MAX_RAND_SIZE];
 	unsigned len_t;
 	// Process options
 	while (1)
@@ -579,6 +585,7 @@ the binary template (such as length fields).
 	save_output(out);
 	fprintf(stderr, "%s: %s created\n", bin_name, out);
 
+	delete[] rand_t;
 	return 0;
 }
 
@@ -598,8 +605,8 @@ int smart_insert(int argc, char **argv)
 
 	bool success = false;
 
-	unsigned char rand_t[MAX_RAND_SIZE];
-	unsigned char rand_s[MAX_RAND_SIZE];
+	unsigned char *rand_t = new unsigned char[MAX_RAND_SIZE];
+	unsigned char *rand_s = new unsigned char[MAX_RAND_SIZE];
 	unsigned len_t;
 	// Process options
 	while (1)
@@ -786,6 +793,8 @@ smaller number of decision bytes in file_t than it did in file_s.
 		fprintf(stderr, "Warning: Consumed %u less decision bytes than expected while generating chunk.\n", rand_end0 - rand_end);
 	fprintf(stderr, "%s: %s created\n", bin_name, out);
 
+	delete[] rand_t;
+	delete[] rand_s;
 	return (rand_end > rand_end0) - (rand_end < rand_end0);
 }
 
@@ -798,10 +807,11 @@ int test(int argc, char *argv[])
 {
 	print_errors = true;
 	int rand_fd = open("/dev/urandom", O_RDONLY);
-	unsigned char data[MAX_RAND_SIZE];
+	unsigned char *data = new unsigned char[MAX_RAND_SIZE];
 	ssize_t r = read(rand_fd, data, MAX_RAND_SIZE);
-	assert(r == MAX_RAND_SIZE);
-	unsigned char contents[65536];
+	if (r != MAX_RAND_SIZE)
+		printf("Read only %ld bytes from /dev/urandom\n", r);
+	unsigned char *contents = new unsigned char[MAX_FILE_SIZE];
 	unsigned char* file = NULL;
 	size_t file_size;
 	unsigned char* rand = NULL;
@@ -809,8 +819,9 @@ int test(int argc, char *argv[])
 	size_t new_file_size;
 	int generated = 0;
 	int i;
+	int iterations = 10000;
 	uint64_t start = get_cur_time_us();
-	for (i = 0; i < 10000; ++i)
+	for (i = 0; i < iterations; ++i)
 	{
 		ssize_t r = read(rand_fd, data, 4096);
 		assert(r == 4096);
@@ -818,7 +829,7 @@ int test(int argc, char *argv[])
 		if (file_size && file) {
 			generated += 1;
 			bool parsed = afl_post_load_handler(file, file_size, &rand, &rand_size);
-			assert(file_size <= 65536);
+			assert(file_size <= MAX_FILE_SIZE);
 			memcpy(contents, file, file_size);
 			memset(file, 0, file_size);
 			file = NULL;
@@ -837,7 +848,7 @@ int test(int argc, char *argv[])
 			}
 		}
 	}
-	if (i != 10000) {
+	if (i != iterations) {
 		write_file("r0", data, MAX_RAND_SIZE);
 		write_file("f0", contents, file_size);
 		write_file("r1", rand, rand_size);
@@ -847,21 +858,25 @@ int test(int argc, char *argv[])
 	uint64_t end = get_cur_time_us();
 	double time = (end - start) / 1.0e6;
 	printf("Tested %d files from %d attempts in %f s.\n", generated, i, time);
+	delete[] data;
+	delete[] contents;
 	return 0;
 }
 
 int benchmark(int argc, char *argv[])
 {
 	int rand_fd = open("/dev/urandom", O_RDONLY);
-	unsigned char data[MAX_RAND_SIZE];
+	unsigned char *data =  new unsigned char[MAX_RAND_SIZE];
 	ssize_t r = read(rand_fd, data, MAX_RAND_SIZE);
-	assert(r == MAX_RAND_SIZE);
+	if (r != MAX_RAND_SIZE)
+		printf("Read only %ld bytes from /dev/urandom\n", r);
 	unsigned char* new_data = NULL;
 	int generated = 0;
 	uint64_t total_bytes = 0;
 	int i;
+	int iterations = 10000;
 	uint64_t start = get_cur_time_us();
-	for (i = 0; i < 10000; ++i)
+	for (i = 0; i < iterations; ++i)
 	{
 		ssize_t r = read(rand_fd, data, 4096);
 		assert(r == 4096);
@@ -877,6 +892,7 @@ int benchmark(int argc, char *argv[])
 	if (generated)
 		printf("Average file size %lu bytes.\n", total_bytes / generated);
 	printf("Speed %f / s.\n", generated / time);
+	delete[] data;
 	return 0;
 }
 

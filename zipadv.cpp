@@ -2522,7 +2522,7 @@ void generate_file() {
 				::g->possible_tags = { "PK\x01\x02", "PK\x03\x04" };
 			} else {
 				::g->preferred_tags = { "PK\x03\x04" };
-				::g->possible_tags = { "PK\x03\x04", "PK\x03\x04" };
+				::g->possible_tags = { "PK\x01\x02", "PK\x03\x04" };
 			};
 			break;
 		case STR2INT("PK\x01\x02"):

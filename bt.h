@@ -149,7 +149,7 @@ constexpr unsigned long long STR2INT(const char * s) {
 	return result;
 }
 
-unsigned char rand_buffer[MAX_RAND_SIZE];
+extern unsigned char *rand_buffer;
 file_accessor file_acc;
 
 extern bool is_big_endian;
@@ -419,7 +419,7 @@ bool change_array_length = false;
 
 void check_array_length(unsigned& size) {
 	if (change_array_length && size > MAX_FILE_SIZE/16 && file_acc.generate) {
-		unsigned new_size = file_acc.rand_int(16, NULL);
+		unsigned new_size = file_acc.rand_int(16, file_acc.parse);
 		if (debug_print)
 			fprintf(stderr, "Array length too large: %d, replaced with %u\n", (signed)size, new_size);
 		size = new_size;
@@ -533,12 +533,18 @@ void Memcpy(std::string& dest, std::string src, int n, int destOffset = 0, int s
 	dest = std::string(src.c_str(), n);
 }
 
+int IsParsing() {
+	return !file_acc.generate;
+}
+
 int FEof() { return file_acc.feof(); }
 
 int64 FTell() { return file_acc.file_pos; }
 
-int FSeek(int64 pos) {
+int FSeek(int64 pos, bool print = true) {
 	assert_cond(0 <= pos && pos <= MAX_FILE_SIZE, "FSeek/FSkip: invalid position");
+	if (print && debug_print && file_acc.file_pos != pos)
+		fprintf(stderr, "FSeek from %u to %lld\n", file_acc.file_pos, pos);
 	if (pos > file_acc.file_size) {
 		if (debug_print)
 			fprintf(stderr, "Padding file from %u to %lld\n", file_acc.file_size, pos);
@@ -555,21 +561,27 @@ int FSeek(int64 pos) {
 }
 
 int FSkip(int64 offset) {
-	return FSeek(file_acc.file_pos + offset);
+	if (debug_print && offset != 0)
+		fprintf(stderr, "FSkip from %u to %lld\n", file_acc.file_pos, file_acc.file_pos + offset);
+	return FSeek(file_acc.file_pos + offset, false);
 }
 
 int64 FileSize() {
 	if (!file_acc.has_size) {
 		file_acc.lookahead = true;
-		unsigned new_file_size = file_acc.file_size + file_acc.rand_int(MAX_FILE_SIZE + 1 - file_acc.file_size, [](unsigned char* file_buf) -> long long { return file_acc.final_file_size - file_acc.file_size; } );
+		if (!file_acc.generate)
+			file_acc.parse = [](unsigned char* file_buf) -> long long { return file_acc.final_file_size - file_acc.file_size; };
+		unsigned new_file_size = file_acc.file_size + file_acc.rand_int(MAX_FILE_SIZE + 1 - file_acc.file_size, file_acc.parse);
 		file_acc.lookahead = false;
 		if (is_following) {
 			following_is_optional = true;
 			is_following = false;
 		}
+		if (debug_print)
+			fprintf(stderr, "FileSize %u\n", new_file_size);
 		int64 original_pos = FTell();
-		FSeek(new_file_size);
-		FSeek(original_pos);
+		FSeek(new_file_size, false);
+		FSeek(original_pos, false);
 		file_acc.has_size = true;
 	}
 	return file_acc.file_size;
@@ -582,15 +594,19 @@ int64 FindFirst(T data, int matchcase=true, int wholeword=false, int method=0, d
 	T newdata = data;
 	swap_bytes(&newdata, sizeof(T));
 	file_acc.lookahead = true;
-	if (file_acc.evil( [&start, &newdata](unsigned char* file_buf) -> bool {
+	if (!file_acc.generate)
+		file_acc.evil_parse = [&start, &newdata](unsigned char* file_buf) -> bool {
 			return memmem(file_acc.file_buffer + start, file_acc.final_file_size - start, &newdata, sizeof(T)) == NULL;
-		} )) {
+		};
+	if (file_acc.evil(file_acc.evil_parse)) {
 		file_acc.lookahead = false;
 		return -1;
 	}
-	int64 pos = start + file_acc.rand_int(MAX_FILE_SIZE + 1 - sizeof(T) - start, [&start, &newdata](unsigned char* file_buf) -> long long {
+	if (!file_acc.generate)
+		file_acc.parse = [&start, &newdata](unsigned char* file_buf) -> long long {
 			return (unsigned char *)memmem(file_acc.file_buffer + start, file_acc.final_file_size - start, &newdata, sizeof(T)) - (file_acc.file_buffer + start);
-		} );
+		};
+	int64 pos = start + file_acc.rand_int(MAX_FILE_SIZE + 1 - sizeof(T) - start, file_acc.parse);
 	int64 original_pos = FTell();
 	FSeek(pos);
 	std::vector<T> values = { data };
@@ -634,36 +650,35 @@ bool ReadBytes(std::string& s, int64 pos, int n, std::vector<std::string> prefer
 
 	int evil = SetEvilBit(false);
 	if (new_known_values.size() && ReadBytesInitValues.size()) {
-		std::function<long long (unsigned char*)> parse;
-		if (preferred_values.size()) {
-			parse = [&preferred_values, &new_known_values, &n](unsigned char* file_buf) -> long long {
+		if (!file_acc.generate && preferred_values.size()) {
+			file_acc.parse = [&preferred_values, &new_known_values, &n](unsigned char* file_buf) -> long long {
 					if (file_acc.file_pos + n > file_acc.final_file_size)
 						return 0;
 			        	if (std::find(preferred_values.begin(), preferred_values.end(), std::string((char*)file_buf, n)) != preferred_values.end())
 			        		return 0;
 			        	if (std::find(new_known_values.begin(), new_known_values.end(), std::string((char*)file_buf, n)) != new_known_values.end())
-			        		return 254;
+			        		return 253;
 			        	return 255;
 			        };
-		} else {
-			parse = [&new_known_values, &n](unsigned char* file_buf) -> long long {
+		} else if (!file_acc.generate) {
+			file_acc.parse = [&new_known_values, &n](unsigned char* file_buf) -> long long {
 					if (file_acc.file_pos + n > file_acc.final_file_size)
 						return 0;
 			        	if (std::find(new_known_values.begin(), new_known_values.end(), std::string((char*)file_buf, n)) != new_known_values.end())
-			        		return 254;
+			        		return 253;
 			        	if (std::find(ReadBytesInitValues.begin(), ReadBytesInitValues.end(), std::string((char*)file_buf, n)) != ReadBytesInitValues.end())
 			        		return 255;
 			        	return 0;
 			        };
 		}
-		int choice = file_acc.rand_int(256, parse);
+		int choice = file_acc.rand_int(256, file_acc.parse);
 		if (choice < 255 * p) {
 			if (preferred_values.size())
 				s = file_acc.file_string(preferred_values);
 			else {
 				s = "";
 			}
-		} else if (choice < 255) {
+		} else if (choice < 254) {
 			if (preferred_values.size())
 				SetEvilBit(evil);
 			s = file_acc.file_string(new_known_values);
@@ -681,21 +696,22 @@ bool ReadBytes(std::string& s, int64 pos, int n, std::vector<std::string> prefer
 		}
 	} else {
 		std::vector<std::string>& possible_values = new_known_values.size() ? new_known_values : ReadBytesInitValues;
-		std::function<long long (unsigned char*)> parse;
-		if (preferred_values.size()) {
-			parse = [&preferred_values, &n](unsigned char* file_buf) -> long long {
+		if (!new_known_values.size())
+			p = 0.995;
+		if (!file_acc.generate && preferred_values.size()) {
+			file_acc.parse = [&preferred_values, &n](unsigned char* file_buf) -> long long {
 					if (file_acc.file_pos + n > file_acc.final_file_size)
 						return 0;
 			        	return 255 * (std::find(preferred_values.begin(), preferred_values.end(), std::string((char*)file_buf, n)) == preferred_values.end());
 			        };
-		} else {
-			parse = [&possible_values, &n](unsigned char* file_buf) -> long long {
+		} else if (!file_acc.generate) {
+			file_acc.parse = [&possible_values, &n](unsigned char* file_buf) -> long long {
 					if (file_acc.file_pos + n > file_acc.final_file_size)
 						return 0;
 			        	return 255 * (std::find(possible_values.begin(), possible_values.end(), std::string((char*)file_buf, n)) != possible_values.end());
 			        };
 		}
-		int choice = file_acc.rand_int(256, parse);
+		int choice = file_acc.rand_int(256, file_acc.parse);
 		if (choice < 255 * p) {
 			if (preferred_values.size())
 				s = file_acc.file_string(preferred_values);

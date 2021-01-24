@@ -725,7 +725,7 @@ while(ReadBytes(current_tag, FTell(), 4, preferred_tags, possible_tags)) {
             local string possible_tags[] = { T_ZIPDIRENTRY, T_ZIPFILERECORD };
         } else {
             local string preferred_tags[] = { T_ZIPFILERECORD };
-            local string possible_tags[] = { T_ZIPFILERECORD, T_ZIPFILERECORD };
+            local string possible_tags[] = { T_ZIPDIRENTRY, T_ZIPFILERECORD };
         }
         break;
     case T_ZIPDIRENTRY:

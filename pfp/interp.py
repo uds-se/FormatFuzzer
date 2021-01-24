@@ -3392,7 +3392,7 @@ class PfpInterp(object):
         node.cpp = "" + node.name.name + "("
         if node.name.name in ["FEof", "FSeek", "FSkip", "FileSize"]:
             self._fstat_funcs.add(node.name.name)
-        if node.name.name in ["Printf", "SPrintf"]:
+        if node.name.name in ["Printf", "SPrintf", "Warning"]:
             is_sprintf = 1 if node.name.name == "SPrintf" else 0
             fmt = node.args.exprs[is_sprintf].cpp
             i = 0
@@ -3410,7 +3410,7 @@ class PfpInterp(object):
         if node.args:
             node.cpp += ", ".join([arg.cpp for arg in node.args.exprs])
         node.cpp += ")"
-        if node.name.name in ["SetEvilBit", "ChangeArrayLength", "EndChangeArrayLength"]:
+        if node.name.name in ["SetEvilBit", "ChangeArrayLength", "EndChangeArrayLength", "IsParsing"]:
             return
         self._locals_stack.append([])
         self._call_stack.append(None)
