@@ -38,9 +38,9 @@ void swap_bytes(void* b, unsigned size) {
 }
 
 
-bool debug_print = true;
+bool debug_print = false;
 bool print_errors = false;
-bool get_parse_tree = true;
+bool get_parse_tree = false;
 struct stack_cell {
 	const char* name;
 	std::unordered_map<std::string, int> counts;
