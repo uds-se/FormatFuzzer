@@ -92,12 +92,13 @@ typedef struct (uint16 proto_type)
     BYTE DiffServField;
 
     //FIXME: Check if this does what is intended
-    uint16 total_length<arraylength = true>;
-    Printf("L3 Total Length Orig: %d\n", total_length);
+    uint16 total_length<arraylength = true, min = hdr_length + 20 + 16>; // /*Room for data*/>;
+    Printf("L3 Total Length: %d\n", total_length);
+    /*
     FSeek(FTell() - 2);
     local uint16 total_length_safe = total_length + hdr_length + 20; //Possible L3 data 20b
     uint16 total_length = { total_length_safe };
-    Printf("L3 Total Length Fixed: %d\n", total_length);
+    Printf("L3 Total Length Fixed: %d\n", total_length);*/
 
     if (proto_type == 0x0800)    // IP
     {
@@ -146,7 +147,7 @@ typedef struct (ushort VER_HDR,uint16 total_length,uint L4proto) //L4(L3.ip_hdr_
         } TCP_BITFIELDS;
 
         local uint CrapSize = TCP_BITFIELDS.tcp_hdr_len*4-13;
-        Printf("Crap size: %d", CrapSize);
+        Printf("Crap size: %d\n", CrapSize);
         BYTE Crap[CrapSize];
     }
     else
