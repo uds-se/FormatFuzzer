@@ -513,7 +513,6 @@ public:
 	std::vector<ubyte> valid_versions;
 	std::vector<ubyte> valid_hdr_lengths;
 	int hdr_length;
-	uint16 total_length_safe;
 	uint UnknownLength;
 
 	unsigned char generated = 0;
@@ -616,93 +615,6 @@ public:
 		}
 	}
 	Layer_2* generate();
-};
-
-
-
-class uint16_bitfield {
-	int small;
-	std::vector<uint16> known_values;
-	uint16 value;
-public:
-	uint16 operator () () { return value; }
-	uint16_bitfield(int small, std::vector<uint16> known_values = {}) : small(small), known_values(known_values) {}
-
-	uint16 generate(unsigned bits) {
-		if (!bits)
-			return 0;
-		if (known_values.empty()) {
-			value = file_acc.file_integer(sizeof(uint16), bits, small);
-		} else {
-			value = file_acc.file_integer(sizeof(uint16), bits, known_values);
-		}
-		return value;
-	}
-
-	uint16 generate(unsigned bits, std::vector<uint16> new_known_values) {
-		if (!bits)
-			return 0;
-		for (auto& known : known_values) {
-			new_known_values.push_back(known);
-		}
-		value = file_acc.file_integer(sizeof(uint16), bits, new_known_values);
-		return value;
-	}
-};
-
-
-
-class Dot1q {
-	std::vector<Dot1q*>& instances;
-
-	uint16 priority_var : 3;
-	uint16 dei_var : 1;
-	uint16 id_var : 12;
-	uint16 L3type_var;
-
-public:
-	bool priority_exists = false;
-	bool dei_exists = false;
-	bool id_exists = false;
-	bool L3type_exists = false;
-
-	uint16 priority() {
-		assert_cond(priority_exists, "struct field priority does not exist");
-		return priority_var;
-	}
-	uint16 dei() {
-		assert_cond(dei_exists, "struct field dei does not exist");
-		return dei_var;
-	}
-	uint16 id() {
-		assert_cond(id_exists, "struct field id does not exist");
-		return id_var;
-	}
-	uint16 L3type() {
-		assert_cond(L3type_exists, "struct field L3type does not exist");
-		return L3type_var;
-	}
-
-	/* locals */
-	uint evil_state;
-
-	unsigned char generated = 0;
-	int64 _startof = 0;
-	std::size_t _sizeof = 0;
-	Dot1q& operator () () { return *instances.back(); }
-	Dot1q* operator [] (int index) { return instances[index]; }
-	Dot1q(std::vector<Dot1q*>& instances) : instances(instances) { instances.push_back(this); }
-	~Dot1q() {
-		if (generated == 2)
-			return;
-		while (instances.size()) {
-			Dot1q* instance = instances.back();
-			instances.pop_back();
-			if (instance->generated == 2)
-				delete instance;
-		}
-	}
-	Dot1q* generate();
 };
 
 
@@ -846,7 +758,6 @@ class PCAPRECORD {
 	uint32 orig_len_var;
 	Layer_3* L3_var;
 	Layer_2* L2_var;
-	Dot1q* d1q_var;
 	Layer_4* L4_var;
 	std::string AppData_var;
 	std::string padding_var;
@@ -858,7 +769,6 @@ public:
 	bool orig_len_exists = false;
 	bool L3_exists = false;
 	bool L2_exists = false;
-	bool d1q_exists = false;
 	bool L4_exists = false;
 	bool AppData_exists = false;
 	bool padding_exists = false;
@@ -886,10 +796,6 @@ public:
 	Layer_2& L2() {
 		assert_cond(L2_exists, "struct field L2 does not exist");
 		return *L2_var;
-	}
-	Dot1q& d1q() {
-		assert_cond(d1q_exists, "struct field d1q does not exist");
-		return *d1q_var;
 	}
 	Layer_4& L4() {
 		assert_cond(L4_exists, "struct field L4 does not exist");
@@ -954,15 +860,14 @@ std::vector<Layer_3*> Layer_3_L3_instances;
 std::vector<MACaddr*> MACaddr_DstMac_instances;
 std::vector<MACaddr*> MACaddr_SrcMac_instances;
 std::vector<Layer_2*> Layer_2_L2_instances;
-std::vector<Dot1q*> Dot1q_d1q_instances;
 std::vector<TCP_BITFIELDS_struct*> TCP_BITFIELDS_struct_TCP_BITFIELDS_instances;
 std::vector<Layer_4*> Layer_4_L4_instances;
 std::vector<PCAPRECORD*> PCAPRECORD_record_instances;
 
 
-std::unordered_map<std::string, std::string> variable_types = { { "magic_number", "uint32_class" }, { "version_major", "uint16_class" }, { "version_minor", "uint16_class" }, { "thiszone", "int32_class" }, { "sigfigs", "uint32_class" }, { "snaplen", "uint32_class" }, { "network", "uint32_class" }, { "header", "PCAPHEADER" }, { "ts_sec", "time_t_class" }, { "ts_usec", "uint32_class" }, { "incl_len", "uint32_class" }, { "orig_len", "uint32_class" }, { "version", "uchar_bitfield4" }, { "ip_hdr_len", "uchar_bitfield4" }, { "DiffServField", "BYTE_class" }, { "total_length", "uint16_class" }, { "Identification", "uint16_class" }, { "Flags", "uint16_class" }, { "TTL", "BYTE_class" }, { "L4proto", "BYTE_class" }, { "HdrChecksum", "uint16_class" }, { "Byte", "uchar_array_class" }, { "SRC_IP", "IPv4addr" }, { "DST_IP", "IPv4addr" }, { "Unknown", "BYTE_array_class" }, { "L3", "Layer_3" }, { "DstMac", "MACaddr" }, { "SrcMac", "MACaddr" }, { "L3type", "uint16_class" }, { "L2", "Layer_2" }, { "priority", "uint16_bitfield3" }, { "dei", "uint16_bitfield1" }, { "id", "uint16_bitfield12" }, { "d1q", "Dot1q" }, { "SrcPort", "uint16_class" }, { "DstPort", "uint16_class" }, { "udp_hdr_len", "uint16_class" }, { "ChkSum", "uint16_class" }, { "SEQ", "uint32_class" }, { "ACK", "uint32_class" }, { "tcp_hdr_len", "uchar_bitfield4" }, { "Reserved", "uchar_bitfield4" }, { "TCP_BITFIELDS", "TCP_BITFIELDS_struct" }, { "Crap", "BYTE_array_class" }, { "packet", "BYTE_array_class" }, { "L4", "Layer_4" }, { "AppData", "BYTE_array_class" }, { "padding", "uchar_array_class" }, { "record", "PCAPRECORD" } };
+std::unordered_map<std::string, std::string> variable_types = { { "magic_number", "uint32_class" }, { "version_major", "uint16_class" }, { "version_minor", "uint16_class" }, { "thiszone", "int32_class" }, { "sigfigs", "uint32_class" }, { "snaplen", "uint32_class" }, { "network", "uint32_class" }, { "header", "PCAPHEADER" }, { "ts_sec", "time_t_class" }, { "ts_usec", "uint32_class" }, { "incl_len", "uint32_class" }, { "orig_len", "uint32_class" }, { "version", "uchar_bitfield4" }, { "ip_hdr_len", "uchar_bitfield4" }, { "DiffServField", "BYTE_class" }, { "total_length", "uint16_class" }, { "Identification", "uint16_class" }, { "Flags", "uint16_class" }, { "TTL", "BYTE_class" }, { "L4proto", "BYTE_class" }, { "HdrChecksum", "uint16_class" }, { "Byte", "uchar_array_class" }, { "SRC_IP", "IPv4addr" }, { "DST_IP", "IPv4addr" }, { "Unknown", "BYTE_array_class" }, { "L3", "Layer_3" }, { "DstMac", "MACaddr" }, { "SrcMac", "MACaddr" }, { "L3type", "uint16_class" }, { "L2", "Layer_2" }, { "SrcPort", "uint16_class" }, { "DstPort", "uint16_class" }, { "udp_hdr_len", "uint16_class" }, { "ChkSum", "uint16_class" }, { "SEQ", "uint32_class" }, { "ACK", "uint32_class" }, { "tcp_hdr_len", "uchar_bitfield4" }, { "Reserved", "uchar_bitfield4" }, { "TCP_BITFIELDS", "TCP_BITFIELDS_struct" }, { "Crap", "BYTE_array_class" }, { "packet", "BYTE_array_class" }, { "L4", "Layer_4" }, { "AppData", "BYTE_array_class" }, { "padding", "uchar_array_class" }, { "record", "PCAPRECORD" } };
 
-std::vector<std::vector<int>> integer_ranges = { { 1, 16 } };
+std::vector<std::vector<int>> integer_ranges = { { 1, 16 }, { 20 + 20, 20 + 20 + 64 } };
 
 class globals_class {
 public:
@@ -998,10 +903,6 @@ public:
 	MACaddr SrcMac;
 	uint16_class L3type;
 	Layer_2 L2;
-	uint16_bitfield priority;
-	uint16_bitfield dei;
-	uint16_bitfield id;
-	Dot1q d1q;
 	uint16_class SrcPort;
 	uint16_class DstPort;
 	uint16_class udp_hdr_len;
@@ -1039,7 +940,7 @@ public:
 		version(1),
 		ip_hdr_len(1),
 		DiffServField(1),
-		total_length(2),
+		total_length(3),
 		Identification(1),
 		Flags(1),
 		TTL(1),
@@ -1054,12 +955,8 @@ public:
 		L3(Layer_3_L3_instances),
 		DstMac(MACaddr_DstMac_instances),
 		SrcMac(MACaddr_SrcMac_instances),
-		L3type(1, { 0x0800, 0x8100, 0x86dd }),
+		L3type(1, { 0x0800 }),
 		L2(Layer_2_L2_instances),
-		priority(1),
-		dei(1),
-		id(1),
-		d1q(Dot1q_d1q_instances),
 		SrcPort(1),
 		DstPort(1),
 		udp_hdr_len(1),
@@ -1149,10 +1046,6 @@ Layer_3* Layer_3::generate(uint16 proto_type) {
 	GENERATE_VAR(DiffServField, ::g->DiffServField.generate());
 	GENERATE_VAR(total_length, ::g->total_length.generate());
 	Printf("L3 Total Length: %d\n", total_length());
-	FSeek((FTell() - 2));
-	total_length_safe = ((total_length() + hdr_length) + 20);
-	GENERATE_VAR(total_length, ::g->total_length.generate({ total_length_safe }));
-	Printf("L3 Total Length Fixed: %d\n", total_length());
 	if ((proto_type == 0x0800)) {
 		GENERATE_VAR(Identification, ::g->Identification.generate());
 		GENERATE_VAR(Flags, ::g->Flags.generate());
@@ -1202,31 +1095,8 @@ Layer_2* Layer_2::generate() {
 	GENERATE_VAR(DstMac, ::g->DstMac.generate());
 	GENERATE_VAR(SrcMac, ::g->SrcMac.generate());
 	evil_state = SetEvilBit(false);
-	GENERATE_VAR(L3type, ::g->L3type.generate({ 0x0800, 0x8100 }));
-	Printf("L2.L3type: %x\n", L3type());
-	SetEvilBit(evil_state);
-
-	_sizeof = FTell() - _startof;
-	return this;
-}
-
-
-Dot1q* Dot1q::generate() {
-	if (generated == 1) {
-		Dot1q* new_instance = new Dot1q(instances);
-		new_instance->generated = 2;
-		return new_instance->generate();
-	}
-	if (!generated)
-		generated = 1;
-	_startof = FTell();
-
-	GENERATE_VAR(priority, ::g->priority.generate(3));
-	GENERATE_VAR(dei, ::g->dei.generate(1));
-	GENERATE_VAR(id, ::g->id.generate(12));
-	evil_state = SetEvilBit(false);
 	GENERATE_VAR(L3type, ::g->L3type.generate({ 0x0800 }));
-	Printf("d1q.L3type: %x\n", L3type());
+	Printf("L2.L3type: %x\n", L3type());
 	SetEvilBit(evil_state);
 
 	_sizeof = FTell() - _startof;
@@ -1317,19 +1187,8 @@ PCAPRECORD* PCAPRECORD::generate(uint32 network) {
 		if ((L2().L3type() == 0x0800)) {
 			GENERATE_VAR(L3, ::g->L3.generate(L2().L3type()));
 		} else {
-		if ((L2().L3type() == 0x8100)) {
-			GENERATE_VAR(d1q, ::g->d1q.generate());
-			len_before_l3 += 4;
-			GENERATE_VAR(L3, ::g->L3.generate(d1q().L3type()));
-		} else {
-		if ((L2().L3type() == 0x86dd)) {
-			Printf("IPv6 is not yet supported!");
-			exit_template(-1);
-		} else {
 			Printf("Unsupported L3 Type: 0x%x", L2().L3type());
 			exit_template(-1);
-		};
-		};
 		};
 	};
 	GENERATE_VAR(L4, ::g->L4.generate(L3().ip_hdr_len(), L3().total_length(), L3().L4proto()));

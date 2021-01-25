@@ -56,7 +56,8 @@ typedef struct
         MACaddr SrcMac<name="Source MAC">;
         //FIXME: EVIL BIT NOT RESPECTED
         local uint evil_state = SetEvilBit(false);
-        uint16 L3type = { 0x0800, 0x8100 };//<name="Layer 3 Protocol">;
+        //uint16 L3type = { 0x0800, 0x8100 };//<name="Layer 3 Protocol">;
+        uint16 L3type = { 0x0800 };//<name="Layer 3 Protocol">;
         Printf("L2.L3type: %x\n", L3type);
         SetEvilBit(evil_state);
 } Layer_2 <size=14>;
@@ -96,14 +97,10 @@ typedef struct (uint16 proto_type)
     uchar ip_hdr_len:4<values=valid_hdr_lengths>;
     local int hdr_length = ip_hdr_len*4;
     BYTE DiffServField;
-
-    //FIXME: THIS DOES NOT WORK USING METADATA
-    uint16 total_length<arraylength = true>;//, min = hdr_length + 20 + 16>; // /*Room for data*/>;
+    
+    //min = 20 + 20 (hdr_len + tcp/udp hdr len), max = min + 64 (max data len) 
+    uint16 total_length<min = 20 + 20, max = 20 + 20 + 64>;
     Printf("L3 Total Length: %d\n", total_length);
-    FSeek(FTell() - 2);
-    local uint16 total_length_safe = total_length + hdr_length + 20; //Possible L3 data 20b
-    uint16 total_length = { total_length_safe };
-    Printf("L3 Total Length Fixed: %d\n", total_length);
 
     if (proto_type == 0x0800)    // IP
     {
@@ -201,15 +198,15 @@ typedef struct (uint32 network) {
             if (L2.L3type == 0x0800) {
                 Layer_3 L3(L2.L3type) <name="Layer 3">;
             }
-            else if (L2.L3type == 0x8100) {
+            /*else if (L2.L3type == 0x8100) {
                 Dot1q d1q <name="802.1Q Vitual LAN">;
                 len_before_l3 += 4; //len(d1q) = 4
                 Layer_3 L3(d1q.L3type) <name="Layer 3">;
-            }
-            else if (L2.L3type == 0x86dd) {
+            }*/
+            /*else if (L2.L3type == 0x86dd) {
                 Printf("IPv6 is not yet supported!");
                 return -1;
-            }
+            }*/
             else {
                 Printf("Unsupported L3 Type: 0x%x", L2.L3type);
                 return -1;
