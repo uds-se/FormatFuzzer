@@ -513,6 +513,7 @@ public:
 	std::vector<ubyte> valid_versions;
 	std::vector<ubyte> valid_hdr_lengths;
 	int hdr_length;
+	uint16 total_length_safe;
 	uint UnknownLength;
 
 	unsigned char generated = 0;
@@ -681,6 +682,9 @@ public:
 		assert_cond(L3type_exists, "struct field L3type does not exist");
 		return L3type_var;
 	}
+
+	/* locals */
+	uint evil_state;
 
 	unsigned char generated = 0;
 	int64 _startof = 0;
@@ -1145,6 +1149,10 @@ Layer_3* Layer_3::generate(uint16 proto_type) {
 	GENERATE_VAR(DiffServField, ::g->DiffServField.generate());
 	GENERATE_VAR(total_length, ::g->total_length.generate());
 	Printf("L3 Total Length: %d\n", total_length());
+	FSeek((FTell() - 2));
+	total_length_safe = ((total_length() + hdr_length) + 20);
+	GENERATE_VAR(total_length, ::g->total_length.generate({ total_length_safe }));
+	Printf("L3 Total Length Fixed: %d\n", total_length());
 	if ((proto_type == 0x0800)) {
 		GENERATE_VAR(Identification, ::g->Identification.generate());
 		GENERATE_VAR(Flags, ::g->Flags.generate());
@@ -1195,6 +1203,7 @@ Layer_2* Layer_2::generate() {
 	GENERATE_VAR(SrcMac, ::g->SrcMac.generate());
 	evil_state = SetEvilBit(false);
 	GENERATE_VAR(L3type, ::g->L3type.generate({ 0x0800, 0x8100 }));
+	Printf("L2.L3type: %x\n", L3type());
 	SetEvilBit(evil_state);
 
 	_sizeof = FTell() - _startof;
@@ -1215,7 +1224,10 @@ Dot1q* Dot1q::generate() {
 	GENERATE_VAR(priority, ::g->priority.generate(3));
 	GENERATE_VAR(dei, ::g->dei.generate(1));
 	GENERATE_VAR(id, ::g->id.generate(12));
+	evil_state = SetEvilBit(false);
 	GENERATE_VAR(L3type, ::g->L3type.generate({ 0x0800 }));
+	Printf("d1q.L3type: %x\n", L3type());
+	SetEvilBit(evil_state);
 
 	_sizeof = FTell() - _startof;
 	return this;

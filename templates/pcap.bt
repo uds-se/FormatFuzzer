@@ -54,8 +54,10 @@ typedef struct
 {
         MACaddr DstMac<name="Destination MAC">;
         MACaddr SrcMac<name="Source MAC">;
+        //FIXME: EVIL BIT NOT RESPECTED
         local uint evil_state = SetEvilBit(false);
         uint16 L3type = { 0x0800, 0x8100 };//<name="Layer 3 Protocol">;
+        Printf("L2.L3type: %x\n", L3type);
         SetEvilBit(evil_state);
 } Layer_2 <size=14>;
 
@@ -64,7 +66,11 @@ typedef struct
         uint16 priority:3;
         uint16 dei:1;
         uint16 id:12<name="Vlan Id">;
+        //FIXME: EVIL BIT NOT RESPECTED
+        local uint evil_state = SetEvilBit(false);
         uint16 L3type = {0x0800} <name="Layer 3 Protocol">;
+        Printf("d1q.L3type: %x\n", L3type);
+        SetEvilBit(evil_state);
 } Dot1q <size=4>;
 
 typedef struct 
@@ -91,14 +97,13 @@ typedef struct (uint16 proto_type)
     local int hdr_length = ip_hdr_len*4;
     BYTE DiffServField;
 
-    //FIXME: Check if this does what is intended
-    uint16 total_length<arraylength = true, min = hdr_length + 20 + 16>; // /*Room for data*/>;
+    //FIXME: THIS DOES NOT WORK USING METADATA
+    uint16 total_length<arraylength = true>;//, min = hdr_length + 20 + 16>; // /*Room for data*/>;
     Printf("L3 Total Length: %d\n", total_length);
-    /*
     FSeek(FTell() - 2);
     local uint16 total_length_safe = total_length + hdr_length + 20; //Possible L3 data 20b
     uint16 total_length = { total_length_safe };
-    Printf("L3 Total Length Fixed: %d\n", total_length);*/
+    Printf("L3 Total Length Fixed: %d\n", total_length);
 
     if (proto_type == 0x0800)    // IP
     {
