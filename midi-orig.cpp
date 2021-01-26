@@ -577,81 +577,32 @@ m_type_enum m_type_enum_generate(std::vector<char> known_values) {
 }
 
 
-class uchar_class {
+class uint_bitfield {
 	int small;
-	std::vector<uchar> known_values;
-	uchar value;
+	std::vector<uint> known_values;
+	uint value;
 public:
-	int64 _startof = 0;
-	std::size_t _sizeof = sizeof(uchar);
-	uchar operator () () { return value; }
-	uchar_class(int small, std::vector<uchar> known_values = {}) : small(small), known_values(known_values) {}
+	uint operator () () { return value; }
+	uint_bitfield(int small, std::vector<uint> known_values = {}) : small(small), known_values(known_values) {}
 
-	uchar generate() {
-		_startof = FTell();
+	uint generate(unsigned bits) {
+		if (!bits)
+			return 0;
 		if (known_values.empty()) {
-			value = file_acc.file_integer(sizeof(uchar), 0, small);
+			value = file_acc.file_integer(sizeof(uint), bits, small);
 		} else {
-			value = file_acc.file_integer(sizeof(uchar), 0, known_values);
+			value = file_acc.file_integer(sizeof(uint), bits, known_values);
 		}
 		return value;
 	}
 
-	uchar generate(std::vector<uchar> new_known_values) {
-		_startof = FTell();
+	uint generate(unsigned bits, std::vector<uint> new_known_values) {
+		if (!bits)
+			return 0;
 		for (auto& known : known_values) {
 			new_known_values.push_back(known);
 		}
-		value = file_acc.file_integer(sizeof(uchar), 0, new_known_values);
-		return value;
-	}
-};
-
-
-
-class uchar_array_class {
-	uchar_class& element;
-	std::vector<std::string> known_values;
-	std::unordered_map<int, std::vector<uchar>> element_known_values;
-	std::string value;
-public:
-	int64 _startof = 0;
-	std::size_t _sizeof = 0;
-	std::string operator () () { return value; }
-	uchar operator [] (int index) { return value[index]; }
-	uchar_array_class(uchar_class& element, std::unordered_map<int, std::vector<uchar>> element_known_values = {})
-		: element(element), element_known_values(element_known_values) {}
-	uchar_array_class(uchar_class& element, std::vector<std::string> known_values)
-		: element(element), known_values(known_values) {}
-
-	std::string generate(unsigned size, std::vector<std::string> new_known_values = {}) {
-		check_array_length(size);
-		_startof = FTell();
-		value = "";
-		for (auto& known : known_values) {
-			new_known_values.push_back(known);
-		}
-		if (new_known_values.size()) {
-			value = file_acc.file_string(new_known_values);
-			assert(value.length() == size);
-			_sizeof = size;
-			return value;
-		}
-		if (!element_known_values.size()) {
-			value = file_acc.file_string(size);
-			_sizeof = size;
-			return value;
-		}
-		for (unsigned i = 0; i < size; ++i) {
-			auto known = element_known_values.find(i);
-			if (known == element_known_values.end()) {
-				value.push_back(element.generate());
-				_sizeof += element._sizeof;
-			} else {
-				value.push_back(file_acc.file_integer(sizeof(uchar), 0, known->second));
-				_sizeof += sizeof(uchar);
-			}
-		}
+		value = file_acc.file_integer(sizeof(uint), bits, new_known_values);
 		return value;
 	}
 };
@@ -674,7 +625,7 @@ class MidiMessage_meta_event_struct {
 	std::string m_deviceName_var;
 	char m_channelPrefix_var;
 	char m_port_var;
-	std::string m_usecPerQuarterNote_var;
+	uint m_usecPerQuarterNote_var : 24;
 	char m_hours_var;
 	char m_mins_var;
 	char m_secs_var;
@@ -768,7 +719,7 @@ public:
 		assert_cond(m_port_exists, "struct field m_port does not exist");
 		return m_port_var;
 	}
-	std::string m_usecPerQuarterNote() {
+	uint m_usecPerQuarterNote() {
 		assert_cond(m_usecPerQuarterNote_exists, "struct field m_usecPerQuarterNote does not exist");
 		return m_usecPerQuarterNote_var;
 	}
@@ -956,7 +907,6 @@ public:
 	}
 
 	/* locals */
-	char status;
 	char m_channel;
 
 	unsigned char generated = 0;
@@ -1006,9 +956,7 @@ public:
 	}
 
 	/* locals */
-	uint real_seclen;
-	uint message_start;
-	uint evil_state;
+	uint remaining;
 
 	unsigned char generated = 0;
 	int64 _startof = 0;
@@ -1126,14 +1074,12 @@ std::vector<MidiTrack*> MidiTrack_tracks_element_instances;
 std::vector<file_struct*> file_struct_file_instances;
 
 
-std::unordered_map<std::string, std::string> variable_types = { { "m_magic", "char_array_class" }, { "m_seclen", "uint_class" }, { "m_format", "m_format_enum" }, { "m_ntracks", "short_class" }, { "m_tickdiv", "short_class" }, { "header", "MidiHeader" }, { "t0", "char_class" }, { "t1", "char_class" }, { "t2", "char_class" }, { "t3", "char_class" }, { "m_dtime", "DeltaTime" }, { "m_status", "char_class" }, { "m_note", "char_class" }, { "m_velocity", "char_class" }, { "note_off_event", "MidiMessage_note_off_event_struct" }, { "note_on_event", "MidiMessage_note_on_event_struct" }, { "m_pressure", "char_class" }, { "note_pressure_event", "MidiMessage_note_pressure_event_struct" }, { "m_controller", "char_class" }, { "m_value", "char_class" }, { "controller_event", "MidiMessage_controller_event_struct" }, { "m_program", "char_class" }, { "program_event", "MidiMessage_program_event_struct" }, { "channel_pressure_event", "MidiMessage_channel_pressure_event_struct" }, { "m_lsb", "char_class" }, { "m_msb", "char_class" }, { "pitch_bend_event", "MidiMessage_pitch_bend_event_struct" }, { "m_type", "m_type_enum" }, { "m_length", "DeltaTime" }, { "m_seqNum", "short_class" }, { "m_text", "char_array_class" }, { "m_copyright", "char_array_class" }, { "m_name", "char_array_class" }, { "m_lyric", "char_array_class" }, { "m_marker", "char_array_class" }, { "m_cuePoint", "char_array_class" }, { "m_programName", "char_array_class" }, { "m_deviceName", "char_array_class" }, { "m_channelPrefix", "char_class" }, { "m_port", "char_class" }, { "m_usecPerQuarterNote", "uchar_array_class" }, { "m_hours", "char_class" }, { "m_mins", "char_class" }, { "m_secs", "char_class" }, { "m_fps", "char_class" }, { "m_fracFrames", "char_class" }, { "m_numerator", "char_class" }, { "m_denominator", "char_class" }, { "m_clocksPerClick", "char_class" }, { "m_32ndPer4th", "char_class" }, { "m_flatsSharps", "char_class" }, { "m_majorMinor", "char_class" }, { "m_data", "char_array_class" }, { "meta_event", "MidiMessage_meta_event_struct" }, { "m_message", "char_array_class" }, { "sysex_event", "MidiMessage_sysex_event_struct" }, { "message", "MidiMessage" }, { "tracks", "MidiTrack_array_class" }, { "file", "file_struct" } };
+std::unordered_map<std::string, std::string> variable_types = { { "m_magic", "char_array_class" }, { "m_seclen", "uint_class" }, { "m_format", "m_format_enum" }, { "m_ntracks", "short_class" }, { "m_tickdiv", "short_class" }, { "header", "MidiHeader" }, { "t0", "char_class" }, { "t1", "char_class" }, { "t2", "char_class" }, { "t3", "char_class" }, { "m_dtime", "DeltaTime" }, { "m_status", "char_class" }, { "m_note", "char_class" }, { "m_velocity", "char_class" }, { "note_off_event", "MidiMessage_note_off_event_struct" }, { "note_on_event", "MidiMessage_note_on_event_struct" }, { "m_pressure", "char_class" }, { "note_pressure_event", "MidiMessage_note_pressure_event_struct" }, { "m_controller", "char_class" }, { "m_value", "char_class" }, { "controller_event", "MidiMessage_controller_event_struct" }, { "m_program", "char_class" }, { "program_event", "MidiMessage_program_event_struct" }, { "channel_pressure_event", "MidiMessage_channel_pressure_event_struct" }, { "m_lsb", "char_class" }, { "m_msb", "char_class" }, { "pitch_bend_event", "MidiMessage_pitch_bend_event_struct" }, { "m_type", "m_type_enum" }, { "m_length", "DeltaTime" }, { "m_seqNum", "short_class" }, { "m_text", "char_array_class" }, { "m_copyright", "char_array_class" }, { "m_name", "char_array_class" }, { "m_lyric", "char_array_class" }, { "m_marker", "char_array_class" }, { "m_cuePoint", "char_array_class" }, { "m_programName", "char_array_class" }, { "m_deviceName", "char_array_class" }, { "m_channelPrefix", "char_class" }, { "m_port", "char_class" }, { "m_usecPerQuarterNote", "uint_bitfield24" }, { "m_hours", "char_class" }, { "m_mins", "char_class" }, { "m_secs", "char_class" }, { "m_fps", "char_class" }, { "m_fracFrames", "char_class" }, { "m_numerator", "char_class" }, { "m_denominator", "char_class" }, { "m_clocksPerClick", "char_class" }, { "m_32ndPer4th", "char_class" }, { "m_flatsSharps", "char_class" }, { "m_majorMinor", "char_class" }, { "m_data", "char_array_class" }, { "meta_event", "MidiMessage_meta_event_struct" }, { "m_message", "char_array_class" }, { "sysex_event", "MidiMessage_sysex_event_struct" }, { "message", "MidiMessage" }, { "tracks", "MidiTrack_array_class" }, { "file", "file_struct" } };
 
 std::vector<std::vector<int>> integer_ranges = { { 1, 16 } };
 
 class globals_class {
 public:
-	/*local*/ uint track_index;
-	/*local*/ uint message_index;
 	/*local*/ char lastStatus;
 	char_class m_magic_element;
 	char_array_class m_magic;
@@ -1182,8 +1128,7 @@ public:
 	char_array_class m_deviceName;
 	char_class m_channelPrefix;
 	char_class m_port;
-	uchar_class m_usecPerQuarterNote_element;
-	uchar_array_class m_usecPerQuarterNote;
+	uint_bitfield m_usecPerQuarterNote;
 	char_class m_hours;
 	char_class m_mins;
 	char_class m_secs;
@@ -1211,10 +1156,10 @@ public:
 		m_magic_element(false),
 		m_magic(m_magic_element),
 		m_seclen(1),
-		m_ntracks(2),
+		m_ntracks(1),
 		m_tickdiv(1),
 		header(MidiHeader_header_instances),
-		t0(2),
+		t0(1),
 		t1(1),
 		t2(1),
 		t3(1),
@@ -1255,8 +1200,7 @@ public:
 		m_deviceName(m_deviceName_element),
 		m_channelPrefix(1),
 		m_port(1),
-		m_usecPerQuarterNote_element(false),
-		m_usecPerQuarterNote(m_usecPerQuarterNote_element),
+		m_usecPerQuarterNote(1),
 		m_hours(1),
 		m_mins(1),
 		m_secs(1),
@@ -1294,12 +1238,11 @@ MidiHeader* MidiHeader::generate() {
 		generated = 1;
 	_startof = FTell();
 
-	GENERATE_VAR(m_magic, ::g->m_magic.generate(4, { "MThd" }));
-	GENERATE_VAR(m_seclen, ::g->m_seclen.generate({ 6 }));
+	GENERATE_VAR(m_magic, ::g->m_magic.generate(4));
+	GENERATE_VAR(m_seclen, ::g->m_seclen.generate());
 	GENERATE_VAR(m_format, m_format_enum_generate());
 	GENERATE_VAR(m_ntracks, ::g->m_ntracks.generate());
 	GENERATE_VAR(m_tickdiv, ::g->m_tickdiv.generate());
-	Printf("---MIDI header---\n\tMagic: %s\n\tSection length: %d\n\tTracks: %d\n\tTick div: %d\n", std::string(m_magic()).c_str(), m_seclen(), m_ntracks(), m_tickdiv());
 
 	_sizeof = FTell() - _startof;
 	return this;
@@ -1524,7 +1467,8 @@ MidiMessage_meta_event_struct* MidiMessage_meta_event_struct::generate() {
 	;
 	} else {
 	if ((m_type() == META_TEMPO)) {
-		GENERATE_VAR(m_usecPerQuarterNote, ::g->m_usecPerQuarterNote.generate(3));
+		GENERATE_VAR(m_usecPerQuarterNote, ::g->m_usecPerQuarterNote.generate(24));
+		FSeek((FTell() - 1));
 	} else {
 	if ((m_type() == META_SMPTE_OFFSET)) {
 		GENERATE_VAR(m_hours, ::g->m_hours.generate());
@@ -1578,9 +1522,7 @@ MidiMessage_sysex_event_struct* MidiMessage_sysex_event_struct::generate() {
 	_startof = FTell();
 
 	GENERATE_VAR(m_length, ::g->m_length.generate());
-	Printf("\t\tsysex_event m_length: %d\n", m_length().total);
 	GENERATE_VAR(m_message, ::g->m_message.generate(m_length().total));
-	Printf("\t\tMessage: %s\n", std::string(m_message()).c_str());
 
 	_sizeof = FTell() - _startof;
 	return this;
@@ -1598,52 +1540,36 @@ MidiMessage* MidiMessage::generate() {
 	_startof = FTell();
 
 	GENERATE_VAR(m_dtime, ::g->m_dtime.generate());
-	status = ReadByte(FTell());
-	if ((status & 0x80)) {
-		GENERATE_VAR(m_status, ::g->m_status.generate());
-		::g->lastStatus = m_status();
+	GENERATE_VAR(m_status, ::g->m_status.generate());
+	if ((m_status() & 0x80)) {
+	::g->lastStatus = m_status();
+	} else {
+	FSeek((FTell() - 1));
 	};
-	Printf("\t---MIDI Message (%d,%d)---\n\t\tStatus: 0x%x\n\t\tLast Status: 0x%x\n", ::g->track_index, ::g->message_index, m_status(), ::g->lastStatus);
 	m_channel = (::g->lastStatus & 0xf);
 	if (((::g->lastStatus & 0xf0) == 0x80)) {
-		Printf("\t\tnote_off_event\n");
 		GENERATE_VAR(note_off_event, ::g->note_off_event.generate());
-		Printf("\t\tNote: %c\n\t\tVelocity: %c\n", note_off_event().m_note(), note_off_event().m_velocity());
 	} else {
 	if (((::g->lastStatus & 0xf0) == 0x90)) {
-		Printf("\t\tnote_on_event\n");
 		GENERATE_VAR(note_on_event, ::g->note_on_event.generate());
-		Printf("\t\tNote: %c\n\t\tVelocity: %c\n", note_on_event().m_note(), note_on_event().m_velocity());
 	} else {
 	if (((::g->lastStatus & 0xf0) == 0xA0)) {
-		Printf("\t\tnote_pressure_event\n");
 		GENERATE_VAR(note_pressure_event, ::g->note_pressure_event.generate());
-		Printf("\t\tNote: %c\n\t\tPressure: %c\n", note_pressure_event().m_note(), note_pressure_event().m_pressure());
 	} else {
 	if (((::g->lastStatus & 0xf0) == 0xB0)) {
-		Printf("\t\tcontroller_event\n");
 		GENERATE_VAR(controller_event, ::g->controller_event.generate());
-		Printf("\t\tController: %c\n\t\tValue: %c\n", controller_event().m_controller(), controller_event().m_value());
 	} else {
 	if (((::g->lastStatus & 0xf0) == 0xC0)) {
-		Printf("\t\tprogram_event\n");
 		GENERATE_VAR(program_event, ::g->program_event.generate());
-		Printf("\t\tProgram: %c\n", program_event().m_program());
 	} else {
 	if (((::g->lastStatus & 0xf0) == 0xD0)) {
-		Printf("\t\tchannel_pressure_event\n");
 		GENERATE_VAR(channel_pressure_event, ::g->channel_pressure_event.generate());
-		Printf("\t\tPressure: %c\n", channel_pressure_event().m_pressure());
 	} else {
 	if (((::g->lastStatus & 0xf0) == 0xE0)) {
-		Printf("\t\tpitch_bend_event\n");
 		GENERATE_VAR(pitch_bend_event, ::g->pitch_bend_event.generate());
-		Printf("\t\tLSB: %c\n\t\tMSB: %c\n", pitch_bend_event().m_lsb(), pitch_bend_event().m_msb());
 	} else {
 	if ((::g->lastStatus == -1)) {
-		Printf("\t\tmeta_event\n");
 		GENERATE_VAR(meta_event, ::g->meta_event.generate());
-		Printf("\t\tType: %c\n", meta_event().m_type());
 	} else {
 	if (((::g->lastStatus & 0xf0) == 0xF0)) {
 		GENERATE_VAR(sysex_event, ::g->sysex_event.generate());
@@ -1672,22 +1598,13 @@ MidiTrack* MidiTrack::generate() {
 		generated = 1;
 	_startof = FTell();
 
-	GENERATE_VAR(m_magic, ::g->m_magic.generate(4, { "MTrk" }));
+	GENERATE_VAR(m_magic, ::g->m_magic.generate(4));
 	GENERATE_VAR(m_seclen, ::g->m_seclen.generate());
-	Printf("---MIDI Track (%d)---\n\tMagic: %s\n\tSection length: %d\n", ::g->track_index, std::string(m_magic()).c_str(), m_seclen());
-	real_seclen = 0;
-	while ((real_seclen < m_seclen())) {
-		message_start = FTell();
+	remaining = m_seclen();
+	while (remaining) {
 		GENERATE_VAR(message, ::g->message.generate());
-		real_seclen += (FTell() - message_start);
-		::g->message_index++;
+		remaining -= message()._sizeof;
 	};
-	FSeek(((FTell() - real_seclen) - 4));
-	evil_state = SetEvilBit(false);
-	GENERATE_VAR(m_seclen, ::g->m_seclen.generate({ real_seclen }));
-	SetEvilBit(evil_state);
-	FSeek((FTell() + real_seclen));
-	::g->track_index++;
 
 	_sizeof = FTell() - _startof;
 	return this;
@@ -1717,8 +1634,6 @@ void generate_file() {
 	::g = new globals_class();
 
 	BigEndian();
-	::g->track_index = 0;
-	::g->message_index = 0;
 	::g->lastStatus = 0;
 	GENERATE(file, ::g->file.generate());
 

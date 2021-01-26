@@ -513,6 +513,7 @@ public:
 	std::vector<ubyte> valid_versions;
 	std::vector<ubyte> valid_hdr_lengths;
 	int hdr_length;
+	uint evil_state;
 	uint UnknownLength;
 
 	unsigned char generated = 0;
@@ -867,7 +868,7 @@ std::vector<PCAPRECORD*> PCAPRECORD_record_instances;
 
 std::unordered_map<std::string, std::string> variable_types = { { "magic_number", "uint32_class" }, { "version_major", "uint16_class" }, { "version_minor", "uint16_class" }, { "thiszone", "int32_class" }, { "sigfigs", "uint32_class" }, { "snaplen", "uint32_class" }, { "network", "uint32_class" }, { "header", "PCAPHEADER" }, { "ts_sec", "time_t_class" }, { "ts_usec", "uint32_class" }, { "incl_len", "uint32_class" }, { "orig_len", "uint32_class" }, { "version", "uchar_bitfield4" }, { "ip_hdr_len", "uchar_bitfield4" }, { "DiffServField", "BYTE_class" }, { "total_length", "uint16_class" }, { "Identification", "uint16_class" }, { "Flags", "uint16_class" }, { "TTL", "BYTE_class" }, { "L4proto", "BYTE_class" }, { "HdrChecksum", "uint16_class" }, { "Byte", "uchar_array_class" }, { "SRC_IP", "IPv4addr" }, { "DST_IP", "IPv4addr" }, { "Unknown", "BYTE_array_class" }, { "L3", "Layer_3" }, { "DstMac", "MACaddr" }, { "SrcMac", "MACaddr" }, { "L3type", "uint16_class" }, { "L2", "Layer_2" }, { "SrcPort", "uint16_class" }, { "DstPort", "uint16_class" }, { "udp_hdr_len", "uint16_class" }, { "ChkSum", "uint16_class" }, { "SEQ", "uint32_class" }, { "ACK", "uint32_class" }, { "tcp_hdr_len", "uchar_bitfield4" }, { "Reserved", "uchar_bitfield4" }, { "TCP_BITFIELDS", "TCP_BITFIELDS_struct" }, { "Crap", "BYTE_array_class" }, { "packet", "BYTE_array_class" }, { "L4", "Layer_4" }, { "AppData", "BYTE_array_class" }, { "padding", "uchar_array_class" }, { "record", "PCAPRECORD" } };
 
-std::vector<std::vector<int>> integer_ranges = { { 1, 16 }, { 20 + 20, 20 + 20 + 64 } };
+std::vector<std::vector<int>> integer_ranges = { { 1, 16 }, { 256, INT_MAX }, { 20 + 20, 20 + 20 + 64 } };
 
 class globals_class {
 public:
@@ -930,7 +931,7 @@ public:
 		version_minor(1),
 		thiszone(1),
 		sigfigs(1),
-		snaplen(1),
+		snaplen(3),
 		network(1, { 101 }),
 		header(PCAPHEADER_header_instances),
 		ts_sec(1),
@@ -940,7 +941,7 @@ public:
 		version(1),
 		ip_hdr_len(1),
 		DiffServField(1),
-		total_length(3),
+		total_length(4),
 		Identification(1),
 		Flags(1),
 		TTL(1),
@@ -1001,9 +1002,9 @@ PCAPHEADER* PCAPHEADER::generate() {
 	};
 	GENERATE_VAR(version_major, ::g->version_major.generate({ 2 }));
 	GENERATE_VAR(version_minor, ::g->version_minor.generate({ 4 }));
-	GENERATE_VAR(thiszone, ::g->thiszone.generate({ 0 }));
-	GENERATE_VAR(sigfigs, ::g->sigfigs.generate({ 0 }));
-	GENERATE_VAR(snaplen, ::g->snaplen.generate({ 262144 }));
+	GENERATE_VAR(thiszone, ::g->thiszone.generate());
+	GENERATE_VAR(sigfigs, ::g->sigfigs.generate());
+	GENERATE_VAR(snaplen, ::g->snaplen.generate());
 	GENERATE_VAR(network, ::g->network.generate({ 1 }));
 
 	_sizeof = FTell() - _startof;
@@ -1044,8 +1045,9 @@ Layer_3* Layer_3::generate(uint16 proto_type) {
 	GENERATE_VAR(ip_hdr_len, ::g->ip_hdr_len.generate(4, valid_hdr_lengths));
 	hdr_length = (ip_hdr_len() * 4);
 	GENERATE_VAR(DiffServField, ::g->DiffServField.generate());
+	evil_state = SetEvilBit(false);
 	GENERATE_VAR(total_length, ::g->total_length.generate());
-	Printf("L3 Total Length: %d\n", total_length());
+	SetEvilBit(evil_state);
 	if ((proto_type == 0x0800)) {
 		GENERATE_VAR(Identification, ::g->Identification.generate());
 		GENERATE_VAR(Flags, ::g->Flags.generate());
@@ -1056,7 +1058,6 @@ Layer_3* Layer_3::generate(uint16 proto_type) {
 		GENERATE_VAR(DST_IP, ::g->DST_IP.generate());
 	} else {
 		UnknownLength = (hdr_length - 4);
-		Printf("UnknownLength = %d", UnknownLength);
 		GENERATE_VAR(Unknown, ::g->Unknown.generate(UnknownLength));
 	};
 
@@ -1096,7 +1097,6 @@ Layer_2* Layer_2::generate() {
 	GENERATE_VAR(SrcMac, ::g->SrcMac.generate());
 	evil_state = SetEvilBit(false);
 	GENERATE_VAR(L3type, ::g->L3type.generate({ 0x0800 }));
-	Printf("L2.L3type: %x\n", L3type());
 	SetEvilBit(evil_state);
 
 	_sizeof = FTell() - _startof;
@@ -1138,7 +1138,6 @@ Layer_4* Layer_4::generate(ushort VER_HDR, uint16 total_length, uint L4proto) {
 		GENERATE_VAR(SrcPort, ::g->SrcPort.generate());
 		GENERATE_VAR(DstPort, ::g->DstPort.generate());
 		dgram_len = (total_length - ip_hdr_length);
-		Printf("L4 UDP DGRAM Length: %d\n", dgram_len);
 		GENERATE_VAR(udp_hdr_len, ::g->udp_hdr_len.generate({ dgram_len }));
 		GENERATE_VAR(ChkSum, ::g->ChkSum.generate());
 	} else {
@@ -1149,7 +1148,6 @@ Layer_4* Layer_4::generate(ushort VER_HDR, uint16 total_length, uint L4proto) {
 		GENERATE_VAR(ACK, ::g->ACK.generate());
 		GENERATE_VAR(TCP_BITFIELDS, ::g->TCP_BITFIELDS.generate());
 		CrapSize = ((TCP_BITFIELDS().tcp_hdr_len() * 4) - 13);
-		Printf("Crap size: %d\n", CrapSize);
 		GENERATE_VAR(Crap, ::g->Crap.generate(CrapSize));
 	} else {
 		SetBackColor(cNone);
@@ -1194,7 +1192,6 @@ PCAPRECORD* PCAPRECORD::generate(uint32 network) {
 	GENERATE_VAR(L4, ::g->L4.generate(L3().ip_hdr_len(), L3().total_length(), L3().L4proto()));
 	if ((L3().L4proto() == 0x6)) {
 		AppDataLen = ((L3().total_length() - (L3().ip_hdr_len() * 4)) - (L4().TCP_BITFIELDS().tcp_hdr_len() * 4));
-		Printf("0x6 AppDataLen = %d - %d - %d = %d", L3().total_length(), (L3().ip_hdr_len() * 4), (L4().TCP_BITFIELDS().tcp_hdr_len() * 4), AppDataLen);
 		if ((AppDataLen > 0)) {
 			SetBackColor(cNone);
 			GENERATE_VAR(AppData, ::g->AppData.generate(AppDataLen));
@@ -1202,7 +1199,6 @@ PCAPRECORD* PCAPRECORD::generate(uint32 network) {
 	} else {
 	if ((L3().L4proto() == 0x11)) {
 		AppDataLen = (L4().udp_hdr_len() - 8);
-		Printf("0x11 AppDataLen = %d", AppDataLen);
 		if ((AppDataLen > 0)) {
 			SetBackColor(cNone);
 			GENERATE_VAR(AppData, ::g->AppData.generate(AppDataLen));
@@ -1219,7 +1215,6 @@ PCAPRECORD* PCAPRECORD::generate(uint32 network) {
 	FSeek(end_pos);
 	if (((len_before_l3 + L3().total_length()) < incl_len())) {
 		PaddingLength = ((incl_len() - len_before_l3) - L3().total_length());
-		Printf("PaddingLength = %d - %d - %d = %d", incl_len(), len_before_l3, L3().total_length(), PaddingLength);
 		GENERATE_VAR(padding, ::g->padding.generate(PaddingLength));
 	};
 	LittleEndian();

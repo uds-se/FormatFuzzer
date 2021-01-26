@@ -39,9 +39,9 @@ typedef struct {
         }
         uint16 version_major = {2};  /* major version number */
         uint16 version_minor = {4};  /* minor version number */
-        int32  thiszone = {0};       /* GMT to local correction */
-        uint32 sigfigs = {0};        /* accuracy of timestamps */
-        uint32 snaplen = {262144};        /* max length of captured packets, in octets */
+        int32  thiszone;// = {0};       /* GMT to local correction */
+        uint32 sigfigs;// = {0};        /* accuracy of timestamps */
+        uint32 snaplen<min=256>;// = {262144};        /* max length of captured packets, in octets */
         uint32 network = {1};        /* data link type */
 } PCAPHEADER;
 
@@ -54,12 +54,14 @@ typedef struct
 {
         MACaddr DstMac<name="Destination MAC">;
         MACaddr SrcMac<name="Source MAC">;
-        //FIXME: EVIL BIT NOT RESPECTED
+
+        //FIXME: Mined values used
         local uint evil_state = SetEvilBit(false);
         //uint16 L3type = { 0x0800, 0x8100 };//<name="Layer 3 Protocol">;
         uint16 L3type = { 0x0800 };//<name="Layer 3 Protocol">;
-        Printf("L2.L3type: %x\n", L3type);
+        //Printf("L2.L3type: %x\n", L3type);
         SetEvilBit(evil_state);
+
 } Layer_2 <size=14>;
 
 typedef struct 
@@ -67,11 +69,13 @@ typedef struct
         uint16 priority:3;
         uint16 dei:1;
         uint16 id:12<name="Vlan Id">;
-        //FIXME: EVIL BIT NOT RESPECTED
+
+        //FIXME: Mined values used
         local uint evil_state = SetEvilBit(false);
         uint16 L3type = {0x0800} <name="Layer 3 Protocol">;
-        Printf("d1q.L3type: %x\n", L3type);
+        //Printf("d1q.L3type: %x\n", L3type);
         SetEvilBit(evil_state);
+
 } Dot1q <size=4>;
 
 typedef struct 
@@ -98,9 +102,11 @@ typedef struct (uint16 proto_type)
     local int hdr_length = ip_hdr_len*4;
     BYTE DiffServField;
     
-    //min = 20 + 20 (hdr_len + tcp/udp hdr len), max = min + 64 (max data len) 
+    //FIXME: Evil Bit not respected
+    local uint evil_state = SetEvilBit(false);
     uint16 total_length<min = 20 + 20, max = 20 + 20 + 64>;
-    Printf("L3 Total Length: %d\n", total_length);
+    //Printf("L3 Total Length: %d\n", total_length);
+    SetEvilBit(evil_state);
 
     if (proto_type == 0x0800)    // IP
     {
@@ -115,7 +121,7 @@ typedef struct (uint16 proto_type)
     else
     {
         local uint UnknownLength = hdr_length-4;
-        Printf("UnknownLength = %d", UnknownLength);
+        //Printf("UnknownLength = %d", UnknownLength);
         BYTE Unknown[UnknownLength];
     }
 } Layer_3;
@@ -130,7 +136,7 @@ typedef struct (ushort VER_HDR,uint16 total_length,uint L4proto) //L4(L3.ip_hdr_
         uint16 SrcPort<name="Source Port">;
         uint16 DstPort<name="Destination Port">;
         local uint16 dgram_len = total_length - ip_hdr_length;
-        Printf("L4 UDP DGRAM Length: %d\n", dgram_len);
+        //Printf("L4 UDP DGRAM Length: %d\n", dgram_len);
         uint16 udp_hdr_len = {dgram_len} <name="Datagram Length">;
         uint16 ChkSum<name="Checksum">;
     }
@@ -149,7 +155,7 @@ typedef struct (ushort VER_HDR,uint16 total_length,uint L4proto) //L4(L3.ip_hdr_
         } TCP_BITFIELDS;
 
         local uint CrapSize = TCP_BITFIELDS.tcp_hdr_len*4-13;
-        Printf("Crap size: %d\n", CrapSize);
+        //Printf("Crap size: %d\n", CrapSize);
         BYTE Crap[CrapSize];
     }
     else
@@ -198,6 +204,7 @@ typedef struct (uint32 network) {
             if (L2.L3type == 0x0800) {
                 Layer_3 L3(L2.L3type) <name="Layer 3">;
             }
+            //FIXME: Restore Dot1q type
             /*else if (L2.L3type == 0x8100) {
                 Dot1q d1q <name="802.1Q Vitual LAN">;
                 len_before_l3 += 4; //len(d1q) = 4
@@ -217,9 +224,8 @@ typedef struct (uint32 network) {
 
         if (L3.L4proto == 0x6) //Application Layer is TCP
         {
-            //FIXME: Bounds check
             local uint16 AppDataLen = L3.total_length - L3.ip_hdr_len*4 - L4.TCP_BITFIELDS.tcp_hdr_len*4;
-            Printf("0x6 AppDataLen = %d - %d - %d = %d", L3.total_length, L3.ip_hdr_len*4, L4.TCP_BITFIELDS.tcp_hdr_len*4, AppDataLen);
+            //Printf("0x6 AppDataLen = %d - %d - %d = %d", L3.total_length, L3.ip_hdr_len*4, L4.TCP_BITFIELDS.tcp_hdr_len*4, AppDataLen);
             if (AppDataLen > 0)
             {
                 SetBackColor( cNone );
@@ -228,9 +234,8 @@ typedef struct (uint32 network) {
         }
         else if (L3.L4proto == 0x11) //Application Layer is UDP
         {
-            //FIXME: Bounds check
             local uint AppDataLen = L4.udp_hdr_len-8;
-            Printf("0x11 AppDataLen = %d", AppDataLen);
+            //Printf("0x11 AppDataLen = %d", AppDataLen);
             if (AppDataLen > 0)
             {
                 SetBackColor( cNone );
@@ -239,7 +244,6 @@ typedef struct (uint32 network) {
         }
 
         local uint end_pos = FTell();
-        //("frame_length = %d - %d\n", end_pos, start_pos);
         local uint frame_length = end_pos - start_pos;
 
         FSeek(start_pos - 8);
@@ -249,11 +253,9 @@ typedef struct (uint32 network) {
         BigEndian();
         FSeek(end_pos);
 
-        //Printf("incl: %d, orig: %d\n", incl_len, orig_len);
-
         if (len_before_l3 + L3.total_length < incl_len) { //Data is less than frame length, add padding
             local uint PaddingLength = incl_len - len_before_l3 - L3.total_length;
-            Printf("PaddingLength = %d - %d - %d = %d", incl_len, len_before_l3, L3.total_length, PaddingLength);
+            //Printf("PaddingLength = %d - %d - %d = %d", incl_len, len_before_l3, L3.total_length, PaddingLength);
             uchar padding[PaddingLength]<name="Layer 2 Padding">;
         }
 
@@ -298,6 +300,5 @@ PCAPHEADER header;
 while( !FEof() )
 {
     SetBackColor( cLtGreen );
-    //Printf("Generating frame %d...\n", len_records);
 	PCAPRECORD record(header.network) <name="Frame">;
 }
