@@ -41,9 +41,9 @@ typedef struct {
         uint16 version_minor = {4};  /* minor version number */
         int32  thiszone;// = {0};       /* GMT to local correction */
         uint32 sigfigs;// = {0};        /* accuracy of timestamps */
-        uint32 snaplen;// = {262144};        /* max length of captured packets, in octets */
+        uint32 snaplen<min=256>;// = {262144};        /* max length of captured packets, in octets */
         uint32 network = {1};        /* data link type */
-        
+
 } PCAPHEADER;
 
 typedef struct 

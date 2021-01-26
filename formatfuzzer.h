@@ -1,8 +1,5 @@
-//#define MAX_RAND_SIZE 65536
-//#define MAX_FILE_SIZE 4096
-
-#define MAX_RAND_SIZE 1000000
-#define MAX_FILE_SIZE 1000000
+#define MAX_RAND_SIZE 65536
+#define MAX_FILE_SIZE 4096
 
 void set_parser();
 

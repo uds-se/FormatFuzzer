@@ -868,7 +868,7 @@ std::vector<PCAPRECORD*> PCAPRECORD_record_instances;
 
 std::unordered_map<std::string, std::string> variable_types = { { "magic_number", "uint32_class" }, { "version_major", "uint16_class" }, { "version_minor", "uint16_class" }, { "thiszone", "int32_class" }, { "sigfigs", "uint32_class" }, { "snaplen", "uint32_class" }, { "network", "uint32_class" }, { "header", "PCAPHEADER" }, { "ts_sec", "time_t_class" }, { "ts_usec", "uint32_class" }, { "incl_len", "uint32_class" }, { "orig_len", "uint32_class" }, { "version", "uchar_bitfield4" }, { "ip_hdr_len", "uchar_bitfield4" }, { "DiffServField", "BYTE_class" }, { "total_length", "uint16_class" }, { "Identification", "uint16_class" }, { "Flags", "uint16_class" }, { "TTL", "BYTE_class" }, { "L4proto", "BYTE_class" }, { "HdrChecksum", "uint16_class" }, { "Byte", "uchar_array_class" }, { "SRC_IP", "IPv4addr" }, { "DST_IP", "IPv4addr" }, { "Unknown", "BYTE_array_class" }, { "L3", "Layer_3" }, { "DstMac", "MACaddr" }, { "SrcMac", "MACaddr" }, { "L3type", "uint16_class" }, { "L2", "Layer_2" }, { "SrcPort", "uint16_class" }, { "DstPort", "uint16_class" }, { "udp_hdr_len", "uint16_class" }, { "ChkSum", "uint16_class" }, { "SEQ", "uint32_class" }, { "ACK", "uint32_class" }, { "tcp_hdr_len", "uchar_bitfield4" }, { "Reserved", "uchar_bitfield4" }, { "TCP_BITFIELDS", "TCP_BITFIELDS_struct" }, { "Crap", "BYTE_array_class" }, { "packet", "BYTE_array_class" }, { "L4", "Layer_4" }, { "AppData", "BYTE_array_class" }, { "padding", "uchar_array_class" }, { "record", "PCAPRECORD" } };
 
-std::vector<std::vector<int>> integer_ranges = { { 1, 16 }, { 20 + 20, 20 + 20 + 64 } };
+std::vector<std::vector<int>> integer_ranges = { { 1, 16 }, { 256, INT_MAX }, { 20 + 20, 20 + 20 + 64 } };
 
 class globals_class {
 public:
@@ -931,7 +931,7 @@ public:
 		version_minor(1),
 		thiszone(1),
 		sigfigs(1),
-		snaplen(1),
+		snaplen(3),
 		network(1, { 101 }),
 		header(PCAPHEADER_header_instances),
 		ts_sec(1),
@@ -941,7 +941,7 @@ public:
 		version(1),
 		ip_hdr_len(1),
 		DiffServField(1),
-		total_length(3),
+		total_length(4),
 		Identification(1),
 		Flags(1),
 		TTL(1),
@@ -1004,7 +1004,7 @@ PCAPHEADER* PCAPHEADER::generate() {
 	GENERATE_VAR(version_minor, ::g->version_minor.generate({ 4 }));
 	GENERATE_VAR(thiszone, ::g->thiszone.generate());
 	GENERATE_VAR(sigfigs, ::g->sigfigs.generate());
-	GENERATE_VAR(snaplen, ::g->snaplen.generate({ 262144 }));
+	GENERATE_VAR(snaplen, ::g->snaplen.generate());
 	GENERATE_VAR(network, ::g->network.generate({ 1 }));
 
 	_sizeof = FTell() - _startof;
