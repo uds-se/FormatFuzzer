@@ -585,11 +585,13 @@ typedef struct //mp4box
 						}
 				}
 			}else{
-				local string preferred_blocks[0];	
+				local string preferred_blocks[] = { "cprt"};
 				local string possible_blocks[] = { "cprt"};
 				if(ReadBytes(chunk_type, FTell() + 4, 4, preferred_blocks, possible_blocks)){	
 					if(chunk_type == "cprt"){
 						mp4box cprt_block;					
+					} else {
+						mp4box unkown_block;
 					}
 				}
 			}				

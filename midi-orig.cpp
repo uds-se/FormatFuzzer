@@ -26,12 +26,9 @@ public:
 		return value;
 	}
 
-	char generate(std::vector<char> new_known_values) {
+	char generate(std::vector<char> possible_values) {
 		_startof = FTell();
-		for (auto& known : known_values) {
-			new_known_values.push_back(known);
-		}
-		value = file_acc.file_integer(sizeof(char), 0, new_known_values);
+		value = file_acc.file_integer(sizeof(char), 0, possible_values);
 		return value;
 	}
 };
@@ -53,15 +50,18 @@ public:
 	char_array_class(char_class& element, std::vector<std::string> known_values)
 		: element(element), known_values(known_values) {}
 
-	std::string generate(unsigned size, std::vector<std::string> new_known_values = {}) {
+	std::string generate(unsigned size, std::vector<std::string> possible_values = {}) {
 		check_array_length(size);
 		_startof = FTell();
 		value = "";
-		for (auto& known : known_values) {
-			new_known_values.push_back(known);
+		if (possible_values.size()) {
+			value = file_acc.file_string(possible_values);
+			assert(value.length() == size);
+			_sizeof = size;
+			return value;
 		}
-		if (new_known_values.size()) {
-			value = file_acc.file_string(new_known_values);
+		if (known_values.size()) {
+			value = file_acc.file_string(known_values);
 			assert(value.length() == size);
 			_sizeof = size;
 			return value;
@@ -107,12 +107,9 @@ public:
 		return value;
 	}
 
-	uint generate(std::vector<uint> new_known_values) {
+	uint generate(std::vector<uint> possible_values) {
 		_startof = FTell();
-		for (auto& known : known_values) {
-			new_known_values.push_back(known);
-		}
-		value = file_acc.file_integer(sizeof(uint), 0, new_known_values);
+		value = file_acc.file_integer(sizeof(uint), 0, possible_values);
 		return value;
 	}
 };
@@ -154,12 +151,9 @@ public:
 		return value;
 	}
 
-	short generate(std::vector<short> new_known_values) {
+	short generate(std::vector<short> possible_values) {
 		_startof = FTell();
-		for (auto& known : known_values) {
-			new_known_values.push_back(known);
-		}
-		value = file_acc.file_integer(sizeof(short), 0, new_known_values);
+		value = file_acc.file_integer(sizeof(short), 0, possible_values);
 		return value;
 	}
 };
@@ -596,13 +590,10 @@ public:
 		return value;
 	}
 
-	uint generate(unsigned bits, std::vector<uint> new_known_values) {
+	uint generate(unsigned bits, std::vector<uint> possible_values) {
 		if (!bits)
 			return 0;
-		for (auto& known : known_values) {
-			new_known_values.push_back(known);
-		}
-		value = file_acc.file_integer(sizeof(uint), bits, new_known_values);
+		value = file_acc.file_integer(sizeof(uint), bits, possible_values);
 		return value;
 	}
 };

@@ -26,12 +26,9 @@ public:
 		return value;
 	}
 
-	uint32 generate(std::vector<uint32> new_known_values) {
+	uint32 generate(std::vector<uint32> possible_values) {
 		_startof = FTell();
-		for (auto& known : known_values) {
-			new_known_values.push_back(known);
-		}
-		value = file_acc.file_integer(sizeof(uint32), 0, new_known_values);
+		value = file_acc.file_integer(sizeof(uint32), 0, possible_values);
 		return value;
 	}
 };
@@ -58,12 +55,9 @@ public:
 		return value;
 	}
 
-	uint16 generate(std::vector<uint16> new_known_values) {
+	uint16 generate(std::vector<uint16> possible_values) {
 		_startof = FTell();
-		for (auto& known : known_values) {
-			new_known_values.push_back(known);
-		}
-		value = file_acc.file_integer(sizeof(uint16), 0, new_known_values);
+		value = file_acc.file_integer(sizeof(uint16), 0, possible_values);
 		return value;
 	}
 };
@@ -90,12 +84,9 @@ public:
 		return value;
 	}
 
-	int32 generate(std::vector<int32> new_known_values) {
+	int32 generate(std::vector<int32> possible_values) {
 		_startof = FTell();
-		for (auto& known : known_values) {
-			new_known_values.push_back(known);
-		}
-		value = file_acc.file_integer(sizeof(int32), 0, new_known_values);
+		value = file_acc.file_integer(sizeof(int32), 0, possible_values);
 		return value;
 	}
 };
@@ -195,12 +186,9 @@ public:
 		return value;
 	}
 
-	uint32 generate(std::vector<uint32> new_known_values) {
+	uint32 generate(std::vector<uint32> possible_values) {
 		_startof = FTell();
-		for (auto& known : known_values) {
-			new_known_values.push_back(known);
-		}
-		value = file_acc.file_integer(sizeof(uint32), 0, new_known_values);
+		value = file_acc.file_integer(sizeof(uint32), 0, possible_values);
 		return value;
 	}
 };
@@ -226,13 +214,10 @@ public:
 		return value;
 	}
 
-	uchar generate(unsigned bits, std::vector<uchar> new_known_values) {
+	uchar generate(unsigned bits, std::vector<uchar> possible_values) {
 		if (!bits)
 			return 0;
-		for (auto& known : known_values) {
-			new_known_values.push_back(known);
-		}
-		value = file_acc.file_integer(sizeof(uchar), bits, new_known_values);
+		value = file_acc.file_integer(sizeof(uchar), bits, possible_values);
 		return value;
 	}
 };
@@ -259,12 +244,9 @@ public:
 		return value;
 	}
 
-	BYTE generate(std::vector<BYTE> new_known_values) {
+	BYTE generate(std::vector<BYTE> possible_values) {
 		_startof = FTell();
-		for (auto& known : known_values) {
-			new_known_values.push_back(known);
-		}
-		value = file_acc.file_integer(sizeof(BYTE), 0, new_known_values);
+		value = file_acc.file_integer(sizeof(BYTE), 0, possible_values);
 		return value;
 	}
 };
@@ -291,12 +273,9 @@ public:
 		return value;
 	}
 
-	uchar generate(std::vector<uchar> new_known_values) {
+	uchar generate(std::vector<uchar> possible_values) {
 		_startof = FTell();
-		for (auto& known : known_values) {
-			new_known_values.push_back(known);
-		}
-		value = file_acc.file_integer(sizeof(uchar), 0, new_known_values);
+		value = file_acc.file_integer(sizeof(uchar), 0, possible_values);
 		return value;
 	}
 };
@@ -318,15 +297,18 @@ public:
 	uchar_array_class(uchar_class& element, std::vector<std::string> known_values)
 		: element(element), known_values(known_values) {}
 
-	std::string generate(unsigned size, std::vector<std::string> new_known_values = {}) {
+	std::string generate(unsigned size, std::vector<std::string> possible_values = {}) {
 		check_array_length(size);
 		_startof = FTell();
 		value = "";
-		for (auto& known : known_values) {
-			new_known_values.push_back(known);
+		if (possible_values.size()) {
+			value = file_acc.file_string(possible_values);
+			assert(value.length() == size);
+			_sizeof = size;
+			return value;
 		}
-		if (new_known_values.size()) {
-			value = file_acc.file_string(new_known_values);
+		if (known_values.size()) {
+			value = file_acc.file_string(known_values);
 			assert(value.length() == size);
 			_sizeof = size;
 			return value;
@@ -401,15 +383,18 @@ public:
 	BYTE_array_class(BYTE_class& element, std::vector<std::string> known_values)
 		: element(element), known_values(known_values) {}
 
-	std::string generate(unsigned size, std::vector<std::string> new_known_values = {}) {
+	std::string generate(unsigned size, std::vector<std::string> possible_values = {}) {
 		check_array_length(size);
 		_startof = FTell();
 		value = "";
-		for (auto& known : known_values) {
-			new_known_values.push_back(known);
+		if (possible_values.size()) {
+			value = file_acc.file_string(possible_values);
+			assert(value.length() == size);
+			_sizeof = size;
+			return value;
 		}
-		if (new_known_values.size()) {
-			value = file_acc.file_string(new_known_values);
+		if (known_values.size()) {
+			value = file_acc.file_string(known_values);
 			assert(value.length() == size);
 			_sizeof = size;
 			return value;

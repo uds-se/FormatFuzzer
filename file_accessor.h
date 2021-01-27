@@ -19,8 +19,10 @@ bool is_following = false;
 bool following_is_optional = false;
 
 const char* chunk_name;
+int file_index = 0;
 
 bool get_chunk = false;
+bool get_all_chunks = false;
 bool smart_mutation = false;
 unsigned chunk_start;
 unsigned chunk_end;
@@ -28,6 +30,15 @@ unsigned rand_start;
 unsigned rand_end;
 bool is_optional = false;
 bool is_delete = false;
+
+
+std::vector<std::vector<InsertionPoint>> insertion_points;
+std::vector<std::vector<Chunk>> deletable_chunks;
+std::vector<Chunk> optional_chunks;
+std::vector<int> optional_index = { 0 };
+std::unordered_map<std::string, std::vector<Chunk>> non_optional_chunks;
+std::vector<std::vector<NonOptional>> non_optional_index;
+std::vector<std::string> rand_names;
 
 void swap_bytes(void* b, unsigned size) {
 	if (is_big_endian) {
@@ -189,9 +200,6 @@ class file_accessor {
 			parsed_file_size = file_pos;
 		if (!get_parse_tree)
 			return;
-		if (is_following) {
-			is_following = false;
-		}
 		if (start_pos < generator_stack.back().min)
 			generator_stack.back().min = start_pos;
 		unsigned end = bitfield_size ? file_pos + ((bitfield_bits - 1) / 8) : file_pos - 1;
@@ -226,10 +234,6 @@ class file_accessor {
 				bitmap[original_pos + i] = true;
 		}
 
-		if (is_following && !is_padding) {
-			following_is_optional = lookahead;
-			is_following = false;
-		}
 		if (is_padding || lookahead)
 			return;
 		if (!generate && parsed_file_size < file_pos)
@@ -297,6 +301,13 @@ public:
 			} else {
 				rand_last = UINT_MAX;
 			}
+			if (is_following && !is_padding) {
+				following_is_optional = lookahead;
+				is_following = false;
+				if (get_all_chunks && lookahead) {
+					deletable_chunks[file_index].emplace_back(file_index, rand_start, rand_end, variable_types[chunk_name].c_str(), chunk_name);
+				}
+			}
 		}
 		if (!(max>>8)) {
 			assert_cond(rand_pos + 1 <= rand_size, "random size exceeded rand_size");
@@ -351,6 +362,9 @@ public:
 				rand_start = rand_last;
 				chunk_name = "file";
 			}
+			if (get_parse_tree && get_all_chunks && rand_last != UINT_MAX) {
+				insertion_points[file_index].emplace_back(rand_last, "File", "file");
+			}
 		}
 	}
 
@@ -399,10 +413,6 @@ public:
 			return 0;
 		if (has_size)
 			return 1;
-		if (is_following) {
-			following_is_optional = true;
-			is_following = false;
-		}
 		lookahead = true;
 		if (!generate)
 			parse = [this](unsigned char* file_buf) -> long long { return file_pos == final_file_size ? 7 : 0; };
@@ -485,18 +495,19 @@ public:
 		unsigned long long range = bits ? bits : 8*size;
 		range = range == 64 ? 0 : 1LLU << range;
 		long long value;
-		if (!generate)
-			parse = [&size, &bits, this](unsigned char* file_buf) -> long long {
-				return parse_integer(file_buf, size, bits);
-			};
-		if (small == 0)
+
+		if (small == 0) {
+			if (!generate)
+				parse = [&size, &bits, this](unsigned char* file_buf) -> long long {
+					return parse_integer(file_buf, size, bits);
+				};
 			value = rand_int(range, parse);
-		else if (small == 1 || (small >= 2 && integer_ranges[small-2][1] == INT_MAX)) {
+		} else if (small == 1 || (small >= 2 && integer_ranges[small-2][1] == INT_MAX)) {
 			int min = 0;
 			if (small >= 2)
 				min = integer_ranges[small-2][0];
 			std::function<long long (unsigned char*)> choice_parse;
-			if (!generate)
+			if (!generate) {
 				choice_parse = [&size, &bits, &min, this](unsigned char* file_buf) -> long long {
 					unsigned long long value = parse_integer(file_buf, size, bits) - min;
 					if (value > 0 && value <= 1<<4)
@@ -507,6 +518,12 @@ public:
 						return 256 - 8;
 					return 256 - 2;
 				};
+				parse = [&size, &bits, &min, this](unsigned char* file_buf) -> long long {
+					long long value = parse_integer(file_buf, size, bits);
+					value -= min;
+					return value;
+				};
+			}
 			int s = rand_int(256, choice_parse);
 			if (s >= 256 - 2)
 				value = rand_int(range, parse);
@@ -516,9 +533,9 @@ public:
 				value = rand_int(1<<8, parse);
 			else {
 				if (!generate)
-					parse = [&size, &bits, this](unsigned char* file_buf) -> long long {
+					parse = [&size, &bits, &min, this](unsigned char* file_buf) -> long long {
 						long long value = parse_integer(file_buf, size, bits);
-						--value;
+						value -= min + 1;
 						return value;
 					};
 				value = 1+rand_int(1<<4, parse);
@@ -536,9 +553,13 @@ public:
 					return 255;
 				};
 			int s = rand_int(256, choice_parse);
-			if (s == 255)
+			if (s == 255) {
+				if (!generate)
+					parse = [&size, &bits, this](unsigned char* file_buf) -> long long {
+						return parse_integer(file_buf, size, bits);
+					};
 				value = rand_int(range, parse);
-			else {
+			} else {
 				if (!generate)
 					parse = [&size, &bits, &min, this](unsigned char* file_buf) -> long long {
 						long long value = parse_integer(file_buf, size, bits);
