@@ -61,7 +61,6 @@ typedef struct
 
 typedef struct 
 {
-    SetBackColor( cLtOrange );
     uint16 priority:3;
     uint16 dei:1;
     uint16 id:12<name="Vlan Id">;
