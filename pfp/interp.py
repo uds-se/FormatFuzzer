@@ -763,20 +763,17 @@ class PfpInterp(object):
             cpp += "\t\treturn value;\n"
             cpp += "\t}\n"
             if is_bitfield:
-                cpp += "\n\t" + classtype + " generate(unsigned bits, std::vector<" + classtype + "> new_known_values) {\n"
+                cpp += "\n\t" + classtype + " generate(unsigned bits, std::vector<" + classtype + "> possible_values) {\n"
                 cpp += "\t\tif (!bits)\n"
                 cpp += "\t\t\treturn 0;\n"
             else:
-                cpp += "\n\t" + classtype + " generate(std::vector<" + classtype + "> new_known_values) {\n"
+                cpp += "\n\t" + classtype + " generate(std::vector<" + classtype + "> possible_values) {\n"
             if not is_bitfield:
                 cpp += "\t\t_startof = FTell();\n"
-            cpp += "\t\tfor (auto& known : known_values) {\n"
-            cpp += "\t\t\tnew_known_values.push_back(known);\n"
-            cpp += "\t\t}\n"
             if is_bitfield:
-                cpp += "\t\tvalue = file_acc.file_integer(sizeof(" + classtype + "), bits, new_known_values);\n"
+                cpp += "\t\tvalue = file_acc.file_integer(sizeof(" + classtype + "), bits, possible_values);\n"
             else:
-                cpp += "\t\tvalue = file_acc.file_integer(sizeof(" + classtype + "), 0, new_known_values);\n"
+                cpp += "\t\tvalue = file_acc.file_integer(sizeof(" + classtype + "), 0, possible_values);\n"
             cpp += "\t\treturn value;\n"
             cpp += "\t}\n"
             cpp += "};\n\n"
@@ -2145,18 +2142,21 @@ class PfpInterp(object):
                         cpp += "\t" + classname.replace(" ", "_") + "_array_class(" + element_classname + "& element) : element(element) {}\n"
                     if is_char_array:
                         cpp += "\t" + classname.replace(" ", "_") + "_array_class(" + element_classname + "& element, std::vector<std::string> known_values)\n\t\t: element(element), known_values(known_values) {}\n"
-                        cpp += "\n\t" + node.type.cpp + " generate(unsigned size, std::vector<std::string> new_known_values = {}) {\n"
+                        cpp += "\n\t" + node.type.cpp + " generate(unsigned size, std::vector<std::string> possible_values = {}) {\n"
                     else:
                         cpp += "\n\t" + node.type.cpp + " generate(unsigned size) {\n"
                     cpp += "\t\tcheck_array_length(size);\n"
                     cpp += "\t\t_startof = FTell();\n"
                     if is_char_array:
                         cpp += "\t\tvalue = \"\";\n"
-                        cpp += "\t\tfor (auto& known : known_values) {\n"
-                        cpp += "\t\t\tnew_known_values.push_back(known);\n"
+                        cpp += "\t\tif (possible_values.size()) {\n"
+                        cpp += "\t\t\tvalue = file_acc.file_string(possible_values);\n"
+                        cpp += "\t\t\tassert(value.length() == size);\n"
+                        cpp += "\t\t\t_sizeof = size;\n"
+                        cpp += "\t\t\treturn value;\n"
                         cpp += "\t\t}\n"
-                        cpp += "\t\tif (new_known_values.size()) {\n"
-                        cpp += "\t\t\tvalue = file_acc.file_string(new_known_values);\n"
+                        cpp += "\t\tif (known_values.size()) {\n"
+                        cpp += "\t\t\tvalue = file_acc.file_string(known_values);\n"
                         cpp += "\t\t\tassert(value.length() == size);\n"
                         cpp += "\t\t\t_sizeof = size;\n"
                         cpp += "\t\t\treturn value;\n"

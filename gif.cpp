@@ -26,12 +26,9 @@ public:
 		return value;
 	}
 
-	char generate(std::vector<char> new_known_values) {
+	char generate(std::vector<char> possible_values) {
 		_startof = FTell();
-		for (auto& known : known_values) {
-			new_known_values.push_back(known);
-		}
-		value = file_acc.file_integer(sizeof(char), 0, new_known_values);
+		value = file_acc.file_integer(sizeof(char), 0, possible_values);
 		return value;
 	}
 };
@@ -53,15 +50,18 @@ public:
 	char_array_class(char_class& element, std::vector<std::string> known_values)
 		: element(element), known_values(known_values) {}
 
-	std::string generate(unsigned size, std::vector<std::string> new_known_values = {}) {
+	std::string generate(unsigned size, std::vector<std::string> possible_values = {}) {
 		check_array_length(size);
 		_startof = FTell();
 		value = "";
-		for (auto& known : known_values) {
-			new_known_values.push_back(known);
+		if (possible_values.size()) {
+			value = file_acc.file_string(possible_values);
+			assert(value.length() == size);
+			_sizeof = size;
+			return value;
 		}
-		if (new_known_values.size()) {
-			value = file_acc.file_string(new_known_values);
+		if (known_values.size()) {
+			value = file_acc.file_string(known_values);
 			assert(value.length() == size);
 			_sizeof = size;
 			return value;
@@ -150,12 +150,9 @@ public:
 		return value;
 	}
 
-	ushort generate(std::vector<ushort> new_known_values) {
+	ushort generate(std::vector<ushort> possible_values) {
 		_startof = FTell();
-		for (auto& known : known_values) {
-			new_known_values.push_back(known);
-		}
-		value = file_acc.file_integer(sizeof(ushort), 0, new_known_values);
+		value = file_acc.file_integer(sizeof(ushort), 0, possible_values);
 		return value;
 	}
 };
@@ -181,13 +178,10 @@ public:
 		return value;
 	}
 
-	UBYTE generate(unsigned bits, std::vector<UBYTE> new_known_values) {
+	UBYTE generate(unsigned bits, std::vector<UBYTE> possible_values) {
 		if (!bits)
 			return 0;
-		for (auto& known : known_values) {
-			new_known_values.push_back(known);
-		}
-		value = file_acc.file_integer(sizeof(UBYTE), bits, new_known_values);
+		value = file_acc.file_integer(sizeof(UBYTE), bits, possible_values);
 		return value;
 	}
 };
@@ -266,12 +260,9 @@ public:
 		return value;
 	}
 
-	UBYTE generate(std::vector<UBYTE> new_known_values) {
+	UBYTE generate(std::vector<UBYTE> possible_values) {
 		_startof = FTell();
-		for (auto& known : known_values) {
-			new_known_values.push_back(known);
-		}
-		value = file_acc.file_integer(sizeof(UBYTE), 0, new_known_values);
+		value = file_acc.file_integer(sizeof(UBYTE), 0, possible_values);
 		return value;
 	}
 };
