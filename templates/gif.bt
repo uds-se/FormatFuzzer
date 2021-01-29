@@ -106,17 +106,15 @@ if (LogicalScreenDescriptor.PackedFields.GlobalColorTableFlag == 1) {
 //<Data> ::=                <Graphic Block> | <Special-Purpose Block>
 SetBackColor( 0xFFFFFF );
 struct DATA {
-	local string required[] = {","};
 	if(GifHeader.Version == "89a")
-		local string possible[] = { ",", "!" };
+		local UBYTE possible[] = { 0x2C, 0x21 };
 	else
-		local string possible[] = { "," };
+		local UBYTE possible[] = { 0x2C };
 
-	local char chunk_type[1];			
-	while (ReadBytes(chunk_type, FTell(), 1, required, possible)) {
+	while (ReadUByte(FTell(), possible) != 0x3B) {
 		// <Graphic Block> ::=       [Graphic Control Extension] <Graphic-Rendering Block>
 		if (ReadUByte(FTell()) == 0x2C) {
-			required -= ",";
+			possible += 0x3B;
 			SetBackColor( 0xE0FFE0 );
 			struct IMAGEDESCRIPTOR {
 				UBYTE	ImageSeperator;
