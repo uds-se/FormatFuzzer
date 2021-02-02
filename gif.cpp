@@ -1258,9 +1258,7 @@ public:
 	}
 
 	/* locals */
-	std::vector<std::string> required;
-	std::vector<std::string> possible;
-	std::string chunk_type;
+	std::vector<UBYTE> possible;
 
 	unsigned char generated = 0;
 	int64 _startof = 0;
@@ -1961,15 +1959,14 @@ DATA* DATA::generate() {
 		generated = 1;
 	_startof = FTell();
 
-	required = { "," };
 	if ((::g->GifHeader().Version() == "89a")) {
-		possible = { ",", "!" };
+		possible = { 0x2C, 0x21 };
 	} else {
-		possible = { "," };
+		possible = { 0x2C };
 	};
-	while (ReadBytes(chunk_type, FTell(), 1, required, possible)) {
+	while ((ReadUByte(FTell(), possible) != 0x3B)) {
 		if ((ReadUByte(FTell()) == 0x2C)) {
-			VectorRemove(required, { "," });
+			possible.insert(possible.end(), { 0x3B });
 			SetBackColor(0xE0FFE0);
 			GENERATE_VAR(ImageDescriptor, ::g->ImageDescriptor.generate());
 			if ((ImageDescriptor().PackedFields().LocalColorTableFlag() == 1)) {
