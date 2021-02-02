@@ -17,9 +17,6 @@
 
 BigEndian();
 
-local uint track_index = 0;
-local uint message_index = 0;
-
 struct MidiHeader
 {
     char m_magic[4] = { "MThd" }; //<format = hex>;
@@ -30,7 +27,7 @@ struct MidiHeader
         MIDI_MULTIPLE = 1,
         MIDI_PATTERN = 2
     } m_format;
-    short m_ntracks<arraylength=true>;
+    short m_ntracks<min = 0, max = 16>;
     short m_tickdiv;
     Printf("---MIDI header---\n\tMagic: %s\n\tSection length: %d"
         "\n\tTracks: %d\n\tTick div: %d\n", m_magic, m_seclen, m_ntracks, m_tickdiv);
@@ -39,9 +36,9 @@ struct MidiHeader
 struct DeltaTime
 {
     local uint total = 0;
-    char t0<arraylength=true>;//; = { 0 };
+    char t0<min = 0, max = 127>; //128 = 0x80 //<arraylength=true>;//; = { 0 };
     total += t0 & 0x7f;
-    if (!(t0 & 0x80))
+    if (!(t0 & 0x80)) //~= if (t0 < 128)
         break;
 
     total <<= 7;
@@ -68,18 +65,18 @@ local char lastStatus = 0;
 struct MidiMessage
 {
     DeltaTime m_dtime;
-    //char m_status;// = { 0x8F, 0x90, 0xA0, 0xB0, 0xC0, 0xD0, 0xE0, 0xE0, 0xF0 };
+    //char m_status;// = {  };
 
-    local char status = ReadByte(FTell());
-    if (status & 0x80) {
+    local char status[1];
+    local string preferred_status[0];
+    local string possible_status[] = { "\x8F", "\x90", "\xA0", "\xB0", "\xC0", "\xD0", "\xE0", "\xE0", "\xF0" };
+    if (!ReadBytes(status, FTell(), 1, preferred_status, possible_status)) break;
+    if (status[0] & 0x80) {
         char m_status;
         lastStatus = m_status;
     }
-
-    //else
-        //FSeek(FTell()-1);
     
-    Printf("\t---MIDI Message (%d,%d)---\n\t\tStatus: 0x%x\n\t\tLast Status: 0x%x\n", track_index, message_index, m_status, lastStatus);
+    Printf("\t---MIDI Message (%d,%d)---\n\t\tStatus: 0x%x\n\t\tLast Status: 0x%x\n", track_index, message_index, lastStatus, lastStatus);
 
     local char m_channel = lastStatus & 0xf;
     if ((lastStatus & 0xf0) == 0x80)
@@ -274,14 +271,19 @@ struct MidiMessage
     }
 };
 
+
+local uint track_index = 0;
+
 struct MidiTrack
 {
     char m_magic[4] = { "MTrk" };
-    uint m_seclen<arraylength=true>;
+    local uint m_seclen_pos = FTell();
+    uint m_seclen<min = 0, max = 256>;
 
     Printf("---MIDI Track (%d)---\n\tMagic: %s\n\tSection length: %d\n", track_index, m_magic, m_seclen);
 
     local uint real_seclen = 0;
+    local uint message_index = 0;
     while (real_seclen < m_seclen) {
         local uint message_start = FTell();
         //ReadBytes()
@@ -290,11 +292,15 @@ struct MidiTrack
         message_index++;
     }
 
-    FSeek(FTell() - real_seclen - 4);
+    local uint message_end_pos = FTell();
+
+    //FSeek(FTell() - real_seclen - 4);
+    FSeek(m_seclen_pos);
     local uint evil_state = SetEvilBit(false);
     uint m_seclen = { real_seclen };
     SetEvilBit(evil_state);
-    FSeek(FTell() + real_seclen);
+    //FSeek(FTell() + real_seclen);
+    FSeek(message_end_pos);
 
     track_index++;
 };

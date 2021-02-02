@@ -1,0 +1,305 @@
+//------------------------------------------------
+//--- 010 Editor v1.2 Binary Template
+//
+//      File: AVI.bt
+//   Authors: Blaine Lefebvre [bl], Elias Bachaalany [eb]
+//   Version: 1.2
+//   Purpose: Parse an AVI movie file.
+//  Category: Video
+// File Mask: *.avi
+//  ID Bytes: 52 49 46 46 [+4] 41 56 49 20 //RIFF????AVI 
+//   History: 
+//   1.2   2016-01-27 SweetScape: Updated header for repository submission, added coloring for header.
+//   1.1   2006-10-02 eb: Added BITMAPINFO and WAVEFORMATEX proper strfHEADER recognition,
+//                      Fixed 'idx1' parsing.
+//   1.0   bl: Initial release.
+//------------------------------------------------
+
+typedef struct
+{ 
+  WORD  wFormatTag; 
+  WORD  nChannels; 
+  DWORD nSamplesPerSec; 
+  DWORD nAvgBytesPerSec; 
+  WORD  nBlockAlign; 
+  WORD  wBitsPerSample; 
+  WORD  cbSize; 
+} WAVEFORMATEX; 
+
+// head structure info
+typedef struct 
+{
+    DWORD  dwMicroSecPerFrame;
+    DWORD  dwMaxBytesPerSec;
+    DWORD  dwReserved1;
+    DWORD  dwFlags;
+    DWORD  dwTotalFrames;
+    DWORD  dwInitialFrames;
+    DWORD  dwStreams;
+    DWORD  dwSuggestedBufferSize;
+    DWORD  dwWidth;
+    DWORD  dwHeight;
+    DWORD  dwScale;
+    DWORD  dwRate;
+    DWORD  dwStart;
+    DWORD  dwLength;
+} MainAVIHeader;
+
+typedef struct
+{
+  uint32 biSize;
+  uint32 biWidth;
+  uint32 biHeight;
+  uint16 biPlanes;
+  uint16 biBitCount;
+  uint32 biCompression;
+  uint32 biSizeImage;
+  uint32 biXPelsPerMeter;
+  uint32 biYPelsPerMeter;
+  uint32 biClrUsed;
+  uint32 biClrImportant;
+} BITMAPINFOHEADER;
+
+typedef struct 
+{
+  unsigned char rgbBlue;
+  unsigned char rgbGreen;
+  unsigned char rgbRed;
+  unsigned char rgbReserved;
+} RGBQUAD;
+
+typedef struct 
+{
+  BITMAPINFOHEADER bmiHeader;
+  RGBQUAD bmiColors;
+} BITMAPINFO;
+
+typedef struct 
+{
+  char id[4];
+  uint32 datalen;
+  MainAVIHeader data;
+} avihHEADER;
+
+
+// header stream structure info
+typedef struct 
+{
+    char   fccType[4] = { "vids", "auds" };
+    char   fccHandler[4];
+    DWORD  dwFlags;
+    DWORD  dwReserved1;
+    DWORD  dwInitialFrames;
+    DWORD  dwScale;
+    DWORD  dwRate;
+    DWORD  dwStart;
+    DWORD  dwLength;
+    DWORD  dwSuggestedBufferSize;
+    DWORD  dwQuality;
+    DWORD  dwSampleSize;
+    DWORD  xdwQuality;
+    DWORD  xdwSampleSize;
+} AVIStreamHeader;
+
+typedef struct 
+{
+  char id[4];
+  uint32  datalen;
+  AVIStreamHeader data;
+}strhHEADER;
+
+
+// Generic strfHEADER
+typedef struct 
+{
+  char id[4];
+  uint32  datalen;
+  if (datalen % 2)
+	  char data[datalen+1];
+  else
+	  char data[datalen];
+} strfHEADER;
+
+// strfHEADER with BITMAPINFOHEADER
+typedef struct 
+{
+  char id[4];
+  uint32  datalen;
+  BITMAPINFOHEADER bmiHeader;
+  local int sz = sizeof(bmiHeader);
+  if (datalen == 44)
+  {
+    RGBQUAD bmiColors;
+    sz += 4;
+  }
+  Printf("left: %d\n", sz);
+  char exData[datalen - sz];
+} strfHEADER_BIH;
+
+
+// strfHEADER with WAVEFORMAT
+typedef struct 
+{
+  char id[4];
+  uint32  datalen;
+  WAVEFORMATEX wave;
+  char exData[datalen - 18];
+} strfHEADER_WAVE;
+
+//
+typedef struct 
+{
+  char id[4];
+  uint32  datalen;
+  if ( datalen % 2 )
+    char data[datalen+1];
+  else
+    char data[datalen];
+} strnHEADER;
+
+//
+typedef struct 
+{
+  char id[4];
+  uint32  datalen;
+  if ( datalen % 2 )
+    char data[datalen+1];
+  else
+    char data[datalen];
+} genericblock;
+
+
+
+typedef struct 
+{
+  char id[4];
+  uint32 datalen;
+  char type[4] = { "hdrl", "strl", "movi" };
+
+  if (!Memcmp(type,"hdrl",4))
+  {
+    avihHEADER avhi;
+  }
+  else if (!Memcmp(type,"strl",4))
+  {
+    strhHEADER strh;
+
+    // Printf("->%c%c%c%c\n", strh.data.fccHandler[0], strh.data.fccHandler[1],strh.data.fccHandler[2],strh.data.fccHandler[3]);
+    if (Memcmp(strh.data.fccType, "vids", 4) == 0)
+    {
+      strfHEADER_BIH strf;
+    }
+    else if (Memcmp(strh.data.fccType, "auds", 4) == 0)
+    {
+      strfHEADER_WAVE strf;
+    }
+    else
+    {
+      strfHEADER strf;
+    }
+    strnHEADER strn;
+  }
+  else if (Memcmp(type,"movi",4) == 0)
+  {
+    local int32 pointer = 0;
+    local int32 stop = datalen - 4;
+    
+    //Printf("stop=%d\n", stop);
+
+    do
+    {
+      genericblock gb;
+      pointer += sizeof(gb);
+      //Printf("+%x = %d\n", gb.datalen, pointer);
+    } while (pointer != stop);
+  }
+  else
+  {
+    char data[datalen-4];
+  }
+} LISTHEADER;
+
+
+// junk structure info
+typedef struct 
+{
+  char id[4];
+  uint32  datalen;
+  if ( datalen % 2 )
+    char data[datalen+1];
+  else
+    char data[datalen];
+} JUNKHEADER;
+
+
+// aviindex structure info
+typedef struct 
+{
+    DWORD  ckid;
+    DWORD  dwFlags;
+    DWORD  dwChunkOffset;
+    DWORD  dwChunkLength;
+} AVIINDEXENTRY;
+
+const DWORD AVIINDEXENTRYLEN = 16;
+
+typedef struct 
+{
+  char id[4];
+  uint32  datalen;
+  AVIINDEXENTRY data[datalen/AVIINDEXENTRYLEN];
+} idx1HEADER;
+
+// root structure info
+typedef struct xroot 
+{
+  char id[4]; // RIFF
+  if (root.id[3] == 'X')
+  {
+    Printf("Motorola format\n");
+    BigEndian();
+  }
+  else
+  {
+    Printf("Intel format\n");
+    LittleEndian();
+  }
+
+  uint32  datalen;
+  char form[4] = { "AVI " };
+
+  if (Strcmp(form, "AVI "))
+  {
+    Warning("Not a valid AVI file");
+    return -1;
+  }
+} ROOT <bgcolor=cLtGray>;
+
+local char nheader[4];
+
+ROOT root;
+
+local string nheader_values[] = { "LIST", "JUNK", "idx1" };
+while (!FEof())
+{
+  ReadBytes(nheader,FTell(), 4, nheader_values);
+
+  if (Memcmp(nheader,"LIST",4) == 0)
+  {
+    LISTHEADER list;
+  }
+  else if (Memcmp(nheader, "JUNK",4) == 0)
+  {
+    JUNKHEADER junk;
+  }
+  else if (Memcmp(nheader, "idx1",4) == 0)
+  {
+    idx1HEADER idx1;
+  }
+  else
+  {
+    if (!FEof())
+      Printf("unknown chunk: %c%c%c%c", nheader[0],nheader[1],nheader[2],nheader[3]);
+    return -1;
+  }
+}

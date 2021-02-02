@@ -39,6 +39,10 @@ _site/
 
 # Garbage
 .DS_Store
+r0
+r1
+f0
+f1
 
 # Own files
 *.code-workspace

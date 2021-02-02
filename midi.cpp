@@ -950,7 +950,9 @@ public:
 	}
 
 	/* locals */
-	char status;
+	std::string status;
+	std::vector<std::string> preferred_status;
+	std::vector<std::string> possible_status;
 	char m_channel;
 
 	unsigned char generated = 0;
@@ -969,7 +971,7 @@ public:
 				delete instance;
 		}
 	}
-	MidiMessage* generate();
+	MidiMessage* generate(uint& message_index);
 };
 
 
@@ -1000,8 +1002,11 @@ public:
 	}
 
 	/* locals */
+	uint m_seclen_pos;
 	uint real_seclen;
+	uint message_index;
 	uint message_start;
+	uint message_end_pos;
 	uint evil_state;
 
 	unsigned char generated = 0;
@@ -1122,13 +1127,12 @@ std::vector<file_struct*> file_struct_file_instances;
 
 std::unordered_map<std::string, std::string> variable_types = { { "m_magic", "char_array_class" }, { "m_seclen", "uint_class" }, { "m_format", "m_format_enum" }, { "m_ntracks", "short_class" }, { "m_tickdiv", "short_class" }, { "header", "MidiHeader" }, { "t0", "char_class" }, { "t1", "char_class" }, { "t2", "char_class" }, { "t3", "char_class" }, { "m_dtime", "DeltaTime" }, { "m_status", "char_class" }, { "m_note", "char_class" }, { "m_velocity", "char_class" }, { "note_off_event", "MidiMessage_note_off_event_struct" }, { "note_on_event", "MidiMessage_note_on_event_struct" }, { "m_pressure", "char_class" }, { "note_pressure_event", "MidiMessage_note_pressure_event_struct" }, { "m_controller", "char_class" }, { "m_value", "char_class" }, { "controller_event", "MidiMessage_controller_event_struct" }, { "m_program", "char_class" }, { "program_event", "MidiMessage_program_event_struct" }, { "channel_pressure_event", "MidiMessage_channel_pressure_event_struct" }, { "m_lsb", "char_class" }, { "m_msb", "char_class" }, { "pitch_bend_event", "MidiMessage_pitch_bend_event_struct" }, { "m_type", "m_type_enum" }, { "m_length", "DeltaTime" }, { "m_seqNum", "short_class" }, { "m_text", "char_array_class" }, { "m_copyright", "char_array_class" }, { "m_name", "char_array_class" }, { "m_lyric", "char_array_class" }, { "m_marker", "char_array_class" }, { "m_cuePoint", "char_array_class" }, { "m_programName", "char_array_class" }, { "m_deviceName", "char_array_class" }, { "m_channelPrefix", "char_class" }, { "m_port", "char_class" }, { "m_usecPerQuarterNote", "uchar_array_class" }, { "m_hours", "char_class" }, { "m_mins", "char_class" }, { "m_secs", "char_class" }, { "m_fps", "char_class" }, { "m_fracFrames", "char_class" }, { "m_numerator", "char_class" }, { "m_denominator", "char_class" }, { "m_clocksPerClick", "char_class" }, { "m_32ndPer4th", "char_class" }, { "m_flatsSharps", "char_class" }, { "m_majorMinor", "char_class" }, { "m_data", "char_array_class" }, { "meta_event", "MidiMessage_meta_event_struct" }, { "m_message", "char_array_class" }, { "sysex_event", "MidiMessage_sysex_event_struct" }, { "message", "MidiMessage" }, { "tracks", "MidiTrack_array_class" }, { "file", "file_struct" } };
 
-std::vector<std::vector<int>> integer_ranges = { { 1, 16 } };
+std::vector<std::vector<int>> integer_ranges = { { 1, 16 }, { 0, 16 }, { 0, 127 } };
 
 class globals_class {
 public:
-	/*local*/ uint track_index;
-	/*local*/ uint message_index;
 	/*local*/ char lastStatus;
+	/*local*/ uint track_index;
 	char_class m_magic_element;
 	char_array_class m_magic;
 	uint_class m_seclen;
@@ -1205,10 +1209,10 @@ public:
 		m_magic_element(false),
 		m_magic(m_magic_element),
 		m_seclen(1),
-		m_ntracks(2),
+		m_ntracks(3),
 		m_tickdiv(1),
 		header(MidiHeader_header_instances),
-		t0(2),
+		t0(4),
 		t1(1),
 		t2(1),
 		t3(1),
@@ -1581,23 +1585,28 @@ MidiMessage_sysex_event_struct* MidiMessage_sysex_event_struct::generate() {
 }
 
 
-MidiMessage* MidiMessage::generate() {
+MidiMessage* MidiMessage::generate(uint& message_index) {
+do {
 	if (generated == 1) {
 		MidiMessage* new_instance = new MidiMessage(instances);
 		new_instance->generated = 2;
-		return new_instance->generate();
+		return new_instance->generate(message_index);
 	}
 	if (!generated)
 		generated = 1;
 	_startof = FTell();
 
 	GENERATE_VAR(m_dtime, ::g->m_dtime.generate());
-	status = ReadByte(FTell());
-	if ((status & 0x80)) {
+	preferred_status = {  };
+	possible_status = { "\x8F", "\x90", "\xA0", "\xB0", "\xC0", "\xD0", "\xE0", "\xE0", "\xF0" };
+	if (!ReadBytes(status, FTell(), 1, preferred_status, possible_status)) {
+	break;
+	};
+	if ((status[0] & 0x80)) {
 		GENERATE_VAR(m_status, ::g->m_status.generate());
 		::g->lastStatus = m_status();
 	};
-	Printf("\t---MIDI Message (%d,%d)---\n\t\tStatus: 0x%x\n\t\tLast Status: 0x%x\n", ::g->track_index, ::g->message_index, m_status(), ::g->lastStatus);
+	Printf("\t---MIDI Message (%d,%d)---\n\t\tStatus: 0x%x\n\t\tLast Status: 0x%x\n", ::g->track_index, message_index, ::g->lastStatus, ::g->lastStatus);
 	m_channel = (::g->lastStatus & 0xf);
 	if (((::g->lastStatus & 0xf0) == 0x80)) {
 		Printf("\t\tnote_off_event\n");
@@ -1650,6 +1659,7 @@ MidiMessage* MidiMessage::generate() {
 	};
 	};
 	};
+} while (false);
 
 	_sizeof = FTell() - _startof;
 	return this;
@@ -1667,20 +1677,23 @@ MidiTrack* MidiTrack::generate() {
 	_startof = FTell();
 
 	GENERATE_VAR(m_magic, ::g->m_magic.generate(4, { "MTrk" }));
+	m_seclen_pos = FTell();
 	GENERATE_VAR(m_seclen, ::g->m_seclen.generate());
 	Printf("---MIDI Track (%d)---\n\tMagic: %s\n\tSection length: %d\n", ::g->track_index, std::string(m_magic()).c_str(), m_seclen());
 	real_seclen = 0;
+	message_index = 0;
 	while ((real_seclen < m_seclen())) {
 		message_start = FTell();
-		GENERATE_VAR(message, ::g->message.generate());
+		GENERATE_VAR(message, ::g->message.generate(message_index));
 		real_seclen += (FTell() - message_start);
-		::g->message_index++;
+		message_index++;
 	};
-	FSeek(((FTell() - real_seclen) - 4));
+	message_end_pos = FTell();
+	FSeek(m_seclen_pos);
 	evil_state = SetEvilBit(false);
 	GENERATE_VAR(m_seclen, ::g->m_seclen.generate({ real_seclen }));
 	SetEvilBit(evil_state);
-	FSeek((FTell() + real_seclen));
+	FSeek(message_end_pos);
 	::g->track_index++;
 
 	_sizeof = FTell() - _startof;
@@ -1711,9 +1724,8 @@ void generate_file() {
 	::g = new globals_class();
 
 	BigEndian();
-	::g->track_index = 0;
-	::g->message_index = 0;
 	::g->lastStatus = 0;
+	::g->track_index = 0;
 	GENERATE(file, ::g->file.generate());
 
 	file_acc.finish();
