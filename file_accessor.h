@@ -544,16 +544,15 @@ public:
 		} else {
 			int min = integer_ranges[small-2][0];
 			int max = integer_ranges[small-2][1];
-			std::function<long long (unsigned char*)> choice_parse;
 			if (!generate)
-				choice_parse = [&size, &bits, &min, &max, this](unsigned char* file_buf) -> long long {
+				evil_parse = [&size, &bits, &min, &max, this](unsigned char* file_buf) -> bool {
 					long long value = parse_integer(file_buf, size, bits);
 					if (value >= min && value <= max)
-						return 0;
-					return 255;
+						return false;
+					return true;
 				};
-			int s = rand_int(256, choice_parse);
-			if (s == 255) {
+
+			if (evil(evil_parse)) {
 				if (!generate)
 					parse = [&size, &bits, this](unsigned char* file_buf) -> long long {
 						return parse_integer(file_buf, size, bits);
