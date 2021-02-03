@@ -164,14 +164,14 @@ class MidiHeader {
 	std::vector<MidiHeader*>& instances;
 
 	std::string m_magic_var;
-	uint m_seclen_var;
+	uint m_seclen_hdr_var;
 	short m_format_var;
 	short m_ntracks_var;
 	short m_tickdiv_var;
 
 public:
 	bool m_magic_exists = false;
-	bool m_seclen_exists = false;
+	bool m_seclen_hdr_exists = false;
 	bool m_format_exists = false;
 	bool m_ntracks_exists = false;
 	bool m_tickdiv_exists = false;
@@ -180,9 +180,9 @@ public:
 		assert_cond(m_magic_exists, "struct field m_magic does not exist");
 		return m_magic_var;
 	}
-	uint m_seclen() {
-		assert_cond(m_seclen_exists, "struct field m_seclen does not exist");
-		return m_seclen_var;
+	uint m_seclen_hdr() {
+		assert_cond(m_seclen_hdr_exists, "struct field m_seclen_hdr does not exist");
+		return m_seclen_hdr_var;
 	}
 	short m_format() {
 		assert_cond(m_format_exists, "struct field m_format does not exist");
@@ -983,21 +983,21 @@ class MidiTrack {
 	std::vector<MidiTrack*>& instances;
 
 	std::string m_magic_var;
-	uint m_seclen_var;
+	uint m_seclen_trk_var;
 	MidiMessage* message_var;
 
 public:
 	bool m_magic_exists = false;
-	bool m_seclen_exists = false;
+	bool m_seclen_trk_exists = false;
 	bool message_exists = false;
 
 	std::string m_magic() {
 		assert_cond(m_magic_exists, "struct field m_magic does not exist");
 		return m_magic_var;
 	}
-	uint m_seclen() {
-		assert_cond(m_seclen_exists, "struct field m_seclen does not exist");
-		return m_seclen_var;
+	uint m_seclen_trk() {
+		assert_cond(m_seclen_trk_exists, "struct field m_seclen_trk does not exist");
+		return m_seclen_trk_var;
 	}
 	MidiMessage& message() {
 		assert_cond(message_exists, "struct field message does not exist");
@@ -1005,8 +1005,8 @@ public:
 	}
 
 	/* locals */
-	uint m_seclen_pos;
 	uint evil_state;
+	uint m_seclen_pos;
 	uint real_seclen;
 	uint message_index;
 	uint message_start;
@@ -1128,9 +1128,9 @@ std::vector<MidiTrack*> MidiTrack_tracks_element_instances;
 std::vector<file_struct*> file_struct_file_instances;
 
 
-std::unordered_map<std::string, std::string> variable_types = { { "m_magic", "char_array_class" }, { "m_seclen", "uint_class" }, { "m_format", "m_format_enum" }, { "m_ntracks", "short_class" }, { "m_tickdiv", "short_class" }, { "header", "MidiHeader" }, { "t0", "char_class" }, { "t1", "char_class" }, { "t2", "char_class" }, { "t3", "char_class" }, { "m_dtime", "DeltaTime" }, { "m_status", "char_class" }, { "m_note", "char_class" }, { "m_velocity", "char_class" }, { "note_off_event", "MidiMessage_note_off_event_struct" }, { "note_on_event", "MidiMessage_note_on_event_struct" }, { "m_pressure", "char_class" }, { "note_pressure_event", "MidiMessage_note_pressure_event_struct" }, { "m_controller", "char_class" }, { "m_value", "char_class" }, { "controller_event", "MidiMessage_controller_event_struct" }, { "m_program", "char_class" }, { "program_event", "MidiMessage_program_event_struct" }, { "channel_pressure_event", "MidiMessage_channel_pressure_event_struct" }, { "m_lsb", "char_class" }, { "m_msb", "char_class" }, { "pitch_bend_event", "MidiMessage_pitch_bend_event_struct" }, { "m_type", "m_type_enum" }, { "m_length", "DeltaTime" }, { "m_seqNum", "short_class" }, { "m_text", "char_array_class" }, { "m_copyright", "char_array_class" }, { "m_name", "char_array_class" }, { "m_lyric", "char_array_class" }, { "m_marker", "char_array_class" }, { "m_cuePoint", "char_array_class" }, { "m_programName", "char_array_class" }, { "m_deviceName", "char_array_class" }, { "m_channelPrefix", "char_class" }, { "m_port", "char_class" }, { "m_usecPerQuarterNote", "uchar_array_class" }, { "m_hours", "char_class" }, { "m_mins", "char_class" }, { "m_secs", "char_class" }, { "m_fps", "char_class" }, { "m_fracFrames", "char_class" }, { "m_numerator", "char_class" }, { "m_denominator", "char_class" }, { "m_clocksPerClick", "char_class" }, { "m_32ndPer4th", "char_class" }, { "m_flatsSharps", "char_class" }, { "m_majorMinor", "char_class" }, { "m_data", "char_array_class" }, { "meta_event", "MidiMessage_meta_event_struct" }, { "m_message", "char_array_class" }, { "sysex_event", "MidiMessage_sysex_event_struct" }, { "message", "MidiMessage" }, { "tracks", "MidiTrack_array_class" }, { "file", "file_struct" } };
+std::unordered_map<std::string, std::string> variable_types = { { "m_magic", "char_array_class" }, { "m_seclen_hdr", "uint_class" }, { "m_format", "m_format_enum" }, { "m_ntracks", "short_class" }, { "m_tickdiv", "short_class" }, { "header", "MidiHeader" }, { "m_seclen_trk", "uint_class" }, { "t0", "char_class" }, { "t1", "char_class" }, { "t2", "char_class" }, { "t3", "char_class" }, { "m_dtime", "DeltaTime" }, { "m_status", "char_class" }, { "m_note", "char_class" }, { "m_velocity", "char_class" }, { "note_off_event", "MidiMessage_note_off_event_struct" }, { "note_on_event", "MidiMessage_note_on_event_struct" }, { "m_pressure", "char_class" }, { "note_pressure_event", "MidiMessage_note_pressure_event_struct" }, { "m_controller", "char_class" }, { "m_value", "char_class" }, { "controller_event", "MidiMessage_controller_event_struct" }, { "m_program", "char_class" }, { "program_event", "MidiMessage_program_event_struct" }, { "channel_pressure_event", "MidiMessage_channel_pressure_event_struct" }, { "m_lsb", "char_class" }, { "m_msb", "char_class" }, { "pitch_bend_event", "MidiMessage_pitch_bend_event_struct" }, { "m_type", "m_type_enum" }, { "m_length", "DeltaTime" }, { "m_seqNum", "short_class" }, { "m_text", "char_array_class" }, { "m_copyright", "char_array_class" }, { "m_name", "char_array_class" }, { "m_lyric", "char_array_class" }, { "m_marker", "char_array_class" }, { "m_cuePoint", "char_array_class" }, { "m_programName", "char_array_class" }, { "m_deviceName", "char_array_class" }, { "m_channelPrefix", "char_class" }, { "m_port", "char_class" }, { "m_usecPerQuarterNote", "uchar_array_class" }, { "m_hours", "char_class" }, { "m_mins", "char_class" }, { "m_secs", "char_class" }, { "m_fps", "char_class" }, { "m_fracFrames", "char_class" }, { "m_numerator", "char_class" }, { "m_denominator", "char_class" }, { "m_clocksPerClick", "char_class" }, { "m_32ndPer4th", "char_class" }, { "m_flatsSharps", "char_class" }, { "m_majorMinor", "char_class" }, { "m_data", "char_array_class" }, { "meta_event", "MidiMessage_meta_event_struct" }, { "m_message", "char_array_class" }, { "sysex_event", "MidiMessage_sysex_event_struct" }, { "message", "MidiMessage" }, { "tracks", "MidiTrack_array_class" }, { "file", "file_struct" } };
 
-std::vector<std::vector<int>> integer_ranges = { { 1, 16 }, { 0, 8 }, { 0, 127 } };
+std::vector<std::vector<int>> integer_ranges = { { 1, 16 }, { 0, 8 }, { 0, 128 }, { 0, 127 } };
 
 class globals_class {
 public:
@@ -1138,10 +1138,11 @@ public:
 	/*local*/ uint track_index;
 	char_class m_magic_element;
 	char_array_class m_magic;
-	uint_class m_seclen;
+	uint_class m_seclen_hdr;
 	short_class m_ntracks;
 	short_class m_tickdiv;
 	MidiHeader header;
+	uint_class m_seclen_trk;
 	char_class t0;
 	char_class t1;
 	char_class t2;
@@ -1211,11 +1212,12 @@ public:
 	globals_class() :
 		m_magic_element(false),
 		m_magic(m_magic_element),
-		m_seclen(1),
+		m_seclen_hdr(1),
 		m_ntracks(3),
 		m_tickdiv(1),
 		header(MidiHeader_header_instances),
-		t0(4),
+		m_seclen_trk(4),
+		t0(5),
 		t1(1),
 		t2(1),
 		t3(1),
@@ -1295,14 +1297,14 @@ MidiHeader* MidiHeader::generate() {
 		generated = 1;
 	_startof = FTell();
 
-	GENERATE_VAR(m_magic, ::g->m_magic.generate(4, { "MThd" }));
-	GENERATE_VAR(m_seclen, ::g->m_seclen.generate({ 6 }));
-	GENERATE_VAR(m_format, m_format_enum_generate());
 	evil_state = SetEvilBit(false);
-	GENERATE_VAR(m_ntracks, ::g->m_ntracks.generate());
+	GENERATE_VAR(m_magic, ::g->m_magic.generate(4, { "MThd" }));
 	SetEvilBit(evil_state);
+	GENERATE_VAR(m_seclen_hdr, ::g->m_seclen_hdr.generate({ 6 }));
+	GENERATE_VAR(m_format, m_format_enum_generate());
+	GENERATE_VAR(m_ntracks, ::g->m_ntracks.generate());
 	GENERATE_VAR(m_tickdiv, ::g->m_tickdiv.generate());
-	Printf("---MIDI header---\n\tMagic: %s\n\tSection length: %d\n\tTracks: %d\n\tTick div: %d\n", std::string(m_magic()).c_str(), m_seclen(), m_ntracks(), m_tickdiv());
+	Printf("---MIDI header---\n\tMagic: %s\n\tSection length: %d\n\tTracks: %d\n\tTick div: %d\n", std::string(m_magic()).c_str(), m_seclen_hdr(), m_ntracks(), m_tickdiv());
 
 	_sizeof = FTell() - _startof;
 	return this;
@@ -1602,7 +1604,7 @@ MidiMessage* MidiMessage::generate(uint& message_index) {
 
 	GENERATE_VAR(m_dtime, ::g->m_dtime.generate());
 	preferred_status = {  };
-	possible_status = { "\x8F", "\x90", "\xA0", "\xB0", "\xC0", "\xD0", "\xE0", "\xE0", "\xF0" };
+	possible_status = { "\x8F", "\x90", "\xA0", "\xB0", "\xC0", "\xD0", "\xE0", "\xE0", "\xF0", "\xFF" };
 	if ((ReadBytes(status, FTell(), 1, preferred_status, possible_status) && (status[0] & 0x80))) {
 		GENERATE_VAR(m_status, ::g->m_status.generate());
 		::g->lastStatus = m_status();
@@ -1676,15 +1678,16 @@ MidiTrack* MidiTrack::generate() {
 		generated = 1;
 	_startof = FTell();
 
-	GENERATE_VAR(m_magic, ::g->m_magic.generate(4, { "MTrk" }));
-	m_seclen_pos = FTell();
 	evil_state = SetEvilBit(false);
-	GENERATE_VAR(m_seclen, ::g->m_seclen.generate());
+	GENERATE_VAR(m_magic, ::g->m_magic.generate(4, { "MTrk" }));
 	SetEvilBit(evil_state);
-	Printf("---MIDI Track (%d)---\n\tMagic: %s\n\tSection length: %d\n", ::g->track_index, std::string(m_magic()).c_str(), m_seclen());
+	m_seclen_pos = FTell();
+	GENERATE_VAR(m_seclen_trk, ::g->m_seclen_trk.generate());
+	Printf("m_seclen_trk VALUE %d\n", m_seclen_trk());
+	Printf("---MIDI Track (%d)---\n\tMagic: %s\n\tSection length: %d\n", ::g->track_index, std::string(m_magic()).c_str(), m_seclen_trk());
 	real_seclen = 0;
 	message_index = 0;
-	while ((real_seclen < m_seclen())) {
+	while ((real_seclen < m_seclen_trk())) {
 		message_start = FTell();
 		GENERATE_VAR(message, ::g->message.generate(message_index));
 		real_seclen += (FTell() - message_start);
@@ -1693,7 +1696,8 @@ MidiTrack* MidiTrack::generate() {
 	message_end_pos = FTell();
 	FSeek(m_seclen_pos);
 	evil_state = SetEvilBit(false);
-	GENERATE_VAR(m_seclen, ::g->m_seclen.generate({ real_seclen }));
+	GENERATE_VAR(m_seclen_trk, ::g->m_seclen_trk.generate({ real_seclen }));
+	Printf("m_seclen_trk FIXED %d\n", m_seclen_trk());
 	SetEvilBit(evil_state);
 	FSeek(message_end_pos);
 	::g->track_index++;
