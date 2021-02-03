@@ -27,7 +27,11 @@ struct MidiHeader
         MIDI_MULTIPLE = 1,
         MIDI_PATTERN = 2
     } m_format;
-    short m_ntracks<min = 0, max = 16>;
+
+    local uint evil_state = SetEvilBit(false);
+    short m_ntracks<min = 0, max = 8>;// 16>;
+    SetEvilBit(evil_state);
+
     short m_tickdiv;
     Printf("---MIDI header---\n\tMagic: %s\n\tSection length: %d"
         "\n\tTracks: %d\n\tTick div: %d\n", m_magic, m_seclen, m_ntracks, m_tickdiv);
@@ -65,17 +69,16 @@ local char lastStatus = 0;
 struct MidiMessage
 {
     DeltaTime m_dtime;
-    //char m_status;// = {  };
 
     local char status[1];
     local string preferred_status[0];
     local string possible_status[] = { "\x8F", "\x90", "\xA0", "\xB0", "\xC0", "\xD0", "\xE0", "\xE0", "\xF0" };
-    if (!ReadBytes(status, FTell(), 1, preferred_status, possible_status)) break;
-    if (status[0] & 0x80) {
+    
+    if (ReadBytes(status, FTell(), 1, preferred_status, possible_status) && status[0] & 0x80) {
         char m_status;
         lastStatus = m_status;
     }
-    
+
     Printf("\t---MIDI Message (%d,%d)---\n\t\tStatus: 0x%x\n\t\tLast Status: 0x%x\n", track_index, message_index, lastStatus, lastStatus);
 
     local char m_channel = lastStatus & 0xf;
@@ -278,7 +281,10 @@ struct MidiTrack
 {
     char m_magic[4] = { "MTrk" };
     local uint m_seclen_pos = FTell();
-    uint m_seclen<min = 0, max = 256>;
+
+    local uint evil_state = SetEvilBit(false);
+    uint m_seclen<min = 0, max = 128>;//256>;
+    SetEvilBit(evil_state);
 
     Printf("---MIDI Track (%d)---\n\tMagic: %s\n\tSection length: %d\n", track_index, m_magic, m_seclen);
 
@@ -286,7 +292,6 @@ struct MidiTrack
     local uint message_index = 0;
     while (real_seclen < m_seclen) {
         local uint message_start = FTell();
-        //ReadBytes()
         MidiMessage message;
         real_seclen += FTell() - message_start;
         message_index++;
