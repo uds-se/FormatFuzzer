@@ -38,7 +38,7 @@ typedef struct {
             return 1;
         }
         uint16 version_major = {2};  /* major version number */
-        uint16 version_minor = {4};  /* minor version number */
+        uint16 version_minor = {2, 4};  /* minor version number */
         int32  thiszone;       /* GMT to local correction */
         uint32 sigfigs;        /* accuracy of timestamps */
         uint32 snaplen<min=256, max=1024>;// = {262144};        /* max length of captured packets, in octets */

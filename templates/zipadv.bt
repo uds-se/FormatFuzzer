@@ -515,9 +515,11 @@ typedef struct {
 		local uint frDataStart = FTell();
 		uchar    frData[ frCompressedSize ];
 
+		local uint frDataEnd = FTell();
 		FSeek(frCrcStart);
 		uint frCrc = { Checksum(CHECKSUM_CRC32, frDataStart, frCompressedSize) };
-		FSeek(frDataStart + frCompressedSize);
+		FSeek(frDataEnd);
+		//FSeek(frDataStart + frCompressedSize);
     }
     else if (frCompressedSize == 0 && (frFlags & FLAG_DescriptorUsedMask))
     {

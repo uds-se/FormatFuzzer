@@ -953,9 +953,7 @@ public:
 	}
 
 	/* locals */
-	std::string status;
-	std::vector<std::string> preferred_status;
-	std::vector<std::string> possible_status;
+	char status;
 	char m_channel;
 
 	unsigned char generated = 0;
@@ -1603,10 +1601,9 @@ MidiMessage* MidiMessage::generate(uint& message_index) {
 	_startof = FTell();
 
 	GENERATE_VAR(m_dtime, ::g->m_dtime.generate());
-	preferred_status = {  };
-	possible_status = { "\x8F", "\x90", "\xA0", "\xB0", "\xC0", "\xD0", "\xE0", "\xE0", "\xF0", "\xFF" };
-	if ((ReadBytes(status, FTell(), 1, preferred_status, possible_status) && (status[0] & 0x80))) {
-		GENERATE_VAR(m_status, ::g->m_status.generate());
+	status = ReadByte(FTell());
+	if ((status & 0x80)) {
+		GENERATE_VAR(m_status, ::g->m_status.generate({ status }));
 		::g->lastStatus = m_status();
 	};
 	Printf("\t---MIDI Message (%d,%d)---\n\t\tStatus: 0x%x\n\t\tLast Status: 0x%x\n", ::g->track_index, message_index, ::g->lastStatus, ::g->lastStatus);
@@ -1683,7 +1680,6 @@ MidiTrack* MidiTrack::generate() {
 	SetEvilBit(evil_state);
 	m_seclen_pos = FTell();
 	GENERATE_VAR(m_seclen_trk, ::g->m_seclen_trk.generate());
-	Printf("m_seclen_trk VALUE %d\n", m_seclen_trk());
 	Printf("---MIDI Track (%d)---\n\tMagic: %s\n\tSection length: %d\n", ::g->track_index, std::string(m_magic()).c_str(), m_seclen_trk());
 	real_seclen = 0;
 	message_index = 0;
@@ -1697,7 +1693,6 @@ MidiTrack* MidiTrack::generate() {
 	FSeek(m_seclen_pos);
 	evil_state = SetEvilBit(false);
 	GENERATE_VAR(m_seclen_trk, ::g->m_seclen_trk.generate({ real_seclen }));
-	Printf("m_seclen_trk FIXED %d\n", m_seclen_trk());
 	SetEvilBit(evil_state);
 	FSeek(message_end_pos);
 	::g->track_index++;
@@ -1730,7 +1725,7 @@ void generate_file() {
 	::g = new globals_class();
 
 	BigEndian();
-	::g->lastStatus = 0;
+	::g->lastStatus = -1;
 	::g->track_index = 0;
 	GENERATE(file, ::g->file.generate());
 
