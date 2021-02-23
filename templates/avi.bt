@@ -246,8 +246,19 @@ const DWORD AVIINDEXENTRYLEN = 16;
 typedef struct 
 {
   char id[4];
-  uint32  datalen;
-  AVIINDEXENTRY data[datalen/AVIINDEXENTRYLEN];
+  uint32  datalen<arraylength=true>;
+
+  //local uint avi_index_start = FTell();
+  //AVIINDEXENTRY data[datalen/AVIINDEXENTRYLEN];
+  AVIINDEXENTRY data[datalen];
+  /*local uint avi_index_end = FTell();
+  
+  FSeek(avi_index_start - 4);
+  local uint evil_state = SetEvilBit(false);
+  uint32 datalen = {datalen};
+  SetEvilBit(evil_state);
+  FSeek(avi_index_end);*/
+
 } idx1HEADER;
 
 // root structure info
@@ -266,7 +277,10 @@ typedef struct xroot
   }
 
   uint32  datalen;
+
+  local uint evil_state = SetEvilBit(false);
   char form[4] = { "AVI " };
+  SetEvilBit(evil_state);
 
   if (Strcmp(form, "AVI "))
   {
@@ -280,9 +294,13 @@ local char nheader[4];
 ROOT root;
 
 local string nheader_values[] = { "LIST", "JUNK", "idx1" };
+
 while (!FEof())
 {
+
+  local uint evil_state = SetEvilBit(false);
   ReadBytes(nheader,FTell(), 4, nheader_values);
+  SetEvilBit(evil_state);
 
   if (Memcmp(nheader,"LIST",4) == 0)
   {
