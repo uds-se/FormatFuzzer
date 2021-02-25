@@ -491,11 +491,6 @@ typedef struct
             {
                 mp4box box <name="Box">;
 
-                // Warn about fixed sizes boxes having content size in header set to larger value.
-                if(FTell() != box.endOffset) {
-                    Printf("%s at %d larger then expected. Expected end: %d, Actual: %d\n",
-                                box.hdr.type.value,box.startOffset, FTell(), box.endOffset );
-                }
                 FSeek(box.endOffset);
             }
             break;
