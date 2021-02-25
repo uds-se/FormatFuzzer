@@ -236,7 +236,7 @@ typedef struct {
 	ushort  efDataSize<arraylength=true>;
 
 	local int efDataStart = FTell();
-	//Printf("%d", efHeaderID);
+	Printf("%d", efHeaderID);
 	switch (efHeaderID)
 	{
 	case EH_Zip64:
@@ -249,7 +249,6 @@ typedef struct {
 		byte efVersion;
 		uint efNameCRC32;
 		if(efDataSize > 0 )
-		    //Array Bounds Check
 		    char efUnicodeName[efDataSize - 5];
 		break;
     case EH_NTFS:
@@ -276,7 +275,6 @@ typedef struct {
             ushort  Size = { SizeReal };
             SetEvilBit(evil_state);
             FSeek(SizeEnd);
-            //End Correct Size
     		len -= Size + 4;
         }
         break;
@@ -286,7 +284,6 @@ typedef struct {
         ushort  Bitlen;    //2 bytes  Bit length of encryption key
         PRCFLAG Flags;     //2 bytes  Processing flags
         if (efDataSize > 8)
-            //Array Bounds Check
             byte    CertData[efDataSize - 8];  //TSize-8  Certificate decryption extra field data        
         break;
     case EH_WzAES:
@@ -309,8 +306,6 @@ typedef struct {
 	ushort  efDataSize = { efDataSizeReal };
 	SetEvilBit(evil_state);
 	FSeek(efDataEnd);
-	//End Correct efDataSize
-
 } EXTRAFIELD <read=read_EXTRAFIELD>;
 
 string read_EXTRAFIELD (local EXTRAFIELD &af) 
@@ -322,7 +317,7 @@ typedef struct {
 	HEADERFLAG  efHeaderID;
 	uint  efDataSize<arraylength=true>;
 
-	//Printf("%d", efHeaderID);
+	Printf("%d", efHeaderID);
 	switch (efHeaderID)
 	{
 	case EH_Zip64:
@@ -335,7 +330,6 @@ typedef struct {
 		byte efVersion;
 		uint efNameCRC32;
 		if(efDataSize > 0 )
-            //Array Bounds Check
 		    char efUnicodeName[efDataSize - 5];
 		break;
 	default:
@@ -422,7 +416,6 @@ typedef struct {
 // Defines a file record
 typedef struct {
 	// Header for the file
-
 	local uint offset = FTell();
 
 	SignatureTYPE frSignature;    //0x04034b50
@@ -442,7 +435,6 @@ typedef struct {
 	if( frFileNameLength > 0 )
 		char frFileName[ frFileNameLength ];
 	
-
 	local int len = frExtraFieldLength;
 	local int frExtraFieldStart = FTell();
 	while (len > 0)
@@ -459,8 +451,6 @@ typedef struct {
 	ushort frExtraFieldLength = { frExtraFieldRealLength };
 	SetEvilBit(evil_state);
 	FSeek(frExtraFieldEnd);
-	//End Correct ExtraFieldLength
-
 
 	// Compressed data
 	SetBackColor( cNone );
@@ -514,12 +504,10 @@ typedef struct {
     {
 		local uint frDataStart = FTell();
 		uchar    frData[ frCompressedSize ];
-
 		local uint frDataEnd = FTell();
 		FSeek(frCrcStart);
 		uint frCrc = { Checksum(CHECKSUM_CRC32, frDataStart, frCompressedSize) };
 		FSeek(frDataEnd);
-		//FSeek(frDataStart + frCompressedSize);
     }
     else if (frCompressedSize == 0 && (frFlags & FLAG_DescriptorUsedMask))
     {
@@ -541,8 +529,6 @@ typedef struct {
 
 // Defines an entry in the directory table
 typedef struct {
-	Printf("Dir entry referencing record %d\n", deIndex);
-	Printf("Record %d comp type %d\n", deIndex, record[deIndex].frCompression);
 	SignatureTYPE deSignature;     //0x02014b50
 	VERECORD deVersionMadeBy;
 	VERECORD deVersionToExtract;
@@ -567,14 +553,12 @@ typedef struct {
 	ushort   deDiskNumberStart = { 0 };
 	ushort   deInternalAttributes;
 	//TODO: Remove the static value
-	FILEATTRIBUTE deExternalAttributes;// = { 0x81A40000 };
+	FILEATTRIBUTE deExternalAttributes;
 
 	uint     deHeaderOffset = { record[deIndex].offset };
 
 	if( deFileNameLength > 0 )
 		char     deFileName[ deFileNameLength ] = { record[deIndex].frFileName };
-
-
 	local int len = deExtraFieldLength;
 	local int deExtraFieldStart = FTell();
 	while (len > 0)
@@ -591,8 +575,6 @@ typedef struct {
 	ushort deExtraFieldLength = { deExtraFieldRealLength };
 	SetEvilBit(evil_state);
 	FSeek(deExtraFieldEnd);
-	//End Correct ExtraFieldLength
-
 
 	if( deFileCommentLength > 0 )
 		uchar    deFileComment[ deFileCommentLength ];
@@ -686,16 +668,21 @@ string ReadZIPDIRENTRY( ZIPDIRENTRY &entry )
 //  the name of the file - note that the file
 //  name size cannot be increased
 
-void WriteZIPFILERECORD( ZIPFILERECORD &file, string s ) {
-    local int len = Strlen(s);
-    if (exists(file.frFileName)) {
-        Strncpy(file.frFileName, s, file.frFileNameLength);
-        if (len < file.frFileNameLength)
-            file.frFileName[len] = 0; //null terminate
-    }
+void WriteZIPFILERECORD( ZIPFILERECORD &file, string s )
+{
+	local int len = Strlen( s );
+	if( exists( file.frFileName ) )
+	{
+		Strncpy( file.frFileName, s, file.frFileNameLength );
+		if( len < file.frFileNameLength )
+		file.frFileName[len] = 0; //null terminate        
+	}
 }
 
-LittleEndian();
+//--------------------------------------------
+
+// Define the file
+LittleEndian(); 
 
 local char current_tag[4];
 local uint frIndex = 0;

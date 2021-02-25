@@ -972,7 +972,7 @@ public:
 				delete instance;
 		}
 	}
-	MidiMessage* generate(uint& message_index);
+	MidiMessage* generate();
 };
 
 
@@ -1302,7 +1302,6 @@ MidiHeader* MidiHeader::generate() {
 	GENERATE_VAR(m_format, m_format_enum_generate());
 	GENERATE_VAR(m_ntracks, ::g->m_ntracks.generate());
 	GENERATE_VAR(m_tickdiv, ::g->m_tickdiv.generate());
-	Printf("---MIDI header---\n\tMagic: %s\n\tSection length: %d\n\tTracks: %d\n\tTick div: %d\n", std::string(m_magic()).c_str(), m_seclen_hdr(), m_ntracks(), m_tickdiv());
 
 	_sizeof = FTell() - _startof;
 	return this;
@@ -1581,20 +1580,18 @@ MidiMessage_sysex_event_struct* MidiMessage_sysex_event_struct::generate() {
 	_startof = FTell();
 
 	GENERATE_VAR(m_length, ::g->m_length.generate());
-	Printf("\t\tsysex_event m_length: %d\n", m_length().total);
 	GENERATE_VAR(m_message, ::g->m_message.generate(m_length().total));
-	Printf("\t\tMessage: %s\n", std::string(m_message()).c_str());
 
 	_sizeof = FTell() - _startof;
 	return this;
 }
 
 
-MidiMessage* MidiMessage::generate(uint& message_index) {
+MidiMessage* MidiMessage::generate() {
 	if (generated == 1) {
 		MidiMessage* new_instance = new MidiMessage(instances);
 		new_instance->generated = 2;
-		return new_instance->generate(message_index);
+		return new_instance->generate();
 	}
 	if (!generated)
 		generated = 1;
@@ -1606,47 +1603,30 @@ MidiMessage* MidiMessage::generate(uint& message_index) {
 		GENERATE_VAR(m_status, ::g->m_status.generate({ status }));
 		::g->lastStatus = m_status();
 	};
-	Printf("\t---MIDI Message (%d,%d)---\n\t\tStatus: 0x%x\n\t\tLast Status: 0x%x\n", ::g->track_index, message_index, ::g->lastStatus, ::g->lastStatus);
 	m_channel = (::g->lastStatus & 0xf);
 	if (((::g->lastStatus & 0xf0) == 0x80)) {
-		Printf("\t\tnote_off_event\n");
 		GENERATE_VAR(note_off_event, ::g->note_off_event.generate());
-		Printf("\t\tNote: %c\n\t\tVelocity: %c\n", note_off_event().m_note(), note_off_event().m_velocity());
 	} else {
 	if (((::g->lastStatus & 0xf0) == 0x90)) {
-		Printf("\t\tnote_on_event\n");
 		GENERATE_VAR(note_on_event, ::g->note_on_event.generate());
-		Printf("\t\tNote: %c\n\t\tVelocity: %c\n", note_on_event().m_note(), note_on_event().m_velocity());
 	} else {
 	if (((::g->lastStatus & 0xf0) == 0xA0)) {
-		Printf("\t\tnote_pressure_event\n");
 		GENERATE_VAR(note_pressure_event, ::g->note_pressure_event.generate());
-		Printf("\t\tNote: %c\n\t\tPressure: %c\n", note_pressure_event().m_note(), note_pressure_event().m_pressure());
 	} else {
 	if (((::g->lastStatus & 0xf0) == 0xB0)) {
-		Printf("\t\tcontroller_event\n");
 		GENERATE_VAR(controller_event, ::g->controller_event.generate());
-		Printf("\t\tController: %c\n\t\tValue: %c\n", controller_event().m_controller(), controller_event().m_value());
 	} else {
 	if (((::g->lastStatus & 0xf0) == 0xC0)) {
-		Printf("\t\tprogram_event\n");
 		GENERATE_VAR(program_event, ::g->program_event.generate());
-		Printf("\t\tProgram: %c\n", program_event().m_program());
 	} else {
 	if (((::g->lastStatus & 0xf0) == 0xD0)) {
-		Printf("\t\tchannel_pressure_event\n");
 		GENERATE_VAR(channel_pressure_event, ::g->channel_pressure_event.generate());
-		Printf("\t\tPressure: %c\n", channel_pressure_event().m_pressure());
 	} else {
 	if (((::g->lastStatus & 0xf0) == 0xE0)) {
-		Printf("\t\tpitch_bend_event\n");
 		GENERATE_VAR(pitch_bend_event, ::g->pitch_bend_event.generate());
-		Printf("\t\tLSB: %c\n\t\tMSB: %c\n", pitch_bend_event().m_lsb(), pitch_bend_event().m_msb());
 	} else {
 	if ((::g->lastStatus == -1)) {
-		Printf("\t\tmeta_event\n");
 		GENERATE_VAR(meta_event, ::g->meta_event.generate());
-		Printf("\t\tType: %c\n", meta_event().m_type());
 	} else {
 	if (((::g->lastStatus & 0xf0) == 0xF0)) {
 		GENERATE_VAR(sysex_event, ::g->sysex_event.generate());
@@ -1680,12 +1660,11 @@ MidiTrack* MidiTrack::generate() {
 	SetEvilBit(evil_state);
 	m_seclen_pos = FTell();
 	GENERATE_VAR(m_seclen_trk, ::g->m_seclen_trk.generate());
-	Printf("---MIDI Track (%d)---\n\tMagic: %s\n\tSection length: %d\n", ::g->track_index, std::string(m_magic()).c_str(), m_seclen_trk());
 	real_seclen = 0;
 	message_index = 0;
 	while ((real_seclen < m_seclen_trk())) {
 		message_start = FTell();
-		GENERATE_VAR(message, ::g->message.generate(message_index));
+		GENERATE_VAR(message, ::g->message.generate());
 		real_seclen += (FTell() - message_start);
 		message_index++;
 	};

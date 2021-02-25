@@ -20,12 +20,8 @@
 //  http://wiki.wireshark.org/Development/LibpcapFileFormat
 //------------------------------------------------
 
-
 //https://wiki.wireshark.org/Development/LibpcapFileFormat
 //https://github.com/hokiespurs/velodyne-copter/wiki/PCAP-format
-
-
-//ChangeArrayLength();
 
 typedef struct {
 
@@ -55,11 +51,9 @@ typedef struct
 {
         MACaddr DstMac<name="Destination MAC">;
         MACaddr SrcMac<name="Source MAC">;
-
         local uint evil_state = SetEvilBit(false);
         uint16 L3type = { 0x0800, 0x8100 } <name="Layer 3 Protocol">;
         SetEvilBit(evil_state);
-
 } Layer_2 <size=14>;
 
 typedef struct 
@@ -70,7 +64,6 @@ typedef struct
         local uint evil_state = SetEvilBit(false);
         uint16 L3type = { 0x0800 } <name="Layer 3 Protocol">;
         SetEvilBit(evil_state);
-
 } Dot1q <size=4>;
 
 typedef struct 
@@ -84,10 +77,8 @@ string IPv4addrName(IPv4addr &IP)
     SPrintf(strReturn,"%d.%d.%d.%d",IP.Byte[0],IP.Byte[1],IP.Byte[2],IP.Byte[3]);
     return strReturn;
 }
-
 typedef struct (uint16 proto_type)
 {
-
     local ubyte valid_versions[] = {4};
     local ubyte valid_hdr_lengths[] = {5};
 
@@ -97,7 +88,6 @@ typedef struct (uint16 proto_type)
     BYTE DiffServField;
     
     uint16 total_length<min = 20 + 20, max = 20 + 20 + 64>;
-    Printf("L3 Total Length: %d\n", total_length);
 
     if (proto_type == 0x0800)    // IP
     {
@@ -108,35 +98,33 @@ typedef struct (uint16 proto_type)
         uint16 HdrChecksum;
         IPv4addr SRC_IP<name="Source IP">;
         IPv4addr DST_IP<name="Dest IP">;
-    }
-    else
-    {
+     }
+     else
+     {
         local uint UnknownLength = hdr_length-4;
         BYTE Unknown[UnknownLength];
-    }
+      }
 } Layer_3;
 
-typedef struct (ushort VER_HDR,uint16 total_length,uint L4proto) //L4(L3.ip_hdr_len,L3.total_length,L3.L4proto)
+typedef struct (ushort VER_HDR,uint16 total_length,uint L4proto)
 {    
 
     local uint16 ip_hdr_length = VER_HDR*4;// => 20
 
-    if (L4proto == 0x11) // UDP (AppDataLen = L4.udp_hdr_len-8)
+    if (L4proto == 0x11) // UDP
     {
         uint16 SrcPort<name="Source Port">;
         uint16 DstPort<name="Destination Port">;
         local uint16 dgram_len = total_length - ip_hdr_length;
-        //Printf("L4 UDP DGRAM Length: %d\n", dgram_len);
         uint16 udp_hdr_len = {dgram_len} <name="Datagram Length">;
         uint16 ChkSum<name="Checksum">;
     }
-    else if (L4proto == 0x6) // TCP (AppDataLen = L3.total_length - L3.ip_hdr_len*4 - L4.TCP_BITFIELDS.tcp_hdr_len*4)
+    else if (L4proto == 0x6) // TCP
     {
-
         uint16 SrcPort<name="Source Port">;
         uint16 DstPort<name="Destination Port">;
         uint32 SEQ;
-        uint32 ACK;
+        uint32 ACK; 
 
         struct {
             local ubyte possible_lengths[] = { 5 };
@@ -149,8 +137,7 @@ typedef struct (ushort VER_HDR,uint16 total_length,uint L4proto) //L4(L3.ip_hdr_
     }
     else
     {
-        SetBackColor( cNone );
-        BYTE packet[total_length-ip_hdr_length]<name="Unknown Layer 4 Data">;
+          BYTE packet[total_length-ip_hdr_length]<name="Unknown Layer 4 Data">;
     }
     
 } Layer_4;
@@ -175,10 +162,8 @@ typedef struct (uint32 network) {
         local uint32 len_before_l3;
         time_t ts_sec;         /* timestamp seconds */
         uint32 ts_usec;        /* timestamp microseconds */
-
         uint32 incl_len;       /* number of octets of packet saved in file */
         uint32 orig_len;       /* actual length of packet */
-
         BigEndian();
 
         len_before_l3 = 0;
@@ -193,7 +178,7 @@ typedef struct (uint32 network) {
             }
             else if (L2.L3type == 0x8100) {
                 Dot1q d1q <name="802.1Q Vitual LAN">;
-                len_before_l3 += 4; //len(d1q) = 4
+                len_before_l3 += 4;
                 Layer_3 L3(d1q.L3type) <name="Layer 3">;
             }
             else if (L2.L3type == 0x86dd) {
@@ -205,24 +190,21 @@ typedef struct (uint32 network) {
                 return -1;
             }
         }
-        
         Layer_4 L4(L3.ip_hdr_len,L3.total_length,L3.L4proto)<name="Layer 4">;
 
-        if (L3.L4proto == 0x6) //Application Layer is TCP
+        if (L3.L4proto == 0x6)
         {
             local uint16 AppDataLen = L3.total_length - L3.ip_hdr_len*4 - L4.TCP_BITFIELDS.tcp_hdr_len*4;
             if (AppDataLen > 0)
             {
-                SetBackColor( cNone );
                 BYTE AppData[AppDataLen]<name="TCP Application Data">;
             }
         }
-        else if (L3.L4proto == 0x11) //Application Layer is UDP
+        else if (L3.L4proto == 0x11)
         {
             local uint AppDataLen = L4.udp_hdr_len-8;
             if (AppDataLen > 0)
             {
-                SetBackColor( cNone );
                 BYTE AppData[AppDataLen]<name="UDP Application Data">;
             }
         }
@@ -241,7 +223,6 @@ typedef struct (uint32 network) {
             local uint PaddingLength = incl_len - len_before_l3 - L3.total_length;
             uchar padding[PaddingLength]<name="Layer 2 Padding">;
         }
-
         LittleEndian();
 } PCAPRECORD <read=ReadPCAPRECORD,comment=PCAPcomments>;
 
@@ -282,6 +263,5 @@ PCAPHEADER header;
 
 while( !FEof() )
 {
-    SetBackColor( cLtGreen );
 	PCAPRECORD record(header.network) <name="Frame">;
 }

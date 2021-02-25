@@ -19,11 +19,9 @@ BigEndian();
 
 struct MidiHeader
 {
-
     local uint evil_state = SetEvilBit(false);
     char m_magic[4] = { "MThd" };
     SetEvilBit(evil_state);
-
     uint m_seclen_hdr = { 6 };
     enum <short> 
     {
@@ -31,22 +29,16 @@ struct MidiHeader
         MIDI_MULTIPLE = 1,
         MIDI_PATTERN = 2
     } m_format;
-
     short m_ntracks<min = 0, max = 8>;
-
     short m_tickdiv;
-    Printf("---MIDI header---\n\tMagic: %s\n\tSection length: %d"
-        "\n\tTracks: %d\n\tTick div: %d\n", m_magic, m_seclen_hdr, m_ntracks, m_tickdiv);
 };
 
 struct DeltaTime
 {
     local uint total = 0;
-
     char t0<min = 0, max = 127>;
-
     total += t0 & 0x7f;
-    if (!(t0 & 0x80)) //~= if (t0 < 128)
+    if (!(t0 & 0x80))
         break;
 
     total <<= 7;
@@ -72,98 +64,69 @@ local char lastStatus = -1;
 
 struct MidiMessage
 {
-
     DeltaTime m_dtime;
-
     local char status = ReadByte(FTell());
     if (status & 0x80) {
         char m_status = { status };
         lastStatus = m_status;
     }
-
-    /*local char status[1];
-    local string preferred_status[0];
-    local string possible_status[] = { "\x8F", "\x90", "\xA0", "\xB0", "\xC0", "\xD0", "\xE0", "\xF0", "\xFF" };
-    //if (!ReadBytes(status, FTell(), 1, preferred_status, possible_status)) break;
-    if (ReadBytes(status, FTell(), 1, preferred_status, possible_status) && (status[0] & 0x80)) {
-        char m_status;
-        lastStatus = m_status;
-    }*/
-
-    Printf("\t---MIDI Message (%d,%d)---\n\t\tStatus: 0x%x\n\t\tLast Status: 0x%x\n", track_index, message_index, lastStatus, lastStatus);
-
     local char m_channel = lastStatus & 0xf;
     if ((lastStatus & 0xf0) == 0x80)
     {
-        Printf("\t\tnote_off_event\n");
         struct 
         {
             char m_note;
             char m_velocity;
         } note_off_event;
-        Printf("\t\tNote: %c\n\t\tVelocity: %c\n", note_off_event.m_note, note_off_event.m_velocity);
     }
     else if ((lastStatus & 0xf0) == 0x90) 
     {
-        Printf("\t\tnote_on_event\n");
         struct 
         {
             char m_note;
             char m_velocity;
         } note_on_event;
-        Printf("\t\tNote: %c\n\t\tVelocity: %c\n", note_on_event.m_note, note_on_event.m_velocity);
     }
     else if ((lastStatus & 0xf0) == 0xA0) 
     {
-        Printf("\t\tnote_pressure_event\n");
         struct 
         {
             char m_note;
             char m_pressure;
         } note_pressure_event;
-        Printf("\t\tNote: %c\n\t\tPressure: %c\n", note_pressure_event.m_note, note_pressure_event.m_pressure);
     }
     else if ((lastStatus & 0xf0) == 0xB0) 
     {
-        Printf("\t\tcontroller_event\n");
         struct 
         {
             char m_controller;
             char m_value;
         } controller_event;
-        Printf("\t\tController: %c\n\t\tValue: %c\n", controller_event.m_controller, controller_event.m_value);
     }
     else if ((lastStatus & 0xf0) == 0xC0) 
     {
-        Printf("\t\tprogram_event\n");
         struct 
         {
             char m_program;
         } program_event;
-        Printf("\t\tProgram: %c\n", program_event.m_program);
     }
     else if ((lastStatus & 0xf0) == 0xD0) 
     {
-        Printf("\t\tchannel_pressure_event\n");
         struct 
         {
             char m_pressure;
         } channel_pressure_event;
-        Printf("\t\tPressure: %c\n", channel_pressure_event.m_pressure);
     }
     else if ((lastStatus & 0xf0) == 0xE0) 
     {
-        Printf("\t\tpitch_bend_event\n");
         struct 
         {
             char m_lsb;
             char m_msb;
         } pitch_bend_event;
-        Printf("\t\tLSB: %c\n\t\tMSB: %c\n", pitch_bend_event.m_lsb, pitch_bend_event.m_msb);
     }
     else if (lastStatus == -1) 
     {
-        Printf("\t\tmeta_event\n");
         struct 
         {
             enum <char> 
@@ -268,34 +231,26 @@ struct MidiMessage
                 char m_data[m_length.total];
             }
         } meta_event;
-        Printf("\t\tType: %c\n", meta_event.m_type);
     }
     else if ((lastStatus & 0xf0) == 0xF0) 
     {
         struct 
         {
             DeltaTime m_length;
-            Printf("\t\tsysex_event m_length: %d\n", m_length.total);
             char m_message[m_length.total];
-            Printf("\t\tMessage: %s\n", m_message);
         } sysex_event;
     }
 };
 
-
 local uint track_index = 0;
-
 struct MidiTrack
 {
-
     local uint evil_state = SetEvilBit(false);
     char m_magic[4] = { "MTrk" };
     SetEvilBit(evil_state);
 
     local uint m_seclen_pos = FTell();
     uint m_seclen_trk<min = 0, max = 128>;
-
-    Printf("---MIDI Track (%d)---\n\tMagic: %s\n\tSection length: %d\n", track_index, m_magic, m_seclen_trk);
 
     local uint real_seclen = 0;
     local uint message_index = 0;
@@ -306,7 +261,6 @@ struct MidiTrack
         real_seclen += FTell() - message_start;
         message_index++;
     }
-
     local uint message_end_pos = FTell();
 
     FSeek(m_seclen_pos);

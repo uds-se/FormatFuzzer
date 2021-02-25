@@ -33,8 +33,8 @@ struct qtopcolor;
 struct elst_entry;
 struct tkhd_flags;
 struct vmhd_flags;
- 
-//enum declaration 
+
+// QuickTime language codes from https://developer.apple.com/library/content/documentation/QuickTime/QTFF/QTFFChap4/qtff4.html#//apple_ref/doc/uid/TP40000939-CH206-34353
 enum qtlang
 {
     qtlEnglish            = 0,
@@ -147,6 +147,8 @@ enum qtlang
     qtlJavaneseRom        = 138,
     qtlUnspecified        = 32767
 };
+
+// QuickTime graphics modes from https://developer.apple.com/library/content/documentation/QuickTime/QTFF/QTFFChap4/qtff4.html#//apple_ref/doc/uid/TP40000939-CH206-18741
 enum <uint16> qtgfxmode
 {
     qtgCopy               = 0x000,
@@ -160,25 +162,137 @@ enum <uint16> qtgfxmode
     qtgComposition        = 0x103
 };
 
-//function declaration
 uint64 ContentSize(boxheader& bh)
 {
     return (exists(bh.size64) ? bh.size64 : bh.size) - sizeof(bh);
 }
+
 uint64 BoxSize(boxheader& bh)
 {
     return (exists(bh.size64) ? bh.size64 : bh.size);
 }
+
+string ReadFP16(fp16& f)
+{
+    local string buf;
+    SPrintf(buf, "%lf", (double)f.value / (double)0x100);
+    return buf;
+}
+
 string ReadFP32(fp32& f)
 {
     local string buf;
     SPrintf(buf, "%lf", (double)f.value / (double)0x10000);
     return buf;
 }
+
+string ReadFP32uvw(fp32uvw& f)
+{
+    local string buf;
+    SPrintf(buf, "%lf", (double)f.value / (double)0x40000000);
+    return buf;
+}
+
 wstring ReadBox(mp4box& box)
 {
     return box.hdr.type.value;
 }
+
+string BoxComment(mp4box& box)
+{
+    switch (box.hdr.type.value)
+    {
+        case "dinf": return "Data Information Box";
+        case "dref": return "Data Reference Box";
+        case "edts": return "Edit Box";
+        case "elst": return "Edit List Box";
+        case "free": return "Free Space Box";
+        case "ftyp": return "File Type Box";
+        case "hdlr": return "Handler Reference Box";
+        case "mdat": return "Media Data Box";
+        case "mdhd": return "Media Header Box";
+        case "mdia": return "Media Box";
+        case "minf": return "Media Information Box";
+        case "moov": return "Movie Box";
+        case "mvhd": return "Movie Header Box";
+        case "stbl": return "Sample Table Box";
+        case "tkhd": return "Track Header Box";
+        case "trak": return "Track Box";
+        case "udta": return "User Data Box";
+        case "vmhd": return "Video Media Information Header Box";
+        // Added mvex
+        case "mvex": return "Movie Extends Box";
+        case "mehd": return "Movie Extends Header Box";
+        case "trex": return "Track Extends Box";
+        case "sidx": return "Segment Index Box";
+        case "moof": return "Movie Fragment Box";
+        case "mfhd": return "Movie Fragment Header Box";
+        case "traf": return "Track Fragment Box";
+        case "trun": return "Track Fragment Run Box";
+        case "saiz": return "Sample auxiliary information sizes";
+        case "saio": return "Sample auxiliary information offsets";
+        case "senc": return "Sample encryption";
+        case "pssh": return "Protection System Specific Header Box";
+        // Added the following to support stbl child atoms
+        case "stss": return "Sync Sample Box";
+        case "stsz": return "Sample Size Box";
+        case "stco": return "Chunk Offset Box";
+        case "co64": return "Chunk Large Offset Box";
+        case "stsc": return "Sample To Chunk Box";
+        case "stts": return "Time To Sample Box";
+        case "stsd": return "Sample Description Box";
+        default: return "Unknown box type";
+    }
+}
+
+wstring ReadFourCC(fourcc& f)
+{
+    return f.value;
+}
+
+wstring ReadBoxHeader(boxheader& bh)
+{
+    local string s;
+    SPrintf(s, "[size=%Lu]", ContentSize(bh));
+    return bh.type.value + " " + s;
+}
+
+string ReadCompatibleBrand(compatible_brand& b)
+{
+    return b.brand.value;
+}
+
+string ReadTime(mp4time& t)
+{
+    // Magic number 2082844800 is the difference in seconds between the
+    // classic Mac OS epoch (midnight on January 1st 1904) and the POSIX
+    // epoch (midnight on January 1st 1970).
+    local quad value = (quad)t.value - 2082844800;
+    return TimeTToString(value, "yyyy-MM-dd hh:mm:ss");
+}
+
+string ReadLang(mp4lang& lang)
+{
+    if (lang.value < 0x0400 || lang.value == qtlUnspecified)
+    {
+        local qtlang v = lang.value;
+        return EnumToString(v);
+    }
+    local char iso[4];
+    iso[0] = ((lang.value & 0x7c00) >> 10) + 0x60;
+    iso[1] = ((lang.value & 0x03e0) >> 5) + 0x60;
+    iso[2] = (lang.value & 0x001f) + 0x60;
+    iso[3] = '\0';
+    return iso;
+}
+
+string ReadOpcolor(qtopcolor& c)
+{
+    local string result;
+    SPrintf(result, "r=%d, g=%d, b=%d", c.red, c.green, c.blue);
+    return result;
+}
+
 string PipeConcat(string s1, string s2)
 {
     if (Strlen(s1) > 0)
@@ -187,6 +301,29 @@ string PipeConcat(string s1, string s2)
     }
     return s2;
 }
+
+string ReadTkhdFlags(tkhd_flags& f)
+{
+    local string result;
+    if (f.track_enabled)
+    {
+        result = "Track enabled";
+    }
+    if (f.track_in_movie)
+    {
+        result = PipeConcat(result, "Track in movie");
+    }
+    if (f.track_in_preview)
+    {
+        result = PipeConcat(result, "Track in preview");
+    }
+    if (f.track_in_poster)
+    {
+        result = PipeConcat(result, "Track in poster");
+    }
+    return result;
+}
+
 string ReadVmhdFlags(vmhd_flags& f)
 {
     local string result;
@@ -197,37 +334,41 @@ string ReadVmhdFlags(vmhd_flags& f)
     return result;
 }
 
-//struct declaration 
-typedef struct //fp16 
+typedef struct
 {
     int16 value;
-} fp16;
-typedef struct //fp32
+} fp16 <read=ReadFP16, open=suppress>;
+
+typedef struct
 {
     int32 value;
-} fp32;
-typedef struct //fp32uvw
+} fp32 <read=ReadFP32, open=suppress>;
+
+typedef struct
 {
     int32 value;
-} fp32uvw;
-typedef struct //matrix
+} fp32uvw <read=ReadFP32uvw, open=suppress>;
+
+typedef struct
 {
-    fp32 a;
-    fp32 b;
-    fp32uvw u;
-    fp32 c;
-    fp32 d;
-    fp32uvw v;
-    fp32 x;
-    fp32 y;
-    fp32uvw w;
-} matrix;
-typedef struct //fourcc
+    fp32 a <name="a">;
+    fp32 b <name="b">;
+    fp32uvw u <name="u">;
+    fp32 c <name="c">;
+    fp32 d <name="d">;
+    fp32uvw v <name="v">;
+    fp32 x <name="x">;
+    fp32 y <name="y">;
+    fp32uvw w <name="w">;
+} matrix <open=suppress>;
+
+typedef struct
 {
 	byte value[4] = { 
 	"dinf", "edts", "mdia", "minf", "moov", "moof", "stbl", "trak", "udta", "traf", "mvex", "sinf", "schi", "frma", "tenc", "schm", "pssh", "senc", "saio", "saiz", "trun", "tfhd", "mfhd", "sidx", "trex", "mehd", "stsd", "enca", "stts", "stsc", "stco", "co64", "stsz", "stss", "elst", "ftyp", "hdlr", "mdhd", "mvhd", "smhd", "tkhd", "vmhd", "data", "free" };
-} fourcc;
-typedef struct //boxheader
+} fourcc <read=ReadFourCC, open=suppress>;
+
+typedef struct
 {
     uint32 size;
     fourcc type;
@@ -235,71 +376,94 @@ typedef struct //boxheader
     {
         uint64 size64;
     }
-} boxheader;
-typedef struct //compatible_brand
+} boxheader <read=ReadBoxHeader, open=suppress>;
+
+typedef struct
 {
     fourcc brand;
-} compatible_brand;
-typedef struct //mp4time
+} compatible_brand <read=ReadCompatibleBrand, open=suppress>;
+
+typedef struct
 {
     uint32 value;
-} mp4time;
-typedef struct //mp4lang
+} mp4time <read=ReadTime, open=suppress>;
+
+typedef struct
 {
     uint16 value;
-} mp4lang;
-typedef struct //qtopcolor
+} mp4lang <read=ReadLang, open=suppress>;
+
+typedef struct
 {
     uint16 red;
     uint16 green;
     uint16 blue;
-} qtopcolor;
-typedef struct //elst_entry
+} qtopcolor <read=ReadOpcolor, open=suppress>;
+
+typedef struct
 {
-	//TODO include dependency to version?
-    uint32 duration;
-    uint32 media_time;
-    fp32 media_rate;
+    uint32 duration <name="Duration", comment="Duration of this edit segment in movie time scale units (specified in mvhd box)">;
+    uint32 media_time <name="Media Time", comment="Start time of this edit segment in media time scale units (specified in mdhd box)">;
+    fp32 media_rate <name="Media Rate", comment="Relative rate at which to play this edit segment">;
 } elst_entry;
-typedef struct //tkhd_flags
+
+typedef struct
 {
-    byte dummy[2];
+    byte dummy[2] <open=suppress>;
     byte dummy2 : 4;
-    byte track_in_poster : 1;
-    byte track_in_preview : 1;
-    byte track_in_movie : 1;
-    byte track_enabled : 1;
-} tkhd_flags;
-typedef struct //vmhd_flags
+    byte track_in_poster : 1 <name="Track in poster">;
+    byte track_in_preview : 1 <name="Track in preview">;
+    byte track_in_movie : 1 <name="Track in movie">;
+    byte track_enabled : 1 <name="Track enabled">;
+} tkhd_flags <read=ReadTkhdFlags, open=suppress>;
+
+typedef struct
 {
     byte dummy[2];
     byte dummy2 = {1};
-} vmhd_flags;
-typedef struct //str_stts
+} vmhd_flags <read=ReadVmhdFlags, open=suppress>;
+
+// The following three structs are used with sample table atoms
+typedef struct
+{
+    uint32 first_chunk;
+    uint32 samples_per_chunk;
+    uint32 sample_description_index;
+}str_stsc;
+
+typedef struct
 {
     uint32 sample_count;
     uint32 sample_delta;
 }str_stts;
-typedef struct //str_stsd
+
+typedef struct
 {
     uint32 contentSize;
     byte   content[contentSize - 4];
+    /*local quad so = FTell();
+    while(FTell() < so + contentSize - 4)
+    {
+        mp4box box <name="Box">;
+    }*/
 }str_stsd;
-typedef struct //str_sidx
+
+typedef struct
 {
     uint32 reference_size31_type1;
     uint32 subsegment_duration;
     uint32 SAP_delta_time28_type3_starts_with1;
 }str_sidx;
 
-
 local uint32 sharedSamplecountVar = 0;
 local uint32 mdatPosition = 0;
 local byte isVideo = false;
 local string ReadBytesInitValues[] = { "avc1", "avcC", "btrt", "bxml", "co64", "cprt", "ctts", "data", "dinf", "dref", "edts", "elst", "enca", "esds", "free", "frma", "ftyp", "hdlr", "hint", "hmhd", "iinf", "iloc", "ilst", "iods", "ipmc", "ipro", "iso2", "isom", "mdat", "mdhd", "mdia", "mehd", "meta", "mfhd", "minf", "mmp4", "moof", "moov", "mp41", "mp42", "mp4a", "mp71", "msnv", "mvex", "mvhd", "ndas", "ndsc", "ndsh", "ndsm", "ndsp", "ndss", "ndxc", "ndxh", "ndxm", "ndxp", "ndxs", "nmhd", "pasp", "pitm", "pssh", "saio", "saiz", "sbgp", "schi", "schm", "sdtp", "senc", "sgpd", "sidx", "sinf", "smhd", "soun", "stbl", "stco", "stdb", "stsc", "stsd", "stsh", "stss", "stsz", "stts", "stz2", "subs", "tenc", "tfhd", "tkhd", "traf", "trak", "tref", "trex", "trun", "udta", "url ", "urn ", "vide", "vmhd", "xml " };
 
-typedef struct //mp4box
-{    
+typedef struct
+{
+    // Seperated box start/end logic as box sizes being larger than content of the box caused issues
+    // For example 120 bit sized mvhd; it's wrong as it should be a fixed size, but it happens. 
     local uint64 startOffset = FTell();
 
 	local int tries = 0;
@@ -322,9 +486,16 @@ typedef struct //mp4box
         case "mvex":
         case "sinf":
         case "schi":
+
             while (FTell() < endOffset)
             {
-                mp4box box;
+                mp4box box <name="Box">;
+
+                // Warn about fixed sizes boxes having content size in header set to larger value.
+                if(FTell() != box.endOffset) {
+                    Printf("%s at %d larger then expected. Expected end: %d, Actual: %d\n",
+                                box.hdr.type.value,box.startOffset, FTell(), box.endOffset );
+                }
                 FSeek(box.endOffset);
             }
             break;
@@ -1019,35 +1190,37 @@ typedef struct //mp4box
 				}             
 			}
             break;
-		case "frma":
+        // Added mehd, trex, sidx, traf, tfhd, trun, saiz, saio, senc, pssh
+        case "frma":
             uint32 codingName;
             break;
         case "tenc":
-            byte version;
-            byte flag[3]; 
-            byte reserved1;			
-            if (version < 1) byte reserved2;
+            byte version <name="Version">;
+            byte flag[3] <open=suppress, name="Flags">; 
+            byte reserved1;
+            if(version < 1) byte reserved2;
             else byte default_crypt_skip_byte_block;
             byte default_is_protected;
             byte default_per_sample_IV_size;
             byte default_KID[16];
-            if (0 == default_per_sample_IV_size)
+            if(0 == default_per_sample_IV_size)
             {
                 byte default_constant_IV_size;
                 byte default_constant_IV[default_constant_IV_size];
             }
             break;
         case "schm":
-            byte version;
-            byte flag[3]; 
+            byte version <name="Version">;
+            byte flag[3] <open=suppress, name="Flags">; 
             uint32 scheme_type;
             uint32 scheme_version;
+
             break;
         case "pssh":
-            byte version;
-            byte flag[3]; 
+            byte version <name="Version">;
+            byte flag[3] <open=suppress, name="Flags">; 
             byte systemID[16];
-            if (version > 0)
+            if(version > 0)
             {
                 uint32 KID_count;
                 struct
@@ -1059,13 +1232,13 @@ typedef struct //mp4box
             byte Data[DataSize];
             break;
         case "senc":
-            byte version;
-            byte flag[3];
+            byte version <name="Version">;
+            byte flag[3] <open=suppress, name="Flags">;
             uint32 sample_count;
             struct
             {
                 byte per_sample_IV[8];
-                if (flag[2] == 2)
+                if(flag[2] == 2)
                 {
                     uint16 subsample_count;
                     struct
@@ -1077,9 +1250,9 @@ typedef struct //mp4box
             }entry[sample_count];
             break;
         case "saio":
-            byte version;
-            byte flag[3];
-            if ((flag[2] & 1) != 0)
+            byte version <name="Version">;
+            byte flag[3] <open=suppress, name="Flags">;
+            if((flag[2] & 1) != 0)
             {
                 uint32 aux_info_type;
                 uint32 aud_info_type_parameter;
@@ -1091,9 +1264,9 @@ typedef struct //mp4box
                 uint64 offset[entry_count];
             break;
         case "saiz":
-            byte version;
-            byte flag[3];
-            if ((flag[2] & 1) != 0)
+            byte version <name="Version">;
+            byte flag[3] <open=suppress, name="Flags">;
+            if((flag[2] & 1) != 0)
             {
                 uint32 aux_info_type;
                 uint32 aux_info_type_parameter;
@@ -1107,14 +1280,12 @@ typedef struct //mp4box
             break;
         case "trun":
             local uint32 i;
-            byte version;
-            byte flag[3]; 
+            byte version <name="Version">;
+            byte flag[3] <open=suppress, name="Flags">;
             uint32 sample_count;
-            if ((flag[2] & 1) != 0)          
-				uint32 data_offset;
-            if ((flag[2] & 4) != 0)          
-				uint32 first_sample_flags;
-            for (i = 0; i < sample_count; i++)
+            if((flag[2] & 1) != 0)          uint32 data_offset;
+            if((flag[2] & 4) != 0)          uint32 first_sample_flags;
+            for(i = 0; i < sample_count; i++)
             {
                 struct
                 {
@@ -1132,31 +1303,26 @@ typedef struct //mp4box
             }
             break;
         case "tfhd":
-            byte version;
-            byte flag[3];
+            byte version <name="Version">;
+            byte flag[3] <open=suppress, name="Flags">;
             uint32 trackID;
-            if (0 != (flag[2] & 1))  
-				uint64 base_data_offset;
-            if (0 != (flag[2] & 2))  
-				uint32 sample_description_index;
-            if (0 != (flag[2] & 8))  
-				uint32 default_sample_duration;
-            if (0 != (flag[2] & 0x10))   
-				uint32 default_sample_size;
-            if (0 != (flag[2] & 0x20))   
-				uint32 default_sample_flags;
+            if(0 != (flag[2] & 1))  uint64 base_data_offset;
+            if(0 != (flag[2] & 2))  uint32 sample_description_index;
+            if(0 != (flag[2] & 8))  uint32 default_sample_duration;
+            if(0 != (flag[2] & 0x10))   uint32 default_sample_size;
+            if(0 != (flag[2] & 0x20))   uint32 default_sample_flags;
             break;
         case "mfhd":
-            byte version;
-            byte flag[3];
+            byte version <name="Version">;
+            byte flag[3] <open=suppress, name="Flags">;
             uint32 sequence_number;
             break;
         case "sidx":
-            byte version;
-            byte flag[3];
-            uint32 referenceID;
-            uint32 timescale;
-            if (version < 1)
+            byte version <name="Version">;
+            byte flag[3] <open=suppress, name="Flags">;
+            uint32 referenceID <name="Reference ID">;
+            uint32 timescale <name="Timescale">;
+            if(version < 1)
             {
                 uint32 earliest_presentation_time;
                 uint32 first_offset;
@@ -1168,11 +1334,11 @@ typedef struct //mp4box
             }
             uint16 reserved;
             uint16 reference_count;
-            str_sidx references[reference_count];
+            str_sidx references[reference_count] <open=suppress>;
             break;
         case "trex":
-            byte version;
-            byte flag[3];
+            byte version <name="Version">;
+            byte flag[3] <open=suppress, name="Flags">;
             uint32 trackID;
             uint32 default_sample_description_index;
             uint32 default_sample_duration;
@@ -1180,22 +1346,22 @@ typedef struct //mp4box
             uint32 default_sample_flags;
             break;
         case "mehd":
-            byte version;
-            byte flag[3];
+            byte version <name="Version">;
+            byte flag[3] <open=suppress, name="Flags">;
             if(version == 0)
-                uint32 fragment_duration;
+                uint32 fragment_duration <name="Fragment duration">;
             else
-                uint64 fragment_duration;
+                uint64 fragment_duration <name="Fragment duration">;
             break;
         case "enca":
-            byte version;
-            byte flag[3];
+            byte version <name="Version">;
+            byte flag[3] <open=suppress, name="Flags">;
             uint32 entry_count;
             byte data[0x14];
             break;
         case "stss":
-            byte version;
-            byte flag[3];
+            byte version <name="Version">;
+            byte flag[3] <open=suppress, name="Flags">;
             local int64 before_entry_count = FTell();
             uint32 entry_count;
             ChangeArrayLength();

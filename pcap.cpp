@@ -1129,7 +1129,6 @@ Layer_3* Layer_3::generate(uint16 proto_type) {
 	hdr_length = (ip_hdr_len() * 4);
 	GENERATE_VAR(DiffServField, ::g->DiffServField.generate());
 	GENERATE_VAR(total_length, ::g->total_length.generate());
-	Printf("L3 Total Length: %d\n", total_length());
 	if ((proto_type == 0x0800)) {
 		GENERATE_VAR(Identification, ::g->Identification.generate());
 		GENERATE_VAR(Flags, ::g->Flags.generate());
@@ -1254,7 +1253,6 @@ Layer_4* Layer_4::generate(ushort VER_HDR, uint16 total_length, uint L4proto) {
 		CrapSize = ((TCP_BITFIELDS().tcp_hdr_len() * 4) - 13);
 		GENERATE_VAR(Crap, ::g->Crap.generate(CrapSize));
 	} else {
-		SetBackColor(cNone);
 		GENERATE_VAR(packet, ::g->packet.generate((total_length - ip_hdr_length)));
 	};
 	};
@@ -1308,14 +1306,12 @@ PCAPRECORD* PCAPRECORD::generate(uint32 network) {
 	if ((L3().L4proto() == 0x6)) {
 		AppDataLen = ((L3().total_length() - (L3().ip_hdr_len() * 4)) - (L4().TCP_BITFIELDS().tcp_hdr_len() * 4));
 		if ((AppDataLen > 0)) {
-			SetBackColor(cNone);
 			GENERATE_VAR(AppData, ::g->AppData.generate(AppDataLen));
 		};
 	} else {
 	if ((L3().L4proto() == 0x11)) {
 		AppDataLen = (L4().udp_hdr_len() - 8);
 		if ((AppDataLen > 0)) {
-			SetBackColor(cNone);
 			GENERATE_VAR(AppData, ::g->AppData.generate(AppDataLen));
 		};
 	};
@@ -1346,7 +1342,6 @@ void generate_file() {
 	LittleEndian();
 	GENERATE(header, ::g->header.generate());
 	while (!FEof()) {
-		SetBackColor(cLtGreen);
 		GENERATE(record, ::g->record.generate(::g->header().network()));
 	};
 

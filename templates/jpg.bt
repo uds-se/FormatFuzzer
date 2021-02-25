@@ -63,7 +63,7 @@ local DWORD clr = 0;
 local DWORD jetMap[6*3] = { // blue, red green
 	0x0000cc,0x0000ff,0x0033ff,0x0066ff,0x0099ff,0x00ccff,
 	0x00ffff,0x33ffcc,0x66ff99,0x99ff66,0xccff33,0xffff00,
-	0xffcc00,0xff9900,0xff6600,0xff3300,0xff0000,0xcc0000 
+	0xffcc00,0xff9900,0xff6600,0xff3300,0xff0000,0xcc0000
 };
 local char CameraMake[32];
 local char CameraModel[40];
@@ -112,7 +112,6 @@ void ChangeColor(byte bChangeColor) {
 
 // ------------------------------------------------------------
 // JPEG
-
 typedef enum <WORD> tagID
 {
 	M_SOF0  = 0xFFC0, // Start Of Frame N
@@ -1095,6 +1094,7 @@ string ReadURatio(URatio &ur)
 	return result;
 }
 
+
 typedef struct tagApp0 {
 	uint16 marker = {65504};
 	WORD szSection = {16}; //TODO can be higher if thumbnail is contained
@@ -1245,7 +1245,7 @@ typedef struct tagAPP12 {
 			} entry;
 			if (entry.tag == DK_End)
 				break;
-			s = s - sizeof(entry);
+			s -= sizeof(entry);
 		}
 	} else {
 		//Warning("Unknown APP12");
@@ -1302,7 +1302,7 @@ typedef struct tagAPP13 {
 				if (size % 2 != 0)
 					char padding;
 			} block;
-			remainsize = remainsize - sizeof(block);
+			remainsize -= sizeof(block);
 		}
 	} else {
 		//Warning("Unknown APP13");
@@ -1331,7 +1331,6 @@ typedef struct tagAPP14 {
 
 // ------------------------------------------------------------
 // JPEG segments
-//edited
 typedef struct tagSOS { 
 	uint16 marker = {65498};
 	
@@ -1370,7 +1369,6 @@ typedef struct tagUNK {
 	ubyte unknown[szSection-2];
 } UNKNOWN;
 
-//edited
 local ubyte DHTLevel = 0;
 typedef struct tagDHT {
 	uint16 marker = {65476};
@@ -1421,7 +1419,6 @@ typedef struct tagDHT {
 	FSeek(curPos);	
 } DHT;
 
-//edited
 local ubyte DQTLevel = 0;
 typedef struct tagDQT {
 	uint16 marker = {65499};
@@ -1471,7 +1468,6 @@ typedef struct tagDHP {
 	} component_param[Nf];
 } DHP;
 
-//edited
 typedef struct tgSOFx {
 	uint16 marker = {65472};
 	
@@ -1548,8 +1544,6 @@ string ReadComment( COMMENT &com )
 // JPEG file
 
 SetBackColor(jetMap[0]);
-
-//edited
 local byte colorFlag = 0;
 typedef struct tgJPGFile {
 	local int was_bigendian = IsBigEndian();
@@ -1623,10 +1617,8 @@ typedef struct tgJPGFile {
 		lastScanData = scanData;
 		++dataLen;
 	}
-	
 	if (!was_bigendian)
 		LittleEndian();
-		
 } JPGFILE;
 
 JPGFILE jpgfile <open=true>;
