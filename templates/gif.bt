@@ -42,14 +42,22 @@ string ReadRGB( RGB &color )
     return s;
 }
 typedef struct {
-	local UBYTE size = ReadUByte(FTell());
+	local UBYTE values[0];
+	local int count;
+	for (count = 1; count < 256; ++count)
+		values += (UBYTE)count;
+	count = 0;
+	local UBYTE size = ReadUByte(FTell(), values);
 	while (size != 0) {
 		struct DATASUBBLOCK {
 			UBYTE	Size;
 			char	Data[size];
 		} DataSubBlock;
-		local UBYTE zero[] = { 0 };
-		size = ReadUByte(FTell(), zero);
+		count += size;
+		size = ReadUByte(FTell(), values);
+		if (count > 1500) {
+			local UBYTE values[] = { 0, 255 };
+		}
 	}
 	UBYTE	BlockTerminator;
 } DATASUBBLOCKS;

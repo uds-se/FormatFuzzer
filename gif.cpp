@@ -658,8 +658,9 @@ public:
 	}
 
 	/* locals */
+	std::vector<UBYTE> values;
+	int count;
 	UBYTE size;
-	std::vector<UBYTE> zero;
 
 	unsigned char generated = 0;
 	int64 _startof = 0;
@@ -1630,7 +1631,8 @@ GLOBALCOLORTABLE* GLOBALCOLORTABLE::generate() {
 
 	size = 1;
 	for (i = 0; (i <= ::g->LogicalScreenDescriptor().PackedFields().SizeOfGlobalColorTable()); i++) {
-		size *= 2;
+			size *= 2;
+	;
 	};
 	GENERATE_VAR(rgb, ::g->rgb.generate(size));
 
@@ -1699,7 +1701,8 @@ LOCALCOLORTABLE* LOCALCOLORTABLE::generate() {
 
 	size = 1;
 	for (i = 0; (i <= ::g->ImageDescriptor().PackedFields().SizeOfLocalColorTable()); i++) {
-		size *= 2;
+			size *= 2;
+	;
 	};
 	GENERATE_VAR(rgb, ::g->rgb.generate(size));
 
@@ -1736,11 +1739,19 @@ DATASUBBLOCKS* DATASUBBLOCKS::generate() {
 		generated = 1;
 	_startof = FTell();
 
-	size = ReadUByte(FTell());
+	values = {  };
+	for (count = 1; (count < 256); ++count) {
+		values.insert(values.end(), { (UBYTE)count });
+	};
+	count = 0;
+	size = ReadUByte(FTell(), values);
 	while ((size != 0)) {
 		GENERATE_VAR(DataSubBlock, ::g->DataSubBlock.generate(size));
-		zero = { 0 };
-		size = ReadUByte(FTell(), zero);
+		count += size;
+		size = ReadUByte(FTell(), values);
+		if ((count > 1500)) {
+			values = { 0, 255 };
+		};
 	};
 	GENERATE_VAR(BlockTerminator, ::g->BlockTerminator.generate());
 

@@ -82,6 +82,7 @@ unsigned char *rand_buffer;
 
 class file_accessor {
 	bool allow_evil_values = true;
+	bool dont_be_evil = false;
 	unsigned bitfield_size = 0;
 	unsigned bitfield_bits = 0;
 	bool has_bitmap = false;
@@ -265,6 +266,8 @@ public:
 	file_accessor() : bitmap(MAX_FILE_SIZE) {
 		file_buffer = new unsigned char[MAX_FILE_SIZE];
 		::rand_buffer = new unsigned char[MAX_RAND_SIZE];
+		if (getenv("DONT_BE_EVIL"))
+			dont_be_evil = true;
 	}
 	
 	~file_accessor() {
@@ -390,7 +393,7 @@ public:
 		following_is_optional = false;
 
 		has_size = false;
-		allow_evil_values = true;
+		allow_evil_values = !dont_be_evil;
 		bitfield_size = 0;
 		bitfield_bits = 0;
 		lookahead = false;

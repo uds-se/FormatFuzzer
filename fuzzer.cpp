@@ -249,6 +249,11 @@ int smart_replace(int argc, char **argv)
 	unsigned char *rand_t = new unsigned char[MAX_RAND_SIZE];
 	unsigned char *rand_s = new unsigned char[MAX_RAND_SIZE];
 	unsigned len_t;
+	int rand_fd = open("/dev/urandom", O_RDONLY);
+	ssize_t r = read(rand_fd, rand_t, MAX_RAND_SIZE);
+	if (r != MAX_RAND_SIZE)
+		printf("Read only %ld bytes from /dev/urandom\n", r);
+	close(rand_fd);
 	// Process options
 	while (1)
 	{
@@ -466,6 +471,11 @@ int smart_delete(int argc, char **argv)
 
 	unsigned char *rand_t = new unsigned char[MAX_RAND_SIZE];
 	unsigned len_t;
+	int rand_fd = open("/dev/urandom", O_RDONLY);
+	ssize_t r = read(rand_fd, rand_t, MAX_RAND_SIZE);
+	if (r != MAX_RAND_SIZE)
+		printf("Read only %ld bytes from /dev/urandom\n", r);
+	close(rand_fd);
 	// Process options
 	while (1)
 	{
@@ -553,7 +563,6 @@ the binary template (such as length fields).
 	if (!success)
 	{
 		fprintf(stderr, "%s: Parsing %s failed\n", bin_name, file_t);
-		return -2;
 	}
 	if (end_t != -1 && rand_start == UINT_MAX) {
 		fprintf(stderr, "%s: Unable to find chunk in file %s\n", bin_name, file_t);
@@ -590,7 +599,7 @@ the binary template (such as length fields).
 	fprintf(stderr, "%s: %s created\n", bin_name, out);
 
 	delete[] rand_t;
-	return 0;
+	return success ? 0 : -2;
 }
 
 
@@ -612,6 +621,11 @@ int smart_insert(int argc, char **argv)
 	unsigned char *rand_t = new unsigned char[MAX_RAND_SIZE];
 	unsigned char *rand_s = new unsigned char[MAX_RAND_SIZE];
 	unsigned len_t;
+	int rand_fd = open("/dev/urandom", O_RDONLY);
+	ssize_t r = read(rand_fd, rand_t, MAX_RAND_SIZE);
+	if (r != MAX_RAND_SIZE)
+		printf("Read only %ld bytes from /dev/urandom\n", r);
+	close(rand_fd);
 	// Process options
 	while (1)
 	{
@@ -804,7 +818,7 @@ smaller number of decision bytes in file_t than it did in file_s.
 
 
 
-void process_file(const char *file_name, const char *rand_name) {
+extern "C" void process_file(const char *file_name, const char *rand_name) {
 	insertion_points.push_back({});
 	deletable_chunks.push_back({});
 	non_optional_index.push_back({});
@@ -833,7 +847,7 @@ void process_file(const char *file_name, const char *rand_name) {
 	save_output(rand_name);
 	++file_index;
 	optional_index.push_back(optional_chunks.size());
-	if (!success)
+	if (!success && debug_print)
 	{
 		fprintf(stderr, "%s: Parsing %s failed\n", bin_name, file_name);
 		return;
@@ -856,13 +870,18 @@ unsigned read_rand_file(const char* file_name, unsigned char* rand_buffer) {
 	return size;
 }
 
-int one_smart_mutation(int target_file_index, unsigned char** file, unsigned* file_size) {
+extern "C" int one_smart_mutation(int target_file_index, unsigned char** file, unsigned* file_size) {
 	static unsigned char *rand_t = NULL;
 	static unsigned char *rand_s = NULL;
 	unsigned len_t = 0;
 	if (!rand_t) {
 		rand_t = new unsigned char[MAX_RAND_SIZE];
 		rand_s = new unsigned char[MAX_RAND_SIZE];
+		int rand_fd = open("/dev/urandom", O_RDONLY);
+		ssize_t r = read(rand_fd, rand_t, MAX_RAND_SIZE);
+		if (r != MAX_RAND_SIZE)
+			printf("Read only %ld bytes from /dev/urandom\n", r);
+		close(rand_fd);
 	}
 
 	bool old_debug_print = debug_print;
@@ -994,12 +1013,13 @@ int one_smart_mutation(int target_file_index, unsigned char** file, unsigned* fi
 	{
 		int index = rand() % deletable_chunks[target_file_index].size();
 		Chunk& t = deletable_chunks[target_file_index][index];
-		deletable_chunks[target_file_index].erase(deletable_chunks[target_file_index].begin() + index);
 		if (debug_print)
 			printf("Deleting from file %d chunk %u %u %s %s\n", t.file_index, t.start, t.end, t.type, t.name);
 		len_t = read_rand_file(rand_names[target_file_index].c_str(), rand_t);
 
 		memmove(rand_t + t.start, rand_t + t.end + 1, len_t - (t.end + 1));
+
+		deletable_chunks[target_file_index].erase(deletable_chunks[target_file_index].begin() + index);
 
 		set_generator();
 
@@ -1031,6 +1051,7 @@ int mutations(int argc, char **argv)
 	unsigned char* file;
 	unsigned size;
 	debug_print = true;
+	print_errors = true;
 	for (int i = 0; i < 10000; ++i) {
 		int result = one_smart_mutation(i % rand_names.size(), &file, &size);
 		if (debug_print)
@@ -1053,7 +1074,7 @@ int test(int argc, char *argv[])
 	size_t file_size;
 	unsigned char* rand = NULL;
 	size_t rand_size;
-	size_t new_file_size;
+	size_t new_file_size = 0;
 	int generated = 0;
 	int i;
 	int iterations = 10000;
@@ -1109,9 +1130,14 @@ int benchmark(int argc, char *argv[])
 		printf("Read only %ld bytes from /dev/urandom\n", r);
 	unsigned char* new_data = NULL;
 	int generated = 0;
+	int valid = 0;
 	uint64_t total_bytes = 0;
 	int i;
 	int iterations = 10000;
+	std::unordered_map<int,int> status;
+	std::string fmt = std::string(bin_name, strchr(bin_name, '-') - bin_name);
+	std::string output = "out." + fmt;
+	std::string checker = "checkers/" + fmt + ".sh";
 	uint64_t start = get_cur_time_us();
 	for (i = 0; i < iterations; ++i)
 	{
@@ -1121,11 +1147,27 @@ int benchmark(int argc, char *argv[])
 		if (new_size && new_data) {
 			generated += 1;
 			total_bytes += new_size;
+			if (argc > 1) {
+				save_output(output.c_str());
+				int result = system(checker.c_str());
+				if (WIFEXITED(result)) {
+					++status[WEXITSTATUS(result)];
+				}
+				if (WIFSIGNALED(result)) {
+					printf("killed by signal %d\n", WTERMSIG(result));
+				}
+				if (WIFEXITED(result) && WEXITSTATUS(result) == 0)
+					++valid;
+			}
 		}
 	}
 	uint64_t end = get_cur_time_us();
 	double time = (end - start) / 1.0e6;
+	for (auto s : status)
+		printf("status %d: %d\n", s.first, s.second);
 	printf("Generated %d files from %d attempts in %f s.\n", generated, i, time);
+	if (argc > 1)
+		printf("Valid %d/%d = %f\n", valid, generated, (double)valid/(double)generated);
 	if (generated)
 		printf("Average file size %lu bytes.\n", total_bytes / generated);
 	printf("Speed %f / s.\n", generated / time);

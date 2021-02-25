@@ -498,7 +498,6 @@ public:
 	std::vector<ubyte> valid_versions;
 	std::vector<ubyte> valid_hdr_lengths;
 	int hdr_length;
-	uint evil_state;
 	uint UnknownLength;
 
 	unsigned char generated = 0;
@@ -1085,7 +1084,7 @@ PCAPHEADER* PCAPHEADER::generate() {
 		exit_template(1);
 	};
 	GENERATE_VAR(version_major, ::g->version_major.generate({ 2 }));
-	GENERATE_VAR(version_minor, ::g->version_minor.generate({ 4 }));
+	GENERATE_VAR(version_minor, ::g->version_minor.generate({ 2, 4 }));
 	GENERATE_VAR(thiszone, ::g->thiszone.generate());
 	GENERATE_VAR(sigfigs, ::g->sigfigs.generate());
 	GENERATE_VAR(snaplen, ::g->snaplen.generate());
@@ -1129,9 +1128,8 @@ Layer_3* Layer_3::generate(uint16 proto_type) {
 	GENERATE_VAR(ip_hdr_len, ::g->ip_hdr_len.generate(4, valid_hdr_lengths));
 	hdr_length = (ip_hdr_len() * 4);
 	GENERATE_VAR(DiffServField, ::g->DiffServField.generate());
-	evil_state = SetEvilBit(false);
 	GENERATE_VAR(total_length, ::g->total_length.generate());
-	SetEvilBit(evil_state);
+	Printf("L3 Total Length: %d\n", total_length());
 	if ((proto_type == 0x0800)) {
 		GENERATE_VAR(Identification, ::g->Identification.generate());
 		GENERATE_VAR(Flags, ::g->Flags.generate());
@@ -1201,7 +1199,6 @@ Dot1q* Dot1q::generate() {
 	GENERATE_VAR(priority, ::g->priority.generate(3));
 	GENERATE_VAR(dei, ::g->dei.generate(1));
 	GENERATE_VAR(id, ::g->id.generate(12));
-	Printf("Dot1q struct created\n");
 	evil_state = SetEvilBit(false);
 	GENERATE_VAR(L3type, ::g->L3type.generate({ 0x0800 }));
 	SetEvilBit(evil_state);

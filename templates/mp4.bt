@@ -296,13 +296,19 @@ typedef struct //str_sidx
 local uint32 sharedSamplecountVar = 0;
 local uint32 mdatPosition = 0;
 local byte isVideo = false;
-local string ReadBytesInitValues[] = { "btrt", "dinf", "edts", "mdia", "minf", "moov", "moof", "stbl", "trak", "udta", "traf", "mvex", "sinf", "schi", "frma", "tenc", "schm", "pssh", "senc", "saio", "saiz", "trun", "tfhd", "mfhd", "sidx",  "pasp", "trex", "mehd", "stsd", "enca", "stts", "stsc", "stco", "co64", "stsz", "stss", "elst", "ftyp", "hdlr", "mdhd", "mvhd", "smhd", "tkhd", "vmhd" , "ilst"};
+local string ReadBytesInitValues[] = { "avc1", "avcC", "btrt", "bxml", "co64", "cprt", "ctts", "data", "dinf", "dref", "edts", "elst", "enca", "esds", "free", "frma", "ftyp", "hdlr", "hint", "hmhd", "iinf", "iloc", "ilst", "iods", "ipmc", "ipro", "iso2", "isom", "mdat", "mdhd", "mdia", "mehd", "meta", "mfhd", "minf", "mmp4", "moof", "moov", "mp41", "mp42", "mp4a", "mp71", "msnv", "mvex", "mvhd", "ndas", "ndsc", "ndsh", "ndsm", "ndsp", "ndss", "ndxc", "ndxh", "ndxm", "ndxp", "ndxs", "nmhd", "pasp", "pitm", "pssh", "saio", "saiz", "sbgp", "schi", "schm", "sdtp", "senc", "sgpd", "sidx", "sinf", "smhd", "soun", "stbl", "stco", "stdb", "stsc", "stsd", "stsh", "stss", "stsz", "stts", "stz2", "subs", "tenc", "tfhd", "tkhd", "traf", "trak", "tref", "trex", "trun", "udta", "url ", "urn ", "vide", "vmhd", "xml " };
 
 typedef struct //mp4box
 {    
     local uint64 startOffset = FTell();
 
-	uint32 size = {0}; //fixed later 
+	local int tries = 0;
+	for (tries = 0; tries < 3; ++tries) {
+		FSeek(startOffset);
+		uint32 size = {0}; //fixed later 
+		if (!size)
+			break;
+	}
 	
     fourcc type;
 	
@@ -1211,13 +1217,11 @@ typedef struct //mp4box
             EndChangeArrayLength();
             break;     
     }
-	if (IsParsing())
-	{
-		if (FTell() != endOffset) {
-			local uint32 parsedSize = FTell() - startOffset;
-			Warning("Parsed %u bytes and expected %u bytes in chunk %s", parsedSize, size, type.value);
-			FSeek(endOffset);
-		}
+
+	if (size && FTell() != endOffset) {
+		local uint32 parsedSize = FTell() - startOffset;
+		Warning("Parsed %u bytes and expected %u bytes in chunk %s", parsedSize, size, type.value);
+		FSeek(endOffset);
 	}
 	local uint64 writePosition = FTell();
 	FSeek(startOffset);

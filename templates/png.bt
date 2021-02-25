@@ -122,8 +122,8 @@ string readCTYPE(local CTYPE &t) {
 
 // IHDR - Image Header
 typedef struct {
-    uint32   width;
-    uint32   height;
+    uint32   width<min=1,max=24>;
+    uint32   height<min=1,max=24>;
     const byte color_types[] = { GrayScale, TrueColor, Indexed, AlphaGrayScale, AlphaTrueColor };
     switch (ReadByte(FTell() + 1, color_types)) {
     case GrayScale:

@@ -3805,7 +3805,7 @@ class PfpInterp(object):
             for stmt in node.stmt:
                 node.cpp += "\t" + stmt.cpp + ";\n"
         elif node.stmt is not None:
-            node.cpp += node.stmt.cpp
+            node.cpp += "\t" + node.stmt.cpp + ";\n"
         node.cpp += "}"
 
     def _handle_while(self, node, scope, ctxt, stream):

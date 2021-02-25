@@ -96,11 +96,8 @@ typedef struct (uint16 proto_type)
     local int hdr_length = ip_hdr_len*4;
     BYTE DiffServField;
     
-    //FIXME: Evil Bit not respected
-    local uint evil_state = SetEvilBit(false);
     uint16 total_length<min = 20 + 20, max = 20 + 20 + 64>;
     Printf("L3 Total Length: %d\n", total_length);
-    SetEvilBit(evil_state);
 
     if (proto_type == 0x0800)    // IP
     {
