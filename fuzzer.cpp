@@ -1079,6 +1079,7 @@ int test(int argc, char *argv[])
 	int i;
 	int iterations = 10000;
 	uint64_t start = get_cur_time_us();
+	uint64_t parse_time = 0;
 	for (i = 0; i < iterations; ++i)
 	{
 		ssize_t r = read(rand_fd, data, 4096);
@@ -1086,7 +1087,10 @@ int test(int argc, char *argv[])
 		file_size = afl_pre_save_handler(data, MAX_RAND_SIZE, &file);
 		if (file_size && file) {
 			generated += 1;
+			uint64_t before = get_cur_time_us();
 			bool parsed = afl_post_load_handler(file, file_size, &rand, &rand_size);
+			uint64_t after = get_cur_time_us();
+			parse_time += after - before;
 			assert(file_size <= MAX_FILE_SIZE);
 			memcpy(contents, file, file_size);
 			memset(file, 0, file_size);
@@ -1115,7 +1119,8 @@ int test(int argc, char *argv[])
 	}
 	uint64_t end = get_cur_time_us();
 	double time = (end - start) / 1.0e6;
-	printf("Tested %d files from %d attempts in %f s.\n", generated, i, time);
+	double ptime = parse_time / 1.0e6;
+	printf("Tested %d files from %d attempts in %f s (parsing speed %f / s).\n", generated, i, time, generated / ptime);
 	delete[] data;
 	delete[] contents;
 	return 0;
