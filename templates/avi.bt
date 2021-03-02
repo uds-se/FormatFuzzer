@@ -77,7 +77,7 @@ typedef struct
 typedef struct 
 {
   char id[4];
-  uint32 datalen;
+  uint32 datalen<arraylength=true>;
   MainAVIHeader data;
 } avihHEADER;
 
@@ -104,7 +104,7 @@ typedef struct
 typedef struct 
 {
   char id[4];
-  uint32  datalen;
+  uint32  datalen<arraylength=true>;
   AVIStreamHeader data;
 }strhHEADER;
 
@@ -113,7 +113,7 @@ typedef struct
 typedef struct 
 {
   char id[4];
-  uint32  datalen;
+  uint32  datalen<arraylength=true>;
   if (datalen % 2)
 	  char data[datalen+1];
   else
@@ -124,9 +124,9 @@ typedef struct
 typedef struct 
 {
   char id[4];
-  uint32  datalen;
+  uint32  datalen<min = 42, max = 58>;
   BITMAPINFOHEADER bmiHeader;
-  local int sz = sizeof(bmiHeader);
+  local int sz = sizeof(bmiHeader); //This is 40
   if (datalen == 44)
   {
     RGBQUAD bmiColors;
@@ -141,7 +141,7 @@ typedef struct
 typedef struct 
 {
   char id[4];
-  uint32  datalen;
+  uint32  datalen<min = 20, max = 36>;
   WAVEFORMATEX wave;
   char exData[datalen - 18];
 } strfHEADER_WAVE;
@@ -150,7 +150,7 @@ typedef struct
 typedef struct 
 {
   char id[4];
-  uint32  datalen;
+  uint32  datalen<arraylength=true>;
   if ( datalen % 2 )
     char data[datalen+1];
   else
@@ -161,7 +161,7 @@ typedef struct
 typedef struct 
 {
   char id[4];
-  uint32  datalen;
+  uint32  datalen<arraylength=true>;
   if ( datalen % 2 )
     char data[datalen+1];
   else
@@ -173,7 +173,7 @@ typedef struct
 typedef struct 
 {
   char id[4];
-  uint32 datalen;
+  uint32 datalen<min = 6, max = 22>;
   char type[4] = { "hdrl", "strl", "movi" };
 
   if (!Memcmp(type,"hdrl",4))
@@ -224,7 +224,7 @@ typedef struct
 typedef struct 
 {
   char id[4];
-  uint32  datalen;
+  uint32  datalen<arraylength=true>;
   if ( datalen % 2 )
     char data[datalen+1];
   else
@@ -276,7 +276,7 @@ typedef struct xroot
     LittleEndian();
   }
 
-  uint32  datalen;
+  uint32  datalen<arraylength=true>;
 
   local uint evil_state = SetEvilBit(false);
   char form[4] = { "AVI " };
@@ -299,25 +299,26 @@ while (!FEof())
 {
 
   local uint evil_state = SetEvilBit(false);
-  ReadBytes(nheader,FTell(), 4, nheader_values);
+  ReadBytes(nheader, FTell(), 4, nheader_values);
   SetEvilBit(evil_state);
 
-  if (Memcmp(nheader,"LIST",4) == 0)
+  if (Memcmp(nheader, "LIST", 4) == 0)
   {
     LISTHEADER list;
   }
-  else if (Memcmp(nheader, "JUNK",4) == 0)
+  else if (Memcmp(nheader, "JUNK", 4) == 0)
   {
     JUNKHEADER junk;
   }
-  else if (Memcmp(nheader, "idx1",4) == 0)
+  else if (Memcmp(nheader, "idx1", 4) == 0)
   {
     idx1HEADER idx1;
   }
   else
   {
-    if (!FEof())
-      Printf("unknown chunk: %c%c%c%c", nheader[0],nheader[1],nheader[2],nheader[3]);
+    if (!FEof()) {
+      Printf("unknown chunk: %c%c%c%c", nheader[0], nheader[1], nheader[2], nheader[3]);
+    }
     return -1;
   }
 }

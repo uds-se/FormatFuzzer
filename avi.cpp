@@ -1437,7 +1437,7 @@ public:
 		nheader(4, 0),
 		id_element(false),
 		id(id_element, { { 3, {{'X'}} } }),
-		datalen(1, { 44 }),
+		datalen(2),
 		form_element(false),
 		form(form_element),
 		root(ROOT_root_instances),
@@ -1961,7 +1961,7 @@ void generate_file() {
 			GENERATE(idx1, ::g->idx1.generate());
 		} else {
 			if (!FEof()) {
-			Printf("unknown chunk: %c%c%c%c", ::g->nheader[0], ::g->nheader[1], ::g->nheader[2], ::g->nheader[3]);
+				Printf("unknown chunk: %c%c%c%c", ::g->nheader[0], ::g->nheader[1], ::g->nheader[2], ::g->nheader[3]);
 			};
 			exit_template(-1);
 		};
