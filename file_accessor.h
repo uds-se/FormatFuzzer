@@ -358,7 +358,8 @@ public:
 		}
 		if (!generate) {
 			assert_cond(file_size == final_file_size, "unparsed bytes left at the end of file");
-			assert_cond(parsed_file_size == final_file_size, "unparsed (lookahead) bytes left at the end of file");
+			if (parsed_file_size != final_file_size && (debug_print || print_errors))
+				fprintf(stderr, "Warning: unparsed (lookahead) bytes left at the end of file\n");
 
 			if (get_parse_tree && get_chunk && chunk_end == UINT_MAX && file_pos == chunk_start && rand_last != UINT_MAX) {
 				printf("FILE IS APPENDABLE\n");
@@ -643,6 +644,7 @@ public:
 	}
 	
 	std::string file_string(int size = 0) {
+		assert_cond(size >= 0, "negative string length");
 		assert_cond(file_pos + size <= MAX_FILE_SIZE, "file size exceeded MAX_FILE_SIZE");
 		if (!generate)
 			parse = [&size](unsigned char* file_buf) -> long long {
@@ -658,14 +660,13 @@ public:
 		} else if (choice == 14) {
 			return file_latin1_string(size);
 		}
-		unsigned char buf[4096];
 		ssize_t len = size;
 		if (!len) {
 			if (!generate)
 				parse = [](unsigned char* file_buf) -> long long { return strlen((char*)file_buf); };
 			len = rand_int(80, parse);
 		}
-		assert_cond(len < 4096, "string too large");
+		unsigned char *buf = (unsigned char *) malloc(len + 1);
 		for (int i = 0; i < len; ++i) {
 			if (size == 0) {
 				if (!generate)
@@ -689,19 +690,20 @@ public:
 		if (size == 0)
 			++len;
 		write_file(value.c_str(), len);
+		free(buf);
 		return value;
 	}
 
 	std::string file_ascii_string(int size = 0) {
+		assert_cond(size >= 0, "negative string length");
 		assert_cond(file_pos + size <= MAX_FILE_SIZE, "file size exceeded MAX_FILE_SIZE");
-		unsigned char buf[4096];
 		ssize_t len = size;
 		if (!len) {
 			if (!generate)
 				parse = [](unsigned char* file_buf) -> long long { return strlen((char*)file_buf); };
 			len = rand_int(80, parse);
 		}
-		assert_cond(len < 4096, "string too large");
+		unsigned char *buf = (unsigned char *) malloc(len + 1);
 		for (int i = 0; i < len; ++i) {
 			if (!generate)
 				parse = [&i](unsigned char* file_buf) -> long long { return file_buf[i] - 32; };
@@ -719,19 +721,20 @@ public:
 		if (size == 0)
 			++len;
 		write_file(value.c_str(), len);
+		free(buf);
 		return value;
 	}
 
 	std::string file_latin1_string(int size = 0) {
+		assert_cond(size >= 0, "negative string length");
 		assert_cond(file_pos + size <= MAX_FILE_SIZE, "file size exceeded MAX_FILE_SIZE");
-		unsigned char buf[4096];
 		ssize_t len = size;
 		if (!len) {
 			if (!generate)
 				parse = [](unsigned char* file_buf) -> long long { return strlen((char*)file_buf); };
 			len = rand_int(80, parse);
 		}
-		assert_cond(len < 4096, "string too large");
+		unsigned char *buf = (unsigned char *) malloc(len + 1);
 		for (int i = 0; i < len; ++i) {
 			if (!generate)
 				parse = [&i](unsigned char* file_buf) -> long long { return file_buf[i] >= 161 ? file_buf[i] - 66 : file_buf[i] - 32; };
@@ -751,6 +754,7 @@ public:
 		if (size == 0)
 			++len;
 		write_file(value.c_str(), len);
+		free(buf);
 		return value;
 	}
 };
