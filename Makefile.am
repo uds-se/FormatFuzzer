@@ -25,6 +25,11 @@ FFCOMPILE = $(PYTHON) ./ffcompile
 	@rm -f $@
 	$(AM_V_CXXLD)$(CXXLINK) $+ $(LIBS)
 
+# How to create the fuzzer as a shared library (say, 'gif.so')
+%.so: %.cpp fuzzer.cpp
+	@rm -f $@
+	$(AM_V_CXXLD)$(CXXLINK) -shared -fPIC $+ $(LIBS)
+
 # Create a random file (say, 'make random.gif')
 random.%: %-fuzzer$(EXEEXT)
 	./$< fuzz $@
