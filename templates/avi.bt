@@ -173,7 +173,7 @@ typedef struct
 
 typedef struct 
 {
-  char id[4];
+  char id[4] = {"RIFF", "LIST"};
   local uint datalen_pos = FTell();
   uint32 list_hdr_datalen<min = 6, max = 22>;
   char type[4] = { "hdrl", "strl", "movi" };

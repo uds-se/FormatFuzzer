@@ -121,21 +121,21 @@ class ROOT {
 	std::vector<ROOT*>& instances;
 
 	std::string id_var;
-	uint32 datalen_var;
+	uint32 root_datalen_var;
 	std::string form_var;
 
 public:
 	bool id_exists = false;
-	bool datalen_exists = false;
+	bool root_datalen_exists = false;
 	bool form_exists = false;
 
 	std::string id() {
 		assert_cond(id_exists, "struct field id does not exist");
 		return id_var;
 	}
-	uint32 datalen() {
-		assert_cond(datalen_exists, "struct field datalen does not exist");
-		return datalen_var;
+	uint32 root_datalen() {
+		assert_cond(root_datalen_exists, "struct field root_datalen does not exist");
+		return root_datalen_var;
 	}
 	std::string form() {
 		assert_cond(form_exists, "struct field form does not exist");
@@ -311,21 +311,21 @@ class avihHEADER {
 	std::vector<avihHEADER*>& instances;
 
 	std::string id_var;
-	uint32 datalen_var;
+	uint32 avi_hdr_datalen_var;
 	MainAVIHeader* data_var;
 
 public:
 	bool id_exists = false;
-	bool datalen_exists = false;
+	bool avi_hdr_datalen_exists = false;
 	bool data_exists = false;
 
 	std::string id() {
 		assert_cond(id_exists, "struct field id does not exist");
 		return id_var;
 	}
-	uint32 datalen() {
-		assert_cond(datalen_exists, "struct field datalen does not exist");
-		return datalen_var;
+	uint32 avi_hdr_datalen() {
+		assert_cond(avi_hdr_datalen_exists, "struct field avi_hdr_datalen does not exist");
+		return avi_hdr_datalen_var;
 	}
 	MainAVIHeader& data() {
 		assert_cond(data_exists, "struct field data does not exist");
@@ -469,21 +469,21 @@ class strhHEADER {
 	std::vector<strhHEADER*>& instances;
 
 	std::string id_var;
-	uint32 datalen_var;
+	uint32 strh_hdr_datalen_var;
 	AVIStreamHeader* data_var;
 
 public:
 	bool id_exists = false;
-	bool datalen_exists = false;
+	bool strh_hdr_datalen_exists = false;
 	bool data_exists = false;
 
 	std::string id() {
 		assert_cond(id_exists, "struct field id does not exist");
 		return id_var;
 	}
-	uint32 datalen() {
-		assert_cond(datalen_exists, "struct field datalen does not exist");
-		return datalen_var;
+	uint32 strh_hdr_datalen() {
+		assert_cond(strh_hdr_datalen_exists, "struct field strh_hdr_datalen does not exist");
+		return strh_hdr_datalen_var;
 	}
 	AVIStreamHeader& data() {
 		assert_cond(data_exists, "struct field data does not exist");
@@ -719,14 +719,14 @@ class strfHEADER_BIH {
 	std::vector<strfHEADER_BIH*>& instances;
 
 	std::string id_var;
-	uint32 datalen_var;
+	uint32 strf_hdr_bih_datalen_var;
 	BITMAPINFOHEADER* bmiHeader_var;
 	RGBQUAD* bmiColors_var;
 	std::string exData_var;
 
 public:
 	bool id_exists = false;
-	bool datalen_exists = false;
+	bool strf_hdr_bih_datalen_exists = false;
 	bool bmiHeader_exists = false;
 	bool bmiColors_exists = false;
 	bool exData_exists = false;
@@ -735,9 +735,9 @@ public:
 		assert_cond(id_exists, "struct field id does not exist");
 		return id_var;
 	}
-	uint32 datalen() {
-		assert_cond(datalen_exists, "struct field datalen does not exist");
-		return datalen_var;
+	uint32 strf_hdr_bih_datalen() {
+		assert_cond(strf_hdr_bih_datalen_exists, "struct field strf_hdr_bih_datalen does not exist");
+		return strf_hdr_bih_datalen_var;
 	}
 	BITMAPINFOHEADER& bmiHeader() {
 		assert_cond(bmiHeader_exists, "struct field bmiHeader does not exist");
@@ -879,13 +879,13 @@ class strfHEADER_WAVE {
 	std::vector<strfHEADER_WAVE*>& instances;
 
 	std::string id_var;
-	uint32 datalen_var;
+	uint32 strf_hdr_wave_datalen_var;
 	WAVEFORMATEX* wave_var;
 	std::string exData_var;
 
 public:
 	bool id_exists = false;
-	bool datalen_exists = false;
+	bool strf_hdr_wave_datalen_exists = false;
 	bool wave_exists = false;
 	bool exData_exists = false;
 
@@ -893,9 +893,9 @@ public:
 		assert_cond(id_exists, "struct field id does not exist");
 		return id_var;
 	}
-	uint32 datalen() {
-		assert_cond(datalen_exists, "struct field datalen does not exist");
-		return datalen_var;
+	uint32 strf_hdr_wave_datalen() {
+		assert_cond(strf_hdr_wave_datalen_exists, "struct field strf_hdr_wave_datalen does not exist");
+		return strf_hdr_wave_datalen_var;
 	}
 	WAVEFORMATEX& wave() {
 		assert_cond(wave_exists, "struct field wave does not exist");
@@ -931,21 +931,21 @@ class strfHEADER {
 	std::vector<strfHEADER*>& instances;
 
 	std::string id_var;
-	uint32 datalen_var;
+	uint32 strf_hdr_datalen_var;
 	std::string data_var;
 
 public:
 	bool id_exists = false;
-	bool datalen_exists = false;
+	bool strf_hdr_datalen_exists = false;
 	bool data_exists = false;
 
 	std::string id() {
 		assert_cond(id_exists, "struct field id does not exist");
 		return id_var;
 	}
-	uint32 datalen() {
-		assert_cond(datalen_exists, "struct field datalen does not exist");
-		return datalen_var;
+	uint32 strf_hdr_datalen() {
+		assert_cond(strf_hdr_datalen_exists, "struct field strf_hdr_datalen does not exist");
+		return strf_hdr_datalen_var;
 	}
 	std::string data() {
 		assert_cond(data_exists, "struct field data does not exist");
@@ -977,21 +977,21 @@ class strnHEADER {
 	std::vector<strnHEADER*>& instances;
 
 	std::string id_var;
-	uint32 datalen_var;
+	uint32 strn_hdr_datalen_var;
 	std::string data_var;
 
 public:
 	bool id_exists = false;
-	bool datalen_exists = false;
+	bool strn_hdr_datalen_exists = false;
 	bool data_exists = false;
 
 	std::string id() {
 		assert_cond(id_exists, "struct field id does not exist");
 		return id_var;
 	}
-	uint32 datalen() {
-		assert_cond(datalen_exists, "struct field datalen does not exist");
-		return datalen_var;
+	uint32 strn_hdr_datalen() {
+		assert_cond(strn_hdr_datalen_exists, "struct field strn_hdr_datalen does not exist");
+		return strn_hdr_datalen_var;
 	}
 	std::string data() {
 		assert_cond(data_exists, "struct field data does not exist");
@@ -1023,21 +1023,21 @@ class genericblock {
 	std::vector<genericblock*>& instances;
 
 	std::string id_var;
-	uint32 datalen_var;
+	uint32 generic_blk_datalen_var;
 	std::string data_var;
 
 public:
 	bool id_exists = false;
-	bool datalen_exists = false;
+	bool generic_blk_datalen_exists = false;
 	bool data_exists = false;
 
 	std::string id() {
 		assert_cond(id_exists, "struct field id does not exist");
 		return id_var;
 	}
-	uint32 datalen() {
-		assert_cond(datalen_exists, "struct field datalen does not exist");
-		return datalen_var;
+	uint32 generic_blk_datalen() {
+		assert_cond(generic_blk_datalen_exists, "struct field generic_blk_datalen does not exist");
+		return generic_blk_datalen_var;
 	}
 	std::string data() {
 		assert_cond(data_exists, "struct field data does not exist");
@@ -1069,7 +1069,7 @@ class LISTHEADER {
 	std::vector<LISTHEADER*>& instances;
 
 	std::string id_var;
-	uint32 datalen_var;
+	uint32 list_hdr_datalen_var;
 	std::string type_var;
 	avihHEADER* avhi_var;
 	strhHEADER* strh_var;
@@ -1079,7 +1079,7 @@ class LISTHEADER {
 
 public:
 	bool id_exists = false;
-	bool datalen_exists = false;
+	bool list_hdr_datalen_exists = false;
 	bool type_exists = false;
 	bool avhi_exists = false;
 	bool strh_exists = false;
@@ -1091,9 +1091,9 @@ public:
 		assert_cond(id_exists, "struct field id does not exist");
 		return id_var;
 	}
-	uint32 datalen() {
-		assert_cond(datalen_exists, "struct field datalen does not exist");
-		return datalen_var;
+	uint32 list_hdr_datalen() {
+		assert_cond(list_hdr_datalen_exists, "struct field list_hdr_datalen does not exist");
+		return list_hdr_datalen_var;
 	}
 	std::string type() {
 		assert_cond(type_exists, "struct field type does not exist");
@@ -1121,8 +1121,12 @@ public:
 	}
 
 	/* locals */
+	uint datalen_pos;
 	int32 pointer;
 	int32 stop;
+	uint generic_start;
+	uint after_pos;
+	uint evil_state;
 
 	unsigned char generated = 0;
 	int64 _startof = 0;
@@ -1149,21 +1153,21 @@ class JUNKHEADER {
 	std::vector<JUNKHEADER*>& instances;
 
 	std::string id_var;
-	uint32 datalen_var;
+	uint32 junk_hdr_datalen_var;
 	std::string data_var;
 
 public:
 	bool id_exists = false;
-	bool datalen_exists = false;
+	bool junk_hdr_datalen_exists = false;
 	bool data_exists = false;
 
 	std::string id() {
 		assert_cond(id_exists, "struct field id does not exist");
 		return id_var;
 	}
-	uint32 datalen() {
-		assert_cond(datalen_exists, "struct field datalen does not exist");
-		return datalen_var;
+	uint32 junk_hdr_datalen() {
+		assert_cond(junk_hdr_datalen_exists, "struct field junk_hdr_datalen does not exist");
+		return junk_hdr_datalen_var;
 	}
 	std::string data() {
 		assert_cond(data_exists, "struct field data does not exist");
@@ -1271,21 +1275,21 @@ class idx1HEADER {
 	std::vector<idx1HEADER*>& instances;
 
 	std::string id_var;
-	uint32 datalen_var;
+	uint32 idx1_hdr_datalen_var;
 	std::vector<AVIINDEXENTRY*> data_var;
 
 public:
 	bool id_exists = false;
-	bool datalen_exists = false;
+	bool idx1_hdr_datalen_exists = false;
 	bool data_exists = false;
 
 	std::string id() {
 		assert_cond(id_exists, "struct field id does not exist");
 		return id_var;
 	}
-	uint32 datalen() {
-		assert_cond(datalen_exists, "struct field datalen does not exist");
-		return datalen_var;
+	uint32 idx1_hdr_datalen() {
+		assert_cond(idx1_hdr_datalen_exists, "struct field idx1_hdr_datalen does not exist");
+		return idx1_hdr_datalen_var;
 	}
 	std::vector<AVIINDEXENTRY*> data() {
 		assert_cond(data_exists, "struct field data does not exist");
@@ -1346,22 +1350,24 @@ std::vector<AVIINDEXENTRY*> AVIINDEXENTRY_data____element_instances;
 std::vector<idx1HEADER*> idx1HEADER_idx1_instances;
 
 
-std::unordered_map<std::string, std::string> variable_types = { { "id", "char_array_class" }, { "datalen", "uint32_class" }, { "form", "char_array_class" }, { "root", "ROOT" }, { "type", "char_array_class" }, { "dwMicroSecPerFrame", "DWORD_class" }, { "dwMaxBytesPerSec", "DWORD_class" }, { "dwReserved1", "DWORD_class" }, { "dwFlags", "DWORD_class" }, { "dwTotalFrames", "DWORD_class" }, { "dwInitialFrames", "DWORD_class" }, { "dwStreams", "DWORD_class" }, { "dwSuggestedBufferSize", "DWORD_class" }, { "dwWidth", "DWORD_class" }, { "dwHeight", "DWORD_class" }, { "dwScale", "DWORD_class" }, { "dwRate", "DWORD_class" }, { "dwStart", "DWORD_class" }, { "dwLength", "DWORD_class" }, { "data", "MainAVIHeader" }, { "avhi", "avihHEADER" }, { "fccType", "char_array_class" }, { "fccHandler", "char_array_class" }, { "dwQuality", "DWORD_class" }, { "dwSampleSize", "DWORD_class" }, { "xdwQuality", "DWORD_class" }, { "xdwSampleSize", "DWORD_class" }, { "data_", "AVIStreamHeader" }, { "strh", "strhHEADER" }, { "biSize", "uint32_class" }, { "biWidth", "uint32_class" }, { "biHeight", "uint32_class" }, { "biPlanes", "uint16_class" }, { "biBitCount", "uint16_class" }, { "biCompression", "uint32_class" }, { "biSizeImage", "uint32_class" }, { "biXPelsPerMeter", "uint32_class" }, { "biYPelsPerMeter", "uint32_class" }, { "biClrUsed", "uint32_class" }, { "biClrImportant", "uint32_class" }, { "bmiHeader", "BITMAPINFOHEADER" }, { "rgbBlue", "unsigned_char_class" }, { "rgbGreen", "unsigned_char_class" }, { "rgbRed", "unsigned_char_class" }, { "rgbReserved", "unsigned_char_class" }, { "bmiColors", "RGBQUAD" }, { "exData", "char_array_class" }, { "strf", "strfHEADER_BIH" }, { "wFormatTag", "WORD_class" }, { "nChannels", "WORD_class" }, { "nSamplesPerSec", "DWORD_class" }, { "nAvgBytesPerSec", "DWORD_class" }, { "nBlockAlign", "WORD_class" }, { "wBitsPerSample", "WORD_class" }, { "cbSize", "WORD_class" }, { "wave", "WAVEFORMATEX" }, { "strf_", "strfHEADER_WAVE" }, { "data__", "char_array_class" }, { "strf__", "strfHEADER" }, { "strn", "strnHEADER" }, { "gb", "genericblock" }, { "list", "LISTHEADER" }, { "junk", "JUNKHEADER" }, { "ckid", "DWORD_class" }, { "dwChunkOffset", "DWORD_class" }, { "dwChunkLength", "DWORD_class" }, { "data___", "AVIINDEXENTRY_array_class" }, { "idx1", "idx1HEADER" } };
+std::unordered_map<std::string, std::string> variable_types = { { "id", "char_array_class" }, { "root_datalen", "uint32_class" }, { "form", "char_array_class" }, { "root", "ROOT" }, { "list_hdr_datalen", "uint32_class" }, { "type", "char_array_class" }, { "avi_hdr_datalen", "uint32_class" }, { "dwMicroSecPerFrame", "DWORD_class" }, { "dwMaxBytesPerSec", "DWORD_class" }, { "dwReserved1", "DWORD_class" }, { "dwFlags", "DWORD_class" }, { "dwTotalFrames", "DWORD_class" }, { "dwInitialFrames", "DWORD_class" }, { "dwStreams", "DWORD_class" }, { "dwSuggestedBufferSize", "DWORD_class" }, { "dwWidth", "DWORD_class" }, { "dwHeight", "DWORD_class" }, { "dwScale", "DWORD_class" }, { "dwRate", "DWORD_class" }, { "dwStart", "DWORD_class" }, { "dwLength", "DWORD_class" }, { "data", "MainAVIHeader" }, { "avhi", "avihHEADER" }, { "strh_hdr_datalen", "uint32_class" }, { "fccType", "char_array_class" }, { "fccHandler", "char_array_class" }, { "dwQuality", "DWORD_class" }, { "dwSampleSize", "DWORD_class" }, { "xdwQuality", "DWORD_class" }, { "xdwSampleSize", "DWORD_class" }, { "data_", "AVIStreamHeader" }, { "strh", "strhHEADER" }, { "strf_hdr_bih_datalen", "uint32_class" }, { "biSize", "uint32_class" }, { "biWidth", "uint32_class" }, { "biHeight", "uint32_class" }, { "biPlanes", "uint16_class" }, { "biBitCount", "uint16_class" }, { "biCompression", "uint32_class" }, { "biSizeImage", "uint32_class" }, { "biXPelsPerMeter", "uint32_class" }, { "biYPelsPerMeter", "uint32_class" }, { "biClrUsed", "uint32_class" }, { "biClrImportant", "uint32_class" }, { "bmiHeader", "BITMAPINFOHEADER" }, { "rgbBlue", "unsigned_char_class" }, { "rgbGreen", "unsigned_char_class" }, { "rgbRed", "unsigned_char_class" }, { "rgbReserved", "unsigned_char_class" }, { "bmiColors", "RGBQUAD" }, { "exData", "char_array_class" }, { "strf", "strfHEADER_BIH" }, { "strf_hdr_wave_datalen", "uint32_class" }, { "wFormatTag", "WORD_class" }, { "nChannels", "WORD_class" }, { "nSamplesPerSec", "DWORD_class" }, { "nAvgBytesPerSec", "DWORD_class" }, { "nBlockAlign", "WORD_class" }, { "wBitsPerSample", "WORD_class" }, { "cbSize", "WORD_class" }, { "wave", "WAVEFORMATEX" }, { "strf_", "strfHEADER_WAVE" }, { "strf_hdr_datalen", "uint32_class" }, { "data__", "char_array_class" }, { "strf__", "strfHEADER" }, { "strn_hdr_datalen", "uint32_class" }, { "strn", "strnHEADER" }, { "generic_blk_datalen", "uint32_class" }, { "gb", "genericblock" }, { "list", "LISTHEADER" }, { "junk_hdr_datalen", "uint32_class" }, { "junk", "JUNKHEADER" }, { "idx1_hdr_datalen", "uint32_class" }, { "ckid", "DWORD_class" }, { "dwChunkOffset", "DWORD_class" }, { "dwChunkLength", "DWORD_class" }, { "data___", "AVIINDEXENTRY_array_class" }, { "idx1", "idx1HEADER" } };
 
-std::vector<std::vector<int>> integer_ranges = { { 1, 16 } };
+std::vector<std::vector<int>> integer_ranges = { { 1, 16 }, { 6, 22 }, { 42, 58 }, { 20, 36 } };
 
 class globals_class {
 public:
 	/*local*/ std::string nheader;
 	char_class id_element;
 	char_array_class id;
-	uint32_class datalen;
+	uint32_class root_datalen;
 	char_class form_element;
 	char_array_class form;
 	ROOT root;
 	/*local*/ std::vector<std::string> nheader_values;
+	uint32_class list_hdr_datalen;
 	char_class type_element;
 	char_array_class type;
+	uint32_class avi_hdr_datalen;
 	DWORD_class dwMicroSecPerFrame;
 	DWORD_class dwMaxBytesPerSec;
 	DWORD_class dwReserved1;
@@ -1378,6 +1384,7 @@ public:
 	DWORD_class dwLength;
 	MainAVIHeader data;
 	avihHEADER avhi;
+	uint32_class strh_hdr_datalen;
 	char_class fccType_element;
 	char_array_class fccType;
 	char_class fccHandler_element;
@@ -1388,6 +1395,7 @@ public:
 	DWORD_class xdwSampleSize;
 	AVIStreamHeader data_;
 	strhHEADER strh;
+	uint32_class strf_hdr_bih_datalen;
 	uint32_class biSize;
 	uint32_class biWidth;
 	uint32_class biHeight;
@@ -1408,6 +1416,7 @@ public:
 	char_class exData_element;
 	char_array_class exData;
 	strfHEADER_BIH strf;
+	uint32_class strf_hdr_wave_datalen;
 	WORD_class wFormatTag;
 	WORD_class nChannels;
 	DWORD_class nSamplesPerSec;
@@ -1417,13 +1426,18 @@ public:
 	WORD_class cbSize;
 	WAVEFORMATEX wave;
 	strfHEADER_WAVE strf_;
+	uint32_class strf_hdr_datalen;
 	char_class data___element;
 	char_array_class data__;
 	strfHEADER strf__;
+	uint32_class strn_hdr_datalen;
 	strnHEADER strn;
+	uint32_class generic_blk_datalen;
 	genericblock gb;
 	LISTHEADER list;
+	uint32_class junk_hdr_datalen;
 	JUNKHEADER junk;
+	uint32_class idx1_hdr_datalen;
 	DWORD_class ckid;
 	DWORD_class dwChunkOffset;
 	DWORD_class dwChunkLength;
@@ -1437,12 +1451,14 @@ public:
 		nheader(4, 0),
 		id_element(false),
 		id(id_element, { { 3, {{'X'}} } }),
-		datalen(2),
+		root_datalen(2),
 		form_element(false),
 		form(form_element),
 		root(ROOT_root_instances),
+		list_hdr_datalen(3),
 		type_element(false),
 		type(type_element),
+		avi_hdr_datalen(2),
 		dwMicroSecPerFrame(1),
 		dwMaxBytesPerSec(1),
 		dwReserved1(1),
@@ -1459,6 +1475,7 @@ public:
 		dwLength(1),
 		data(MainAVIHeader_data_instances),
 		avhi(avihHEADER_avhi_instances),
+		strh_hdr_datalen(2),
 		fccType_element(false),
 		fccType(fccType_element),
 		fccHandler_element(false),
@@ -1469,6 +1486,7 @@ public:
 		xdwSampleSize(1),
 		data_(AVIStreamHeader_data__instances),
 		strh(strhHEADER_strh_instances),
+		strf_hdr_bih_datalen(4),
 		biSize(1),
 		biWidth(1),
 		biHeight(1),
@@ -1489,6 +1507,7 @@ public:
 		exData_element(false),
 		exData(exData_element),
 		strf(strfHEADER_BIH_strf_instances),
+		strf_hdr_wave_datalen(5),
 		wFormatTag(1),
 		nChannels(1),
 		nSamplesPerSec(1),
@@ -1498,13 +1517,18 @@ public:
 		cbSize(1),
 		wave(WAVEFORMATEX_wave_instances),
 		strf_(strfHEADER_WAVE_strf__instances),
+		strf_hdr_datalen(2),
 		data___element(false),
 		data__(data___element),
 		strf__(strfHEADER_strf___instances),
+		strn_hdr_datalen(2),
 		strn(strnHEADER_strn_instances),
+		generic_blk_datalen(2),
 		gb(genericblock_gb_instances),
 		list(LISTHEADER_list_instances),
+		junk_hdr_datalen(2),
 		junk(JUNKHEADER_junk_instances),
+		idx1_hdr_datalen(2),
 		ckid(1),
 		dwChunkOffset(1),
 		dwChunkLength(1),
@@ -1527,7 +1551,7 @@ ROOT* ROOT::generate() {
 		generated = 1;
 	_startof = FTell();
 
-	GENERATE_VAR(id, ::g->id.generate(4));
+	GENERATE_VAR(id, ::g->id.generate(4, { "RIFF" }));
 	if ((::g->root().id()[3] == 'X')) {
 		Printf("Motorola format\n");
 		BigEndian();
@@ -1535,7 +1559,7 @@ ROOT* ROOT::generate() {
 		Printf("Intel format\n");
 		LittleEndian();
 	};
-	GENERATE_VAR(datalen, ::g->datalen.generate());
+	GENERATE_VAR(root_datalen, ::g->root_datalen.generate());
 	evil_state = SetEvilBit(false);
 	GENERATE_VAR(form, ::g->form.generate(4, { "AVI " }));
 	SetEvilBit(evil_state);
@@ -1590,7 +1614,7 @@ avihHEADER* avihHEADER::generate() {
 	_startof = FTell();
 
 	GENERATE_VAR(id, ::g->id.generate(4));
-	GENERATE_VAR(datalen, ::g->datalen.generate());
+	GENERATE_VAR(avi_hdr_datalen, ::g->avi_hdr_datalen.generate());
 	GENERATE_VAR(data, ::g->data.generate());
 
 	_sizeof = FTell() - _startof;
@@ -1639,7 +1663,7 @@ strhHEADER* strhHEADER::generate() {
 	_startof = FTell();
 
 	GENERATE_VAR(id, ::g->id.generate(4));
-	GENERATE_VAR(datalen, ::g->datalen.generate());
+	GENERATE_VAR(strh_hdr_datalen, ::g->strh_hdr_datalen.generate());
 	GENERATE_VAR(data, ::g->data_.generate());
 
 	_sizeof = FTell() - _startof;
@@ -1705,15 +1729,15 @@ strfHEADER_BIH* strfHEADER_BIH::generate() {
 	_startof = FTell();
 
 	GENERATE_VAR(id, ::g->id.generate(4));
-	GENERATE_VAR(datalen, ::g->datalen.generate());
+	GENERATE_VAR(strf_hdr_bih_datalen, ::g->strf_hdr_bih_datalen.generate());
 	GENERATE_VAR(bmiHeader, ::g->bmiHeader.generate());
 	sz = bmiHeader()._sizeof;
-	if ((datalen() == 44)) {
+	if ((strf_hdr_bih_datalen() == 44)) {
 		GENERATE_VAR(bmiColors, ::g->bmiColors.generate());
 		sz += 4;
 	};
 	Printf("left: %d\n", sz);
-	GENERATE_VAR(exData, ::g->exData.generate((datalen() - sz)));
+	GENERATE_VAR(exData, ::g->exData.generate((strf_hdr_bih_datalen() - sz)));
 
 	_sizeof = FTell() - _startof;
 	return this;
@@ -1754,9 +1778,10 @@ strfHEADER_WAVE* strfHEADER_WAVE::generate() {
 	_startof = FTell();
 
 	GENERATE_VAR(id, ::g->id.generate(4));
-	GENERATE_VAR(datalen, ::g->datalen.generate());
+	GENERATE_VAR(strf_hdr_wave_datalen, ::g->strf_hdr_wave_datalen.generate());
+	Printf("%d\n", strf_hdr_wave_datalen());
 	GENERATE_VAR(wave, ::g->wave.generate());
-	GENERATE_VAR(exData, ::g->exData.generate((datalen() - 18)));
+	GENERATE_VAR(exData, ::g->exData.generate((strf_hdr_wave_datalen() - 18)));
 
 	_sizeof = FTell() - _startof;
 	return this;
@@ -1774,11 +1799,11 @@ strfHEADER* strfHEADER::generate() {
 	_startof = FTell();
 
 	GENERATE_VAR(id, ::g->id.generate(4));
-	GENERATE_VAR(datalen, ::g->datalen.generate());
-	if ((datalen() % 2)) {
-		GENERATE_VAR(data, ::g->data__.generate((datalen() + 1)));
+	GENERATE_VAR(strf_hdr_datalen, ::g->strf_hdr_datalen.generate());
+	if ((strf_hdr_datalen() % 2)) {
+		GENERATE_VAR(data, ::g->data__.generate((strf_hdr_datalen() + 1)));
 	} else {
-		GENERATE_VAR(data, ::g->data__.generate(datalen()));
+		GENERATE_VAR(data, ::g->data__.generate(strf_hdr_datalen()));
 	};
 
 	_sizeof = FTell() - _startof;
@@ -1797,11 +1822,11 @@ strnHEADER* strnHEADER::generate() {
 	_startof = FTell();
 
 	GENERATE_VAR(id, ::g->id.generate(4));
-	GENERATE_VAR(datalen, ::g->datalen.generate());
-	if ((datalen() % 2)) {
-		GENERATE_VAR(data, ::g->data__.generate((datalen() + 1)));
+	GENERATE_VAR(strn_hdr_datalen, ::g->strn_hdr_datalen.generate());
+	if ((strn_hdr_datalen() % 2)) {
+		GENERATE_VAR(data, ::g->data__.generate((strn_hdr_datalen() + 1)));
 	} else {
-		GENERATE_VAR(data, ::g->data__.generate(datalen()));
+		GENERATE_VAR(data, ::g->data__.generate(strn_hdr_datalen()));
 	};
 
 	_sizeof = FTell() - _startof;
@@ -1820,11 +1845,11 @@ genericblock* genericblock::generate() {
 	_startof = FTell();
 
 	GENERATE_VAR(id, ::g->id.generate(4));
-	GENERATE_VAR(datalen, ::g->datalen.generate());
-	if ((datalen() % 2)) {
-		GENERATE_VAR(data, ::g->data__.generate((datalen() + 1)));
+	GENERATE_VAR(generic_blk_datalen, ::g->generic_blk_datalen.generate());
+	if ((generic_blk_datalen() % 2)) {
+		GENERATE_VAR(data, ::g->data__.generate((generic_blk_datalen() + 1)));
 	} else {
-		GENERATE_VAR(data, ::g->data__.generate(datalen()));
+		GENERATE_VAR(data, ::g->data__.generate(generic_blk_datalen()));
 	};
 
 	_sizeof = FTell() - _startof;
@@ -1842,8 +1867,9 @@ LISTHEADER* LISTHEADER::generate() {
 		generated = 1;
 	_startof = FTell();
 
-	GENERATE_VAR(id, ::g->id.generate(4));
-	GENERATE_VAR(datalen, ::g->datalen.generate());
+	GENERATE_VAR(id, ::g->id.generate(4, { "RIFF", "LIST" }));
+	datalen_pos = FTell();
+	GENERATE_VAR(list_hdr_datalen, ::g->list_hdr_datalen.generate());
 	GENERATE_VAR(type, ::g->type.generate(4, { "hdrl", "strl", "movi" }));
 	if (!Memcmp(type(), "hdrl", 4)) {
 		GENERATE_VAR(avhi, ::g->avhi.generate());
@@ -1863,13 +1889,20 @@ LISTHEADER* LISTHEADER::generate() {
 	} else {
 	if ((Memcmp(type(), "movi", 4) == 0)) {
 		pointer = 0;
-		stop = (datalen() - 4);
+		stop = (list_hdr_datalen() - 4);
 		do {
+			generic_start = FTell();
 			GENERATE_VAR(gb, ::g->gb.generate());
-			pointer += gb()._sizeof;
-		} while ((pointer != stop));
+			pointer += (FTell() - generic_start);
+		} while ((pointer < stop));
+		after_pos = FTell();
+		FSeek(datalen_pos);
+		evil_state = SetEvilBit(false);
+		GENERATE_VAR(list_hdr_datalen, ::g->list_hdr_datalen.generate({ ((uint32)pointer + 4) }));
+		SetEvilBit(evil_state);
+		FSeek(after_pos);
 	} else {
-		GENERATE_VAR(data, ::g->data__.generate((datalen() - 4)));
+		GENERATE_VAR(data, ::g->data__.generate((list_hdr_datalen() - 4)));
 	};
 	};
 	};
@@ -1890,11 +1923,11 @@ JUNKHEADER* JUNKHEADER::generate() {
 	_startof = FTell();
 
 	GENERATE_VAR(id, ::g->id.generate(4));
-	GENERATE_VAR(datalen, ::g->datalen.generate());
-	if ((datalen() % 2)) {
-		GENERATE_VAR(data, ::g->data__.generate((datalen() + 1)));
+	GENERATE_VAR(junk_hdr_datalen, ::g->junk_hdr_datalen.generate());
+	if ((junk_hdr_datalen() % 2)) {
+		GENERATE_VAR(data, ::g->data__.generate((junk_hdr_datalen() + 1)));
 	} else {
-		GENERATE_VAR(data, ::g->data__.generate(datalen()));
+		GENERATE_VAR(data, ::g->data__.generate(junk_hdr_datalen()));
 	};
 
 	_sizeof = FTell() - _startof;
@@ -1933,8 +1966,8 @@ idx1HEADER* idx1HEADER::generate() {
 	_startof = FTell();
 
 	GENERATE_VAR(id, ::g->id.generate(4));
-	GENERATE_VAR(datalen, ::g->datalen.generate());
-	GENERATE_VAR(data, ::g->data___.generate(datalen()));
+	GENERATE_VAR(idx1_hdr_datalen, ::g->idx1_hdr_datalen.generate());
+	GENERATE_VAR(data, ::g->data___.generate(idx1_hdr_datalen()));
 
 	_sizeof = FTell() - _startof;
 	return this;
