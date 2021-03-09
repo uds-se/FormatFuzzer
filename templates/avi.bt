@@ -77,7 +77,7 @@ typedef struct
 typedef struct 
 {
   char id[4];
-  uint32 datalen<arraylength=true>;
+  uint32 avi_hdr_datalen<arraylength=true>;
   MainAVIHeader data;
 } avihHEADER;
 
@@ -104,7 +104,7 @@ typedef struct
 typedef struct 
 {
   char id[4];
-  uint32  datalen<arraylength=true>;
+  uint32  strh_hdr_datalen<arraylength=true>;
   AVIStreamHeader data;
 }strhHEADER;
 
@@ -113,27 +113,27 @@ typedef struct
 typedef struct 
 {
   char id[4];
-  uint32  datalen<arraylength=true>;
-  if (datalen % 2)
-	  char data[datalen+1];
+  uint32  strf_hdr_datalen<arraylength=true>;
+  if (strf_hdr_datalen % 2)
+	  char data[strf_hdr_datalen+1];
   else
-	  char data[datalen];
+	  char data[strf_hdr_datalen];
 } strfHEADER;
 
 // strfHEADER with BITMAPINFOHEADER
 typedef struct 
 {
   char id[4];
-  uint32  datalen<min = 42, max = 58>;
+  uint32  strf_hdr_bih_datalen<min = 42, max = 58>;
   BITMAPINFOHEADER bmiHeader;
   local int sz = sizeof(bmiHeader); //This is 40
-  if (datalen == 44)
+  if (strf_hdr_bih_datalen == 44)
   {
     RGBQUAD bmiColors;
     sz += 4;
   }
   Printf("left: %d\n", sz);
-  char exData[datalen - sz];
+  char exData[strf_hdr_bih_datalen - sz];
 } strfHEADER_BIH;
 
 
@@ -141,31 +141,32 @@ typedef struct
 typedef struct 
 {
   char id[4];
-  uint32  datalen<min = 20, max = 36>;
+  uint32  strf_hdr_wave_datalen<min = 20, max = 36>;
+  Printf("%d\n", strf_hdr_wave_datalen);
   WAVEFORMATEX wave;
-  char exData[datalen - 18];
+  char exData[strf_hdr_wave_datalen - 18];
 } strfHEADER_WAVE;
 
 //
 typedef struct 
 {
   char id[4];
-  uint32  datalen<arraylength=true>;
-  if ( datalen % 2 )
-    char data[datalen+1];
+  uint32  strn_hdr_datalen<arraylength=true>;
+  if ( strn_hdr_datalen % 2 )
+    char data[strn_hdr_datalen+1];
   else
-    char data[datalen];
+    char data[strn_hdr_datalen];
 } strnHEADER;
 
 //
 typedef struct 
 {
   char id[4];
-  uint32  datalen<arraylength=true>;
-  if ( datalen % 2 )
-    char data[datalen+1];
+  uint32  generic_blk_datalen<arraylength=true>;
+  if ( generic_blk_datalen % 2 )
+    char data[generic_blk_datalen+1];
   else
-    char data[datalen];
+    char data[generic_blk_datalen];
 } genericblock;
 
 
@@ -173,7 +174,8 @@ typedef struct
 typedef struct 
 {
   char id[4];
-  uint32 datalen<min = 6, max = 22>;
+  local uint datalen_pos = FTell();
+  uint32 list_hdr_datalen<min = 6, max = 22>;
   char type[4] = { "hdrl", "strl", "movi" };
 
   if (!Memcmp(type,"hdrl",4))
@@ -202,20 +204,33 @@ typedef struct
   else if (Memcmp(type,"movi",4) == 0)
   {
     local int32 pointer = 0;
-    local int32 stop = datalen - 4;
+    local int32 stop = list_hdr_datalen - 4;
     
     //Printf("stop=%d\n", stop);
 
     do
     {
+      local uint generic_start = FTell();
       genericblock gb;
-      pointer += sizeof(gb);
+      pointer += (FTell() - generic_start);
+
+      //pointer += sizeof(gb);
       //Printf("+%x = %d\n", gb.datalen, pointer);
-    } while (pointer != stop);
+
+    } while (pointer < stop); // Changed from !=
+
+    //Fix the datalength in case not equal
+    local uint after_pos = FTell();
+    FSeek(datalen_pos);
+    local uint evil_state = SetEvilBit(false);
+    uint32 list_hdr_datalen = { (uint32)pointer + 4 };
+    SetEvilBit(evil_state);
+    FSeek(after_pos);
+
   }
   else
   {
-    char data[datalen-4];
+    char data[list_hdr_datalen-4];
   }
 } LISTHEADER;
 
@@ -224,11 +239,11 @@ typedef struct
 typedef struct 
 {
   char id[4];
-  uint32  datalen<arraylength=true>;
-  if ( datalen % 2 )
-    char data[datalen+1];
+  uint32  junk_hdr_datalen<arraylength=true>;
+  if ( junk_hdr_datalen % 2 )
+    char data[junk_hdr_datalen+1];
   else
-    char data[datalen];
+    char data[junk_hdr_datalen];
 } JUNKHEADER;
 
 
@@ -246,11 +261,11 @@ const DWORD AVIINDEXENTRYLEN = 16;
 typedef struct 
 {
   char id[4];
-  uint32  datalen<arraylength=true>;
+  uint32  idx1_hdr_datalen<arraylength=true>;
 
   //local uint avi_index_start = FTell();
   //AVIINDEXENTRY data[datalen/AVIINDEXENTRYLEN];
-  AVIINDEXENTRY data[datalen];
+  AVIINDEXENTRY data[idx1_hdr_datalen];
   /*local uint avi_index_end = FTell();
   
   FSeek(avi_index_start - 4);
@@ -264,7 +279,7 @@ typedef struct
 // root structure info
 typedef struct xroot 
 {
-  char id[4]; // RIFF
+  char id[4] = { "RIFF" }; // RIFF
   if (root.id[3] == 'X')
   {
     Printf("Motorola format\n");
@@ -276,7 +291,7 @@ typedef struct xroot
     LittleEndian();
   }
 
-  uint32  datalen<arraylength=true>;
+  uint32  root_datalen<arraylength=true>;
 
   local uint evil_state = SetEvilBit(false);
   char form[4] = { "AVI " };
