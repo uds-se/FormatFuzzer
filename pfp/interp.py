@@ -2163,6 +2163,8 @@ class PfpInterp(object):
                         cpp += "\t\t}\n"
                         if classname in ["char", "uchar", "unsigned char", "CHAR", "UCHAR"]:
                             cpp += "\t\tif (!element_known_values.size()) {\n"
+                            cpp += "\t\t\tif (size == 0)\n"
+                            cpp += "\t\t\t\t return \"\";\n"
                             cpp += "\t\t\tvalue = file_acc.file_string(size);\n"
                             cpp += "\t\t\t_sizeof = size;\n"
                             cpp += "\t\t\treturn value;\n"
