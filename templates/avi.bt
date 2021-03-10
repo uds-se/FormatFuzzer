@@ -124,7 +124,8 @@ typedef struct
 typedef struct 
 {
   char id[4];
-  uint32  strf_hdr_bih_datalen<min = 42, max = 58>;
+  uint32  strf_hdr_bih_datalen<min = 40, max = 58>;
+  Printf("STRF_HDR_BIH_DATALEN: %d\n", strf_hdr_bih_datalen);
   BITMAPINFOHEADER bmiHeader;
   local int sz = sizeof(bmiHeader); //This is 40
   if (strf_hdr_bih_datalen == 44)
@@ -133,7 +134,9 @@ typedef struct
     sz += 4;
   }
   Printf("left: %d\n", sz);
-  char exData[strf_hdr_bih_datalen - sz];
+  local uint exDataLen = strf_hdr_bih_datalen - sz;
+  Printf("exDataLen: %d\n", exDataLen);
+  char exData[exDataLen];
 } strfHEADER_BIH;
 
 
@@ -168,8 +171,6 @@ typedef struct
   else
     char data[generic_blk_datalen];
 } genericblock;
-
-
 
 typedef struct 
 {
@@ -232,7 +233,7 @@ typedef struct
   {
     char data[list_hdr_datalen-4];
   }
-} LISTHEADER;
+} LISTHEADER;/*
 
 typedef struct {
   DWORD CompressedBMHeight;
@@ -259,7 +260,7 @@ typedef struct {
   DWORD nbFieldPerFrame;
   VIDEO_FIELD_DESC FieldInfo[nbFieldPerFrame];
 } VideoPropHeader;
-
+*/
 // junk structure info
 typedef struct 
 {
@@ -287,14 +288,11 @@ typedef struct
 {
   char id[4];
 
-  /*local uint32 zero_value[] = { 0x00 };
+  local uint32 zero_value[] = { 0x00 };
   uint32 zero:4<values=zero_value>;
-  uint32 idx1_hdr_datalen:28<arraylength=true>;*/
+  uint32 idx1_hdr_datalen:28<arraylength=true>;
 
-  uint32  datalen;
-  AVIINDEXENTRY data[datalen/AVIINDEXENTRYLEN];
-
-  //AVIINDEXENTRY data[idx1_hdr_datalen];
+  AVIINDEXENTRY data[idx1_hdr_datalen];
 
 } idx1HEADER;
 
@@ -350,10 +348,10 @@ while (!FEof())
   {
     idx1HEADER idx1;
   }
-  else if (Memcmp(nheader, "vprp", 4) == 0)
+  /*else if (Memcmp(nheader, "vprp", 4) == 0)
   {
     VideoPropHeader vprp;
-  }
+  }*/
   else
   {
     genericblock unknown_block;
