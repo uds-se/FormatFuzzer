@@ -234,6 +234,31 @@ typedef struct
   }
 } LISTHEADER;
 
+typedef struct {
+  DWORD CompressedBMHeight;
+  DWORD CompressedBMWidth;
+  DWORD ValidBMHeight;
+  DWORD ValidBMWidth;
+  DWORD ValidBMXOffset;
+  DWORD ValidBMYOffset;
+  DWORD VideoXOffsetInT;
+  DWORD VideoYValidStartLine;
+} VIDEO_FIELD_DESC;
+
+typedef struct {
+  char id[4];
+  uint32 vprp_datalen;
+  DWORD VideoFormatToken;
+  DWORD VideoStandard;
+  DWORD dwVerticalRefreshRate;
+  DWORD dwHTotalInT;
+  DWORD dwVTotalInLines;
+  DWORD dwFrameAspectRatio;
+  DWORD dwFrameWidthInPixels;
+  DWORD dwFrameHeightInLines;
+  DWORD nbFieldPerFrame;
+  VIDEO_FIELD_DESC FieldInfo[nbFieldPerFrame];
+} VideoPropHeader;
 
 // junk structure info
 typedef struct 
@@ -261,18 +286,15 @@ const DWORD AVIINDEXENTRYLEN = 16;
 typedef struct 
 {
   char id[4];
-  uint32  idx1_hdr_datalen<arraylength=true>;
 
-  //local uint avi_index_start = FTell();
-  //AVIINDEXENTRY data[datalen/AVIINDEXENTRYLEN];
-  AVIINDEXENTRY data[idx1_hdr_datalen];
-  /*local uint avi_index_end = FTell();
-  
-  FSeek(avi_index_start - 4);
-  local uint evil_state = SetEvilBit(false);
-  uint32 datalen = {datalen};
-  SetEvilBit(evil_state);
-  FSeek(avi_index_end);*/
+  /*local uint32 zero_value[] = { 0x00 };
+  uint32 zero:4<values=zero_value>;
+  uint32 idx1_hdr_datalen:28<arraylength=true>;*/
+
+  uint32  datalen;
+  AVIINDEXENTRY data[datalen/AVIINDEXENTRYLEN];
+
+  //AVIINDEXENTRY data[idx1_hdr_datalen];
 
 } idx1HEADER;
 
@@ -308,14 +330,13 @@ local char nheader[4];
 
 ROOT root;
 
-local string nheader_values[] = { "LIST", "JUNK", "idx1" };
+local string nheader_preferred[] = { "LIST", "JUNK" };
+local string nheader_possible[] = { "LIST", "JUNK", "idx1", "vprp" };
 
 while (!FEof())
 {
 
-  local uint evil_state = SetEvilBit(false);
-  ReadBytes(nheader, FTell(), 4, nheader_values);
-  SetEvilBit(evil_state);
+  ReadBytes(nheader, FTell(), 4, nheader_preferred, nheader_possible);
 
   if (Memcmp(nheader, "LIST", 4) == 0)
   {
@@ -329,11 +350,12 @@ while (!FEof())
   {
     idx1HEADER idx1;
   }
+  else if (Memcmp(nheader, "vprp", 4) == 0)
+  {
+    VideoPropHeader vprp;
+  }
   else
   {
-    if (!FEof()) {
-      Printf("unknown chunk: %c%c%c%c", nheader[0], nheader[1], nheader[2], nheader[3]);
-    }
-    return -1;
+    genericblock unknown_block;
   }
 }
