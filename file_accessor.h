@@ -630,6 +630,7 @@ public:
 				return std::find(good.begin(), good.end(), value) == good.end();
 			};
 		if ((match && compatible.empty()) || evil(evil_parse)) {
+			assert_cond(size, "empty known string");
 			return file_string(size);
 		}
 		if (!generate)

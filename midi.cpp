@@ -67,6 +67,8 @@ public:
 			return value;
 		}
 		if (!element_known_values.size()) {
+			if (size == 0)
+				 return "";
 			value = file_acc.file_string(size);
 			_sizeof = size;
 			return value;
@@ -635,6 +637,8 @@ public:
 			return value;
 		}
 		if (!element_known_values.size()) {
+			if (size == 0)
+				 return "";
 			value = file_acc.file_string(size);
 			_sizeof = size;
 			return value;
