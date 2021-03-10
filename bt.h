@@ -610,6 +610,10 @@ int64 FileSize() {
 	return file_acc.file_size;
 }
 
+unsigned get_file_size() {
+	return file_acc.file_size;
+}
+
 template<typename T>
 int64 FindFirst(T data, int matchcase=true, int wholeword=false, int method=0, double tolerance=0.0, int dir=1, int64 start=0, int64 size=0, int wildcardMatchLength=24) {
 	// Other configurations not yet handled

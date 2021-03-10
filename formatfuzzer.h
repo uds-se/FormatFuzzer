@@ -44,6 +44,8 @@ void setup_input(const char* filename);
 
 void generate_file();
 
+unsigned get_file_size();
+
 void delete_globals();
 
 char* get_bin_name(char* arg);
