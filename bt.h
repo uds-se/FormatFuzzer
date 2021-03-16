@@ -179,6 +179,10 @@ void end_generation() {
 		memmove(file_acc.rand_buffer + file_acc.rand_pos, file_acc.rand_buffer + rand_end + 1, size);
 		rand_end = file_acc.rand_pos - 1;
 	}
+	if (smart_abstraction && back.rand_start == rand_start && (is_optional || strcmp(back.name, chunk_name) == 0)) {
+		memcpy(file_acc.rand_buffer + file_acc.rand_pos, following_rand_buffer, following_rand_size);
+		smart_abstraction = false;
+	}
 
 	if (back.min < prev.min)
 		prev.min = back.min;

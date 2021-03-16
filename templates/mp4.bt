@@ -597,18 +597,18 @@ typedef struct
             break;
 		case "iods":
 			if(size < 1){
-				uint32 num_entries;
-				FSeek(FTell()-4);
-				byte track_IDs[num_entries]; 	
+				ubyte n_entries;
+				FSeek(FTell()-1);
+				byte track_IDs[n_entries]; 	
 			}else{
 				byte track_IDs[(size-8)]; 	
 			}		
             break;
 		case "tref": 
 			if(size < 1){
-				uint32 num_entries;
-				FSeek(FTell()-4);
-				byte track_IDs[num_entries]; 	
+				ubyte n_entries;
+				FSeek(FTell()-1);
+				byte track_IDs[n_entries]; 	
 			}else{
 				byte track_IDs[(size-8)]; 	
 			}
@@ -1070,10 +1070,7 @@ typedef struct
         case "elst": 
             byte version = {0};
             byte flags[3];			
-            uint32 num_entries_tmp; 
-			FSeek(FTell()-4);
-			local uint32 tmp = num_entries_tmp%16;
-            uint32 num_entries = {tmp}; 
+            uint32 num_entries<arraylength=true>; 
             elst_entry entries[num_entries];
             break;       
 		case "cprt":
