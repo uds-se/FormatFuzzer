@@ -77,7 +77,7 @@ typedef struct
 typedef struct 
 {
   char id[4];
-  uint32 avi_hdr_datalen<arraylength=true>;
+  uint32 avi_hdr_datalen = { 56 }; //len(MainAVIHeader)
   MainAVIHeader data;
 } avihHEADER;
 
@@ -104,7 +104,7 @@ typedef struct
 typedef struct 
 {
   char id[4];
-  uint32  strh_hdr_datalen<arraylength=true>;
+  uint32  strh_hdr_datalen = {56}; //len(AVIStreamHeader)
   AVIStreamHeader data;
 }strhHEADER;
 
@@ -186,8 +186,6 @@ typedef struct
   else if (!Memcmp(type,"strl",4))
   {
     strhHEADER strh;
-
-    // Printf("->%c%c%c%c\n", strh.data.fccHandler[0], strh.data.fccHandler[1],strh.data.fccHandler[2],strh.data.fccHandler[3]);
     if (Memcmp(strh.data.fccType, "vids", 4) == 0)
     {
       strfHEADER_BIH strf;
@@ -233,7 +231,22 @@ typedef struct
   {
     char data[list_hdr_datalen-4];
   }
-} LISTHEADER;/*
+} LISTHEADER;
+
+typedef enum <DWORD> {
+  FORMAT_UNKNOWN,
+  FORMAT_PAL_SQUARE,
+  FORMAT_PAL_CCTR_601,
+  FORMAT_NTSC_SQUARE,
+  FORMAT_NTSC_CCTR_601
+} VIDEO_FORMAT;
+
+typedef enum <DWORD> {
+  STANDARD_UNKNOWN,
+  STANDARD_PAL,
+  STANDARD_NTSC,
+  STANDARD_SECAM
+} VIDEO_STANDARD;
 
 typedef struct {
   DWORD CompressedBMHeight;
@@ -247,20 +260,31 @@ typedef struct {
 } VIDEO_FIELD_DESC;
 
 typedef struct {
+
   char id[4];
   uint32 vprp_datalen;
-  DWORD VideoFormatToken;
-  DWORD VideoStandard;
+
+  local uint vprp_start = FTell();
+  VIDEO_FORMAT VideoFormatToken;
+  VIDEO_STANDARD VideoStandard;
   DWORD dwVerticalRefreshRate;
   DWORD dwHTotalInT;
   DWORD dwVTotalInLines;
   DWORD dwFrameAspectRatio;
   DWORD dwFrameWidthInPixels;
   DWORD dwFrameHeightInLines;
-  DWORD nbFieldPerFrame;
+  DWORD nbFieldPerFrame = { 0x01, 0x02 };
   VIDEO_FIELD_DESC FieldInfo[nbFieldPerFrame];
+  local uint vprp_end = FTell();
+
+  FSeek(vprp_start - 4);
+  local uint evil_state = SetEvilBit(false);
+  uint32 vprp_datalen = {vprp_end - vprp_start};
+  SetEvilBit(evil_state);
+  FSeek(vprp_end);
+
 } VideoPropHeader;
-*/
+
 // junk structure info
 typedef struct 
 {
@@ -282,12 +306,11 @@ typedef struct
     DWORD  dwChunkLength;
 } AVIINDEXENTRY;
 
-const DWORD AVIINDEXENTRYLEN = 16;
-
 typedef struct 
 {
   char id[4];
 
+  //Need multiple of 16 (len(AVIINDEXENTRY)) => 4-LSB Zero
   local uint32 zero_value[] = { 0x00 };
   uint32 zero:4<values=zero_value>;
   uint32 idx1_hdr_datalen:28<arraylength=true>;
@@ -311,6 +334,7 @@ typedef struct xroot
     LittleEndian();
   }
 
+  local uint root_datalen_pos = FTell();
   uint32  root_datalen<arraylength=true>;
 
   local uint evil_state = SetEvilBit(false);
@@ -348,12 +372,19 @@ while (!FEof())
   {
     idx1HEADER idx1;
   }
-  /*else if (Memcmp(nheader, "vprp", 4) == 0)
+  else if (Memcmp(nheader, "vprp", 4) == 0)
   {
     VideoPropHeader vprp;
-  }*/
+  }
   else
   {
     genericblock unknown_block;
   }
 }
+
+local uint file_end = FTell();
+FSeek(root.root_datalen_pos);
+local uint evil_state = SetEvilBit(false);
+uint32 root_datalen = {file_end - 8};
+SetEvilBit(evil_state);
+FSeek(file_end);

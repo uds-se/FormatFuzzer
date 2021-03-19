@@ -4,6 +4,29 @@
 #include <vector>
 #include <unordered_map>
 #include "bt.h"
+
+enum VIDEO_FORMAT_enum : DWORD {
+	FORMAT_UNKNOWN,
+	FORMAT_PAL_SQUARE,
+	FORMAT_PAL_CCTR_601,
+	FORMAT_NTSC_SQUARE,
+	FORMAT_NTSC_CCTR_601,
+};
+std::vector<DWORD> VIDEO_FORMAT_enum_values = { FORMAT_UNKNOWN, FORMAT_PAL_SQUARE, FORMAT_PAL_CCTR_601, FORMAT_NTSC_SQUARE, FORMAT_NTSC_CCTR_601 };
+
+typedef enum VIDEO_FORMAT_enum VIDEO_FORMAT;
+std::vector<DWORD> VIDEO_FORMAT_values = { FORMAT_UNKNOWN, FORMAT_PAL_SQUARE, FORMAT_PAL_CCTR_601, FORMAT_NTSC_SQUARE, FORMAT_NTSC_CCTR_601 };
+
+enum VIDEO_STANDARD_enum : DWORD {
+	STANDARD_UNKNOWN,
+	STANDARD_PAL,
+	STANDARD_NTSC,
+	STANDARD_SECAM,
+};
+std::vector<DWORD> VIDEO_STANDARD_enum_values = { STANDARD_UNKNOWN, STANDARD_PAL, STANDARD_NTSC, STANDARD_SECAM };
+
+typedef enum VIDEO_STANDARD_enum VIDEO_STANDARD;
+std::vector<DWORD> VIDEO_STANDARD_values = { STANDARD_UNKNOWN, STANDARD_PAL, STANDARD_NTSC, STANDARD_SECAM };
 const DWORD AVIINDEXENTRYLEN = 16;
 
 
@@ -145,6 +168,7 @@ public:
 	}
 
 	/* locals */
+	uint root_datalen_pos;
 	uint evil_state;
 
 	unsigned char generated = 0;
@@ -1356,6 +1380,227 @@ public:
 	idx1HEADER* generate();
 };
 
+
+VIDEO_FORMAT VIDEO_FORMAT_generate() {
+	return (VIDEO_FORMAT) file_acc.file_integer(sizeof(DWORD), 0, VIDEO_FORMAT_values);
+}
+
+VIDEO_FORMAT VIDEO_FORMAT_generate(std::vector<DWORD> known_values) {
+	return (VIDEO_FORMAT) file_acc.file_integer(sizeof(DWORD), 0, known_values);
+}
+
+VIDEO_STANDARD VIDEO_STANDARD_generate() {
+	return (VIDEO_STANDARD) file_acc.file_integer(sizeof(DWORD), 0, VIDEO_STANDARD_values);
+}
+
+VIDEO_STANDARD VIDEO_STANDARD_generate(std::vector<DWORD> known_values) {
+	return (VIDEO_STANDARD) file_acc.file_integer(sizeof(DWORD), 0, known_values);
+}
+
+
+class VIDEO_FIELD_DESC {
+	std::vector<VIDEO_FIELD_DESC*>& instances;
+
+	DWORD CompressedBMHeight_var;
+	DWORD CompressedBMWidth_var;
+	DWORD ValidBMHeight_var;
+	DWORD ValidBMWidth_var;
+	DWORD ValidBMXOffset_var;
+	DWORD ValidBMYOffset_var;
+	DWORD VideoXOffsetInT_var;
+	DWORD VideoYValidStartLine_var;
+
+public:
+	bool CompressedBMHeight_exists = false;
+	bool CompressedBMWidth_exists = false;
+	bool ValidBMHeight_exists = false;
+	bool ValidBMWidth_exists = false;
+	bool ValidBMXOffset_exists = false;
+	bool ValidBMYOffset_exists = false;
+	bool VideoXOffsetInT_exists = false;
+	bool VideoYValidStartLine_exists = false;
+
+	DWORD CompressedBMHeight() {
+		assert_cond(CompressedBMHeight_exists, "struct field CompressedBMHeight does not exist");
+		return CompressedBMHeight_var;
+	}
+	DWORD CompressedBMWidth() {
+		assert_cond(CompressedBMWidth_exists, "struct field CompressedBMWidth does not exist");
+		return CompressedBMWidth_var;
+	}
+	DWORD ValidBMHeight() {
+		assert_cond(ValidBMHeight_exists, "struct field ValidBMHeight does not exist");
+		return ValidBMHeight_var;
+	}
+	DWORD ValidBMWidth() {
+		assert_cond(ValidBMWidth_exists, "struct field ValidBMWidth does not exist");
+		return ValidBMWidth_var;
+	}
+	DWORD ValidBMXOffset() {
+		assert_cond(ValidBMXOffset_exists, "struct field ValidBMXOffset does not exist");
+		return ValidBMXOffset_var;
+	}
+	DWORD ValidBMYOffset() {
+		assert_cond(ValidBMYOffset_exists, "struct field ValidBMYOffset does not exist");
+		return ValidBMYOffset_var;
+	}
+	DWORD VideoXOffsetInT() {
+		assert_cond(VideoXOffsetInT_exists, "struct field VideoXOffsetInT does not exist");
+		return VideoXOffsetInT_var;
+	}
+	DWORD VideoYValidStartLine() {
+		assert_cond(VideoYValidStartLine_exists, "struct field VideoYValidStartLine does not exist");
+		return VideoYValidStartLine_var;
+	}
+
+	unsigned char generated = 0;
+	int64 _startof = 0;
+	std::size_t _sizeof = 0;
+	VIDEO_FIELD_DESC& operator () () { return *instances.back(); }
+	VIDEO_FIELD_DESC* operator [] (int index) { return instances[index]; }
+	VIDEO_FIELD_DESC(std::vector<VIDEO_FIELD_DESC*>& instances) : instances(instances) { instances.push_back(this); }
+	~VIDEO_FIELD_DESC() {
+		if (generated == 2)
+			return;
+		while (instances.size()) {
+			VIDEO_FIELD_DESC* instance = instances.back();
+			instances.pop_back();
+			if (instance->generated == 2)
+				delete instance;
+		}
+	}
+	VIDEO_FIELD_DESC* generate();
+};
+
+
+
+class VIDEO_FIELD_DESC_array_class {
+	VIDEO_FIELD_DESC& element;
+	std::vector<VIDEO_FIELD_DESC*> value;
+public:
+	int64 _startof = 0;
+	std::size_t _sizeof = 0;
+	std::vector<VIDEO_FIELD_DESC*> operator () () { return value; }
+	VIDEO_FIELD_DESC operator [] (int index) { return *value[index]; }
+	VIDEO_FIELD_DESC_array_class(VIDEO_FIELD_DESC& element) : element(element) {}
+
+	std::vector<VIDEO_FIELD_DESC*> generate(unsigned size) {
+		check_array_length(size);
+		_startof = FTell();
+		value = {};
+		for (unsigned i = 0; i < size; ++i) {
+			value.push_back(element.generate());
+			_sizeof += element._sizeof;
+		}
+		return value;
+	}
+};
+
+
+
+class VideoPropHeader {
+	std::vector<VideoPropHeader*>& instances;
+
+	std::string id_var;
+	uint32 vprp_datalen_var;
+	DWORD VideoFormatToken_var;
+	DWORD VideoStandard_var;
+	DWORD dwVerticalRefreshRate_var;
+	DWORD dwHTotalInT_var;
+	DWORD dwVTotalInLines_var;
+	DWORD dwFrameAspectRatio_var;
+	DWORD dwFrameWidthInPixels_var;
+	DWORD dwFrameHeightInLines_var;
+	DWORD nbFieldPerFrame_var;
+	std::vector<VIDEO_FIELD_DESC*> FieldInfo_var;
+
+public:
+	bool id_exists = false;
+	bool vprp_datalen_exists = false;
+	bool VideoFormatToken_exists = false;
+	bool VideoStandard_exists = false;
+	bool dwVerticalRefreshRate_exists = false;
+	bool dwHTotalInT_exists = false;
+	bool dwVTotalInLines_exists = false;
+	bool dwFrameAspectRatio_exists = false;
+	bool dwFrameWidthInPixels_exists = false;
+	bool dwFrameHeightInLines_exists = false;
+	bool nbFieldPerFrame_exists = false;
+	bool FieldInfo_exists = false;
+
+	std::string id() {
+		assert_cond(id_exists, "struct field id does not exist");
+		return id_var;
+	}
+	uint32 vprp_datalen() {
+		assert_cond(vprp_datalen_exists, "struct field vprp_datalen does not exist");
+		return vprp_datalen_var;
+	}
+	DWORD VideoFormatToken() {
+		assert_cond(VideoFormatToken_exists, "struct field VideoFormatToken does not exist");
+		return VideoFormatToken_var;
+	}
+	DWORD VideoStandard() {
+		assert_cond(VideoStandard_exists, "struct field VideoStandard does not exist");
+		return VideoStandard_var;
+	}
+	DWORD dwVerticalRefreshRate() {
+		assert_cond(dwVerticalRefreshRate_exists, "struct field dwVerticalRefreshRate does not exist");
+		return dwVerticalRefreshRate_var;
+	}
+	DWORD dwHTotalInT() {
+		assert_cond(dwHTotalInT_exists, "struct field dwHTotalInT does not exist");
+		return dwHTotalInT_var;
+	}
+	DWORD dwVTotalInLines() {
+		assert_cond(dwVTotalInLines_exists, "struct field dwVTotalInLines does not exist");
+		return dwVTotalInLines_var;
+	}
+	DWORD dwFrameAspectRatio() {
+		assert_cond(dwFrameAspectRatio_exists, "struct field dwFrameAspectRatio does not exist");
+		return dwFrameAspectRatio_var;
+	}
+	DWORD dwFrameWidthInPixels() {
+		assert_cond(dwFrameWidthInPixels_exists, "struct field dwFrameWidthInPixels does not exist");
+		return dwFrameWidthInPixels_var;
+	}
+	DWORD dwFrameHeightInLines() {
+		assert_cond(dwFrameHeightInLines_exists, "struct field dwFrameHeightInLines does not exist");
+		return dwFrameHeightInLines_var;
+	}
+	DWORD nbFieldPerFrame() {
+		assert_cond(nbFieldPerFrame_exists, "struct field nbFieldPerFrame does not exist");
+		return nbFieldPerFrame_var;
+	}
+	std::vector<VIDEO_FIELD_DESC*> FieldInfo() {
+		assert_cond(FieldInfo_exists, "struct field FieldInfo does not exist");
+		return FieldInfo_var;
+	}
+
+	/* locals */
+	uint vprp_start;
+	uint vprp_end;
+	uint evil_state;
+
+	unsigned char generated = 0;
+	int64 _startof = 0;
+	std::size_t _sizeof = 0;
+	VideoPropHeader& operator () () { return *instances.back(); }
+	VideoPropHeader* operator [] (int index) { return instances[index]; }
+	VideoPropHeader(std::vector<VideoPropHeader*>& instances) : instances(instances) { instances.push_back(this); }
+	~VideoPropHeader() {
+		if (generated == 2)
+			return;
+		while (instances.size()) {
+			VideoPropHeader* instance = instances.back();
+			instances.pop_back();
+			if (instance->generated == 2)
+				delete instance;
+		}
+	}
+	VideoPropHeader* generate();
+};
+
 std::vector<byte> ReadByteInitValues;
 std::vector<ubyte> ReadUByteInitValues;
 std::vector<short> ReadShortInitValues;
@@ -1389,10 +1634,12 @@ std::vector<LISTHEADER*> LISTHEADER_list_instances;
 std::vector<JUNKHEADER*> JUNKHEADER_junk_instances;
 std::vector<AVIINDEXENTRY*> AVIINDEXENTRY_data____element_instances;
 std::vector<idx1HEADER*> idx1HEADER_idx1_instances;
+std::vector<VIDEO_FIELD_DESC*> VIDEO_FIELD_DESC_FieldInfo_element_instances;
+std::vector<VideoPropHeader*> VideoPropHeader_vprp_instances;
 std::vector<genericblock*> genericblock_unknown_block_instances;
 
 
-std::unordered_map<std::string, std::string> variable_types = { { "id", "char_array_class" }, { "root_datalen", "uint32_class" }, { "form", "char_array_class" }, { "root", "ROOT" }, { "list_hdr_datalen", "uint32_class" }, { "type", "char_array_class" }, { "avi_hdr_datalen", "uint32_class" }, { "dwMicroSecPerFrame", "DWORD_class" }, { "dwMaxBytesPerSec", "DWORD_class" }, { "dwReserved1", "DWORD_class" }, { "dwFlags", "DWORD_class" }, { "dwTotalFrames", "DWORD_class" }, { "dwInitialFrames", "DWORD_class" }, { "dwStreams", "DWORD_class" }, { "dwSuggestedBufferSize", "DWORD_class" }, { "dwWidth", "DWORD_class" }, { "dwHeight", "DWORD_class" }, { "dwScale", "DWORD_class" }, { "dwRate", "DWORD_class" }, { "dwStart", "DWORD_class" }, { "dwLength", "DWORD_class" }, { "data", "MainAVIHeader" }, { "avhi", "avihHEADER" }, { "strh_hdr_datalen", "uint32_class" }, { "fccType", "char_array_class" }, { "fccHandler", "char_array_class" }, { "dwQuality", "DWORD_class" }, { "dwSampleSize", "DWORD_class" }, { "xdwQuality", "DWORD_class" }, { "xdwSampleSize", "DWORD_class" }, { "data_", "AVIStreamHeader" }, { "strh", "strhHEADER" }, { "strf_hdr_bih_datalen", "uint32_class" }, { "biSize", "uint32_class" }, { "biWidth", "uint32_class" }, { "biHeight", "uint32_class" }, { "biPlanes", "uint16_class" }, { "biBitCount", "uint16_class" }, { "biCompression", "uint32_class" }, { "biSizeImage", "uint32_class" }, { "biXPelsPerMeter", "uint32_class" }, { "biYPelsPerMeter", "uint32_class" }, { "biClrUsed", "uint32_class" }, { "biClrImportant", "uint32_class" }, { "bmiHeader", "BITMAPINFOHEADER" }, { "rgbBlue", "unsigned_char_class" }, { "rgbGreen", "unsigned_char_class" }, { "rgbRed", "unsigned_char_class" }, { "rgbReserved", "unsigned_char_class" }, { "bmiColors", "RGBQUAD" }, { "exData", "char_array_class" }, { "strf", "strfHEADER_BIH" }, { "strf_hdr_wave_datalen", "uint32_class" }, { "wFormatTag", "WORD_class" }, { "nChannels", "WORD_class" }, { "nSamplesPerSec", "DWORD_class" }, { "nAvgBytesPerSec", "DWORD_class" }, { "nBlockAlign", "WORD_class" }, { "wBitsPerSample", "WORD_class" }, { "cbSize", "WORD_class" }, { "wave", "WAVEFORMATEX" }, { "strf_", "strfHEADER_WAVE" }, { "strf_hdr_datalen", "uint32_class" }, { "data__", "char_array_class" }, { "strf__", "strfHEADER" }, { "strn_hdr_datalen", "uint32_class" }, { "strn", "strnHEADER" }, { "generic_blk_datalen", "uint32_class" }, { "gb", "genericblock" }, { "list", "LISTHEADER" }, { "junk_hdr_datalen", "uint32_class" }, { "junk", "JUNKHEADER" }, { "zero", "uint32_bitfield4" }, { "idx1_hdr_datalen", "uint32_bitfield28" }, { "ckid", "DWORD_class" }, { "dwChunkOffset", "DWORD_class" }, { "dwChunkLength", "DWORD_class" }, { "data___", "AVIINDEXENTRY_array_class" }, { "idx1", "idx1HEADER" }, { "unknown_block", "genericblock" } };
+std::unordered_map<std::string, std::string> variable_types = { { "id", "char_array_class" }, { "root_datalen", "uint32_class" }, { "form", "char_array_class" }, { "root", "ROOT" }, { "list_hdr_datalen", "uint32_class" }, { "type", "char_array_class" }, { "avi_hdr_datalen", "uint32_class" }, { "dwMicroSecPerFrame", "DWORD_class" }, { "dwMaxBytesPerSec", "DWORD_class" }, { "dwReserved1", "DWORD_class" }, { "dwFlags", "DWORD_class" }, { "dwTotalFrames", "DWORD_class" }, { "dwInitialFrames", "DWORD_class" }, { "dwStreams", "DWORD_class" }, { "dwSuggestedBufferSize", "DWORD_class" }, { "dwWidth", "DWORD_class" }, { "dwHeight", "DWORD_class" }, { "dwScale", "DWORD_class" }, { "dwRate", "DWORD_class" }, { "dwStart", "DWORD_class" }, { "dwLength", "DWORD_class" }, { "data", "MainAVIHeader" }, { "avhi", "avihHEADER" }, { "strh_hdr_datalen", "uint32_class" }, { "fccType", "char_array_class" }, { "fccHandler", "char_array_class" }, { "dwQuality", "DWORD_class" }, { "dwSampleSize", "DWORD_class" }, { "xdwQuality", "DWORD_class" }, { "xdwSampleSize", "DWORD_class" }, { "data_", "AVIStreamHeader" }, { "strh", "strhHEADER" }, { "strf_hdr_bih_datalen", "uint32_class" }, { "biSize", "uint32_class" }, { "biWidth", "uint32_class" }, { "biHeight", "uint32_class" }, { "biPlanes", "uint16_class" }, { "biBitCount", "uint16_class" }, { "biCompression", "uint32_class" }, { "biSizeImage", "uint32_class" }, { "biXPelsPerMeter", "uint32_class" }, { "biYPelsPerMeter", "uint32_class" }, { "biClrUsed", "uint32_class" }, { "biClrImportant", "uint32_class" }, { "bmiHeader", "BITMAPINFOHEADER" }, { "rgbBlue", "unsigned_char_class" }, { "rgbGreen", "unsigned_char_class" }, { "rgbRed", "unsigned_char_class" }, { "rgbReserved", "unsigned_char_class" }, { "bmiColors", "RGBQUAD" }, { "exData", "char_array_class" }, { "strf", "strfHEADER_BIH" }, { "strf_hdr_wave_datalen", "uint32_class" }, { "wFormatTag", "WORD_class" }, { "nChannels", "WORD_class" }, { "nSamplesPerSec", "DWORD_class" }, { "nAvgBytesPerSec", "DWORD_class" }, { "nBlockAlign", "WORD_class" }, { "wBitsPerSample", "WORD_class" }, { "cbSize", "WORD_class" }, { "wave", "WAVEFORMATEX" }, { "strf_", "strfHEADER_WAVE" }, { "strf_hdr_datalen", "uint32_class" }, { "data__", "char_array_class" }, { "strf__", "strfHEADER" }, { "strn_hdr_datalen", "uint32_class" }, { "strn", "strnHEADER" }, { "generic_blk_datalen", "uint32_class" }, { "gb", "genericblock" }, { "list", "LISTHEADER" }, { "junk_hdr_datalen", "uint32_class" }, { "junk", "JUNKHEADER" }, { "zero", "uint32_bitfield4" }, { "idx1_hdr_datalen", "uint32_bitfield28" }, { "ckid", "DWORD_class" }, { "dwChunkOffset", "DWORD_class" }, { "dwChunkLength", "DWORD_class" }, { "data___", "AVIINDEXENTRY_array_class" }, { "idx1", "idx1HEADER" }, { "vprp_datalen", "uint32_class" }, { "VideoFormatToken", "VIDEO_FORMAT" }, { "VideoStandard", "VIDEO_STANDARD" }, { "dwVerticalRefreshRate", "DWORD_class" }, { "dwHTotalInT", "DWORD_class" }, { "dwVTotalInLines", "DWORD_class" }, { "dwFrameAspectRatio", "DWORD_class" }, { "dwFrameWidthInPixels", "DWORD_class" }, { "dwFrameHeightInLines", "DWORD_class" }, { "nbFieldPerFrame", "DWORD_class" }, { "CompressedBMHeight", "DWORD_class" }, { "CompressedBMWidth", "DWORD_class" }, { "ValidBMHeight", "DWORD_class" }, { "ValidBMWidth", "DWORD_class" }, { "ValidBMXOffset", "DWORD_class" }, { "ValidBMYOffset", "DWORD_class" }, { "VideoXOffsetInT", "DWORD_class" }, { "VideoYValidStartLine", "DWORD_class" }, { "FieldInfo", "VIDEO_FIELD_DESC_array_class" }, { "vprp", "VideoPropHeader" }, { "unknown_block", "genericblock" } };
 
 std::vector<std::vector<int>> integer_ranges = { { 1, 16 }, { 6, 22 }, { 40, 58 }, { 20, 36 } };
 
@@ -1488,7 +1735,28 @@ public:
 	AVIINDEXENTRY data____element;
 	AVIINDEXENTRY_array_class data___;
 	idx1HEADER idx1;
+	uint32_class vprp_datalen;
+	DWORD_class dwVerticalRefreshRate;
+	DWORD_class dwHTotalInT;
+	DWORD_class dwVTotalInLines;
+	DWORD_class dwFrameAspectRatio;
+	DWORD_class dwFrameWidthInPixels;
+	DWORD_class dwFrameHeightInLines;
+	DWORD_class nbFieldPerFrame;
+	DWORD_class CompressedBMHeight;
+	DWORD_class CompressedBMWidth;
+	DWORD_class ValidBMHeight;
+	DWORD_class ValidBMWidth;
+	DWORD_class ValidBMXOffset;
+	DWORD_class ValidBMYOffset;
+	DWORD_class VideoXOffsetInT;
+	DWORD_class VideoYValidStartLine;
+	VIDEO_FIELD_DESC FieldInfo_element;
+	VIDEO_FIELD_DESC_array_class FieldInfo;
+	VideoPropHeader vprp;
 	genericblock unknown_block;
+	/*local*/ uint file_end;
+	/*local*/ uint evil_state;
 
 
 	globals_class() :
@@ -1580,6 +1848,25 @@ public:
 		data____element(AVIINDEXENTRY_data____element_instances),
 		data___(data____element),
 		idx1(idx1HEADER_idx1_instances),
+		vprp_datalen(1),
+		dwVerticalRefreshRate(1),
+		dwHTotalInT(1),
+		dwVTotalInLines(1),
+		dwFrameAspectRatio(1),
+		dwFrameWidthInPixels(1),
+		dwFrameHeightInLines(1),
+		nbFieldPerFrame(1),
+		CompressedBMHeight(1),
+		CompressedBMWidth(1),
+		ValidBMHeight(1),
+		ValidBMWidth(1),
+		ValidBMXOffset(1),
+		ValidBMYOffset(1),
+		VideoXOffsetInT(1),
+		VideoYValidStartLine(1),
+		FieldInfo_element(VIDEO_FIELD_DESC_FieldInfo_element_instances),
+		FieldInfo(FieldInfo_element),
+		vprp(VideoPropHeader_vprp_instances),
 		unknown_block(genericblock_unknown_block_instances)
 	{}
 };
@@ -1605,6 +1892,7 @@ ROOT* ROOT::generate() {
 		Printf("Intel format\n");
 		LittleEndian();
 	};
+	root_datalen_pos = FTell();
 	GENERATE_VAR(root_datalen, ::g->root_datalen.generate());
 	evil_state = SetEvilBit(false);
 	GENERATE_VAR(form, ::g->form.generate(4, { "AVI " }));
@@ -2025,6 +2313,65 @@ idx1HEADER* idx1HEADER::generate() {
 }
 
 
+VIDEO_FIELD_DESC* VIDEO_FIELD_DESC::generate() {
+	if (generated == 1) {
+		VIDEO_FIELD_DESC* new_instance = new VIDEO_FIELD_DESC(instances);
+		new_instance->generated = 2;
+		return new_instance->generate();
+	}
+	if (!generated)
+		generated = 1;
+	_startof = FTell();
+
+	GENERATE_VAR(CompressedBMHeight, ::g->CompressedBMHeight.generate());
+	GENERATE_VAR(CompressedBMWidth, ::g->CompressedBMWidth.generate());
+	GENERATE_VAR(ValidBMHeight, ::g->ValidBMHeight.generate());
+	GENERATE_VAR(ValidBMWidth, ::g->ValidBMWidth.generate());
+	GENERATE_VAR(ValidBMXOffset, ::g->ValidBMXOffset.generate());
+	GENERATE_VAR(ValidBMYOffset, ::g->ValidBMYOffset.generate());
+	GENERATE_VAR(VideoXOffsetInT, ::g->VideoXOffsetInT.generate());
+	GENERATE_VAR(VideoYValidStartLine, ::g->VideoYValidStartLine.generate());
+
+	_sizeof = FTell() - _startof;
+	return this;
+}
+
+
+VideoPropHeader* VideoPropHeader::generate() {
+	if (generated == 1) {
+		VideoPropHeader* new_instance = new VideoPropHeader(instances);
+		new_instance->generated = 2;
+		return new_instance->generate();
+	}
+	if (!generated)
+		generated = 1;
+	_startof = FTell();
+
+	GENERATE_VAR(id, ::g->id.generate(4));
+	GENERATE_VAR(vprp_datalen, ::g->vprp_datalen.generate());
+	vprp_start = FTell();
+	GENERATE_VAR(VideoFormatToken, VIDEO_FORMAT_generate());
+	GENERATE_VAR(VideoStandard, VIDEO_STANDARD_generate());
+	GENERATE_VAR(dwVerticalRefreshRate, ::g->dwVerticalRefreshRate.generate());
+	GENERATE_VAR(dwHTotalInT, ::g->dwHTotalInT.generate());
+	GENERATE_VAR(dwVTotalInLines, ::g->dwVTotalInLines.generate());
+	GENERATE_VAR(dwFrameAspectRatio, ::g->dwFrameAspectRatio.generate());
+	GENERATE_VAR(dwFrameWidthInPixels, ::g->dwFrameWidthInPixels.generate());
+	GENERATE_VAR(dwFrameHeightInLines, ::g->dwFrameHeightInLines.generate());
+	GENERATE_VAR(nbFieldPerFrame, ::g->nbFieldPerFrame.generate({ 0x01, 0x02 }));
+	GENERATE_VAR(FieldInfo, ::g->FieldInfo.generate(nbFieldPerFrame()));
+	vprp_end = FTell();
+	FSeek((vprp_start - 4));
+	evil_state = SetEvilBit(false);
+	GENERATE_VAR(vprp_datalen, ::g->vprp_datalen.generate({ (vprp_end - vprp_start) }));
+	SetEvilBit(evil_state);
+	FSeek(vprp_end);
+
+	_sizeof = FTell() - _startof;
+	return this;
+}
+
+
 
 void generate_file() {
 	::g = new globals_class();
@@ -2043,11 +2390,21 @@ void generate_file() {
 		if ((Memcmp(::g->nheader, "idx1", 4) == 0)) {
 			GENERATE(idx1, ::g->idx1.generate());
 		} else {
+		if ((Memcmp(::g->nheader, "vprp", 4) == 0)) {
+			GENERATE(vprp, ::g->vprp.generate());
+		} else {
 			GENERATE(unknown_block, ::g->unknown_block.generate());
 		};
 		};
 		};
+		};
 	};
+	::g->file_end = FTell();
+	FSeek(::g->root().root_datalen_pos);
+	::g->evil_state = SetEvilBit(false);
+	GENERATE(root_datalen, ::g->root_datalen.generate({ (::g->file_end - 8) }));
+	SetEvilBit(::g->evil_state);
+	FSeek(::g->file_end);
 
 	file_acc.finish();
 	delete_globals();
