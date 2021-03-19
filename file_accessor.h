@@ -24,6 +24,7 @@ int file_index = 0;
 bool get_chunk = false;
 bool get_all_chunks = false;
 bool smart_mutation = false;
+bool smart_abstraction = false;
 unsigned chunk_start;
 unsigned chunk_end;
 unsigned rand_start;
@@ -79,6 +80,9 @@ void assert_cond(bool cond, const char* error_msg) {
 }
 
 unsigned char *rand_buffer;
+
+unsigned char *following_rand_buffer = NULL;
+unsigned following_rand_size = 0;
 
 class file_accessor {
 	bool allow_evil_values = true;
