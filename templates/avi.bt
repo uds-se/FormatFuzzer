@@ -172,12 +172,17 @@ typedef struct
     char data[generic_blk_datalen];
 } genericblock;
 
+local uint list_index = 0;
+
 typedef struct 
 {
   char id[4] = {"RIFF", "LIST"};
   local uint datalen_pos = FTell();
   uint32 list_hdr_datalen<min = 6, max = 22>;
+
   char type[4] = { "hdrl", "strl", "movi" };
+
+  //char type[4] = { (list_index == 0 ? "hdrl" : (list_index == 1 ? "strl" : "movi")) };
 
   if (!Memcmp(type,"hdrl",4))
   {
@@ -358,11 +363,18 @@ local string nheader_possible[] = { "LIST", "JUNK", "idx1", "vprp" };
 while (!FEof())
 {
 
-  ReadBytes(nheader, FTell(), 4, nheader_preferred, nheader_possible);
+  //;
 
+  ReadBytes(nheader, FTell(), 4, nheader_preferred, nheader_possible);
+  
   if (Memcmp(nheader, "LIST", 4) == 0)
   {
     LISTHEADER list;
+    list_index++;
+    /*if (list_index >= 3) {
+      local string nheader_preferred[] = { "idx1" };
+    }*/
+    //local string nheader_preferred[] = { "vprp" };
   }
   else if (Memcmp(nheader, "JUNK", 4) == 0)
   {
@@ -371,20 +383,23 @@ while (!FEof())
   else if (Memcmp(nheader, "idx1", 4) == 0)
   {
     idx1HEADER idx1;
+    //local string nheader_preferred[0];
+    //local string nheader_possible[0];
   }
   else if (Memcmp(nheader, "vprp", 4) == 0)
   {
     VideoPropHeader vprp;
+    //local string nheader_preferred[] = { "idx1" };
   }
   else
   {
     genericblock unknown_block;
   }
 }
-
+/*
 local uint file_end = FTell();
 FSeek(root.root_datalen_pos);
 local uint evil_state = SetEvilBit(false);
 uint32 root_datalen = {file_end - 8};
 SetEvilBit(evil_state);
-FSeek(file_end);
+FSeek(file_end);*/

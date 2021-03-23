@@ -27,7 +27,6 @@ std::vector<DWORD> VIDEO_STANDARD_enum_values = { STANDARD_UNKNOWN, STANDARD_PAL
 
 typedef enum VIDEO_STANDARD_enum VIDEO_STANDARD;
 std::vector<DWORD> VIDEO_STANDARD_values = { STANDARD_UNKNOWN, STANDARD_PAL, STANDARD_NTSC, STANDARD_SECAM };
-const DWORD AVIINDEXENTRYLEN = 16;
 
 
 class char_class {
@@ -1645,6 +1644,7 @@ std::vector<std::vector<int>> integer_ranges = { { 1, 16 }, { 6, 22 }, { 40, 58 
 
 class globals_class {
 public:
+	/*local*/ uint list_index;
 	/*local*/ std::string nheader;
 	char_class id_element;
 	char_array_class id;
@@ -1755,8 +1755,6 @@ public:
 	VIDEO_FIELD_DESC_array_class FieldInfo;
 	VideoPropHeader vprp;
 	genericblock unknown_block;
-	/*local*/ uint file_end;
-	/*local*/ uint evil_state;
 
 
 	globals_class() :
@@ -1770,7 +1768,7 @@ public:
 		list_hdr_datalen(3),
 		type_element(false),
 		type(type_element),
-		avi_hdr_datalen(2),
+		avi_hdr_datalen(1),
 		dwMicroSecPerFrame(1),
 		dwMaxBytesPerSec(1),
 		dwReserved1(1),
@@ -1787,7 +1785,7 @@ public:
 		dwLength(1),
 		data(MainAVIHeader_data_instances),
 		avhi(avihHEADER_avhi_instances),
-		strh_hdr_datalen(2),
+		strh_hdr_datalen(1),
 		fccType_element(false),
 		fccType(fccType_element),
 		fccHandler_element(false),
@@ -1948,7 +1946,7 @@ avihHEADER* avihHEADER::generate() {
 	_startof = FTell();
 
 	GENERATE_VAR(id, ::g->id.generate(4));
-	GENERATE_VAR(avi_hdr_datalen, ::g->avi_hdr_datalen.generate());
+	GENERATE_VAR(avi_hdr_datalen, ::g->avi_hdr_datalen.generate({ 56 }));
 	GENERATE_VAR(data, ::g->data.generate());
 
 	_sizeof = FTell() - _startof;
@@ -1997,7 +1995,7 @@ strhHEADER* strhHEADER::generate() {
 	_startof = FTell();
 
 	GENERATE_VAR(id, ::g->id.generate(4));
-	GENERATE_VAR(strh_hdr_datalen, ::g->strh_hdr_datalen.generate());
+	GENERATE_VAR(strh_hdr_datalen, ::g->strh_hdr_datalen.generate({ 56 }));
 	GENERATE_VAR(data, ::g->data_.generate());
 
 	_sizeof = FTell() - _startof;
@@ -2376,6 +2374,7 @@ VideoPropHeader* VideoPropHeader::generate() {
 void generate_file() {
 	::g = new globals_class();
 
+	::g->list_index = 0;
 	GENERATE(root, ::g->root.generate());
 	::g->nheader_preferred = { "LIST", "JUNK" };
 	::g->nheader_possible = { "LIST", "JUNK", "idx1", "vprp" };
@@ -2383,6 +2382,7 @@ void generate_file() {
 		ReadBytes(::g->nheader, FTell(), 4, ::g->nheader_preferred, ::g->nheader_possible);
 		if ((Memcmp(::g->nheader, "LIST", 4) == 0)) {
 			GENERATE(list, ::g->list.generate());
+			::g->list_index++;
 		} else {
 		if ((Memcmp(::g->nheader, "JUNK", 4) == 0)) {
 			GENERATE(junk, ::g->junk.generate());
@@ -2399,12 +2399,6 @@ void generate_file() {
 		};
 		};
 	};
-	::g->file_end = FTell();
-	FSeek(::g->root().root_datalen_pos);
-	::g->evil_state = SetEvilBit(false);
-	GENERATE(root_datalen, ::g->root_datalen.generate({ (::g->file_end - 8) }));
-	SetEvilBit(::g->evil_state);
-	FSeek(::g->file_end);
 
 	file_acc.finish();
 	delete_globals();
