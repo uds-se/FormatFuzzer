@@ -51,8 +51,8 @@ typedef struct
   uint32 biWidth;
   uint32 biHeight;
   uint16 biPlanes;
-  uint16 biBitCount;
-  uint32 biCompression;
+  uint16 biBitCount = {8};
+  uint32 biCompression = {1};
   uint32 biSizeImage;
   uint32 biXPelsPerMeter;
   uint32 biYPelsPerMeter;
@@ -85,7 +85,7 @@ typedef struct
 // header stream structure info
 typedef struct 
 {
-    char   fccType[4] = { "vids", "auds" };
+    char   fccType[4] = { "vids" };//, "auds" };
     char   fccHandler[4];
     DWORD  dwFlags;
     DWORD  dwReserved1;
@@ -103,7 +103,7 @@ typedef struct
 
 typedef struct 
 {
-  char id[4];
+  char id[4] = { "strh" };
   uint32  strh_hdr_datalen = {56}; //len(AVIStreamHeader)
   AVIStreamHeader data;
 }strhHEADER;
@@ -112,7 +112,7 @@ typedef struct
 // Generic strfHEADER
 typedef struct 
 {
-  char id[4];
+  char id[4] = { "strf" };
   uint32  strf_hdr_datalen<arraylength=true>;
   if (strf_hdr_datalen % 2)
 	  char data[strf_hdr_datalen+1];
@@ -123,7 +123,7 @@ typedef struct
 // strfHEADER with BITMAPINFOHEADER
 typedef struct 
 {
-  char id[4];
+  char id[4] = { "strf" };
   uint32  strf_hdr_bih_datalen<min = 40, max = 58>;
   Printf("STRF_HDR_BIH_DATALEN: %d\n", strf_hdr_bih_datalen);
   BITMAPINFOHEADER bmiHeader;
@@ -143,7 +143,7 @@ typedef struct
 // strfHEADER with WAVEFORMAT
 typedef struct 
 {
-  char id[4];
+  char id[4] = { "strf" };
   uint32  strf_hdr_wave_datalen<min = 20, max = 36>;
   Printf("%d\n", strf_hdr_wave_datalen);
   WAVEFORMATEX wave;
@@ -153,7 +153,7 @@ typedef struct
 //
 typedef struct 
 {
-  char id[4];
+  char id[4] = { "vedt" };
   uint32  strn_hdr_datalen<arraylength=true>;
   if ( strn_hdr_datalen % 2 )
     char data[strn_hdr_datalen+1];
@@ -180,9 +180,9 @@ typedef struct
   local uint datalen_pos = FTell();
   uint32 list_hdr_datalen<min = 6, max = 22>;
 
-  char type[4] = { "hdrl", "strl", "movi" };
+  //char type[4] = { "hdrl", "strl", "movi" };
 
-  //char type[4] = { (list_index == 0 ? "hdrl" : (list_index == 1 ? "strl" : "movi")) };
+  char type[4] = { (list_index == 0 ? "hdrl" : (list_index == 1 ? "strl" : "movi")) };
 
   if (!Memcmp(type,"hdrl",4))
   {
@@ -212,10 +212,12 @@ typedef struct
     
     //Printf("stop=%d\n", stop);
 
+    local uint block_count = 0;
     do
     {
       local uint generic_start = FTell();
       genericblock gb;
+      block_count++;
       pointer += (FTell() - generic_start);
 
       //pointer += sizeof(gb);
@@ -311,16 +313,52 @@ typedef struct
     DWORD  dwChunkLength;
 } AVIINDEXENTRY;
 
+typedef struct (DWORD offset, DWORD len)
+{
+    DWORD  ckid = { 0x63643030 };
+    DWORD  dwFlags = { 0x00 };
+    DWORD  dwChunkOffset = {offset};
+    DWORD  dwChunkLength = {len};
+} AVIINDEXENTRY_EXT;
+
 typedef struct 
 {
   char id[4];
 
   //Need multiple of 16 (len(AVIINDEXENTRY)) => 4-LSB Zero
-  local uint32 zero_value[] = { 0x00 };
+  
+  /*local uint32 zero_value[] = { 0x00 };
   uint32 zero:4<values=zero_value>;
-  uint32 idx1_hdr_datalen:28<arraylength=true>;
+  uint32 idx1_hdr_datalen:28<arraylength=true>;*/
 
-  AVIINDEXENTRY data[idx1_hdr_datalen];
+  uint32 idx1_hdr_datalen;
+
+  local uint index_start = FTell();
+
+  local uint i, j;
+  local uint offset_count = 4;
+
+  for (i = 0; i < list_index; i++) {
+    if (list[i].type == "movi") {
+      for (j = 0; j < list[i].block_count; j++) {
+        local uint current_len = list[i].gb[j].generic_blk_datalen;
+        AVIINDEXENTRY_EXT entry(offset_count, current_len);
+        offset_count += current_len + 8;
+        if (current_len % 2) {
+          offset_count++;
+        }
+      }
+    }
+  }
+
+  local uint index_end = FTell();
+  FSeek(index_start - 4);
+  local uint evil_state = SetEvilBit(false);
+  uint32 idx1_hdr_datalen = { index_end - index_start };
+  SetEvilBit(evil_state);
+  FSeek(index_end);
+
+  //AVIINDEXENTRY data[idx1_hdr_datalen];
 
 } idx1HEADER;
 
@@ -358,22 +396,19 @@ local char nheader[4];
 ROOT root;
 
 local string nheader_preferred[] = { "LIST", "JUNK" };
-local string nheader_possible[] = { "LIST", "JUNK", "idx1", "vprp" };
+local string nheader_possible[] = { "LIST", "JUNK"};//, "idx1", "vprp" };
 
-while (!FEof())
+while (ReadBytes(nheader, FTell(), 4, nheader_preferred, nheader_possible)) //(!FEoF())
 {
-
-  //;
-
-  ReadBytes(nheader, FTell(), 4, nheader_preferred, nheader_possible);
   
   if (Memcmp(nheader, "LIST", 4) == 0)
   {
     LISTHEADER list;
     list_index++;
-    /*if (list_index >= 3) {
+    if (list_index >= 3) {
       local string nheader_preferred[] = { "idx1" };
-    }*/
+      local string nheader_possible[] = { "idx1" };
+    }
     //local string nheader_preferred[] = { "vprp" };
   }
   else if (Memcmp(nheader, "JUNK", 4) == 0)
@@ -383,23 +418,22 @@ while (!FEof())
   else if (Memcmp(nheader, "idx1", 4) == 0)
   {
     idx1HEADER idx1;
-    //local string nheader_preferred[0];
-    //local string nheader_possible[0];
+    local string nheader_preferred[0];
   }
   else if (Memcmp(nheader, "vprp", 4) == 0)
   {
     VideoPropHeader vprp;
-    //local string nheader_preferred[] = { "idx1" };
+    local string nheader_preferred[] = { "idx1" };
   }
   else
   {
     genericblock unknown_block;
   }
 }
-/*
+
 local uint file_end = FTell();
 FSeek(root.root_datalen_pos);
 local uint evil_state = SetEvilBit(false);
 uint32 root_datalen = {file_end - 8};
 SetEvilBit(evil_state);
-FSeek(file_end);*/
+FSeek(file_end);
