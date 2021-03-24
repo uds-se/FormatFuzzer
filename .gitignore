@@ -1,3 +1,7 @@
+# generation
+out.*
+output.*
+
 # editors
 .idea
 .vscode

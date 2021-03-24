@@ -76,7 +76,7 @@ typedef struct
 
 typedef struct 
 {
-  char id[4];
+  char id[4] = { "avih" };
   uint32 avi_hdr_datalen = { 56 }; //len(MainAVIHeader)
   MainAVIHeader data;
 } avihHEADER;
