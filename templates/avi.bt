@@ -303,33 +303,17 @@ typedef struct
     char data[junk_hdr_datalen];
 } JUNKHEADER;
 
-
-// aviindex structure info
-typedef struct 
-{
-    DWORD  ckid;
-    DWORD  dwFlags;
-    DWORD  dwChunkOffset;
-    DWORD  dwChunkLength;
-} AVIINDEXENTRY;
-
 typedef struct (DWORD offset, DWORD len)
 {
     DWORD  ckid = { 0x63643030 };
     DWORD  dwFlags = { 0x00 };
     DWORD  dwChunkOffset = {offset};
     DWORD  dwChunkLength = {len};
-} AVIINDEXENTRY_EXT;
+} AVIINDEXENTRY;
 
 typedef struct 
 {
   char id[4];
-
-  //Need multiple of 16 (len(AVIINDEXENTRY)) => 4-LSB Zero
-  
-  /*local uint32 zero_value[] = { 0x00 };
-  uint32 zero:4<values=zero_value>;
-  uint32 idx1_hdr_datalen:28<arraylength=true>;*/
 
   uint32 idx1_hdr_datalen;
 
@@ -342,7 +326,7 @@ typedef struct
     if (list[i].type == "movi") {
       for (j = 0; j < list[i].block_count; j++) {
         local uint current_len = list[i].gb[j].generic_blk_datalen;
-        AVIINDEXENTRY_EXT entry(offset_count, current_len);
+        AVIINDEXENTRY entry(offset_count, current_len);
         offset_count += current_len + 8;
         if (current_len % 2) {
           offset_count++;
@@ -357,8 +341,6 @@ typedef struct
   uint32 idx1_hdr_datalen = { index_end - index_start };
   SetEvilBit(evil_state);
   FSeek(index_end);
-
-  //AVIINDEXENTRY data[idx1_hdr_datalen];
 
 } idx1HEADER;
 
@@ -391,44 +373,51 @@ typedef struct xroot
   }
 } ROOT <bgcolor=cLtGray>;
 
-local char nheader[4];
-
 ROOT root;
 
-local string nheader_preferred[] = { "LIST", "JUNK" };
-local string nheader_possible[] = { "LIST", "JUNK"};//, "idx1", "vprp" };
 
-while (ReadBytes(nheader, FTell(), 4, nheader_preferred, nheader_possible)) //(!FEoF())
+local uint junk_count = 0;
+local uint allow_vprp = 1; //TODO: Marginally decreases validity, further investigate
+
+local string nheader_preferred[] = { "LIST", "JUNK" };
+local string nheader_possible[] = { "LIST", "JUNK" };
+
+local char nheader[4];
+
+while (ReadBytes(nheader, FTell(), 4, nheader_preferred, nheader_possible))
 {
-  
-  if (Memcmp(nheader, "LIST", 4) == 0)
-  {
-    LISTHEADER list;
-    list_index++;
-    if (list_index >= 3) {
-      local string nheader_preferred[] = { "idx1" };
-      local string nheader_possible[] = { "idx1" };
+  switch (nheader) {
+    case "LIST":
+      LISTHEADER list;
+      list_index++;
+      if (list_index == 1 && allow_vprp) {
+        nheader_preferred += "vprp";
+        nheader_possible += "vprp";
+      }
+      else if (list_index >= 3) {
+        local string nheader_preferred[] = { "idx1" };
+        local string nheader_possible[] = { "idx1" };
+      }
+      break;
+    case "JUNK":
+      JUNKHEADER junk;
+      junk_count++;
+      if (junk_count >= 2) {
+        nheader_preferred -= "JUNK";
+      }
+      break;
+    case "idx1":
+      idx1HEADER idx1;
+      local string nheader_preferred[0];
+      break;
+    case "vprp":
+      VideoPropHeader vprp;
+      nheader_preferred -= "vprp";
+      nheader_possible -= "vprp";
+      break;
+    default:
+      genericblock unknown_block;
     }
-    //local string nheader_preferred[] = { "vprp" };
-  }
-  else if (Memcmp(nheader, "JUNK", 4) == 0)
-  {
-    JUNKHEADER junk;
-  }
-  else if (Memcmp(nheader, "idx1", 4) == 0)
-  {
-    idx1HEADER idx1;
-    local string nheader_preferred[0];
-  }
-  else if (Memcmp(nheader, "vprp", 4) == 0)
-  {
-    VideoPropHeader vprp;
-    local string nheader_preferred[] = { "idx1" };
-  }
-  else
-  {
-    genericblock unknown_block;
-  }
 }
 
 local uint file_end = FTell();

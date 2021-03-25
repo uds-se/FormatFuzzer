@@ -1602,6 +1602,8 @@ public:
 	ROOT root;
 	/*local*/ std::vector<std::string> nheader_preferred;
 	/*local*/ std::vector<std::string> nheader_possible;
+	/*local*/ uint junk_count;
+	/*local*/ uint allow_vprp;
 	uint32_class list_hdr_datalen;
 	char_class type_element;
 	char_array_class type;
@@ -1891,7 +1893,7 @@ avihHEADER* avihHEADER::generate() {
 		generated = 1;
 	_startof = FTell();
 
-	GENERATE_VAR(id, ::g->id.generate(4));
+	GENERATE_VAR(id, ::g->id.generate(4, { "avih" }));
 	GENERATE_VAR(avi_hdr_datalen, ::g->avi_hdr_datalen.generate({ 56 }));
 	GENERATE_VAR(data, ::g->data.generate());
 
@@ -2345,30 +2347,41 @@ void generate_file() {
 	GENERATE(root, ::g->root.generate());
 	::g->nheader_preferred = { "LIST", "JUNK" };
 	::g->nheader_possible = { "LIST", "JUNK" };
+	::g->junk_count = 0;
+	::g->allow_vprp = 1;
 	while (ReadBytes(::g->nheader, FTell(), 4, ::g->nheader_preferred, ::g->nheader_possible)) {
-		if ((Memcmp(::g->nheader, "LIST", 4) == 0)) {
+		switch (STR2INT(::g->nheader)) {
+		case STR2INT("LIST"):
 			GENERATE(list, ::g->list.generate());
 			::g->list_index++;
+			if (((::g->list_index == 1) && ::g->allow_vprp)) {
+				::g->nheader_preferred.insert(::g->nheader_preferred.end(), { "vprp" });
+				::g->nheader_possible.insert(::g->nheader_possible.end(), { "vprp" });
+			} else {
 			if ((::g->list_index >= 3)) {
 				::g->nheader_preferred = { "idx1" };
 				::g->nheader_possible = { "idx1" };
 			};
-		} else {
-		if ((Memcmp(::g->nheader, "JUNK", 4) == 0)) {
+			};
+			break;
+		case STR2INT("JUNK"):
 			GENERATE(junk, ::g->junk.generate());
-		} else {
-		if ((Memcmp(::g->nheader, "idx1", 4) == 0)) {
+			::g->junk_count++;
+			if ((::g->junk_count >= 2)) {
+				VectorRemove(::g->nheader_preferred, { "JUNK" });
+			};
+			break;
+		case STR2INT("idx1"):
 			GENERATE(idx1, ::g->idx1.generate());
 			::g->nheader_preferred = {  };
-		} else {
-		if ((Memcmp(::g->nheader, "vprp", 4) == 0)) {
+			break;
+		case STR2INT("vprp"):
 			GENERATE(vprp, ::g->vprp.generate());
-			::g->nheader_preferred = { "idx1" };
-		} else {
+			VectorRemove(::g->nheader_preferred, { "vprp" });
+			VectorRemove(::g->nheader_possible, { "vprp" });
+			break;
+		default:
 			GENERATE(unknown_block, ::g->unknown_block.generate());
-		};
-		};
-		};
 		};
 	};
 	::g->file_end = FTell();
