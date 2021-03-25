@@ -944,7 +944,10 @@ class PfpInterp(object):
         cpp += "\t" + classname + "* generate("
         if hasattr(classnode, "args") and classnode.args is not None:
             for param in classnode.args.params:
-                cpp += " ".join(param.type.type.names)
+                if hasattr(param.type.type, "names"):
+                    cpp += " ".join(param.type.type.names)
+                else:
+                    cpp += param.type.cpp
                 if not hasattr(param, "is_func_param") or not param.is_func_param:
                     cpp += "&"
                 cpp += " " + param.name + ", "
@@ -998,7 +1001,10 @@ class PfpInterp(object):
         if hasattr(classnode, "args") and classnode.args is not None:
             for param in classnode.args.params:
                 params.append(param)
-                cpp += " ".join(param.type.type.names)
+                if hasattr(param.type.type, "names"):
+                    cpp += " ".join(param.type.type.names)
+                else:
+                    cpp += param.type.cpp
                 if not hasattr(param, "is_func_param") or not param.is_func_param:
                     cpp += "&"
                 cpp += " " + param.name + ", "
