@@ -188,11 +188,10 @@ struct LISTHEADER;
 
 typedef struct
 {
-  char id[4] = {"RIFF", "LIST"};
+  char id[4];
+
   local uint datalen_pos = FTell();
   uint32 list_hdr_datalen<min = 6, max = 22>;
-
-  //char type[4] = { "hdrl", "strl", "movi" };
 
   char type[4] = { (list_index == 0 ? "hdrl" : (list_index == 1 ? "strl" : "movi")) };
 
@@ -342,11 +341,24 @@ typedef struct (DWORD type, DWORD flags, DWORD offset, DWORD len)
     DWORD  dwChunkLength = { len };
 } AVIINDEXENTRY;
 
+//TODO: Check why adding components does not work.
+DWORD DWORDFromString(string str) {
+  if (Strlen(str) != 4) {
+    Printf("DWORDFromString(): String was not 32 bits.\n");
+    return -1;
+  }
+  local DWORD t0 = (DWORD)str[3] << 24;
+  local DWORD t1 = (DWORD)str[2] << 16;
+  local DWORD t2 = (DWORD)str[1] << 8;
+  local DWORD t3 = (DWORD)str[0];
+  return t0 + t1 + t2 + t3;
+}
+
 typedef struct 
 {
   char id[4];
 
-  uint32 idx1_hdr_datalen;
+  uint32 idx1_datalen;
 
   local uint index_start = FTell();
 
@@ -356,25 +368,13 @@ typedef struct
   for (i = 0; i < list_index; i++) {
     if (list[i].type == "movi") {
       for (j = 0; j < list[i].block_count; j++) {
-
-        if (!exists(list[i].movi_chunk)) {
-          continue;
-        }
+        if (!exists(list[i].movi_chunk)) continue;
 
         local uint current_len = list[i].movi_chunk[j].movi_datalen;
-
-        local DWORD t0 = ((DWORD)list[i].movi_chunk[j].id[3]) << 24;
-        local DWORD t1 = ((DWORD)list[i].movi_chunk[j].id[2]) << 16;
-        local DWORD t2 = ((DWORD)list[i].movi_chunk[j].id[1]) << 8;
-        local DWORD t3 = ((DWORD)list[i].movi_chunk[j].id[0]);
-        local DWORD current_type = t0 + t1 + t2 + t3;
-
+        local DWORD current_type = DWORDFromString(list[i].movi_chunk[j].id);
         AVIINDEXENTRY entry(current_type, 0x00, offset_count, current_len);
-        offset_count += current_len + 8;
-        if (current_len % 2) {
-          offset_count++;
-        }
 
+        offset_count += current_len + (current_len % 2 ? 9 : 8);
       }
     }
   }
