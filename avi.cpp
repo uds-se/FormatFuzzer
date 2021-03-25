@@ -2332,11 +2332,15 @@ idx1HEADER* idx1HEADER::generate() {
 	GENERATE_VAR(id, ::g->id.generate(4));
 	GENERATE_VAR(idx1_hdr_datalen, ::g->idx1_hdr_datalen.generate());
 	index_start = FTell();
+	j = 0;
 	offset_count = 4;
 	for (i = 0; (i < ::g->list_index); i++) {
 			if ((::g->list()[i]->type() == "movi")) {
 			for (j = 0; (j < ::g->list()[i]->block_count); j++) {
-					current_len = ::g->list()[i]->movi_chunk()[j]->movi_datalen();
+					if (!::g->list()[i]->movi_chunk_exists) {
+					continue;
+				};
+				current_len = ::g->list()[i]->movi_chunk()[j]->movi_datalen();
 				t0 = ((DWORD)::g->list()[i]->movi_chunk()[j]->id()[3] << 24);
 				t1 = ((DWORD)::g->list()[i]->movi_chunk()[j]->id()[2] << 16);
 				t2 = ((DWORD)::g->list()[i]->movi_chunk()[j]->id()[1] << 8);

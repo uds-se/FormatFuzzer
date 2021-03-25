@@ -242,13 +242,11 @@ typedef struct
       local string movi_blk_hdr_possible[] = { "00db" }; //00dc 00wb
       ReadBytes(movi_blk_hdr, FTell(), 4);//, movi_blk_hdr_preferred, movi_blk_hdr_possible);
       
-      struct {
-        if (movi_blk_hdr == "LIST") {
-          LISTHEADER movi_list;
-        } else {
-          MOVICHUNK movi_chunk;
-        }
-      } movi_part;
+      if (movi_blk_hdr == "LIST") {
+        LISTHEADER movi_list;
+      } else {
+        MOVICHUNK movi_chunk;
+      }
       
       block_count++;
       pointer += (FTell() - movi_blk_start);
@@ -352,13 +350,16 @@ typedef struct
 
   local uint index_start = FTell();
 
-  local uint i, j;
+  local uint i, j = 0;
   local uint offset_count = 4;
-
 
   for (i = 0; i < list_index; i++) {
     if (list[i].type == "movi") {
       for (j = 0; j < list[i].block_count; j++) {
+
+        if (!exists(list[i].movi_chunk)) {
+          continue;
+        }
 
         local uint current_len = list[i].movi_chunk[j].movi_datalen;
 
