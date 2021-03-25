@@ -165,16 +165,28 @@ typedef struct
 typedef struct 
 {
   char id[4];
-  uint32  generic_blk_datalen<arraylength=true>;
-  if ( generic_blk_datalen % 2 )
-    char data[generic_blk_datalen+1];
+  uint32  genblk_datalen<arraylength=true>;
+  if ( genblk_datalen % 2 )
+    char data[genblk_datalen+1];
   else
-    char data[generic_blk_datalen];
+    char data[genblk_datalen];
 } genericblock;
+
+typedef struct 
+{
+  char id[4];
+  uint32  movi_datalen<arraylength=true>;
+  if ( movi_datalen % 2 )
+    char data[movi_datalen+1];
+  else
+    char data[movi_datalen];
+} MOVICHUNK;
 
 local uint list_index = 0;
 
-typedef struct 
+struct LISTHEADER;
+
+typedef struct
 {
   char id[4] = {"RIFF", "LIST"};
   local uint datalen_pos = FTell();
@@ -190,6 +202,7 @@ typedef struct
   }
   else if (!Memcmp(type,"strl",4))
   {
+    
     strhHEADER strh;
     if (Memcmp(strh.data.fccType, "vids", 4) == 0)
     {
@@ -203,9 +216,16 @@ typedef struct
     {
       strfHEADER strf;
     }
-    strnHEADER strn;
+
+    local char next_hdr[4];
+    ReadBytes(next_hdr, FTell(), 4);
+    if (next_hdr != "LIST" && next_hdr != "vprp" &&
+        next_hdr != "idx1" && next_hdr != "JUNK") {
+      strnHEADER strn;
+    }
+
   }
-  else if (Memcmp(type,"movi",4) == 0)
+  else if (Memcmp(type,"movi",4) == 0 || Memcmp(type,"rec ",4) == 0)
   {
     local int32 pointer = 0;
     local int32 stop = list_hdr_datalen - 4;
@@ -215,10 +235,23 @@ typedef struct
     local uint block_count = 0;
     do
     {
-      local uint generic_start = FTell();
-      genericblock gb;
+
+      local uint movi_blk_start = FTell();
+      local char movi_blk_hdr[4];
+      local string movi_blk_hdr_preferred[] = { "00db" };
+      local string movi_blk_hdr_possible[] = { "00db" }; //00dc 00wb
+      ReadBytes(movi_blk_hdr, FTell(), 4);//, movi_blk_hdr_preferred, movi_blk_hdr_possible);
+      
+      struct {
+        if (movi_blk_hdr == "LIST") {
+          LISTHEADER movi_list;
+        } else {
+          MOVICHUNK movi_chunk;
+        }
+      } movi_part;
+      
       block_count++;
-      pointer += (FTell() - generic_start);
+      pointer += (FTell() - movi_blk_start);
 
       //pointer += sizeof(gb);
       //Printf("+%x = %d\n", gb.datalen, pointer);
@@ -303,12 +336,12 @@ typedef struct
     char data[junk_hdr_datalen];
 } JUNKHEADER;
 
-typedef struct (DWORD offset, DWORD len)
+typedef struct (DWORD type, DWORD flags, DWORD offset, DWORD len)
 {
-    DWORD  ckid = { 0x63643030 };
-    DWORD  dwFlags = { 0x00 };
-    DWORD  dwChunkOffset = {offset};
-    DWORD  dwChunkLength = {len};
+    DWORD  ckid = { type };
+    DWORD  dwFlags = { flags };
+    DWORD  dwChunkOffset = { offset };
+    DWORD  dwChunkLength = { len };
 } AVIINDEXENTRY;
 
 typedef struct 
@@ -322,15 +355,25 @@ typedef struct
   local uint i, j;
   local uint offset_count = 4;
 
+
   for (i = 0; i < list_index; i++) {
     if (list[i].type == "movi") {
       for (j = 0; j < list[i].block_count; j++) {
-        local uint current_len = list[i].gb[j].generic_blk_datalen;
-        AVIINDEXENTRY entry(offset_count, current_len);
+
+        local uint current_len = list[i].movi_chunk[j].movi_datalen;
+
+        local DWORD t0 = ((DWORD)list[i].movi_chunk[j].id[3]) << 24;
+        local DWORD t1 = ((DWORD)list[i].movi_chunk[j].id[2]) << 16;
+        local DWORD t2 = ((DWORD)list[i].movi_chunk[j].id[1]) << 8;
+        local DWORD t3 = ((DWORD)list[i].movi_chunk[j].id[0]);
+        local DWORD current_type = t0 + t1 + t2 + t3;
+
+        AVIINDEXENTRY entry(current_type, 0x00, offset_count, current_len);
         offset_count += current_len + 8;
         if (current_len % 2) {
           offset_count++;
         }
+
       }
     }
   }
@@ -377,7 +420,7 @@ ROOT root;
 
 
 local uint junk_count = 0;
-local uint allow_vprp = 1; //TODO: Marginally decreases validity, further investigate
+local uint allow_vprp = 1;
 
 local string nheader_preferred[] = { "LIST", "JUNK" };
 local string nheader_possible[] = { "LIST", "JUNK" };
@@ -409,6 +452,7 @@ while (ReadBytes(nheader, FTell(), 4, nheader_preferred, nheader_possible))
     case "idx1":
       idx1HEADER idx1;
       local string nheader_preferred[0];
+      local string nheader_possible[0];
       break;
     case "vprp":
       VideoPropHeader vprp;
