@@ -1894,14 +1894,14 @@ globals_class* g;
 
 DWORD DWORDFromString(std::string str) {
 	if ((Strlen(str) != 4)) {
-		Printf("DWORDFromString(): String was not 32 bits.\n");
+		Printf("DWORDFromString(): String is not 32 bits.\n");
 		return (-1);
 	};
-	/*local*/ DWORD t0 = ((DWORD)str[3] << 24);
-	/*local*/ DWORD t1 = ((DWORD)str[2] << 16);
-	/*local*/ DWORD t2 = ((DWORD)str[1] << 8);
-	/*local*/ DWORD t3 = (DWORD)str[0];
-	return ((((t0 + t1) + t2) + t3));
+	/*local*/ DWORD s0 = ((DWORD)str[3] << 24);
+	/*local*/ DWORD s1 = ((DWORD)str[2] << 16);
+	/*local*/ DWORD s2 = ((DWORD)str[1] << 8);
+	/*local*/ DWORD s3 = (DWORD)str[0];
+	return ((((s0 + s1) + s2) + s3));
 }
 
 ROOT* ROOT::generate() {
@@ -2234,7 +2234,7 @@ LISTHEADER* LISTHEADER::generate() {
 		generated = 1;
 	_startof = FTell();
 
-	GENERATE_VAR(id, ::g->id.generate(4, { "RIFF", "LIST" }));
+	GENERATE_VAR(id, ::g->id.generate(4));
 	datalen_pos = FTell();
 	GENERATE_VAR(list_hdr_datalen, ::g->list_hdr_datalen.generate());
 	GENERATE_VAR(type, ::g->type.generate(4, { ((::g->list_index == 0) ? "hdrl" : ((::g->list_index == 1) ? "strl" : "movi")) }));
@@ -2347,6 +2347,7 @@ idx1HEADER* idx1HEADER::generate() {
 	GENERATE_VAR(id, ::g->id.generate(4));
 	GENERATE_VAR(idx1_datalen, ::g->idx1_datalen.generate());
 	index_start = FTell();
+	i = 0;
 	j = 0;
 	offset_count = 4;
 	for (i = 0; (i < ::g->list_index); i++) {

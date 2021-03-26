@@ -344,14 +344,14 @@ typedef struct (DWORD type, DWORD flags, DWORD offset, DWORD len)
 //TODO: Check why adding components does not work.
 DWORD DWORDFromString(string str) {
   if (Strlen(str) != 4) {
-    Printf("DWORDFromString(): String was not 32 bits.\n");
+    Printf("DWORDFromString(): String is not 32 bits.\n");
     return -1;
   }
-  local DWORD t0 = (DWORD)str[3] << 24;
-  local DWORD t1 = (DWORD)str[2] << 16;
-  local DWORD t2 = (DWORD)str[1] << 8;
-  local DWORD t3 = (DWORD)str[0];
-  return t0 + t1 + t2 + t3;
+  local DWORD s0 = (DWORD)str[3] << 24;
+  local DWORD s1 = (DWORD)str[2] << 16;
+  local DWORD s2 = (DWORD)str[1] << 8;
+  local DWORD s3 = (DWORD)str[0];
+  return s0 + s1 + s2 + s3;
 }
 
 typedef struct 
@@ -362,7 +362,7 @@ typedef struct
 
   local uint index_start = FTell();
 
-  local uint i, j = 0;
+  local uint i = 0, j = 0;
   local uint offset_count = 4;
 
   for (i = 0; i < list_index; i++) {
