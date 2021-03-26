@@ -1094,6 +1094,43 @@ public:
 
 
 
+class frame_struct {
+	std::vector<frame_struct*>& instances;
+
+	LISTHEADER* movi_list_var;
+	MOVICHUNK* movi_chunk_var;
+
+public:
+	bool movi_list_exists = false;
+	bool movi_chunk_exists = false;
+
+	LISTHEADER& movi_list();
+	MOVICHUNK& movi_chunk() {
+		assert_cond(movi_chunk_exists, "struct field movi_chunk does not exist");
+		return *movi_chunk_var;
+	}
+
+	unsigned char generated = 0;
+	int64 _startof = 0;
+	std::size_t _sizeof = 0;
+	frame_struct& operator () () { return *instances.back(); }
+	frame_struct* operator [] (int index) { return instances[index]; }
+	frame_struct(std::vector<frame_struct*>& instances) : instances(instances) { instances.push_back(this); }
+	~frame_struct() {
+		if (generated == 2)
+			return;
+		while (instances.size()) {
+			frame_struct* instance = instances.back();
+			instances.pop_back();
+			if (instance->generated == 2)
+				delete instance;
+		}
+	}
+	frame_struct* generate(/*local*/ std::string& movi_blk_hdr);
+};
+
+
+
 class LISTHEADER {
 	std::vector<LISTHEADER*>& instances;
 
@@ -1103,8 +1140,7 @@ class LISTHEADER {
 	avihHEADER* avhi_var;
 	strhHEADER* strh_var;
 	strnHEADER* strn_var;
-	LISTHEADER* movi_list_var;
-	MOVICHUNK* movi_chunk_var;
+	frame_struct* frame_var;
 	std::string data_var;
 
 public:
@@ -1114,8 +1150,7 @@ public:
 	bool avhi_exists = false;
 	bool strh_exists = false;
 	bool strn_exists = false;
-	bool movi_list_exists = false;
-	bool movi_chunk_exists = false;
+	bool frame_exists = false;
 	bool data_exists = false;
 
 	std::string id() {
@@ -1142,13 +1177,9 @@ public:
 		assert_cond(strn_exists, "struct field strn does not exist");
 		return *strn_var;
 	}
-	LISTHEADER& movi_list() {
-		assert_cond(movi_list_exists, "struct field movi_list does not exist");
-		return *movi_list_var;
-	}
-	MOVICHUNK& movi_chunk() {
-		assert_cond(movi_chunk_exists, "struct field movi_chunk does not exist");
-		return *movi_chunk_var;
+	frame_struct& frame() {
+		assert_cond(frame_exists, "struct field frame does not exist");
+		return *frame_var;
 	}
 	std::string data() {
 		assert_cond(data_exists, "struct field data does not exist");
@@ -1187,6 +1218,10 @@ public:
 	LISTHEADER* generate();
 };
 
+LISTHEADER& frame_struct::movi_list() {
+	assert_cond(movi_list_exists, "struct field movi_list does not exist");
+	return *movi_list_var;
+}
 
 
 class JUNKHEADER {
@@ -1235,70 +1270,16 @@ public:
 
 
 
-class AVIINDEXENTRY {
-	std::vector<AVIINDEXENTRY*>& instances;
-
-	DWORD ckid_var;
-	DWORD dwFlags_var;
-	DWORD dwChunkOffset_var;
-	DWORD dwChunkLength_var;
-
-public:
-	bool ckid_exists = false;
-	bool dwFlags_exists = false;
-	bool dwChunkOffset_exists = false;
-	bool dwChunkLength_exists = false;
-
-	DWORD ckid() {
-		assert_cond(ckid_exists, "struct field ckid does not exist");
-		return ckid_var;
-	}
-	DWORD dwFlags() {
-		assert_cond(dwFlags_exists, "struct field dwFlags does not exist");
-		return dwFlags_var;
-	}
-	DWORD dwChunkOffset() {
-		assert_cond(dwChunkOffset_exists, "struct field dwChunkOffset does not exist");
-		return dwChunkOffset_var;
-	}
-	DWORD dwChunkLength() {
-		assert_cond(dwChunkLength_exists, "struct field dwChunkLength does not exist");
-		return dwChunkLength_var;
-	}
-
-	unsigned char generated = 0;
-	int64 _startof = 0;
-	std::size_t _sizeof = 0;
-	AVIINDEXENTRY& operator () () { return *instances.back(); }
-	AVIINDEXENTRY* operator [] (int index) { return instances[index]; }
-	AVIINDEXENTRY(std::vector<AVIINDEXENTRY*>& instances) : instances(instances) { instances.push_back(this); }
-	~AVIINDEXENTRY() {
-		if (generated == 2)
-			return;
-		while (instances.size()) {
-			AVIINDEXENTRY* instance = instances.back();
-			instances.pop_back();
-			if (instance->generated == 2)
-				delete instance;
-		}
-	}
-	AVIINDEXENTRY* generate(DWORD type, DWORD flags, DWORD offset, DWORD len);
-};
-
-
-
 class idx1HEADER {
 	std::vector<idx1HEADER*>& instances;
 
 	std::string id_var;
 	uint32 idx1_datalen_var;
-	AVIINDEXENTRY* entry_var;
 	uint32 idx1_hdr_datalen_var;
 
 public:
 	bool id_exists = false;
 	bool idx1_datalen_exists = false;
-	bool entry_exists = false;
 	bool idx1_hdr_datalen_exists = false;
 
 	std::string id() {
@@ -1309,10 +1290,6 @@ public:
 		assert_cond(idx1_datalen_exists, "struct field idx1_datalen does not exist");
 		return idx1_datalen_var;
 	}
-	AVIINDEXENTRY& entry() {
-		assert_cond(entry_exists, "struct field entry does not exist");
-		return *entry_var;
-	}
 	uint32 idx1_hdr_datalen() {
 		assert_cond(idx1_hdr_datalen_exists, "struct field idx1_hdr_datalen does not exist");
 		return idx1_hdr_datalen_var;
@@ -1321,10 +1298,7 @@ public:
 	/* locals */
 	uint index_start;
 	uint i;
-	uint j;
-	uint offset_count;
-	uint current_len;
-	DWORD current_type;
+	uint offset;
 	uint index_end;
 	uint evil_state;
 
@@ -1643,17 +1617,17 @@ std::vector<strfHEADER_WAVE*> strfHEADER_WAVE_strf__instances;
 std::vector<strfHEADER*> strfHEADER_strf___instances;
 std::vector<strnHEADER*> strnHEADER_strn_instances;
 std::vector<MOVICHUNK*> MOVICHUNK_movi_chunk_instances;
+std::vector<frame_struct*> frame_struct_frame_instances;
 std::vector<LISTHEADER*> LISTHEADER_movi_list_instances;
 std::vector<LISTHEADER*> LISTHEADER_list_instances;
 std::vector<JUNKHEADER*> JUNKHEADER_junk_instances;
-std::vector<AVIINDEXENTRY*> AVIINDEXENTRY_entry_instances;
 std::vector<idx1HEADER*> idx1HEADER_idx1_instances;
 std::vector<VIDEO_FIELD_DESC*> VIDEO_FIELD_DESC_FieldInfo_element_instances;
 std::vector<VideoPropHeader*> VideoPropHeader_vprp_instances;
 std::vector<genericblock*> genericblock_unknown_block_instances;
 
 
-std::unordered_map<std::string, std::string> variable_types = { { "id", "char_array_class" }, { "root_datalen", "uint32_class" }, { "form", "char_array_class" }, { "root", "ROOT" }, { "list_hdr_datalen", "uint32_class" }, { "type", "char_array_class" }, { "avi_hdr_datalen", "uint32_class" }, { "dwMicroSecPerFrame", "DWORD_class" }, { "dwMaxBytesPerSec", "DWORD_class" }, { "dwReserved1", "DWORD_class" }, { "dwFlags", "DWORD_class" }, { "dwTotalFrames", "DWORD_class" }, { "dwInitialFrames", "DWORD_class" }, { "dwStreams", "DWORD_class" }, { "dwSuggestedBufferSize", "DWORD_class" }, { "dwWidth", "DWORD_class" }, { "dwHeight", "DWORD_class" }, { "dwScale", "DWORD_class" }, { "dwRate", "DWORD_class" }, { "dwStart", "DWORD_class" }, { "dwLength", "DWORD_class" }, { "data", "MainAVIHeader" }, { "avhi", "avihHEADER" }, { "strh_hdr_datalen", "uint32_class" }, { "fccType", "char_array_class" }, { "fccHandler", "char_array_class" }, { "dwQuality", "DWORD_class" }, { "dwSampleSize", "DWORD_class" }, { "xdwQuality", "DWORD_class" }, { "xdwSampleSize", "DWORD_class" }, { "data_", "AVIStreamHeader" }, { "strh", "strhHEADER" }, { "strf_hdr_bih_datalen", "uint32_class" }, { "biSize", "uint32_class" }, { "biWidth", "uint32_class" }, { "biHeight", "uint32_class" }, { "biPlanes", "uint16_class" }, { "biBitCount", "uint16_class" }, { "biCompression", "uint32_class" }, { "biSizeImage", "uint32_class" }, { "biXPelsPerMeter", "uint32_class" }, { "biYPelsPerMeter", "uint32_class" }, { "biClrUsed", "uint32_class" }, { "biClrImportant", "uint32_class" }, { "bmiHeader", "BITMAPINFOHEADER" }, { "rgbBlue", "unsigned_char_class" }, { "rgbGreen", "unsigned_char_class" }, { "rgbRed", "unsigned_char_class" }, { "rgbReserved", "unsigned_char_class" }, { "bmiColors", "RGBQUAD" }, { "exData", "char_array_class" }, { "strf", "strfHEADER_BIH" }, { "strf_hdr_wave_datalen", "uint32_class" }, { "wFormatTag", "WORD_class" }, { "nChannels", "WORD_class" }, { "nSamplesPerSec", "DWORD_class" }, { "nAvgBytesPerSec", "DWORD_class" }, { "nBlockAlign", "WORD_class" }, { "wBitsPerSample", "WORD_class" }, { "cbSize", "WORD_class" }, { "wave", "WAVEFORMATEX" }, { "strf_", "strfHEADER_WAVE" }, { "strf_hdr_datalen", "uint32_class" }, { "data__", "char_array_class" }, { "strf__", "strfHEADER" }, { "strn_hdr_datalen", "uint32_class" }, { "strn", "strnHEADER" }, { "movi_datalen", "uint32_class" }, { "movi_chunk", "MOVICHUNK" }, { "movi_list", "LISTHEADER" }, { "list", "LISTHEADER" }, { "junk_hdr_datalen", "uint32_class" }, { "junk", "JUNKHEADER" }, { "idx1_datalen", "uint32_class" }, { "ckid", "DWORD_class" }, { "dwChunkOffset", "DWORD_class" }, { "dwChunkLength", "DWORD_class" }, { "entry", "AVIINDEXENTRY" }, { "idx1_hdr_datalen", "uint32_class" }, { "idx1", "idx1HEADER" }, { "vprp_datalen", "uint32_class" }, { "VideoFormatToken", "VIDEO_FORMAT" }, { "VideoStandard", "VIDEO_STANDARD" }, { "dwVerticalRefreshRate", "DWORD_class" }, { "dwHTotalInT", "DWORD_class" }, { "dwVTotalInLines", "DWORD_class" }, { "dwFrameAspectRatio", "DWORD_class" }, { "dwFrameWidthInPixels", "DWORD_class" }, { "dwFrameHeightInLines", "DWORD_class" }, { "nbFieldPerFrame", "DWORD_class" }, { "CompressedBMHeight", "DWORD_class" }, { "CompressedBMWidth", "DWORD_class" }, { "ValidBMHeight", "DWORD_class" }, { "ValidBMWidth", "DWORD_class" }, { "ValidBMXOffset", "DWORD_class" }, { "ValidBMYOffset", "DWORD_class" }, { "VideoXOffsetInT", "DWORD_class" }, { "VideoYValidStartLine", "DWORD_class" }, { "FieldInfo", "VIDEO_FIELD_DESC_array_class" }, { "vprp", "VideoPropHeader" }, { "genblk_datalen", "uint32_class" }, { "unknown_block", "genericblock" } };
+std::unordered_map<std::string, std::string> variable_types = { { "id", "char_array_class" }, { "root_datalen", "uint32_class" }, { "form", "char_array_class" }, { "root", "ROOT" }, { "list_hdr_datalen", "uint32_class" }, { "type", "char_array_class" }, { "avi_hdr_datalen", "uint32_class" }, { "dwMicroSecPerFrame", "DWORD_class" }, { "dwMaxBytesPerSec", "DWORD_class" }, { "dwReserved1", "DWORD_class" }, { "dwFlags", "DWORD_class" }, { "dwTotalFrames", "DWORD_class" }, { "dwInitialFrames", "DWORD_class" }, { "dwStreams", "DWORD_class" }, { "dwSuggestedBufferSize", "DWORD_class" }, { "dwWidth", "DWORD_class" }, { "dwHeight", "DWORD_class" }, { "dwScale", "DWORD_class" }, { "dwRate", "DWORD_class" }, { "dwStart", "DWORD_class" }, { "dwLength", "DWORD_class" }, { "data", "MainAVIHeader" }, { "avhi", "avihHEADER" }, { "strh_hdr_datalen", "uint32_class" }, { "fccType", "char_array_class" }, { "fccHandler", "char_array_class" }, { "dwQuality", "DWORD_class" }, { "dwSampleSize", "DWORD_class" }, { "xdwQuality", "DWORD_class" }, { "xdwSampleSize", "DWORD_class" }, { "data_", "AVIStreamHeader" }, { "strh", "strhHEADER" }, { "strf_hdr_bih_datalen", "uint32_class" }, { "biSize", "uint32_class" }, { "biWidth", "uint32_class" }, { "biHeight", "uint32_class" }, { "biPlanes", "uint16_class" }, { "biBitCount", "uint16_class" }, { "biCompression", "uint32_class" }, { "biSizeImage", "uint32_class" }, { "biXPelsPerMeter", "uint32_class" }, { "biYPelsPerMeter", "uint32_class" }, { "biClrUsed", "uint32_class" }, { "biClrImportant", "uint32_class" }, { "bmiHeader", "BITMAPINFOHEADER" }, { "rgbBlue", "unsigned_char_class" }, { "rgbGreen", "unsigned_char_class" }, { "rgbRed", "unsigned_char_class" }, { "rgbReserved", "unsigned_char_class" }, { "bmiColors", "RGBQUAD" }, { "exData", "char_array_class" }, { "strf", "strfHEADER_BIH" }, { "strf_hdr_wave_datalen", "uint32_class" }, { "wFormatTag", "WORD_class" }, { "nChannels", "WORD_class" }, { "nSamplesPerSec", "DWORD_class" }, { "nAvgBytesPerSec", "DWORD_class" }, { "nBlockAlign", "WORD_class" }, { "wBitsPerSample", "WORD_class" }, { "cbSize", "WORD_class" }, { "wave", "WAVEFORMATEX" }, { "strf_", "strfHEADER_WAVE" }, { "strf_hdr_datalen", "uint32_class" }, { "data__", "char_array_class" }, { "strf__", "strfHEADER" }, { "strn_hdr_datalen", "uint32_class" }, { "strn", "strnHEADER" }, { "movi_datalen", "uint32_class" }, { "movi_chunk", "MOVICHUNK" }, { "frame", "frame_struct" }, { "movi_list", "LISTHEADER" }, { "list", "LISTHEADER" }, { "junk_hdr_datalen", "uint32_class" }, { "junk", "JUNKHEADER" }, { "idx1_datalen", "uint32_class" }, { "idx1_hdr_datalen", "uint32_class" }, { "idx1", "idx1HEADER" }, { "vprp_datalen", "uint32_class" }, { "VideoFormatToken", "VIDEO_FORMAT" }, { "VideoStandard", "VIDEO_STANDARD" }, { "dwVerticalRefreshRate", "DWORD_class" }, { "dwHTotalInT", "DWORD_class" }, { "dwVTotalInLines", "DWORD_class" }, { "dwFrameAspectRatio", "DWORD_class" }, { "dwFrameWidthInPixels", "DWORD_class" }, { "dwFrameHeightInLines", "DWORD_class" }, { "nbFieldPerFrame", "DWORD_class" }, { "CompressedBMHeight", "DWORD_class" }, { "CompressedBMWidth", "DWORD_class" }, { "ValidBMHeight", "DWORD_class" }, { "ValidBMWidth", "DWORD_class" }, { "ValidBMXOffset", "DWORD_class" }, { "ValidBMYOffset", "DWORD_class" }, { "VideoXOffsetInT", "DWORD_class" }, { "VideoYValidStartLine", "DWORD_class" }, { "FieldInfo", "VIDEO_FIELD_DESC_array_class" }, { "vprp", "VideoPropHeader" }, { "genblk_datalen", "uint32_class" }, { "unknown_block", "genericblock" } };
 
 std::vector<std::vector<int>> integer_ranges = { { 1, 16 }, { 6, 22 }, { 40, 58 }, { 20, 36 } };
 
@@ -1741,15 +1715,12 @@ public:
 	strnHEADER strn;
 	uint32_class movi_datalen;
 	MOVICHUNK movi_chunk;
+	frame_struct frame;
 	LISTHEADER movi_list;
 	LISTHEADER list;
 	uint32_class junk_hdr_datalen;
 	JUNKHEADER junk;
 	uint32_class idx1_datalen;
-	DWORD_class ckid;
-	DWORD_class dwChunkOffset;
-	DWORD_class dwChunkLength;
-	AVIINDEXENTRY entry;
 	uint32_class idx1_hdr_datalen;
 	idx1HEADER idx1;
 	uint32_class vprp_datalen;
@@ -1787,7 +1758,7 @@ public:
 		nheader(4, 0),
 		list_hdr_datalen(3),
 		type_element(false),
-		type(type_element, { "movi" }),
+		type(type_element),
 		avi_hdr_datalen(1),
 		dwMicroSecPerFrame(1),
 		dwMaxBytesPerSec(1),
@@ -1855,15 +1826,12 @@ public:
 		strn(strnHEADER_strn_instances),
 		movi_datalen(2),
 		movi_chunk(MOVICHUNK_movi_chunk_instances),
+		frame(frame_struct_frame_instances),
 		movi_list(LISTHEADER_movi_list_instances),
 		list(LISTHEADER_list_instances),
 		junk_hdr_datalen(2),
 		junk(JUNKHEADER_junk_instances),
 		idx1_datalen(1),
-		ckid(1),
-		dwChunkOffset(1),
-		dwChunkLength(1),
-		entry(AVIINDEXENTRY_entry_instances),
 		idx1_hdr_datalen(1),
 		idx1(idx1HEADER_idx1_instances),
 		vprp_datalen(1),
@@ -1892,17 +1860,6 @@ public:
 
 globals_class* g;
 
-DWORD DWORDFromString(std::string str) {
-	if ((Strlen(str) != 4)) {
-		Printf("DWORDFromString(): String is not 32 bits.\n");
-		return (-1);
-	};
-	/*local*/ DWORD s0 = ((DWORD)str[3] << 24);
-	/*local*/ DWORD s1 = ((DWORD)str[2] << 16);
-	/*local*/ DWORD s2 = ((DWORD)str[1] << 8);
-	/*local*/ DWORD s3 = (DWORD)str[0];
-	return ((((s0 + s1) + s2) + s3));
-}
 
 ROOT* ROOT::generate() {
 	if (generated == 1) {
@@ -2224,6 +2181,27 @@ MOVICHUNK* MOVICHUNK::generate() {
 }
 
 
+frame_struct* frame_struct::generate(/*local*/ std::string& movi_blk_hdr) {
+	if (generated == 1) {
+		frame_struct* new_instance = new frame_struct(instances);
+		new_instance->generated = 2;
+		return new_instance->generate(movi_blk_hdr);
+	}
+	if (!generated)
+		generated = 1;
+	_startof = FTell();
+
+	if ((movi_blk_hdr == "LIST")) {
+		GENERATE_VAR(movi_list, ::g->movi_list.generate());
+	} else {
+		GENERATE_VAR(movi_chunk, ::g->movi_chunk.generate());
+	};
+
+	_sizeof = FTell() - _startof;
+	return this;
+}
+
+
 LISTHEADER* LISTHEADER::generate() {
 	if (generated == 1) {
 		LISTHEADER* new_instance = new LISTHEADER(instances);
@@ -2266,11 +2244,7 @@ LISTHEADER* LISTHEADER::generate() {
 			movi_blk_hdr_preferred = { "00db" };
 			movi_blk_hdr_possible = { "00db" };
 			ReadBytes(movi_blk_hdr, FTell(), 4);
-			if ((movi_blk_hdr == "LIST")) {
-				GENERATE_VAR(movi_list, ::g->movi_list.generate());
-			} else {
-				GENERATE_VAR(movi_chunk, ::g->movi_chunk.generate());
-			};
+			GENERATE_VAR(frame, ::g->frame.generate(movi_blk_hdr));
 			block_count++;
 			pointer += (FTell() - movi_blk_start);
 		} while ((pointer < stop));
@@ -2314,26 +2288,6 @@ JUNKHEADER* JUNKHEADER::generate() {
 }
 
 
-AVIINDEXENTRY* AVIINDEXENTRY::generate(DWORD type, DWORD flags, DWORD offset, DWORD len) {
-	if (generated == 1) {
-		AVIINDEXENTRY* new_instance = new AVIINDEXENTRY(instances);
-		new_instance->generated = 2;
-		return new_instance->generate(type, flags, offset, len);
-	}
-	if (!generated)
-		generated = 1;
-	_startof = FTell();
-
-	GENERATE_VAR(ckid, ::g->ckid.generate({ type }));
-	GENERATE_VAR(dwFlags, ::g->dwFlags.generate({ flags }));
-	GENERATE_VAR(dwChunkOffset, ::g->dwChunkOffset.generate({ offset }));
-	GENERATE_VAR(dwChunkLength, ::g->dwChunkLength.generate({ len }));
-
-	_sizeof = FTell() - _startof;
-	return this;
-}
-
-
 idx1HEADER* idx1HEADER::generate() {
 	if (generated == 1) {
 		idx1HEADER* new_instance = new idx1HEADER(instances);
@@ -2348,22 +2302,9 @@ idx1HEADER* idx1HEADER::generate() {
 	GENERATE_VAR(idx1_datalen, ::g->idx1_datalen.generate());
 	index_start = FTell();
 	i = 0;
-	j = 0;
-	offset_count = 4;
-	for (i = 0; (i < ::g->list_index); i++) {
-			if ((::g->list()[i]->type() == "movi")) {
-			for (j = 0; (j < ::g->list()[i]->block_count); j++) {
-					if (!::g->list()[i]->movi_chunk_exists) {
-				continue;
-				};
-				current_len = ::g->list()[i]->movi_chunk()[j]->movi_datalen();
-				current_type = DWORDFromString(::g->list()[i]->movi_chunk()[j]->id());
-				GENERATE_VAR(entry, ::g->entry.generate(current_type, 0x00, offset_count, current_len));
-				offset_count += (current_len + ((current_len % 2) ? 9 : 8));
-			;
-			};
-		};
-	;
+	offset = 4;
+	while (::g->frame()[i]->movi_chunk_exists) {
+		i++;
 	};
 	index_end = FTell();
 	FSeek((index_start - 4));

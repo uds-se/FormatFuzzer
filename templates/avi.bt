@@ -241,11 +241,13 @@ typedef struct
       local string movi_blk_hdr_possible[] = { "00db" }; //00dc 00wb
       ReadBytes(movi_blk_hdr, FTell(), 4);//, movi_blk_hdr_preferred, movi_blk_hdr_possible);
       
-      if (movi_blk_hdr == "LIST") {
-        LISTHEADER movi_list;
-      } else {
-        MOVICHUNK movi_chunk;
-      }
+      struct {
+        if (movi_blk_hdr == "LIST") {
+          LISTHEADER movi_list;
+        } else {
+          MOVICHUNK movi_chunk;
+        }
+      } frame;
       
       block_count++;
       pointer += (FTell() - movi_blk_start);
@@ -333,14 +335,6 @@ typedef struct
     char data[junk_hdr_datalen];
 } JUNKHEADER;
 
-typedef struct (DWORD type, DWORD flags, DWORD offset, DWORD len)
-{
-    DWORD  ckid = { type };
-    DWORD  dwFlags = { flags };
-    DWORD  dwChunkOffset = { offset };
-    DWORD  dwChunkLength = { len };
-} AVIINDEXENTRY;
-
 //TODO: Check why adding components does not work.
 DWORD DWORDFromString(string str) {
   if (Strlen(str) != 4) {
@@ -354,6 +348,14 @@ DWORD DWORDFromString(string str) {
   return s0 + s1 + s2 + s3;
 }
 
+typedef struct (DWORD _flags, DWORD _offset, DWORD _length, DWORD _type)
+{
+    DWORD  ckid = { _type };
+    DWORD  dwFlags = { _flags };
+    DWORD  dwChunkOffset = { _offset };
+    DWORD  dwChunkLength = { _length };
+} AVIINDEXENTRY;
+
 typedef struct 
 {
   char id[4];
@@ -362,22 +364,38 @@ typedef struct
 
   local uint index_start = FTell();
 
-  local uint i = 0, j = 0;
-  local uint offset_count = 4;
+  local uint i = 0;
+  local uint offset = 4;
 
+  //FIXME: This causes exception to be raised
+  //FIXME: AttributeError: 'UnaryOp' object has no attribute 'cpp'
+  while (exists(frame[i])) {
+    i++;
+  }
+  
+  //FIXME: This however works fine:
+  /*while (exists(frame[i].movi_chunk)) {
+    i++;
+  }*/
+
+  /*
   for (i = 0; i < list_index; i++) {
     if (list[i].type == "movi") {
       for (j = 0; j < list[i].block_count; j++) {
         if (!exists(list[i].movi_chunk)) continue;
 
-        local uint current_len = list[i].movi_chunk[j].movi_datalen;
-        local DWORD current_type = DWORDFromString(list[i].movi_chunk[j].id);
-        AVIINDEXENTRY entry(current_type, 0x00, offset_count, current_len);
+        local uint length = list[i].movi_chunk[j].movi_datalen;
 
-        offset_count += current_len + (current_len % 2 ? 9 : 8);
+        AVIINDEXENTRY entry(
+          0x00, offset, length,
+          DWORDFromString(list[i].movi_chunk[j].id)
+        );
+
+        offset += length + (length % 2 ? 9 : 8);
+
       }
     }
-  }
+  }*/
 
   local uint index_end = FTell();
   FSeek(index_start - 4);
