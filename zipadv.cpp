@@ -300,7 +300,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	VERECORD& operator () () { return *instances.back(); }
-	VERECORD* operator [] (int index) { return instances[index]; }
+	VERECORD* operator [] (int index) {
+		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
+		return instances[index];
+	}
 	VERECORD(std::vector<VERECORD*>& instances) : instances(instances) { instances.push_back(this); }
 	~VERECORD() {
 		if (generated == 2)
@@ -429,7 +432,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	std::string operator () () { return value; }
-	char operator [] (int index) { return value[index]; }
+	char operator [] (int index) {
+		assert_cond((unsigned)index < value.size(), "array index out of bounds");
+		return value[index];
+	}
 	char_array_class(char_class& element, std::unordered_map<int, std::vector<char>> element_known_values = {})
 		: element(element), element_known_values(element_known_values) {}
 	char_array_class(char_class& element, std::vector<std::string> known_values)
@@ -621,7 +627,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	FILETIME& operator () () { return *instances.back(); }
-	FILETIME* operator [] (int index) { return instances[index]; }
+	FILETIME* operator [] (int index) {
+		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
+		return instances[index];
+	}
 	FILETIME(std::vector<FILETIME*>& instances) : instances(instances) { instances.push_back(this); }
 	~FILETIME() {
 		if (generated == 2)
@@ -647,7 +656,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	std::string operator () () { return value; }
-	byte operator [] (int index) { return value[index]; }
+	byte operator [] (int index) {
+		assert_cond((unsigned)index < value.size(), "array index out of bounds");
+		return value[index];
+	}
 	byte_array_class(byte_class& element, std::unordered_map<int, std::vector<byte>> element_known_values = {})
 		: element(element), element_known_values(element_known_values) {}
 	byte_array_class(byte_class& element, std::vector<std::string> known_values)
@@ -874,7 +886,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	EXTRAFIELD& operator () () { return *instances.back(); }
-	EXTRAFIELD* operator [] (int index) { return instances[index]; }
+	EXTRAFIELD* operator [] (int index) {
+		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
+		return instances[index];
+	}
 	EXTRAFIELD(std::vector<EXTRAFIELD*>& instances) : instances(instances) { instances.push_back(this); }
 	~EXTRAFIELD() {
 		if (generated == 2)
@@ -980,7 +995,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	StrongEncryptedHeader_struct& operator () () { return *instances.back(); }
-	StrongEncryptedHeader_struct* operator [] (int index) { return instances[index]; }
+	StrongEncryptedHeader_struct* operator [] (int index) {
+		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
+		return instances[index];
+	}
 	StrongEncryptedHeader_struct(std::vector<StrongEncryptedHeader_struct*>& instances) : instances(instances) { instances.push_back(this); }
 	~StrongEncryptedHeader_struct() {
 		if (generated == 2)
@@ -1035,7 +1053,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	std::string operator () () { return value; }
-	uchar operator [] (int index) { return value[index]; }
+	uchar operator [] (int index) {
+		assert_cond((unsigned)index < value.size(), "array index out of bounds");
+		return value[index];
+	}
 	uchar_array_class(uchar_class& element, std::unordered_map<int, std::vector<uchar>> element_known_values = {})
 		: element(element), element_known_values(element_known_values) {}
 	uchar_array_class(uchar_class& element, std::vector<std::string> known_values)
@@ -1115,7 +1136,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	ZIPDATADESCR& operator () () { return *instances.back(); }
-	ZIPDATADESCR* operator [] (int index) { return instances[index]; }
+	ZIPDATADESCR* operator [] (int index) {
+		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
+		return instances[index];
+	}
 	ZIPDATADESCR(std::vector<ZIPDATADESCR*>& instances) : instances(instances) { instances.push_back(this); }
 	~ZIPDATADESCR() {
 		if (generated == 2)
@@ -1272,7 +1296,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	ZIPFILERECORD& operator () () { return *instances.back(); }
-	ZIPFILERECORD* operator [] (int index) { return instances[index]; }
+	ZIPFILERECORD* operator [] (int index) {
+		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
+		return instances[index];
+	}
 	ZIPFILERECORD(std::vector<ZIPFILERECORD*>& instances) : instances(instances) { instances.push_back(this); }
 	~ZIPFILERECORD() {
 		if (generated == 2)
@@ -1436,7 +1463,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	ZIPDIRENTRY& operator () () { return *instances.back(); }
-	ZIPDIRENTRY* operator [] (int index) { return instances[index]; }
+	ZIPDIRENTRY* operator [] (int index) {
+		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
+		return instances[index];
+	}
 	ZIPDIRENTRY(std::vector<ZIPDIRENTRY*>& instances) : instances(instances) { instances.push_back(this); }
 	~ZIPDIRENTRY() {
 		if (generated == 2)
@@ -1482,7 +1512,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	ZIPDIGITALSIG& operator () () { return *instances.back(); }
-	ZIPDIGITALSIG* operator [] (int index) { return instances[index]; }
+	ZIPDIGITALSIG* operator [] (int index) {
+		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
+		return instances[index];
+	}
 	ZIPDIGITALSIG(std::vector<ZIPDIGITALSIG*>& instances) : instances(instances) { instances.push_back(this); }
 	~ZIPDIGITALSIG() {
 		if (generated == 2)
@@ -1605,7 +1638,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	ZIP64ENDLOCATORRECORD& operator () () { return *instances.back(); }
-	ZIP64ENDLOCATORRECORD* operator [] (int index) { return instances[index]; }
+	ZIP64ENDLOCATORRECORD* operator [] (int index) {
+		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
+		return instances[index];
+	}
 	ZIP64ENDLOCATORRECORD(std::vector<ZIP64ENDLOCATORRECORD*>& instances) : instances(instances) { instances.push_back(this); }
 	~ZIP64ENDLOCATORRECORD() {
 		if (generated == 2)
@@ -1657,7 +1693,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	ZIP64ENDLOCATOR& operator () () { return *instances.back(); }
-	ZIP64ENDLOCATOR* operator [] (int index) { return instances[index]; }
+	ZIP64ENDLOCATOR* operator [] (int index) {
+		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
+		return instances[index];
+	}
 	ZIP64ENDLOCATOR(std::vector<ZIP64ENDLOCATOR*>& instances) : instances(instances) { instances.push_back(this); }
 	~ZIP64ENDLOCATOR() {
 		if (generated == 2)
@@ -1739,7 +1778,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	ZIPENDLOCATOR& operator () () { return *instances.back(); }
-	ZIPENDLOCATOR* operator [] (int index) { return instances[index]; }
+	ZIPENDLOCATOR* operator [] (int index) {
+		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
+		return instances[index];
+	}
 	ZIPENDLOCATOR(std::vector<ZIPENDLOCATOR*>& instances) : instances(instances) { instances.push_back(this); }
 	~ZIPENDLOCATOR() {
 		if (generated == 2)

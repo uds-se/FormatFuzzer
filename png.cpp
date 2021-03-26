@@ -110,7 +110,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	std::vector<uint16> operator () () { return value; }
-	uint16 operator [] (int index) { return value[index]; }
+	uint16 operator [] (int index) {
+		assert_cond((unsigned)index < value.size(), "array index out of bounds");
+		return value[index];
+	}
 	uint16_array_class(uint16_class& element, std::unordered_map<int, std::vector<uint16>> element_known_values = {})
 		: element(element), element_known_values(element_known_values) {}
 
@@ -151,7 +154,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	PNG_SIGNATURE& operator () () { return *instances.back(); }
-	PNG_SIGNATURE* operator [] (int index) { return instances[index]; }
+	PNG_SIGNATURE* operator [] (int index) {
+		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
+		return instances[index];
+	}
 	PNG_SIGNATURE(std::vector<PNG_SIGNATURE*>& instances) : instances(instances) { instances.push_back(this); }
 	~PNG_SIGNATURE() {
 		if (generated == 2)
@@ -235,7 +241,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	std::string operator () () { return value; }
-	char operator [] (int index) { return value[index]; }
+	char operator [] (int index) {
+		assert_cond((unsigned)index < value.size(), "array index out of bounds");
+		return value[index];
+	}
 	char_array_class(char_class& element, std::unordered_map<int, std::vector<char>> element_known_values = {})
 		: element(element), element_known_values(element_known_values) {}
 	char_array_class(char_class& element, std::vector<std::string> known_values)
@@ -305,7 +314,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	CTYPE& operator () () { return *instances.back(); }
-	CTYPE* operator [] (int index) { return instances[index]; }
+	CTYPE* operator [] (int index) {
+		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
+		return instances[index];
+	}
 	CTYPE(std::vector<CTYPE*>& instances) : instances(instances) { instances.push_back(this); }
 	~CTYPE() {
 		if (generated == 2)
@@ -436,7 +448,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	PNG_CHUNK_IHDR& operator () () { return *instances.back(); }
-	PNG_CHUNK_IHDR* operator [] (int index) { return instances[index]; }
+	PNG_CHUNK_IHDR* operator [] (int index) {
+		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
+		return instances[index];
+	}
 	PNG_CHUNK_IHDR(std::vector<PNG_CHUNK_IHDR*>& instances) : instances(instances) { instances.push_back(this); }
 	~PNG_CHUNK_IHDR() {
 		if (generated == 2)
@@ -499,7 +514,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	PNG_CHUNK_TEXT& operator () () { return *instances.back(); }
-	PNG_CHUNK_TEXT* operator [] (int index) { return instances[index]; }
+	PNG_CHUNK_TEXT* operator [] (int index) {
+		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
+		return instances[index];
+	}
 	PNG_CHUNK_TEXT(std::vector<PNG_CHUNK_TEXT*>& instances) : instances(instances) { instances.push_back(this); }
 	~PNG_CHUNK_TEXT() {
 		if (generated == 2)
@@ -574,7 +592,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	PNG_PALETTE_PIXEL& operator () () { return *instances.back(); }
-	PNG_PALETTE_PIXEL* operator [] (int index) { return instances[index]; }
+	PNG_PALETTE_PIXEL* operator [] (int index) {
+		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
+		return instances[index];
+	}
 	PNG_PALETTE_PIXEL(std::vector<PNG_PALETTE_PIXEL*>& instances) : instances(instances) { instances.push_back(this); }
 	~PNG_PALETTE_PIXEL() {
 		if (generated == 2)
@@ -598,7 +619,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	std::vector<PNG_PALETTE_PIXEL*> operator () () { return value; }
-	PNG_PALETTE_PIXEL operator [] (int index) { return *value[index]; }
+	PNG_PALETTE_PIXEL operator [] (int index) {
+		assert_cond((unsigned)index < value.size(), "array index out of bounds");
+		return *value[index];
+	}
 	PNG_PALETTE_PIXEL_array_class(PNG_PALETTE_PIXEL& element) : element(element) {}
 
 	std::vector<PNG_PALETTE_PIXEL*> generate(unsigned size) {
@@ -632,7 +656,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	PNG_CHUNK_PLTE& operator () () { return *instances.back(); }
-	PNG_CHUNK_PLTE* operator [] (int index) { return instances[index]; }
+	PNG_CHUNK_PLTE* operator [] (int index) {
+		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
+		return instances[index];
+	}
 	PNG_CHUNK_PLTE(std::vector<PNG_CHUNK_PLTE*>& instances) : instances(instances) { instances.push_back(this); }
 	~PNG_CHUNK_PLTE() {
 		if (generated == 2)
@@ -672,7 +699,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	PNG_POINT& operator () () { return *instances.back(); }
-	PNG_POINT* operator [] (int index) { return instances[index]; }
+	PNG_POINT* operator [] (int index) {
+		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
+		return instances[index];
+	}
 	PNG_POINT(std::vector<PNG_POINT*>& instances) : instances(instances) { instances.push_back(this); }
 	~PNG_POINT() {
 		if (generated == 2)
@@ -724,7 +754,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	PNG_CHUNK_CHRM& operator () () { return *instances.back(); }
-	PNG_CHUNK_CHRM* operator [] (int index) { return instances[index]; }
+	PNG_CHUNK_CHRM* operator [] (int index) {
+		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
+		return instances[index];
+	}
 	PNG_CHUNK_CHRM(std::vector<PNG_CHUNK_CHRM*>& instances) : instances(instances) { instances.push_back(this); }
 	~PNG_CHUNK_CHRM() {
 		if (generated == 2)
@@ -766,7 +799,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	PNG_CHUNK_SRGB& operator () () { return *instances.back(); }
-	PNG_CHUNK_SRGB* operator [] (int index) { return instances[index]; }
+	PNG_CHUNK_SRGB* operator [] (int index) {
+		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
+		return instances[index];
+	}
 	PNG_CHUNK_SRGB(std::vector<PNG_CHUNK_SRGB*>& instances) : instances(instances) { instances.push_back(this); }
 	~PNG_CHUNK_SRGB() {
 		if (generated == 2)
@@ -830,7 +866,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	PNG_CHUNK_IEXT& operator () () { return *instances.back(); }
-	PNG_CHUNK_IEXT* operator [] (int index) { return instances[index]; }
+	PNG_CHUNK_IEXT* operator [] (int index) {
+		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
+		return instances[index];
+	}
 	PNG_CHUNK_IEXT(std::vector<PNG_CHUNK_IEXT*>& instances) : instances(instances) { instances.push_back(this); }
 	~PNG_CHUNK_IEXT() {
 		if (generated == 2)
@@ -876,7 +915,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	PNG_CHUNK_ZEXT& operator () () { return *instances.back(); }
-	PNG_CHUNK_ZEXT* operator [] (int index) { return instances[index]; }
+	PNG_CHUNK_ZEXT* operator [] (int index) {
+		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
+		return instances[index];
+	}
 	PNG_CHUNK_ZEXT(std::vector<PNG_CHUNK_ZEXT*>& instances) : instances(instances) { instances.push_back(this); }
 	~PNG_CHUNK_ZEXT() {
 		if (generated == 2)
@@ -969,7 +1011,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	PNG_CHUNK_TIME& operator () () { return *instances.back(); }
-	PNG_CHUNK_TIME* operator [] (int index) { return instances[index]; }
+	PNG_CHUNK_TIME* operator [] (int index) {
+		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
+		return instances[index];
+	}
 	PNG_CHUNK_TIME(std::vector<PNG_CHUNK_TIME*>& instances) : instances(instances) { instances.push_back(this); }
 	~PNG_CHUNK_TIME() {
 		if (generated == 2)
@@ -1058,7 +1103,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	PNG_CHUNK_PHYS& operator () () { return *instances.back(); }
-	PNG_CHUNK_PHYS* operator [] (int index) { return instances[index]; }
+	PNG_CHUNK_PHYS* operator [] (int index) {
+		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
+		return instances[index];
+	}
 	PNG_CHUNK_PHYS(std::vector<PNG_CHUNK_PHYS*>& instances) : instances(instances) { instances.push_back(this); }
 	~PNG_CHUNK_PHYS() {
 		if (generated == 2)
@@ -1116,7 +1164,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	PNG_CHUNK_BKGD& operator () () { return *instances.back(); }
-	PNG_CHUNK_BKGD* operator [] (int index) { return instances[index]; }
+	PNG_CHUNK_BKGD* operator [] (int index) {
+		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
+		return instances[index];
+	}
 	PNG_CHUNK_BKGD(std::vector<PNG_CHUNK_BKGD*>& instances) : instances(instances) { instances.push_back(this); }
 	~PNG_CHUNK_BKGD() {
 		if (generated == 2)
@@ -1222,7 +1273,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	PNG_CHUNK_SBIT& operator () () { return *instances.back(); }
-	PNG_CHUNK_SBIT* operator [] (int index) { return instances[index]; }
+	PNG_CHUNK_SBIT* operator [] (int index) {
+		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
+		return instances[index];
+	}
 	PNG_CHUNK_SBIT(std::vector<PNG_CHUNK_SBIT*>& instances) : instances(instances) { instances.push_back(this); }
 	~PNG_CHUNK_SBIT() {
 		if (generated == 2)
@@ -1248,7 +1302,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	std::string operator () () { return value; }
-	byte operator [] (int index) { return value[index]; }
+	byte operator [] (int index) {
+		assert_cond((unsigned)index < value.size(), "array index out of bounds");
+		return value[index];
+	}
 	byte_array_class(byte_class& element, std::unordered_map<int, std::vector<byte>> element_known_values = {})
 		: element(element), element_known_values(element_known_values) {}
 	byte_array_class(byte_class& element, std::vector<std::string> known_values)
@@ -1315,7 +1372,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	PNG_CHUNK_SPLT& operator () () { return *instances.back(); }
-	PNG_CHUNK_SPLT* operator [] (int index) { return instances[index]; }
+	PNG_CHUNK_SPLT* operator [] (int index) {
+		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
+		return instances[index];
+	}
 	PNG_CHUNK_SPLT(std::vector<PNG_CHUNK_SPLT*>& instances) : instances(instances) { instances.push_back(this); }
 	~PNG_CHUNK_SPLT() {
 		if (generated == 2)
@@ -1355,7 +1415,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	PNG_CHUNK_ACTL& operator () () { return *instances.back(); }
-	PNG_CHUNK_ACTL* operator [] (int index) { return instances[index]; }
+	PNG_CHUNK_ACTL* operator [] (int index) {
+		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
+		return instances[index];
+	}
 	PNG_CHUNK_ACTL(std::vector<PNG_CHUNK_ACTL*>& instances) : instances(instances) { instances.push_back(this); }
 	~PNG_CHUNK_ACTL() {
 		if (generated == 2)
@@ -1453,7 +1516,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	PNG_CHUNK_FCTL& operator () () { return *instances.back(); }
-	PNG_CHUNK_FCTL* operator [] (int index) { return instances[index]; }
+	PNG_CHUNK_FCTL* operator [] (int index) {
+		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
+		return instances[index];
+	}
 	PNG_CHUNK_FCTL(std::vector<PNG_CHUNK_FCTL*>& instances) : instances(instances) { instances.push_back(this); }
 	~PNG_CHUNK_FCTL() {
 		if (generated == 2)
@@ -1479,7 +1545,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	std::string operator () () { return value; }
-	ubyte operator [] (int index) { return value[index]; }
+	ubyte operator [] (int index) {
+		assert_cond((unsigned)index < value.size(), "array index out of bounds");
+		return value[index];
+	}
 	ubyte_array_class(ubyte_class& element, std::unordered_map<int, std::vector<ubyte>> element_known_values = {})
 		: element(element), element_known_values(element_known_values) {}
 	ubyte_array_class(ubyte_class& element, std::vector<std::string> known_values)
@@ -1540,7 +1609,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	PNG_CHUNK_FDAT& operator () () { return *instances.back(); }
-	PNG_CHUNK_FDAT* operator [] (int index) { return instances[index]; }
+	PNG_CHUNK_FDAT* operator [] (int index) {
+		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
+		return instances[index];
+	}
 	PNG_CHUNK_FDAT(std::vector<PNG_CHUNK_FDAT*>& instances) : instances(instances) { instances.push_back(this); }
 	~PNG_CHUNK_FDAT() {
 		if (generated == 2)
@@ -1697,7 +1769,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	PNG_CHUNK& operator () () { return *instances.back(); }
-	PNG_CHUNK* operator [] (int index) { return instances[index]; }
+	PNG_CHUNK* operator [] (int index) {
+		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
+		return instances[index];
+	}
 	PNG_CHUNK(std::vector<PNG_CHUNK*>& instances) : instances(instances) { instances.push_back(this); }
 	~PNG_CHUNK() {
 		if (generated == 2)
