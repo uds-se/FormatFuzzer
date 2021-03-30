@@ -44,7 +44,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	std::string operator () () { return value; }
-	char operator [] (int index) { return value[index]; }
+	char operator [] (int index) {
+		assert_cond((unsigned)index < value.size(), "array index out of bounds");
+		return value[index];
+	}
 	char_array_class(char_class& element, std::unordered_map<int, std::vector<char>> element_known_values = {})
 		: element(element), element_known_values(element_known_values) {}
 	char_array_class(char_class& element, std::vector<std::string> known_values)
@@ -206,7 +209,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	MidiHeader& operator () () { return *instances.back(); }
-	MidiHeader* operator [] (int index) { return instances[index]; }
+	MidiHeader* operator [] (int index) {
+		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
+		return instances[index];
+	}
 	MidiHeader(std::vector<MidiHeader*>& instances) : instances(instances) { instances.push_back(this); }
 	~MidiHeader() {
 		if (generated == 2)
@@ -261,7 +267,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	DeltaTime& operator () () { return *instances.back(); }
-	DeltaTime* operator [] (int index) { return instances[index]; }
+	DeltaTime* operator [] (int index) {
+		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
+		return instances[index];
+	}
 	DeltaTime(std::vector<DeltaTime*>& instances) : instances(instances) { instances.push_back(this); }
 	~DeltaTime() {
 		if (generated == 2)
@@ -301,7 +310,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	MidiMessage_note_off_event_struct& operator () () { return *instances.back(); }
-	MidiMessage_note_off_event_struct* operator [] (int index) { return instances[index]; }
+	MidiMessage_note_off_event_struct* operator [] (int index) {
+		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
+		return instances[index];
+	}
 	MidiMessage_note_off_event_struct(std::vector<MidiMessage_note_off_event_struct*>& instances) : instances(instances) { instances.push_back(this); }
 	~MidiMessage_note_off_event_struct() {
 		if (generated == 2)
@@ -341,7 +353,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	MidiMessage_note_on_event_struct& operator () () { return *instances.back(); }
-	MidiMessage_note_on_event_struct* operator [] (int index) { return instances[index]; }
+	MidiMessage_note_on_event_struct* operator [] (int index) {
+		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
+		return instances[index];
+	}
 	MidiMessage_note_on_event_struct(std::vector<MidiMessage_note_on_event_struct*>& instances) : instances(instances) { instances.push_back(this); }
 	~MidiMessage_note_on_event_struct() {
 		if (generated == 2)
@@ -381,7 +396,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	MidiMessage_note_pressure_event_struct& operator () () { return *instances.back(); }
-	MidiMessage_note_pressure_event_struct* operator [] (int index) { return instances[index]; }
+	MidiMessage_note_pressure_event_struct* operator [] (int index) {
+		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
+		return instances[index];
+	}
 	MidiMessage_note_pressure_event_struct(std::vector<MidiMessage_note_pressure_event_struct*>& instances) : instances(instances) { instances.push_back(this); }
 	~MidiMessage_note_pressure_event_struct() {
 		if (generated == 2)
@@ -421,7 +439,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	MidiMessage_controller_event_struct& operator () () { return *instances.back(); }
-	MidiMessage_controller_event_struct* operator [] (int index) { return instances[index]; }
+	MidiMessage_controller_event_struct* operator [] (int index) {
+		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
+		return instances[index];
+	}
 	MidiMessage_controller_event_struct(std::vector<MidiMessage_controller_event_struct*>& instances) : instances(instances) { instances.push_back(this); }
 	~MidiMessage_controller_event_struct() {
 		if (generated == 2)
@@ -455,7 +476,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	MidiMessage_program_event_struct& operator () () { return *instances.back(); }
-	MidiMessage_program_event_struct* operator [] (int index) { return instances[index]; }
+	MidiMessage_program_event_struct* operator [] (int index) {
+		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
+		return instances[index];
+	}
 	MidiMessage_program_event_struct(std::vector<MidiMessage_program_event_struct*>& instances) : instances(instances) { instances.push_back(this); }
 	~MidiMessage_program_event_struct() {
 		if (generated == 2)
@@ -489,7 +513,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	MidiMessage_channel_pressure_event_struct& operator () () { return *instances.back(); }
-	MidiMessage_channel_pressure_event_struct* operator [] (int index) { return instances[index]; }
+	MidiMessage_channel_pressure_event_struct* operator [] (int index) {
+		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
+		return instances[index];
+	}
 	MidiMessage_channel_pressure_event_struct(std::vector<MidiMessage_channel_pressure_event_struct*>& instances) : instances(instances) { instances.push_back(this); }
 	~MidiMessage_channel_pressure_event_struct() {
 		if (generated == 2)
@@ -529,7 +556,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	MidiMessage_pitch_bend_event_struct& operator () () { return *instances.back(); }
-	MidiMessage_pitch_bend_event_struct* operator [] (int index) { return instances[index]; }
+	MidiMessage_pitch_bend_event_struct* operator [] (int index) {
+		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
+		return instances[index];
+	}
 	MidiMessage_pitch_bend_event_struct(std::vector<MidiMessage_pitch_bend_event_struct*>& instances) : instances(instances) { instances.push_back(this); }
 	~MidiMessage_pitch_bend_event_struct() {
 		if (generated == 2)
@@ -614,7 +644,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	std::string operator () () { return value; }
-	uchar operator [] (int index) { return value[index]; }
+	uchar operator [] (int index) {
+		assert_cond((unsigned)index < value.size(), "array index out of bounds");
+		return value[index];
+	}
 	uchar_array_class(uchar_class& element, std::unordered_map<int, std::vector<uchar>> element_known_values = {})
 		: element(element), element_known_values(element_known_values) {}
 	uchar_array_class(uchar_class& element, std::vector<std::string> known_values)
@@ -826,7 +859,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	MidiMessage_meta_event_struct& operator () () { return *instances.back(); }
-	MidiMessage_meta_event_struct* operator [] (int index) { return instances[index]; }
+	MidiMessage_meta_event_struct* operator [] (int index) {
+		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
+		return instances[index];
+	}
 	MidiMessage_meta_event_struct(std::vector<MidiMessage_meta_event_struct*>& instances) : instances(instances) { instances.push_back(this); }
 	~MidiMessage_meta_event_struct() {
 		if (generated == 2)
@@ -866,7 +902,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	MidiMessage_sysex_event_struct& operator () () { return *instances.back(); }
-	MidiMessage_sysex_event_struct* operator [] (int index) { return instances[index]; }
+	MidiMessage_sysex_event_struct* operator [] (int index) {
+		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
+		return instances[index];
+	}
 	MidiMessage_sysex_event_struct(std::vector<MidiMessage_sysex_event_struct*>& instances) : instances(instances) { instances.push_back(this); }
 	~MidiMessage_sysex_event_struct() {
 		if (generated == 2)
@@ -964,7 +1003,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	MidiMessage& operator () () { return *instances.back(); }
-	MidiMessage* operator [] (int index) { return instances[index]; }
+	MidiMessage* operator [] (int index) {
+		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
+		return instances[index];
+	}
 	MidiMessage(std::vector<MidiMessage*>& instances) : instances(instances) { instances.push_back(this); }
 	~MidiMessage() {
 		if (generated == 2)
@@ -1018,7 +1060,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	MidiTrack& operator () () { return *instances.back(); }
-	MidiTrack* operator [] (int index) { return instances[index]; }
+	MidiTrack* operator [] (int index) {
+		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
+		return instances[index];
+	}
 	MidiTrack(std::vector<MidiTrack*>& instances) : instances(instances) { instances.push_back(this); }
 	~MidiTrack() {
 		if (generated == 2)
@@ -1042,7 +1087,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	std::vector<MidiTrack*> operator () () { return value; }
-	MidiTrack operator [] (int index) { return *value[index]; }
+	MidiTrack operator [] (int index) {
+		assert_cond((unsigned)index < value.size(), "array index out of bounds");
+		return *value[index];
+	}
 	MidiTrack_array_class(MidiTrack& element) : element(element) {}
 
 	std::vector<MidiTrack*> generate(unsigned size) {
@@ -1082,7 +1130,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	file_struct& operator () () { return *instances.back(); }
-	file_struct* operator [] (int index) { return instances[index]; }
+	file_struct* operator [] (int index) {
+		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
+		return instances[index];
+	}
 	file_struct(std::vector<file_struct*>& instances) : instances(instances) { instances.push_back(this); }
 	~file_struct() {
 		if (generated == 2)

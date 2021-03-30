@@ -149,7 +149,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	PCAPHEADER& operator () () { return *instances.back(); }
-	PCAPHEADER* operator [] (int index) { return instances[index]; }
+	PCAPHEADER* operator [] (int index) {
+		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
+		return instances[index];
+	}
 	PCAPHEADER(std::vector<PCAPHEADER*>& instances) : instances(instances) { instances.push_back(this); }
 	~PCAPHEADER() {
 		if (generated == 2)
@@ -291,7 +294,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	std::string operator () () { return value; }
-	uchar operator [] (int index) { return value[index]; }
+	uchar operator [] (int index) {
+		assert_cond((unsigned)index < value.size(), "array index out of bounds");
+		return value[index];
+	}
 	uchar_array_class(uchar_class& element, std::unordered_map<int, std::vector<uchar>> element_known_values = {})
 		: element(element), element_known_values(element_known_values) {}
 	uchar_array_class(uchar_class& element, std::vector<std::string> known_values)
@@ -353,7 +359,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	IPv4addr& operator () () { return *instances.back(); }
-	IPv4addr* operator [] (int index) { return instances[index]; }
+	IPv4addr* operator [] (int index) {
+		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
+		return instances[index];
+	}
 	IPv4addr(std::vector<IPv4addr*>& instances) : instances(instances) { instances.push_back(this); }
 	~IPv4addr() {
 		if (generated == 2)
@@ -379,7 +388,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	std::string operator () () { return value; }
-	BYTE operator [] (int index) { return value[index]; }
+	BYTE operator [] (int index) {
+		assert_cond((unsigned)index < value.size(), "array index out of bounds");
+		return value[index];
+	}
 	BYTE_array_class(BYTE_class& element, std::unordered_map<int, std::vector<BYTE>> element_known_values = {})
 		: element(element), element_known_values(element_known_values) {}
 	BYTE_array_class(BYTE_class& element, std::vector<std::string> known_values)
@@ -506,7 +518,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	Layer_3& operator () () { return *instances.back(); }
-	Layer_3* operator [] (int index) { return instances[index]; }
+	Layer_3* operator [] (int index) {
+		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
+		return instances[index];
+	}
 	Layer_3(std::vector<Layer_3*>& instances) : instances(instances) { instances.push_back(this); }
 	~Layer_3() {
 		if (generated == 2)
@@ -540,7 +555,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	MACaddr& operator () () { return *instances.back(); }
-	MACaddr* operator [] (int index) { return instances[index]; }
+	MACaddr* operator [] (int index) {
+		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
+		return instances[index];
+	}
 	MACaddr(std::vector<MACaddr*>& instances) : instances(instances) { instances.push_back(this); }
 	~MACaddr() {
 		if (generated == 2)
@@ -589,7 +607,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	Layer_2& operator () () { return *instances.back(); }
-	Layer_2* operator [] (int index) { return instances[index]; }
+	Layer_2* operator [] (int index) {
+		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
+		return instances[index];
+	}
 	Layer_2(std::vector<Layer_2*>& instances) : instances(instances) { instances.push_back(this); }
 	~Layer_2() {
 		if (generated == 2)
@@ -673,7 +694,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	Dot1q& operator () () { return *instances.back(); }
-	Dot1q* operator [] (int index) { return instances[index]; }
+	Dot1q* operator [] (int index) {
+		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
+		return instances[index];
+	}
 	Dot1q(std::vector<Dot1q*>& instances) : instances(instances) { instances.push_back(this); }
 	~Dot1q() {
 		if (generated == 2)
@@ -716,7 +740,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	TCP_BITFIELDS_struct& operator () () { return *instances.back(); }
-	TCP_BITFIELDS_struct* operator [] (int index) { return instances[index]; }
+	TCP_BITFIELDS_struct* operator [] (int index) {
+		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
+		return instances[index];
+	}
 	TCP_BITFIELDS_struct(std::vector<TCP_BITFIELDS_struct*>& instances) : instances(instances) { instances.push_back(this); }
 	~TCP_BITFIELDS_struct() {
 		if (generated == 2)
@@ -803,7 +830,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	Layer_4& operator () () { return *instances.back(); }
-	Layer_4* operator [] (int index) { return instances[index]; }
+	Layer_4* operator [] (int index) {
+		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
+		return instances[index];
+	}
 	Layer_4(std::vector<Layer_4*>& instances) : instances(instances) { instances.push_back(this); }
 	~Layer_4() {
 		if (generated == 2)
@@ -899,7 +929,10 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	PCAPRECORD& operator () () { return *instances.back(); }
-	PCAPRECORD* operator [] (int index) { return instances[index]; }
+	PCAPRECORD* operator [] (int index) {
+		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
+		return instances[index];
+	}
 	PCAPRECORD(std::vector<PCAPRECORD*>& instances) : instances(instances) { instances.push_back(this); }
 	~PCAPRECORD() {
 		if (generated == 2)

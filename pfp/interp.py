@@ -929,7 +929,10 @@ class PfpInterp(object):
         cpp += "\tint64 _startof = 0;\n"
         cpp += "\tstd::size_t _sizeof = 0;\n"
         cpp += "\t" + classname + "& operator () () { return *instances.back(); }\n"
-        cpp += "\t" + classname + "* operator [] (int index) { return instances[index]; }\n"
+        cpp += "\t" + classname + "* operator [] (int index) {\n"
+        cpp += "\t\tassert_cond((unsigned)index < instances.size(), \"instance index out of bounds\");\n"
+        cpp += "\t\treturn instances[index];\n"
+        cpp += "\t}\n"
         cpp += "\t" + classname + "(std::vector<" + classname + "*>& instances) : instances(instances) { instances.push_back(this); }\n"
         cpp += "\t~" + classname + "() {\n"
         cpp += "\t\tif (generated == 2)\n"
@@ -2141,7 +2144,10 @@ class PfpInterp(object):
                     cpp += "\tint64 _startof = 0;\n"
                     cpp += "\tstd::size_t _sizeof = 0;\n"
                     cpp += "\t" + node.type.cpp + " operator () () { return value; }\n"
-                    cpp += "\t" + classname + " operator [] (int index) { return " + is_pointer + "value[index]; }\n"
+                    cpp += "\t" + classname + " operator [] (int index) {\n"
+                    cpp += "\t\tassert_cond((unsigned)index < value.size(), \"array index out of bounds\");\n"
+                    cpp += "\t\treturn " + is_pointer + "value[index];\n"
+                    cpp += "\t}\n"
                     if is_native:
                         cpp += "\t" + classname.replace(" ", "_") + "_array_class(" + element_classname + "& element, std::unordered_map<int, std::vector<" + classname + ">> element_known_values = {})\n\t\t: element(element), element_known_values(element_known_values) {}\n"
                     else:
