@@ -446,7 +446,7 @@ while (ReadBytes(nheader, FTell(), 4, nheader_preferred, nheader_possible))
 
 local uint file_end = FTell();
 FSeek(root.root_datalen_pos);
-//local uint evil_state = SetEvilBit(false);
+local uint evil_state = SetEvilBit(false);
 uint32 root_datalen = {file_end - 8};
-//SetEvilBit(evil_state);
+SetEvilBit(evil_state);
 FSeek(file_end);

@@ -1877,6 +1877,7 @@ public:
 	uint32_class genblk_datalen;
 	genericblock unknown_block;
 	/*local*/ uint file_end;
+	/*local*/ uint evil_state;
 
 
 	globals_class() :
@@ -2607,7 +2608,9 @@ void generate_file() {
 	};
 	::g->file_end = FTell();
 	FSeek(::g->root().root_datalen_pos);
+	::g->evil_state = SetEvilBit(false);
 	GENERATE(root_datalen, ::g->root_datalen.generate({ (::g->file_end - 8) }));
+	SetEvilBit(::g->evil_state);
 	FSeek(::g->file_end);
 
 	file_acc.finish();
