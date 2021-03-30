@@ -948,9 +948,10 @@ class PfpInterp(object):
         if hasattr(classnode, "args") and classnode.args is not None:
             for param in classnode.args.params:
                 if hasattr(param.type.type, "names"):
-                    cpp += " ".join(param.type.type.names)
-                else:
-                    cpp += param.type.cpp
+                    param.type.cpp = " ".join(param.type.type.names)
+                    if param.type.cpp == "string":
+                        param.type.cpp = "std::string"
+                cpp += param.type.cpp
                 if not hasattr(param, "is_func_param") or not param.is_func_param:
                     cpp += "&"
                 cpp += " " + param.name + ", "
@@ -1005,9 +1006,10 @@ class PfpInterp(object):
             for param in classnode.args.params:
                 params.append(param)
                 if hasattr(param.type.type, "names"):
-                    cpp += " ".join(param.type.type.names)
-                else:
-                    cpp += param.type.cpp
+                    param.type.cpp = " ".join(param.type.type.names)
+                    if param.type.cpp == "string":
+                        param.type.cpp = "std::string"
+                cpp += param.type.cpp
                 if not hasattr(param, "is_func_param") or not param.is_func_param:
                     cpp += "&"
                 cpp += " " + param.name + ", "
