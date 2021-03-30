@@ -15,6 +15,11 @@
 //   1.0   bl: Initial release.
 //------------------------------------------------
 
+local uint junk_index = 0;
+local uint list_index = 0;
+local uint frame_index = 0;
+local uint allow_vprp = 1;
+
 typedef struct
 { 
   WORD  wFormatTag; 
@@ -182,8 +187,6 @@ typedef struct
     char data[movi_datalen];
 } MOVICHUNK;
 
-local uint list_index = 0;
-
 struct LISTHEADER;
 
 typedef struct
@@ -231,7 +234,7 @@ typedef struct
     
     //Printf("stop=%d\n", stop);
 
-    local uint block_count = 0;
+    //local uint block_count = 0;
     do
     {
 
@@ -248,8 +251,10 @@ typedef struct
           MOVICHUNK movi_chunk;
         }
       } frame;
+      Printf("Building frame, index was %d\n", frame_index);
+      frame_index++;
       
-      block_count++;
+      //block_count++;
       pointer += (FTell() - movi_blk_start);
 
       //pointer += sizeof(gb);
@@ -348,7 +353,7 @@ DWORD DWORDFromString(string str) {
   return s0 + s1 + s2 + s3;
 }
 
-typedef struct (DWORD _flags, DWORD _offset, DWORD _length, DWORD _type)
+typedef struct (DWORD _type, DWORD _flags, DWORD _offset, DWORD _length)
 {
     DWORD  ckid = { _type };
     DWORD  dwFlags = { _flags };
@@ -359,43 +364,21 @@ typedef struct (DWORD _flags, DWORD _offset, DWORD _length, DWORD _type)
 typedef struct 
 {
   char id[4];
-
   uint32 idx1_datalen;
-
   local uint index_start = FTell();
 
-  local uint i = 0;
-  local uint offset = 4;
-
-  //FIXME: This causes exception to be raised
-  //FIXME: AttributeError: 'UnaryOp' object has no attribute 'cpp'
-  while (exists(frame[i])) {
-    i++;
-  }
-  
-  //FIXME: This however works fine:
-  /*while (exists(frame[i].movi_chunk)) {
-    i++;
-  }*/
-
-  /*
-  for (i = 0; i < list_index; i++) {
-    if (list[i].type == "movi") {
-      for (j = 0; j < list[i].block_count; j++) {
-        if (!exists(list[i].movi_chunk)) continue;
-
-        local uint length = list[i].movi_chunk[j].movi_datalen;
-
-        AVIINDEXENTRY entry(
-          0x00, offset, length,
-          DWORDFromString(list[i].movi_chunk[j].id)
-        );
-
-        offset += length + (length % 2 ? 9 : 8);
-
-      }
+  local uint i;
+  for (i = 0; i < frame_index; i++) {
+    //TODO: Use correct values
+    //FIXME: fix exists
+    if (exists(frame[i].movi_chunk)) {
+      Printf("MOVI_CHUNK EXISTS\n");
+      AVIINDEXENTRY index_entry(DWORDFromString("00db"), 0x00, 0x00, 0x00);
+    } else { //This is a chunk list
+      Printf("LIST EXISTS\n");
+      AVIINDEXENTRY index_entry(DWORDFromString("rec "), 0x00, 0x00, 0x00);
     }
-  }*/
+  }
 
   local uint index_end = FTell();
   FSeek(index_start - 4);
@@ -437,10 +420,6 @@ typedef struct xroot
 
 ROOT root;
 
-
-local uint junk_count = 0;
-local uint allow_vprp = 1;
-
 local string nheader_preferred[] = { "LIST", "JUNK" };
 local string nheader_possible[] = { "LIST", "JUNK" };
 
@@ -463,8 +442,8 @@ while (ReadBytes(nheader, FTell(), 4, nheader_preferred, nheader_possible))
       break;
     case "JUNK":
       JUNKHEADER junk;
-      junk_count++;
-      if (junk_count >= 2) {
+      junk_index++;
+      if (junk_index >= 2) {
         nheader_preferred -= "JUNK";
       }
       break;
