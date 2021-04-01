@@ -23,6 +23,9 @@
 //https://wiki.wireshark.org/Development/LibpcapFileFormat
 //https://github.com/hokiespurs/velodyne-copter/wiki/PCAP-format
 
+//SetEvilBit(false);
+//Printf("EVIL BIT DISABLED MODE\n");
+
 typedef struct {
 
         local uint evil_state = SetEvilBit(false);

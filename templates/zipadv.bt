@@ -31,6 +31,9 @@
 
 // Define structures used in ZIP files
 
+//SetEvilBit(false);
+//Printf("EVIL BIT DISABLED MODE\n");
+
 #define T_ZIPFILERECORD         "PK\x03\x04"
 #define T_ZIPDIRENTRY           "PK\x01\x02"
 #define T_ZIPDATADESCR          "PK\x07\x08"

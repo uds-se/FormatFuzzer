@@ -20,6 +20,9 @@ local uint list_index = 0;
 local uint frame_index = 0;
 local uint allow_vprp = 1;
 
+//SetEvilBit(false);
+//Printf("EVIL BIT DISABLED MODE\n");
+
 typedef struct
 { 
   WORD  wFormatTag; 
@@ -334,7 +337,7 @@ typedef struct
 typedef struct (string _type, DWORD _flags, DWORD _offset, DWORD _length)
 {
     char   ckid[4] = { _type };
-    DWORD  dwFlags = { _flags };
+    DWORD  dwFlags;// = { _flags };
     DWORD  dwChunkOffset = { _offset };
     DWORD  dwChunkLength = { _length };
 } AVIINDEXENTRY;
@@ -346,19 +349,22 @@ typedef struct
   local uint index_start = FTell();
 
   local uint i;
+  local uint offset = 4;
   for (i = 0; i < frame_index; i++) {
     if (exists(frame[i].movi_chunk)) {
       AVIINDEXENTRY index_entry(
         frame[i].movi_chunk.id,
-        0x00000000, 0x00000000, 
+        0x00000000, offset, 
         frame[i].movi_chunk.movi_datalen
       );
+      offset += 8 + frame[i].movi_chunk.movi_datalen;
     } else {
       AVIINDEXENTRY index_entry(
         frame[i].movi_list.type,
-        0x00000000, 0x00000000,
+        0x00000000, offset,
         frame[i].movi_list.list_datalen
       );
+      offset += 12;
     }
   }
 

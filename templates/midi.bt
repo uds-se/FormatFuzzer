@@ -17,6 +17,9 @@
 
 BigEndian();
 
+//SetEvilBit(false);
+//Printf("EVIL BIT DISABLED MODE\n");
+
 struct MidiHeader
 {
     local uint evil_state = SetEvilBit(false);
