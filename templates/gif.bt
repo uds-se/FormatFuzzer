@@ -119,10 +119,14 @@ struct DATA {
 	else
 		local UBYTE possible[] = { 0x2C };
 
+	local int has_data = false;
 	while (ReadUByte(FTell(), possible) != 0x3B) {
 		// <Graphic Block> ::=       [Graphic Control Extension] <Graphic-Rendering Block>
 		if (ReadUByte(FTell()) == 0x2C) {
-			possible += 0x3B;
+			if (!has_data) {
+				has_data = true;
+				possible += 0x3B;
+			}
 			SetBackColor( 0xE0FFE0 );
 			struct IMAGEDESCRIPTOR {
 				UBYTE	ImageSeperator;

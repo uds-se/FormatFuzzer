@@ -1328,6 +1328,7 @@ public:
 
 	/* locals */
 	std::vector<UBYTE> possible;
+	int has_data;
 
 	unsigned char generated = 0;
 	int64 _startof = 0;
@@ -2049,9 +2050,13 @@ DATA* DATA::generate() {
 	} else {
 		possible = { 0x2C };
 	};
+	has_data = false;
 	while ((ReadUByte(FTell(), possible) != 0x3B)) {
 		if ((ReadUByte(FTell()) == 0x2C)) {
-			possible.insert(possible.end(), { 0x3B });
+			if (!has_data) {
+				has_data = true;
+				possible.insert(possible.end(), { 0x3B });
+			};
 			SetBackColor(0xE0FFE0);
 			GENERATE_VAR(ImageDescriptor, ::g->ImageDescriptor.generate());
 			if ((ImageDescriptor().PackedFields().LocalColorTableFlag() == 1)) {
