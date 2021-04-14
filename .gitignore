@@ -20,6 +20,12 @@ __pycache__
 
 # compilation
 *.o
+*.so
+*.dSYM
+midi*.cpp
+pcap*.cpp
+zip*.cpp
+avi*.cpp
 *-generator
 *-parser
 *-fuzzer

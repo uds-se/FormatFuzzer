@@ -190,6 +190,17 @@ typedef struct
     char data[movi_datalen];
 } MOVICHUNK;
 
+// junk structure info
+typedef struct 
+{
+  char id[4];
+  uint32  junk_hdr_datalen<arraylength=true>;
+  if ( junk_hdr_datalen % 2 )
+    char data[junk_hdr_datalen+1];
+  else
+    char data[junk_hdr_datalen];
+} JUNKHEADER;
+
 struct LISTHEADER;
 
 typedef struct
@@ -244,14 +255,19 @@ typedef struct
       local string movi_blk_hdr_possible[] = { "00db" }; //00dc 00wb
       ReadBytes(movi_blk_hdr, FTell(), 4);//, movi_blk_hdr_preferred, movi_blk_hdr_possible);
       
-      struct {
-        if (movi_blk_hdr == "LIST") {
-          LISTHEADER movi_list;
-        } else {
-          MOVICHUNK movi_chunk;
-        }
-      } frame;
-      frame_index++;
+      if (movi_blk_hdr == "JUNK") {
+        JUNKHEADER junk;
+      }
+      else {
+        struct {
+          if (movi_blk_hdr == "LIST") {
+            LISTHEADER movi_list;
+          } else {
+            MOVICHUNK movi_chunk;
+          }
+        } frame;
+        frame_index++;
+      }
       
       pointer += (FTell() - movi_blk_start);
 
@@ -322,17 +338,6 @@ typedef struct {
   FSeek(vprp_end);
 
 } VideoPropHeader;
-
-// junk structure info
-typedef struct 
-{
-  char id[4];
-  uint32  junk_hdr_datalen<arraylength=true>;
-  if ( junk_hdr_datalen % 2 )
-    char data[junk_hdr_datalen+1];
-  else
-    char data[junk_hdr_datalen];
-} JUNKHEADER;
 
 typedef struct (string _type, DWORD _flags, DWORD _offset, DWORD _length)
 {
@@ -456,3 +461,7 @@ local uint evil_state = SetEvilBit(false);
 uint32 root_datalen = {file_end - 8};
 SetEvilBit(evil_state);
 FSeek(file_end);
+
+while (!FEof()) {
+  char garbage;
+}
