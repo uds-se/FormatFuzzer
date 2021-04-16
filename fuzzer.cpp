@@ -195,16 +195,20 @@ extern std::unordered_map<std::string, std::string> variable_types;
 unsigned copy_rand(unsigned char *dest);
 
 extern const char* chunk_name;
+extern const char* chunk_name2;
 extern int file_index;
 
 extern bool get_chunk;
 extern bool get_all_chunks;
 extern bool smart_mutation;
 extern bool smart_abstraction;
+extern bool smart_swapping;
 extern unsigned chunk_start;
 extern unsigned chunk_end;
 extern unsigned rand_start;
 extern unsigned rand_end;
+extern unsigned rand_start2;
+extern unsigned rand_end2;
 extern bool is_optional;
 extern bool is_delete;
 extern bool following_is_optional;
@@ -965,6 +969,253 @@ the binary template (such as length fields).
 }
 
 
+// smart_swap - apply a smart swap
+int smart_swap(int argc, char **argv)
+{
+	char *file_t = NULL;
+	int start_t = -1;
+	int end_t = -1;
+	bool optional_t = false;
+	const char* chunk_t;
+	int start_s = -1;
+	int end_s = -1;
+	bool optional_s = false;
+	const char* chunk_s;
+
+	bool success = false;
+
+	unsigned char *rand_t = new unsigned char[MAX_RAND_SIZE];
+	unsigned char *rand_s = new unsigned char[MAX_RAND_SIZE];
+	unsigned len_t;
+	int rand_fd = open("/dev/urandom", O_RDONLY);
+	ssize_t r = read(rand_fd, rand_t, MAX_RAND_SIZE);
+	if (r != MAX_RAND_SIZE)
+		printf("Read only %ld bytes from /dev/urandom\n", r);
+	close(rand_fd);
+	// Process options
+	while (1)
+	{
+		static struct option long_options[] =
+			{
+				{"help", no_argument, 0, 'h'},
+				{"targetfile", required_argument, 0, 1},
+				{"targetstart", required_argument, 0, 2},
+				{"targetend", required_argument, 0, 3},
+				{"sourcestart", required_argument, 0, 5},
+				{"sourceend", required_argument, 0, 6},
+				{0, 0, 0, 0}};
+		int option_index = 0;
+		int c = getopt_long(argc, argv, "",
+							long_options, &option_index);
+
+		// Detect the end of the options.
+		if (c == -1)
+			break;
+
+		switch (c)
+		{
+		case 'h':
+		case '?':
+			fprintf(stderr, R"(swap: Smart Swap
+swap --targetfile file_t --targetstart start_t --targetend end_t
+                       [--sourcestart start_s] --sourceend end_s OUTFILE
+			
+Apply a smart swap operation which swaps the order of two chunks from file_t
+(byte ranges [start_t, end_t] and [start_s, end_s]).  If start_s is not
+specified, it is assumed to be equal to end_t + 1 (two consecutive chunks).
+The mutation is smarter than simple memmove() operations, which should allow
+it to fix constraints implemented in the binary template, such as lenght
+fields and checksums.  Command returns 0 if mutation worked as expected or
+nonzero if it didn't work as expected.  This happens when one chunk doesn't
+fit well in the position of the other chunk because it required a larger or
+smaller number of decision bytes.
+)");
+			return 0;
+
+		case 1:
+			file_t = optarg;
+			break;
+		case 2:
+			start_t = strtol(optarg, NULL, 0);
+			break;
+		case 3:
+			end_t = strtol(optarg, NULL, 0);
+			break;
+		case 5:
+			start_s = strtol(optarg, NULL, 0);
+			break;
+		case 6:
+			end_s = strtol(optarg, NULL, 0);
+			break;
+		}
+	}
+    
+	if (optind >= argc) {
+		fprintf(stderr, "%s: missing output file.\n", bin_name);
+		return -2;
+	}
+	if (!file_t || start_t == -1 || end_t == -1 || end_s == -1) {
+		fprintf(stderr, "%s: missing required arguments.\n", bin_name);
+		return -2;
+	}
+	if (start_s == -1)
+		start_s = end_t + 1;
+
+	if (start_t > end_s) {
+		int start_tmp = start_t;
+		int end_tmp = end_t;
+		start_t = start_s;
+		end_t = end_s;
+		start_s = start_tmp;
+		end_s = end_tmp;
+	}
+
+	// Main function
+	char *out = argv[optind];
+
+	printf("Parsing file %s\n\n", file_t);
+	success = false;
+
+	get_chunk = true;
+	chunk_start = start_s;
+	chunk_end = end_s;
+	rand_start = rand_end = UINT_MAX;
+	set_parser();
+	setup_input(file_t);
+	try
+	{
+		generate_file();
+		success = true;
+	}
+	catch (int status)
+	{
+		delete_globals();
+		if (status == 0)
+			success = true;
+	}
+	catch (...)
+	{
+		delete_globals();
+	}
+	if (!success)
+	{
+		fprintf(stderr, "%s: Parsing %s failed\n", bin_name, file_t);
+		return -2;
+	}
+	if (rand_start == UINT_MAX) {
+		fprintf(stderr, "%s: Unable to find source chunk in file %s\n", bin_name, file_t);
+		return -2;
+	}
+	copy_rand(rand_s);
+	start_s = rand_start;
+	end_s = rand_end;
+	optional_s = is_optional;
+	chunk_s = chunk_name;
+
+
+	printf("\nParsing file %s\n\n", file_t);
+	success = false;
+
+	get_chunk = true;
+	chunk_start = start_t;
+	chunk_end = end_t;
+	rand_start = rand_end = UINT_MAX;
+	set_parser();
+	setup_input(file_t);
+	try
+	{
+		generate_file();
+		success = true;
+	}
+	catch (int status)
+	{
+		delete_globals();
+		if (status == 0)
+			success = true;
+	}
+	catch (...)
+	{
+		delete_globals();
+	}
+	if (!success)
+	{
+		fprintf(stderr, "%s: Parsing %s failed\n", bin_name, file_t);
+		return -2;
+	}
+	if (end_t != -1 && rand_start == UINT_MAX) {
+		fprintf(stderr, "%s: Unable to find target chunk in file %s\n", bin_name, file_t);
+		return -2;
+	}
+	len_t = copy_rand(rand_t);
+	start_t = rand_start;
+	end_t = rand_end;
+	optional_t = is_optional;
+	chunk_t = chunk_name;
+
+	if ((optional_t && !optional_s) || (!optional_t && optional_s)) {
+		fprintf(stderr, "%s: Trying to swap optional and non-optional chunks from file %s\n", bin_name, file_t);
+		return -2;
+	}
+	if (!optional_t && !optional_s && variable_types[chunk_t] != variable_types[chunk_s]) {
+		fprintf(stderr, "%s: Trying to swap non-optional chunks of different types: %s, %s\n", bin_name, variable_types[chunk_t].c_str(), variable_types[chunk_s].c_str());
+		return -2;
+	}
+
+	printf("\nGenerating file %s\n\n", out);
+
+	unsigned rand_end20 = rand_end2 = 0;
+	
+	if (start_s > end_t) {
+		memcpy(rand_t + start_t, rand_s + start_s, end_s + 1 - start_s);
+		memcpy(rand_t + start_t + end_s + 1 - start_s, rand_s + end_t + 1, start_s - end_t - 1);
+		memcpy(rand_t + start_t + end_s - end_t, rand_s + start_t, end_t + 1 - start_t);
+		smart_swapping = true;
+		chunk_name2 = chunk_s;
+		rand_start2 = start_t + end_s - end_t;
+		rand_end2 = end_s;
+		rand_end20 = rand_end2;
+	} else {
+		memcpy(rand_t + start_t, rand_s + start_s, end_s + 1 - start_s);
+		memcpy(rand_t + start_t + end_s + 1 - start_s, rand_s + end_t + 1, len_t - end_t - 1);
+		if (end_t - start_t < end_s - start_s) {
+			smart_swapping = true;
+			chunk_name2 = chunk_s;
+			rand_start2 = start_s;
+			rand_end2 = end_s + (end_s - start_s) - (end_t - start_t);
+			rand_end20 = rand_end2;
+		}
+	}
+
+	get_chunk = false;
+	smart_mutation = true;
+	unsigned rand_end0 = rand_end = start_t + end_s - start_s;
+	set_generator();
+
+	unsigned char* file = NULL;
+	unsigned file_size = afl_pre_save_handler(rand_t, MAX_RAND_SIZE, &file);
+	if (!file || !file_size) {
+		printf("Failed to generate mutated file!\n");
+		return -2;
+	}
+	save_output(out);
+	if (rand_end0 < rand_end)
+		fprintf(stderr, "Warning: Consumed %u more decision bytes than expected while generating chunk.\n", rand_end - rand_end0);
+	if (rand_end0 > rand_end)
+		fprintf(stderr, "Warning: Consumed %u less decision bytes than expected while generating chunk.\n", rand_end0 - rand_end);
+	fprintf(stderr, "%s: %s created\n", bin_name, out);
+
+	delete[] rand_t;
+	delete[] rand_s;
+	if (rand_end0 != rand_end)
+		return (rand_end > rand_end0) - (rand_end < rand_end0);
+
+	if (rand_end20 < rand_end2)
+		fprintf(stderr, "Warning: Consumed %u more decision bytes than expected while generating second chunk.\n", rand_end2 - rand_end20);
+	if (rand_end20 > rand_end2)
+		fprintf(stderr, "Warning: Consumed %u less decision bytes than expected while generating second chunk.\n", rand_end20 - rand_end2);
+	return (rand_end2 > rand_end20) - (rand_end2 < rand_end20);
+}
+
 
 extern "C" void process_file(const char *file_name, const char *rand_name) {
 	insertion_points.push_back({});
@@ -1409,6 +1660,7 @@ COMMAND commands[] = {
 	{"delete", smart_delete, "Apply a smart deletion"},
 	{"insert", smart_insert, "Apply a smart insertion"},
 	{"abstract", smart_abstract, "Apply a smart abstraction"},
+	{"swap", smart_swap, "Apply a smart swap"},
 	{"mutations", mutations, "Smart mutations"},
 	{"test", test, "Test if fuzzer is working properly (sanity checks)"},
 	{"benchmark", benchmark, "Benchmark fuzzing"},

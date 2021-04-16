@@ -177,7 +177,19 @@ void end_generation() {
 		if (size > MAX_RAND_SIZE - (rand_end + 1))
 			size = MAX_RAND_SIZE - (rand_end + 1);
 		memmove(file_acc.rand_buffer + file_acc.rand_pos, file_acc.rand_buffer + rand_end + 1, size);
+		if (smart_swapping) {
+			if (rand_start2 > rand_end)
+				rand_start2 += file_acc.rand_pos - (rand_end + 1);
+			rand_end2 += file_acc.rand_pos - (rand_end + 1);
+		}
 		rand_end = file_acc.rand_pos - 1;
+	}
+	if (smart_swapping && back.rand_start == rand_start2 && (is_optional || strcmp(back.name, chunk_name2) == 0)) {
+		unsigned size = MAX_RAND_SIZE - file_acc.rand_pos;
+		if (size > MAX_RAND_SIZE - (rand_end2 + 1))
+			size = MAX_RAND_SIZE - (rand_end2 + 1);
+		memmove(file_acc.rand_buffer + file_acc.rand_pos, file_acc.rand_buffer + rand_end2 + 1, size);
+		rand_end2 = file_acc.rand_pos - 1;
 	}
 	if (smart_abstraction && back.rand_start == rand_start && (is_optional || strcmp(back.name, chunk_name) == 0)) {
 		memcpy(file_acc.rand_buffer + file_acc.rand_pos, following_rand_buffer, following_rand_size);
@@ -211,7 +223,7 @@ void end_generation() {
 		}
 		if (file_acc.rand_last != UINT_MAX)
 			printf(",Appendable");
-		if (back.rand_start != back.rand_start2)
+		if (back.rand_start != back.rand_start_real)
 			printf(",Optional\n");
 		else
 			printf("\n");
@@ -221,7 +233,7 @@ void end_generation() {
 		printf("TARGET CHUNK FOUND\n");
 		rand_start = back.rand_start;
 		rand_end = file_acc.rand_pos - 1;
-		is_optional = back.rand_start != back.rand_start2;
+		is_optional = back.rand_start != back.rand_start_real;
 		chunk_name = back.name;
 		if (is_delete) {
 			is_following = true;
@@ -234,14 +246,14 @@ void end_generation() {
 		chunk_name = back.name;
 	}
 	
-	if (get_chunk && chunk_end == UINT_MAX && back.min == chunk_start && back.rand_start != back.rand_start2) {
+	if (get_chunk && chunk_end == UINT_MAX && back.min == chunk_start && back.rand_start != back.rand_start_real) {
 		printf("OPTIONAL CHUNK FOUND\n");
 		rand_start = back.rand_start;
 		chunk_name = back.name;
 	}
 	
 	if (get_all_chunks) {
-		if (back.rand_start != back.rand_start2) {
+		if (back.rand_start != back.rand_start_real) {
 			optional_chunks.emplace_back(file_index, back.rand_start, file_acc.rand_pos - 1, variable_types[back.name].c_str(), back.name);
 			insertion_points[file_index].emplace_back(back.rand_start, variable_types[back.name].c_str(), back.name);
 			is_following = true;

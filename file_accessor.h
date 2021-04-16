@@ -19,16 +19,20 @@ bool is_following = false;
 bool following_is_optional = false;
 
 const char* chunk_name;
+const char* chunk_name2;
 int file_index = 0;
 
 bool get_chunk = false;
 bool get_all_chunks = false;
 bool smart_mutation = false;
 bool smart_abstraction = false;
+bool smart_swapping = false;
 unsigned chunk_start;
 unsigned chunk_end;
 unsigned rand_start;
 unsigned rand_end;
+unsigned rand_start2;
+unsigned rand_end2;
 bool is_optional = false;
 bool is_delete = false;
 
@@ -57,10 +61,10 @@ struct stack_cell {
 	const char* name;
 	std::unordered_map<std::string, int> counts;
 	unsigned rand_start = 0;
-	unsigned rand_start2 = 0;
+	unsigned rand_start_real = 0;
 	unsigned min = UINT_MAX;
 	unsigned max = 0;
-	stack_cell(const char* name, unsigned rand_start, unsigned rand_start2) : name(name), rand_start(rand_start), rand_start2(rand_start2) {}
+	stack_cell(const char* name, unsigned rand_start, unsigned rand_start_real) : name(name), rand_start(rand_start), rand_start_real(rand_start_real) {}
 	void clear() {
 		counts.clear();
 		min = UINT_MAX;
