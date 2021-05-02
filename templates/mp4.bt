@@ -656,13 +656,7 @@ typedef struct
 			uint32 modify_time;
 			uint32 track_id;
 			uint32 reserved;
-			uint32 duration;
-			local uint32 durationVar = duration;
-			while(durationVar < 3){
-				FSeek(FTell()-4);
-				uint32 duration;
-				durationVar = duration;
-			}
+			uint32 duration_tkhd <min=3>;
             uint64 reserved2;
             uint16 layer;
             uint16 alt_group;
