@@ -177,7 +177,7 @@ int parse(int argc, char **argv)
 			fprintf(stderr, "ok\n%s: %s parsed\n", bin_name, in);
 		else
 		{
-			fprintf(stderr, "error %.2f\n%s: %s failed\n", get_validity(), bin_name, in);
+			fprintf(stderr, "error %.2f\n%s: %s failed\n", 100.0 * get_validity(), bin_name, in);
 			errors++;
 		}
 
