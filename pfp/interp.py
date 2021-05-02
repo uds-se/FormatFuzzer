@@ -1955,6 +1955,8 @@ class PfpInterp(object):
                 for name in names:
                     if name == "string":
                         name = "std::string"
+                    if name == "long":
+                        name = "LONG"
                     node.type.cpp += name + " "
                 node.type.cpp = node.type.cpp[:-1]
                 if in_struct:
