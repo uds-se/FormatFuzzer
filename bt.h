@@ -156,6 +156,10 @@ extern bool is_big_endian;
 extern bool is_padded_bitfield;
 void generate_file();
 
+double get_validity() {
+	return (double)file_acc.parsed_file_size / (double)file_acc.final_file_size;
+}
+
 
 void start_generation(const char* name) {
 	if (!get_parse_tree)

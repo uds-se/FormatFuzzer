@@ -174,10 +174,10 @@ int parse(int argc, char **argv)
 			delete_globals();
 		}
 		if (success)
-			fprintf(stderr, "%s: %s parsed\n", bin_name, in);
+			fprintf(stderr, "ok\n%s: %s parsed\n", bin_name, in);
 		else
 		{
-			fprintf(stderr, "%s: %s failed\n", bin_name, in);
+			fprintf(stderr, "error %.2f\n%s: %s failed\n", get_validity(), bin_name, in);
 			errors++;
 		}
 

@@ -46,6 +46,8 @@ void generate_file();
 
 unsigned get_file_size();
 
+double get_validity();
+
 void delete_globals();
 
 char* get_bin_name(char* arg);
