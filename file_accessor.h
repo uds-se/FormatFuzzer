@@ -401,6 +401,7 @@ public:
 		rand_prev = 0;
 		rand_last = UINT_MAX;
 		following_is_optional = false;
+		is_following = false;
 
 		has_size = false;
 		allow_evil_values = !dont_be_evil;
