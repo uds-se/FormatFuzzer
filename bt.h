@@ -196,6 +196,8 @@ void end_generation() {
 		rand_end2 = file_acc.rand_pos - 1;
 	}
 	if (smart_abstraction && back.rand_start == rand_start && (is_optional || strcmp(back.name, chunk_name) == 0)) {
+		if (following_rand_size > MAX_RAND_SIZE - file_acc.rand_pos)
+			following_rand_size = MAX_RAND_SIZE - file_acc.rand_pos;
 		memcpy(file_acc.rand_buffer + file_acc.rand_pos, following_rand_buffer, following_rand_size);
 		smart_abstraction = false;
 	}
