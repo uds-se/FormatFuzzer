@@ -1306,9 +1306,15 @@ extern "C" int one_smart_mutation(int target_file_index, unsigned char** file, u
 	switch (rand() % (deletable_chunks[target_file_index].size() ? 10 : 9)) {
 	case 0:
 	{
+		if (non_optional_index[target_file_index].size() == 0)
+			goto fail;
 		NonOptional& no = non_optional_index[target_file_index][rand() % non_optional_index[target_file_index].size()];
+		if (no.size == 0)
+			goto fail;
 		int chunk_index = no.start + rand() % no.size;
 		Chunk& t = non_optional_chunks[no.type][chunk_index];
+		if (non_optional_chunks[no.type].size() == 0)
+			goto fail;
 		Chunk& s = non_optional_chunks[no.type][rand() % non_optional_chunks[no.type].size()];
 		log_info("Replacing: source non-optional chunk from file %d position %u %u %s %s\ninto target file %d non-optional chunk position %u %u %s %s\n", s.file_index, s.start, s.end, s.type, s.name, t.file_index, t.start, t.end, t.type, t.name);
 		len_t = read_rand_file(rand_names[target_file_index].c_str(), rand_t);
@@ -1356,8 +1362,12 @@ extern "C" int one_smart_mutation(int target_file_index, unsigned char** file, u
 	case 1:
 	case 2:
 	{
+		if ((optional_index[target_file_index+1] - optional_index[target_file_index]) == 0)
+			goto fail;
 		int chunk_index = optional_index[target_file_index] + rand() % (optional_index[target_file_index+1] - optional_index[target_file_index]);
 		Chunk& t = optional_chunks[chunk_index];
+		if (optional_chunks.size() == 0)
+			goto fail;
 		Chunk& s = optional_chunks[rand() % optional_chunks.size()];
 		log_info("Replacing: source optional chunk from file %d position %u %u %s %s\ninto target file %d optional chunk position %u %u %s %s\n", s.file_index, s.start, s.end, s.type, s.name, t.file_index, t.start, t.end, t.type, t.name);
 		len_t = read_rand_file(rand_names[target_file_index].c_str(), rand_t);
@@ -1406,7 +1416,11 @@ extern "C" int one_smart_mutation(int target_file_index, unsigned char** file, u
 	case 3:
 	case 4:
 	{
+		if (insertion_points[target_file_index].size() == 0)
+			goto fail;
 		InsertionPoint& ip = insertion_points[target_file_index][rand() % insertion_points[target_file_index].size()];
+		if (optional_chunks.size() == 0)
+			goto fail;
 		Chunk& s = optional_chunks[rand() % optional_chunks.size()];
 		log_info("Inserting: source chunk from file %d position %u %u %s %s\ninto target file %d position %u %s %s\n", s.file_index, s.start, s.end, s.type, s.name, target_file_index, ip.pos, ip.type, ip.name);
 		len_t = read_rand_file(rand_names[target_file_index].c_str(), rand_t);
@@ -1460,7 +1474,11 @@ extern "C" int one_smart_mutation(int target_file_index, unsigned char** file, u
 		int start_t = -1;
 		int end_t = -1;
 		if (rand() % 2) {
+			if (non_optional_index[target_file_index].size() == 0)
+				goto fail;
 			NonOptional& no = non_optional_index[target_file_index][rand() % non_optional_index[target_file_index].size()];
+			if (no.size == 0)
+				goto fail;
 			int chunk_index = no.start + rand() % no.size;
 			Chunk& t = non_optional_chunks[no.type][chunk_index];
 			log_info("Abstracting from file %d non-optional chunk %u %u %s %s\n", t.file_index, t.start, t.end, t.type, t.name);
@@ -1469,6 +1487,8 @@ extern "C" int one_smart_mutation(int target_file_index, unsigned char** file, u
 			is_optional = false;
 			chunk_name = t.name;
 		} else {
+			if ((optional_index[target_file_index+1] - optional_index[target_file_index]) == 0)
+				goto fail;
 			int chunk_index = optional_index[target_file_index] + rand() % (optional_index[target_file_index+1] - optional_index[target_file_index]);
 			Chunk& t = optional_chunks[chunk_index];
 			log_info("Abstracting from file %d optional chunk %u %u %s %s\n", t.file_index, t.start, t.end, t.type, t.name);
@@ -1519,6 +1539,8 @@ extern "C" int one_smart_mutation(int target_file_index, unsigned char** file, u
 	}
 	case 9:
 	{
+		if (deletable_chunks[target_file_index].size() == 0)
+			goto fail;
 		int index = rand() % deletable_chunks[target_file_index].size();
 		Chunk& t = deletable_chunks[target_file_index][index];
 		log_info("Deleting from file %d chunk %u %u %s %s\n", t.file_index, t.start, t.end, t.type, t.name);
@@ -1546,6 +1568,12 @@ extern "C" int one_smart_mutation(int target_file_index, unsigned char** file, u
 		return 0;
 	}
 	}
+	return -2;
+fail:
+	*file = NULL;
+	*file_size = 0;
+	if (debug_print)
+		printf("no chunk available\n");
 	return -2;
 }
 
