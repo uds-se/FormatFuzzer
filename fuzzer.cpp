@@ -1216,7 +1216,7 @@ smaller number of decision bytes.
 }
 
 
-extern "C" void process_file(const char *file_name, const char *rand_name) {
+extern "C" int process_file(const char *file_name, const char *rand_name) {
 	rand_names.push_back(rand_name);
 	insertion_points.push_back({});
 	deletable_chunks.push_back({});
@@ -1249,8 +1249,8 @@ extern "C" void process_file(const char *file_name, const char *rand_name) {
 	if (!success && debug_print)
 	{
 		fprintf(stderr, "%s: Parsing %s failed\n", bin_name, file_name);
-		return;
 	}
+	return 100.0 * get_validity();
 
 }
 
