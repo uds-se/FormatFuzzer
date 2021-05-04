@@ -157,7 +157,9 @@ int parse(int argc, char **argv)
 		bool success = false;
 
 		set_parser();
-		setup_input(in);
+		if (!setup_input(in)) {
+			errors++;
+		}
 		try
 		{
 			generate_file();
@@ -1288,10 +1290,11 @@ void log_info(const char * fmt, ...) {
 
 
 extern "C" int one_smart_mutation(int target_file_index, unsigned char** file, unsigned* file_size) {
+	static unsigned char *original_rand_t = NULL;
 	static unsigned char *rand_t = NULL;
 	static unsigned char *rand_s = NULL;
-	unsigned len_t = 0;
 	if (!rand_t) {
+		original_rand_t = new unsigned char[MAX_RAND_SIZE];
 		rand_t = new unsigned char[MAX_RAND_SIZE];
 		rand_s = new unsigned char[MAX_RAND_SIZE];
 		int rand_fd = open("/dev/urandom", O_RDONLY);
@@ -1299,6 +1302,12 @@ extern "C" int one_smart_mutation(int target_file_index, unsigned char** file, u
 		if (r != MAX_RAND_SIZE)
 			printf("Read only %ld bytes from /dev/urandom\n", r);
 		close(rand_fd);
+	}
+	static int previous_file_index = -1;
+	static unsigned len_t = 0;
+	if (target_file_index != previous_file_index) {
+		len_t = read_rand_file(rand_names[target_file_index].c_str(), original_rand_t);
+		previous_file_index = target_file_index;
 	}
 
 	reset_info();
@@ -1317,7 +1326,7 @@ extern "C" int one_smart_mutation(int target_file_index, unsigned char** file, u
 			goto fail;
 		Chunk& s = non_optional_chunks[no.type][rand() % non_optional_chunks[no.type].size()];
 		log_info("Replacing: source non-optional chunk from file %d position %u %u %s %s\ninto target file %d non-optional chunk position %u %u %s %s\n", s.file_index, s.start, s.end, s.type, s.name, t.file_index, t.start, t.end, t.type, t.name);
-		len_t = read_rand_file(rand_names[target_file_index].c_str(), rand_t);
+		memcpy(rand_t, original_rand_t, len_t);
 		read_rand_file(rand_names[s.file_index].c_str(), rand_s);
 
 		unsigned rand_size = len_t + (s.end - s.start) - (t.end - t.start);
@@ -1370,7 +1379,7 @@ extern "C" int one_smart_mutation(int target_file_index, unsigned char** file, u
 			goto fail;
 		Chunk& s = optional_chunks[rand() % optional_chunks.size()];
 		log_info("Replacing: source optional chunk from file %d position %u %u %s %s\ninto target file %d optional chunk position %u %u %s %s\n", s.file_index, s.start, s.end, s.type, s.name, t.file_index, t.start, t.end, t.type, t.name);
-		len_t = read_rand_file(rand_names[target_file_index].c_str(), rand_t);
+		memcpy(rand_t, original_rand_t, len_t);
 		read_rand_file(rand_names[s.file_index].c_str(), rand_s);
 
 		unsigned rand_size = len_t + (s.end - s.start) - (t.end - t.start);
@@ -1423,7 +1432,7 @@ extern "C" int one_smart_mutation(int target_file_index, unsigned char** file, u
 			goto fail;
 		Chunk& s = optional_chunks[rand() % optional_chunks.size()];
 		log_info("Inserting: source chunk from file %d position %u %u %s %s\ninto target file %d position %u %s %s\n", s.file_index, s.start, s.end, s.type, s.name, target_file_index, ip.pos, ip.type, ip.name);
-		len_t = read_rand_file(rand_names[target_file_index].c_str(), rand_t);
+		memcpy(rand_t, original_rand_t, len_t);
 		read_rand_file(rand_names[s.file_index].c_str(), rand_s);
 
 		unsigned rand_size = len_t + (s.end + 1 - s.start);
@@ -1497,7 +1506,7 @@ extern "C" int one_smart_mutation(int target_file_index, unsigned char** file, u
 			is_optional = true;
 			chunk_name = t.name;
 		}
-		len_t = read_rand_file(rand_names[target_file_index].c_str(), rand_t);
+		memcpy(rand_t, original_rand_t, len_t);
 
 		following_rand_size = len_t - (end_t + 1);
 		following_rand_buffer = rand_s;
@@ -1544,7 +1553,7 @@ extern "C" int one_smart_mutation(int target_file_index, unsigned char** file, u
 		int index = rand() % deletable_chunks[target_file_index].size();
 		Chunk& t = deletable_chunks[target_file_index][index];
 		log_info("Deleting from file %d chunk %u %u %s %s\n", t.file_index, t.start, t.end, t.type, t.name);
-		len_t = read_rand_file(rand_names[target_file_index].c_str(), rand_t);
+		memcpy(rand_t, original_rand_t, len_t);
 
 		memmove(rand_t + t.start, rand_t + t.end + 1, len_t - (t.end + 1));
 

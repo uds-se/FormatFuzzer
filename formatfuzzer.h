@@ -40,7 +40,7 @@ void set_parser();
 
 void set_generator();
 
-void setup_input(const char* filename);
+bool setup_input(const char* filename);
 
 void generate_file();
 
