@@ -219,6 +219,8 @@ extern bool following_is_optional;
 extern unsigned char *following_rand_buffer;
 extern unsigned following_rand_size;
 
+extern unsigned char *rand_buffer;
+
 /* Get unix time in microseconds */
 
 static uint64_t get_cur_time_us(void) {
@@ -1287,6 +1289,19 @@ void log_info(const char * fmt, ...) {
 	print_pos += printed;
 	buf_size -= printed;
 }
+
+
+
+extern "C" void generate_random_file(unsigned char** file, unsigned* file_size) {
+	int rand_fd = open("/dev/urandom", O_RDONLY);
+	ssize_t r = read(rand_fd, rand_buffer, MAX_RAND_SIZE);
+	if (r != MAX_RAND_SIZE)
+		printf("Read only %ld bytes from /dev/urandom\n", r);
+	close(rand_fd);
+
+	*file_size = afl_pre_save_handler(rand_buffer, MAX_RAND_SIZE, file);
+}
+
 
 
 extern "C" int one_smart_mutation(int target_file_index, unsigned char** file, unsigned* file_size) {
