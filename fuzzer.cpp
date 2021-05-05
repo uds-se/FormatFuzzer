@@ -1299,6 +1299,7 @@ extern "C" void generate_random_file(unsigned char** file, unsigned* file_size) 
 		printf("Read only %ld bytes from /dev/urandom\n", r);
 	close(rand_fd);
 
+	set_generator();
 	*file_size = afl_pre_save_handler(rand_buffer, MAX_RAND_SIZE, file);
 }
 
