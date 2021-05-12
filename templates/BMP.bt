@@ -1,0 +1,316 @@
+//------------------------------------------------
+//--- 010 Editor v2.0 Binary Template
+//
+//      File: BMP.bt
+//    Author: SweetScape Software
+//   Version: 2.3
+//   Purpose: Parse BMP image files.
+//  Category: Image
+// File Mask: *.bmp
+//  ID Bytes: 42 4D //BM
+//   History:  
+//   2.3   2016-02-26 SweetScape: Allow negative heights.
+//   2.2   2015-10-13 SweetScape: Updated header for repository submission.
+//   2.1   SweetScape: Bug fix for ReadRGBQUAD function.
+//   2.0   SweetScape: Added read functions.
+//   1.0   SweetScape: Initial release.
+//
+// More information available at
+//  https://en.wikipedia.org/wiki/BMP_file_format
+//------------------------------------------------
+
+// Define structures used in BMP files
+
+typedef enum < ushort > compressions {
+	BI_RGB = 0x0000,
+	//BI_RLE8 = 0x0001, //only 8 bit per pixel
+	//BI_RLE4 = 0x0002, //only 4 bit per pixel
+	//BI_BITFIELDS = 0x0003,
+	//BI_JPEG = 0x0004, //, not supported in magick
+	//BI_PNG = 0x0005, //, not supported in magick
+	//BI_ALPHABITFIELDS = 0x0006, //uses bitfieldmask
+	//BI_CMYK = 0x0011, //only Windows metafile cmyk, not supported in magick
+	//BI_CMYKRLE8 = 0x0012, //only Windows metafile cmyk, not supported in magick
+	//BI_CMYKRLE4 = 0x0013 //only Windows metafile cmyk, not supported in magick
+} E_COMPRESSIONS;
+
+typedef enum < ushort > compressions1bpp {
+	BI_RGB_1 = 0x0000,
+} E_COMPRESSIONS1BPP;
+
+typedef enum < ushort > compressions2bpp {
+	BI_RGB_2 = 0x0000,
+} E_COMPRESSIONS2BPP;
+
+typedef enum < ushort > compressions4bpp {
+	BI_RGB_4 = 0x0000,
+	BI_RLE4_4 = 0x0002, //only 4 bit per pixel
+} E_COMPRESSIONS4BPP;
+
+typedef enum < ushort > compressions8bpp {
+	BI_RGB_8 = 0x0000,
+	BI_RLE8_8 = 0x0001, //only 8 bit per pixel
+} E_COMPRESSIONS8BPP;
+
+typedef enum < ushort > compressions16bpp {
+	BI_RGB_16 = 0x0000,
+	BI_BITFIELDS_16 = 0x0003, //only 16 and 32 bit per pixel
+} E_COMPRESSIONS16BPP;
+
+typedef enum < ushort > compressions24bpp {
+	BI_RGB_24 = 0x0000,
+} E_COMPRESSIONS24BPP;
+
+typedef enum < ushort > compressions32bpp {
+	BI_RGB_32 = 0x0000,
+	BI_BITFIELDS_32 = 0x0003, //only 16 and 32 bit per pixel
+} E_COMPRESSIONS32BPP;
+
+typedef enum < WORD > bpp {
+	One = 1,
+	Four = 4,
+	Eight = 8,
+	Sixteen = 16,
+	Twentyfour = 24,
+	thirtytwo = 32,
+} E_BPP;
+
+typedef struct {   // bmfh
+    CHAR    bfType[2] = {"BM"};
+    DWORD   bfSize; //fixed at the end of binary template
+    WORD    bfReserved1 = { 0x0 };
+    WORD    bfReserved2 = { 0x0 };
+    DWORD   bfOffBits; //An integer (unsigned) representing the offset of actual pixel data in bytes. In nutshell:- it is the number of bytes between start of the file (0) and the first byte of the pixel data. TODO fix after creation if needed
+} BITMAPFILEHEADER;
+
+typedef struct {    // bmih
+    DWORD   biSize = { 40 };
+    LONG    biWidth <min=1>;
+    LONG    biHeight <min=1>;
+    WORD    biPlanes = { 1 };
+	local int evil = SetEvilBit(false);
+    E_BPP    biBitCount;	
+	if(biBitCount == 1 ){
+		E_COMPRESSIONS1BPP biCompression;
+	}
+	if(biBitCount == 2 ){
+		E_COMPRESSIONS2BPP biCompression;
+	}
+	if(biBitCount == 4 ){
+		E_COMPRESSIONS4BPP biCompression;
+	}
+	if(biBitCount == 8 ){
+		E_COMPRESSIONS8BPP biCompression;
+	}
+	if(biBitCount == 16 ){
+		E_COMPRESSIONS16BPP biCompression;
+	}
+	if(biBitCount == 24 ){
+		E_COMPRESSIONS24BPP biCompression;
+	}
+	if(biBitCount == 32 ){
+		E_COMPRESSIONS32BPP biCompression;
+	}
+	SetEvilBit(evil);
+	/*
+	else{
+		if(biBitCount == 4){
+			E_COMPRESSIONS4BPP biCompression;
+		}
+		else{
+			E_COMPRESSIONS   biCompression; //PNG and JPEG not supported by magick, OS/2 not supported since WIN 2000
+		}
+	}*/
+    //E_COMPRESSIONS   biCompression; //PNG and JPEG not supported by magick, OS/2 not supported since WIN 2000
+	if(biCompression == 0 || biCompression == 11){ //Size after compression set to 0 if no compression is used
+		DWORD biSizeImage = { 0 };
+	}
+	else{	
+		DWORD biSizeImage; //TODO if needed calculate decompressed size
+	}
+    LONG    biXPelsPerMeter = { 0 };
+    LONG    biYPelsPerMeter = { 0 };
+    DWORD   biClrUsed;
+    DWORD   biClrImportant = { 0 };
+} BITMAPINFOHEADER;
+
+//additional header versions
+typedef struct {   // OS22XBITMAPHEADER, 64 Bit
+  DWORD  Size;             /* Size of this structure in bytes */
+	DWORD  Width;            /* Bitmap width in pixels */
+	DWORD  Height;           /* Bitmap height in pixel */
+	WORD   NumPlanes;        /* Number of bit planes (color depth) */
+	WORD   BitsPerPixel;     /* Number of bits per pixel per plane */
+	/* Fields added for OS/2 2.x follow this line */
+	DWORD  Compression;      /* Bitmap compression scheme */
+	DWORD  ImageDataSize;    /* Size of bitmap data in bytes */
+	DWORD  XResolution;      /* X resolution of display device */
+	DWORD  YResolution;      /* Y resolution of display device */
+	DWORD  ColorsUsed;       /* Number of color table indices used */
+	DWORD  ColorsImportant;  /* Number of important color indices */
+	WORD   Units;            /* Type of units used to measure resolution */
+	WORD   Reserved;         /* Pad structure to 4-byte boundary */
+	WORD   Recording;        /* Recording algorithm */
+	WORD   Rendering;        /* Halftoning algorithm used */
+	DWORD  Size1;            /* Reserved for halftoning algorithm use */
+	DWORD  Size2;            /* Reserved for halftoning algorithm use */
+	DWORD  ColorEncoding;    /* Color model used in bitmap */
+	DWORD  Identifier;       /* Reserved for application use */
+} OS22XBITMAPHEADER; //info at https://www.fileformat.info/format/os2bmp/egff.htm
+
+typedef struct {   // OS22XBITMAPHEADER shortened version, 12 Bit
+    
+} OS22XBITMAPHEADER_SHORT;
+
+typedef struct {   // BITMAPV4HEADER, 108 Bit
+  DWORD        bV4Size;
+  LONG         bV4Width;
+  LONG         bV4Height;
+  WORD         bV4Planes;
+  WORD         bV4BitCount;
+  DWORD        bV4V4Compression;
+  DWORD        bV4SizeImage;
+  LONG         bV4XPelsPerMeter;
+  LONG         bV4YPelsPerMeter;
+  DWORD        bV4ClrUsed;
+  DWORD        bV4ClrImportant;
+  DWORD        bV4RedMask;
+  DWORD        bV4GreenMask;
+  DWORD        bV4BlueMask;
+  DWORD        bV4AlphaMask;
+  DWORD        bV4CSType;
+  //CIEXYZTRIPLE bV4Endpoints; TODO Fix https://docs.microsoft.com/en-us/windows/win32/api/wingdi/ns-wingdi-bitmapv4header
+  DWORD        bV4GammaRed;
+  DWORD        bV4GammaGreen;
+  DWORD        bV4GammaBlue;
+} BITMAPV4HEADER;
+
+typedef struct {   // BITMAPV5HEADER, 124 Bit 
+  DWORD        bV5Size;
+  LONG         bV5Width;
+  LONG         bV5Height;
+  WORD         bV5Planes;
+  WORD         bV5BitCount;
+  DWORD        bV5Compression;
+  DWORD        bV5SizeImage;
+  LONG         bV5XPelsPerMeter;
+  LONG         bV5YPelsPerMeter;
+  DWORD        bV5ClrUsed;
+  DWORD        bV5ClrImportant;
+  DWORD        bV5RedMask;
+  DWORD        bV5GreenMask;
+  DWORD        bV5BlueMask;
+  DWORD        bV5AlphaMask;
+  DWORD        bV5CSType;
+  //CIEXYZTRIPLE bV5Endpoints; TODO fix https://docs.microsoft.com/en-us/windows/win32/api/wingdi/ns-wingdi-bitmapv5header
+  DWORD        bV5GammaRed;
+  DWORD        bV5GammaGreen;
+  DWORD        bV5GammaBlue;
+  DWORD        bV5Intent;
+  DWORD        bV5ProfileData;
+  DWORD        bV5ProfileSize;
+  DWORD        bV5Reserved;
+} BITMAPV5HEADER;
+
+//semi conditional when BitsPerPixel <= 8
+typedef struct {   // rgbq
+    UBYTE   rgbBlue;
+    UBYTE   rgbGreen;
+    UBYTE   rgbRed;
+    UBYTE   rgbReserved;
+} RGBQUAD <read=ReadRGBQUAD>;
+
+typedef struct {   // rgbt
+    UBYTE   rgbBlue;
+    UBYTE   rgbGreen;
+    UBYTE   rgbRed;
+} RGBTRIPLE <read=ReadRGBTRIPLE>;
+
+//---------------------------------------------
+// Custom read functions for color types - this allows the
+//  color to be displayed without having to open up the structure.
+
+string ReadRGBQUAD( RGBQUAD &a )
+{
+    string s;
+    SPrintf( s, "#%02X%02X%02X%02X", a.rgbReserved, a.rgbRed, a.rgbGreen, a.rgbBlue );
+    return s;
+}
+
+string ReadRGBTRIPLE( RGBTRIPLE &a )
+{
+    string s;
+    SPrintf( s, "#%02X%02X%02X", a.rgbRed, a.rgbGreen, a.rgbBlue );
+    return s;
+}
+
+//---------------------------------------------
+
+// Define the headers
+LittleEndian(); 
+SetBackColor( cLtGray );
+BITMAPFILEHEADER bmfh;
+BITMAPINFOHEADER bmih;
+
+// Check for header
+if( bmfh.bfType != "BM" )
+{
+    Warning( "File is not a bitmap. Template stopped." );
+    return -1;
+}
+
+// Define the color table only when biBitCount <= 8
+if( (bmih.biBitCount != 16) && (bmih.biBitCount != 24) && (bmih.biBitCount != 32) )
+{
+    SetBackColor( cLtAqua );
+    if( bmih.biClrUsed > 0 )
+        RGBQUAD aColors[ bmih.biClrUsed ];
+    else
+        RGBQUAD aColors[ 1 << bmih.biBitCount ];
+}
+
+
+// Define the bytes of the data
+SetBackColor( cNone );
+if( bmih.biCompression > 0 )
+{
+    // Bytes are compressed
+    if( bmih.biSizeImage > 0 )
+        UBYTE rleData[ bmih.biSizeImage ];
+    else
+        UBYTE rleData[ bmfh.bfSize - FTell() ];
+}
+else
+{
+    // Calculate bytes per line and padding required
+    local int bytesPerLine = ( bmih.biWidth * bmih.biBitCount + 7 ) / 8;
+    local int padding      = 4 - (bytesPerLine % 4);
+    if( padding == 4 )
+        padding = 0;
+
+    // Define each line of the image
+    struct BITMAPLINE {
+
+        // Define color data
+        if( bmih.biBitCount < 8 )
+             UBYTE     imageData[ bytesPerLine ];
+        else if( bmih.biBitCount == 8 )
+             UBYTE     colorIndex[ bmih.biWidth ];
+        else if( bmih.biBitCount == 24 )
+             RGBTRIPLE colors[ bmih.biWidth ];
+        else if( bmih.biBitCount == 32 )
+             RGBQUAD   colors[ bmih.biWidth ];
+
+        // Pad if necessary        
+        if( padding != 0 )
+             UBYTE padBytes[ padding ];
+
+    } lines[ (bmih.biHeight < 0) ? -bmih.biHeight : bmih.biHeight] <optimize=true>;
+} 
+
+// adding file size to header, needed to be parsed
+local int evil = SetEvilBit(false);
+local int file_size = FTell();
+FSeek(2);
+long real_hsize = { file_size };
+SetEvilBit(evil);
