@@ -156,6 +156,8 @@ extern bool is_big_endian;
 extern bool is_padded_bitfield;
 void generate_file();
 
+bool aflsmart_output = false;
+
 double get_validity() {
 	return (double)file_acc.parsed_file_size / (double)file_acc.final_file_size;
 }
@@ -227,12 +229,16 @@ void end_generation() {
 			}
 			parent = &cell;
 		}
-		if (file_acc.rand_last != UINT_MAX)
-			printf(",Appendable");
-		if (back.rand_start != back.rand_start_real)
-			printf(",Optional\n");
-		else
-			printf("\n");
+		if (aflsmart_output) {
+			printf(",Enabled\n");
+		} else {
+			if (file_acc.rand_last != UINT_MAX)
+				printf(",Appendable");
+			if (back.rand_start != back.rand_start_real)
+				printf(",Optional\n");
+			else
+				printf("\n");
+		}
 	}
 
 	if (get_chunk && back.min == chunk_start && back.max == chunk_end) {
@@ -408,7 +414,7 @@ unsigned copy_rand(unsigned char *dest) {
 
 void delete_globals();
 
-extern "C" size_t afl_pre_save_handler(unsigned char* data, size_t size, unsigned char** new_data) {
+extern "C" size_t ff_generate(unsigned char* data, size_t size, unsigned char** new_data) {
 	file_acc.seed(data, size, 0);
 	try {
 		generate_file();
@@ -427,7 +433,7 @@ extern "C" size_t afl_pre_save_handler(unsigned char* data, size_t size, unsigne
 	return file_acc.file_size;
 }
 
-extern "C" int afl_post_load_handler(unsigned char* data, size_t size, unsigned char** new_data, size_t* new_size) {
+extern "C" int ff_parse(unsigned char* data, size_t size, unsigned char** new_data, size_t* new_size) {
 	file_acc.generate = false;
 
 	if (size > MAX_FILE_SIZE) {

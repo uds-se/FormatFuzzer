@@ -122,7 +122,7 @@ int parse(int argc, char **argv)
 				{"decisions", required_argument, 0, 'd'},
 				{0, 0, 0, 0}};
 		int option_index = 0;
-		int c = getopt_long(argc, argv, "d:",
+		int c = getopt_long(argc, argv, "d:s",
 							long_options, &option_index);
 
 		// Detect the end of the options.
@@ -141,6 +141,9 @@ int parse(int argc, char **argv)
 
 		case 'd':
 			decision_sink = optarg;
+			break;
+		case 's':
+			aflsmart_output = true;
 			break;
 		}
 	}
@@ -190,8 +193,8 @@ int parse(int argc, char **argv)
 	return errors;
 }
 
-extern "C" size_t afl_pre_save_handler(unsigned char* data, size_t size, unsigned char** new_data);
-extern "C" int afl_post_load_handler(unsigned char* data, size_t size, unsigned char** new_data, size_t* new_size);
+extern "C" size_t ff_generate(unsigned char* data, size_t size, unsigned char** new_data);
+extern "C" int ff_parse(unsigned char* data, size_t size, unsigned char** new_data, size_t* new_size);
 extern bool print_errors;
 extern std::unordered_map<std::string, std::string> variable_types;
 
@@ -215,6 +218,8 @@ extern unsigned rand_end2;
 extern bool is_optional;
 extern bool is_delete;
 extern bool following_is_optional;
+
+extern bool aflsmart_output;
 
 extern unsigned char *following_rand_buffer;
 extern unsigned following_rand_size;
@@ -447,7 +452,7 @@ number of decision bytes in file_t than it did in file_s.
 	set_generator();
 
 	unsigned char* file = NULL;
-	unsigned file_size = afl_pre_save_handler(rand_t, MAX_RAND_SIZE, &file);
+	unsigned file_size = ff_generate(rand_t, MAX_RAND_SIZE, &file);
 	if (!file || !file_size) {
 		printf("Failed to generate mutated file!\n");
 		return -2;
@@ -601,7 +606,7 @@ the binary template (such as length fields).
 	set_generator();
 
 	unsigned char* file = NULL;
-	unsigned file_size = afl_pre_save_handler(rand_t, MAX_RAND_SIZE, &file);
+	unsigned file_size = ff_generate(rand_t, MAX_RAND_SIZE, &file);
 	if (!file || !file_size) {
 		printf("Failed to generate mutated file!\n");
 		return -2;
@@ -807,7 +812,7 @@ smaller number of decision bytes in file_t than it did in file_s.
 	set_generator();
 
 	unsigned char* file = NULL;
-	unsigned file_size = afl_pre_save_handler(rand_t, MAX_RAND_SIZE, &file);
+	unsigned file_size = ff_generate(rand_t, MAX_RAND_SIZE, &file);
 	if (!file || !file_size) {
 		printf("Failed to generate mutated file!\n");
 		return -2;
@@ -954,7 +959,7 @@ the binary template (such as length fields).
 	set_generator();
 
 	unsigned char* file = NULL;
-	unsigned file_size = afl_pre_save_handler(rand_t, MAX_RAND_SIZE, &file);
+	unsigned file_size = ff_generate(rand_t, MAX_RAND_SIZE, &file);
 	if (!file || !file_size) {
 		printf("Failed to generate mutated file!\n");
 		return -2;
@@ -1193,7 +1198,7 @@ smaller number of decision bytes.
 	set_generator();
 
 	unsigned char* file = NULL;
-	unsigned file_size = afl_pre_save_handler(rand_t, MAX_RAND_SIZE, &file);
+	unsigned file_size = ff_generate(rand_t, MAX_RAND_SIZE, &file);
 	if (!file || !file_size) {
 		printf("Failed to generate mutated file!\n");
 		return -2;
@@ -1300,7 +1305,7 @@ extern "C" void generate_random_file(unsigned char** file, unsigned* file_size) 
 	close(rand_fd);
 
 	set_generator();
-	*file_size = afl_pre_save_handler(rand_buffer, MAX_RAND_SIZE, file);
+	*file_size = ff_generate(rand_buffer, MAX_RAND_SIZE, file);
 }
 
 
@@ -1366,7 +1371,7 @@ extern "C" int one_smart_mutation(int target_file_index, unsigned char** file, u
 
 		*file = NULL;
 		debug_print = false;
-		*file_size = afl_pre_save_handler(rand_t, MAX_RAND_SIZE, file);
+		*file_size = ff_generate(rand_t, MAX_RAND_SIZE, file);
 		smart_mutation = false;
 		get_parse_tree = false;
 		debug_print = old_debug_print;
@@ -1419,7 +1424,7 @@ extern "C" int one_smart_mutation(int target_file_index, unsigned char** file, u
 
 		*file = NULL;
 		debug_print = false;
-		*file_size = afl_pre_save_handler(rand_t, MAX_RAND_SIZE, file);
+		*file_size = ff_generate(rand_t, MAX_RAND_SIZE, file);
 		smart_mutation = false;
 		get_parse_tree = false;
 		debug_print = old_debug_print;
@@ -1472,7 +1477,7 @@ extern "C" int one_smart_mutation(int target_file_index, unsigned char** file, u
 
 		*file = NULL;
 		debug_print = false;
-		*file_size = afl_pre_save_handler(rand_t, MAX_RAND_SIZE, file);
+		*file_size = ff_generate(rand_t, MAX_RAND_SIZE, file);
 		smart_mutation = false;
 		get_parse_tree = false;
 		debug_print = old_debug_print;
@@ -1541,7 +1546,7 @@ extern "C" int one_smart_mutation(int target_file_index, unsigned char** file, u
 
 		*file = NULL;
 		debug_print = false;
-		*file_size = afl_pre_save_handler(rand_t, MAX_RAND_SIZE, file);
+		*file_size = ff_generate(rand_t, MAX_RAND_SIZE, file);
 		get_parse_tree = false;
 		debug_print = old_debug_print;
 		if (smart_abstraction) {
@@ -1579,7 +1584,7 @@ extern "C" int one_smart_mutation(int target_file_index, unsigned char** file, u
 
 		*file = NULL;
 		debug_print = false;
-		*file_size = afl_pre_save_handler(rand_t, MAX_RAND_SIZE, file);
+		*file_size = ff_generate(rand_t, MAX_RAND_SIZE, file);
 		debug_print = old_debug_print;
 		if (!(*file) || !(*file_size)) {
 			log_info("Failed to generate mutated file!\n");
@@ -1646,11 +1651,11 @@ int test(int argc, char *argv[])
 	{
 		ssize_t r = read(rand_fd, data, 4096);
 		assert(r == 4096);
-		file_size = afl_pre_save_handler(data, MAX_RAND_SIZE, &file);
+		file_size = ff_generate(data, MAX_RAND_SIZE, &file);
 		if (file_size && file) {
 			generated += 1;
 			uint64_t before = get_cur_time_us();
-			bool parsed = afl_post_load_handler(file, file_size, &rand, &rand_size);
+			bool parsed = ff_parse(file, file_size, &rand, &rand_size);
 			uint64_t after = get_cur_time_us();
 			parse_time += after - before;
 			assert(file_size <= MAX_FILE_SIZE);
@@ -1661,7 +1666,7 @@ int test(int argc, char *argv[])
 				printf("Failed to parse!\n");
 				break;
 			}
-			new_file_size = afl_pre_save_handler(rand, rand_size, &file);
+			new_file_size = ff_generate(rand, rand_size, &file);
 			if (!file || !file_size) {
 				printf("Failed to re-generate!\n");
 				break;
@@ -1710,7 +1715,7 @@ int benchmark(int argc, char *argv[])
 	{
 		ssize_t r = read(rand_fd, data, 4096);
 		assert(r == 4096);
-		size_t new_size = afl_pre_save_handler(data, MAX_RAND_SIZE, &new_data);
+		size_t new_size = ff_generate(data, MAX_RAND_SIZE, &new_data);
 		if (new_size && new_data) {
 			generated += 1;
 			total_bytes += new_size;
