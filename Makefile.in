@@ -290,7 +290,7 @@ gif_fuzzer_SOURCES = gif.cpp fuzzer.cpp
 TEMPLATES = templates/
 
 # The create script
-FFCOMPILE = $(PYTHON) ./ffcompile
+FFCOMPILE = ./ffcompile
 all: config.h
 	$(MAKE) $(AM_MAKEFLAGS) all-am
 

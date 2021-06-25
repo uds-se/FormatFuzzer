@@ -11,7 +11,7 @@ LIBS = -lz
 TEMPLATES = templates/
 
 # The create script
-FFCOMPILE = $(PYTHON) ./ffcompile
+FFCOMPILE = ./ffcompile
 
 # Create a C++ file from template (say, 'gif.cpp' from template 'gif.bt')
 %.cpp: $(TEMPLATES)%.bt
