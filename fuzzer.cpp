@@ -25,6 +25,8 @@ static const char *bin_name = "formatfuzzer";
 extern bool get_parse_tree;
 extern bool debug_print;
 
+extern bool aflsmart_output;
+
 // Each command comes as if it were invoked from the command line
 
 // fuzz - generate random inputs
@@ -218,8 +220,6 @@ extern unsigned rand_end2;
 extern bool is_optional;
 extern bool is_delete;
 extern bool following_is_optional;
-
-extern bool aflsmart_output;
 
 extern unsigned char *following_rand_buffer;
 extern unsigned following_rand_size;
