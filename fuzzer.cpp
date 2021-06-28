@@ -17,7 +17,6 @@
 #include <string>
 #include <stdarg.h>
 
-#include "config.h"
 #include "formatfuzzer.h"
 
 static const char *bin_name = "formatfuzzer";
@@ -1749,7 +1748,7 @@ int benchmark(int argc, char *argv[])
 
 int version(int argc, char *argv[])
 {
-	fprintf(stderr, "This is %s\n", PACKAGE_STRING);
+	fprintf(stderr, "This is FormatFuzzer 0.1.0\n");
 	return 0;
 }
 
