@@ -1,0 +1,62 @@
+//------------------------------------------------
+//--- 010 Editor v4.0.4 Binary Template
+//
+//      File: OGG.bt
+//   Authors: George Woods
+//   Version: 1.1
+//   Purpose: Parses the ogg container format.
+//  Category: Audio
+// File Mask: *.ogg,*.oga,*.ogv,*.ogx
+//  ID Bytes: 4F 67 67 53 //OggS
+//   History: 
+//   1.1   2016-01-28 SweetScape: Updated header for repository submission.
+//   1.0   GS: Initial release.
+//------------------------------------------------
+
+// ogg files can be quite large. Don't read more the 1000 pages.
+local uint MAXPAGES = 1000;
+
+typedef struct {   // bmfh
+    CHAR    CapturePattern[4];
+    BYTE    Version;
+    BYTE    HeaderType;
+    QUAD    GranulePosition;
+    DWORD   BitstreamSerial;
+    DWORD   PageSequenceNumber;
+    DWORD   Checksum;
+    UBYTE   PageSegments;
+
+    // the lengths of the segments that follow
+    UBYTE   SegmentLen[PageSegments];
+    
+    // the segments themselves
+    local uint i;
+    for (i = 0; i < PageSegments; i++) {
+        struct {
+            BYTE Data[SegmentLen[i]] <bgcolor=cLtGray>;
+        } Segment;
+    }
+} PAGE;
+
+
+LittleEndian(); 
+
+local uint currpage = 0;
+while( !FEof() )
+{
+    currpage++;
+    if (MAXPAGES < currpage) 
+    {
+        Printf("Max Pages of %d reached!\n", MAXPAGES);
+        return 0;
+    }
+
+    PAGE page <bgcolor=cLtBlue>;
+    
+    // Check for valid header
+    if( page.CapturePattern != "OggS" )
+    {
+        Warning( "File is not a valid ogg file. Template stopped." );
+        return -1;
+    }
+}
