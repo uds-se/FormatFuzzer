@@ -2696,16 +2696,16 @@ void generate_file() {
 			switch (::g->chunk().ihdr().color_type()) {
 			case Indexed:
 				::g->preferred_chunks = { "PLTE" };
-				::g->possible_chunks = { "tIME", "zTXt", "tEXt", "iTXt", "pHYs", "sPLT", "iCCP", "sRGB", "sBIT", "gAMA", "cHRM", "PLTE" };
+				::g->possible_chunks = { "tIME", "zTXt", "tEXt", "iTXt", "pHYs", "sPLT", "iCCP", "sRGB", "sBIT", "gAMA", "cHRM", "iEXt", "zEXt", "acTL", "fcTL", "fdAT", "eXIf", "PLTE" };
 				break;
 			case GrayScale:
 			case AlphaGrayScale:
 				::g->preferred_chunks = { "IDAT" };
-				::g->possible_chunks = { "tIME", "zTXt", "tEXt", "iTXt", "pHYs", "sPLT", "iCCP", "sRGB", "sBIT", "gAMA", "cHRM", "tRNS", "bKGD", "IDAT" };
+				::g->possible_chunks = { "tIME", "zTXt", "tEXt", "iTXt", "pHYs", "sPLT", "iCCP", "sRGB", "sBIT", "gAMA", "cHRM", "tRNS", "bKGD", "iEXt", "zEXt", "acTL", "fcTL", "fdAT", "eXIf", "IDAT" };
 				break;
 			default:
 				::g->preferred_chunks = { "PLTE", "IDAT" };
-				::g->possible_chunks = { "tIME", "zTXt", "tEXt", "iTXt", "pHYs", "sPLT", "iCCP", "sRGB", "sBIT", "gAMA", "cHRM", "PLTE", "tRNS", "bKGD", "IDAT" };
+				::g->possible_chunks = { "tIME", "zTXt", "tEXt", "iTXt", "pHYs", "sPLT", "iCCP", "sRGB", "sBIT", "gAMA", "cHRM", "PLTE", "tRNS", "bKGD", "iEXt", "zEXt", "acTL", "fcTL", "fdAT", "eXIf", "IDAT" };
 			};
 			break;
 		case STR2INT("tIME"):

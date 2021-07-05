@@ -93,7 +93,13 @@ typedef struct
 // header stream structure info
 typedef struct 
 {
-    char   fccType[4] = { "vids" };//, "auds" };
+    local string type_preferred[] = { "vids" };
+    local string type_possible[] = { "vids", "auds" };
+
+    local char type_value[4];
+    ReadBytes(type_value, FTell(), 4, type_preferred, type_possible, 0.90);
+
+    char   fccType[4];
     char   fccHandler[4];
     DWORD  dwFlags;
     DWORD  dwReserved1;

@@ -594,7 +594,7 @@ typedef struct {
 // Zip64 end of central directory record
 typedef struct {
 	SignatureTYPE elr64Signature; //0x06064b50
-		int64       elr64DirectoryRecordSize<arraylength=true>;
+		int64       elr64DirectoryRecordSize<max=52>;
 	if (elr64DirectoryRecordSize > 1)
 		VERECORD    elr64VersionMadeBy;
 	if (elr64DirectoryRecordSize > 2)
@@ -692,6 +692,8 @@ local uint frIndex = 0;
 local uint deIndex = 0;
 local uint dirOffset = 0;
 local uint dirSize = 0;
+
+local string ReadBytesInitValues[] = { T_ZIPFILERECORD, T_ZIPDIRENTRY, T_ZIPDATADESCR, T_ZIPDIGITALSIG, T_ZIP64ENDLOCATORRECORD, T_ZIP64ENDLOCATOR, T_ZIPENDLOCATOR };
 
 local string preferred_tags[] = { T_ZIPFILERECORD };
 local string possible_tags[] = { T_ZIPFILERECORD, T_ZIPENDLOCATOR };

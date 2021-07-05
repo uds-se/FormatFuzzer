@@ -68,6 +68,7 @@ typedef enum < ushort > compressions32bpp { //always stored uncompressed
 
 typedef enum < WORD > bpp {
 	One = 1,
+	Two = 2,
 	Four = 4, //TODO 30%
 	Eight = 8, //TODO 8%
 	Sixteen = 16,
@@ -429,7 +430,7 @@ if( (bmih.biBitCount != 16) && (bmih.biBitCount != 24) && (bmih.biBitCount != 32
 }
 //Fixing offset
 local int evil = SetEvilBit(false);
-local long current_pos = FTell();
+local DWORD current_pos = FTell();
 FSeek(10);//fix offset to pixel data
 DWORD real_offset = { current_pos + 2 }; //check where offset of 2 comes from
 FSeek( current_pos + 2 );

@@ -423,16 +423,16 @@ while(ReadBytes(chunk_type, FTell() + 4, 4, preferred_chunks, possible_chunks)) 
         switch (chunk.ihdr.color_type) {
         case Indexed:
             local string preferred_chunks[] = { "PLTE" };
-            local string possible_chunks[] = { "tIME", "zTXt", "tEXt", "iTXt", "pHYs", "sPLT", "iCCP", "sRGB", "sBIT", "gAMA", "cHRM", "PLTE" };
+            local string possible_chunks[] = { "tIME", "zTXt", "tEXt", "iTXt", "pHYs", "sPLT", "iCCP", "sRGB", "sBIT", "gAMA", "cHRM", "iEXt", "zEXt", "acTL", "fcTL", "fdAT", "eXIf", "PLTE" };
             break;
         case GrayScale:
         case AlphaGrayScale:
             local string preferred_chunks[] = { "IDAT" };
-            local string possible_chunks[] = { "tIME", "zTXt", "tEXt", "iTXt", "pHYs", "sPLT", "iCCP", "sRGB", "sBIT", "gAMA", "cHRM", "tRNS", "bKGD", "IDAT" };
+            local string possible_chunks[] = { "tIME", "zTXt", "tEXt", "iTXt", "pHYs", "sPLT", "iCCP", "sRGB", "sBIT", "gAMA", "cHRM", "tRNS", "bKGD", "iEXt", "zEXt", "acTL", "fcTL", "fdAT", "eXIf", "IDAT" };
             break;
         default:
             local string preferred_chunks[] = { "PLTE", "IDAT" };
-            local string possible_chunks[] = { "tIME", "zTXt", "tEXt", "iTXt", "pHYs", "sPLT", "iCCP", "sRGB", "sBIT", "gAMA", "cHRM", "PLTE", "tRNS", "bKGD", "IDAT" };
+            local string possible_chunks[] = { "tIME", "zTXt", "tEXt", "iTXt", "pHYs", "sPLT", "iCCP", "sRGB", "sBIT", "gAMA", "cHRM", "PLTE", "tRNS", "bKGD", "iEXt", "zEXt", "acTL", "fcTL", "fdAT", "eXIf", "IDAT" };
         }
         break;
     case "tIME":

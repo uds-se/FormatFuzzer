@@ -111,7 +111,7 @@ typedef struct {
     unsigned short wChannels; 
     unsigned long  dwSamplesPerSec; 
     unsigned long  dwAvgBytesPerSec; 
-    unsigned short wBlockAlign; 
+    unsigned short wBlockAlign<max=16>; 
     unsigned short wBitsPerSample; 
 
     if (wFormatTag == 17) //DVI IMA ADPCM

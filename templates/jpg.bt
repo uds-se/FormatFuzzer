@@ -1551,7 +1551,7 @@ typedef struct tgJPGFile {
 		
 	uint16 StartMarker = {M_SOI};
 	
-	local ushort possibleValues[] = {M_APP0, M_DQT};
+	local ushort possibleValues[] = {M_DQT, M_APP0, M_APP1, M_APP2, M_APP12, M_APP13, M_APP14, M_COMM};
 	while(ReadUShort(FTell(),possibleValues) != M_DQT){
 		local ushort nextMarker = ReadUShort(FTell(),possibleValues);
 		switch(nextMarker){
