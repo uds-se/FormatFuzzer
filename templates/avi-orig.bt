@@ -85,7 +85,7 @@ typedef struct
 // header stream structure info
 typedef struct 
 {
-    char   fccType[4] = { "vids", "auds" };
+    char   fccType[4];
     char   fccHandler[4];
     DWORD  dwFlags;
     DWORD  dwReserved1;
@@ -174,7 +174,7 @@ typedef struct
 {
   char id[4];
   uint32 datalen;
-  char type[4] = { "hdrl", "strl", "movi" };
+  char type[4];
 
   if (!Memcmp(type,"hdrl",4))
   {
@@ -266,7 +266,7 @@ typedef struct xroot
   }
 
   uint32  datalen;
-  char form[4] = { "AVI " };
+  char form[4];
 
   if (Strcmp(form, "AVI "))
   {
@@ -279,10 +279,9 @@ local char nheader[4];
 
 ROOT root;
 
-local string nheader_values[] = { "LIST", "JUNK", "idx1" };
 while (!FEof())
 {
-  ReadBytes(nheader,FTell(), 4, nheader_values);
+  ReadBytes(nheader,FTell(), 4);
 
   if (Memcmp(nheader,"LIST",4) == 0)
   {
