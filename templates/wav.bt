@@ -552,7 +552,7 @@ typedef struct {
     SMPLLOOPS                loops[Num_Sample_Loops];
 
     //Padding so the next chunk starts on an even byte
-     if( (chunkSize & 1) && (FTell() < FileSize()) )
+     if( (chunkSize & 1) && !FEof(0.0) )
      uchar padding;
 
 } SMPLCHUNK;
