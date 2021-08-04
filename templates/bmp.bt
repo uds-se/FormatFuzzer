@@ -21,19 +21,6 @@
 
 // Define structures used in BMP files
 
-typedef enum < DWORD > compressions {
-	BI_RGB = 0x0000,
-	//BI_RLE8 = 0x0001, //only 8 bit per pixel
-	//BI_RLE4 = 0x0002, //only 4 bit per pixel
-	//BI_BITFIELDS = 0x0003,
-	//BI_JPEG = 0x0004, //, not supported in magick
-	//BI_PNG = 0x0005, //, not supported in magick
-	//BI_ALPHABITFIELDS = 0x0006, //uses bitfieldmask
-	//BI_CMYK = 0x0011, //only Windows metafile cmyk, not supported in magick
-	//BI_CMYKRLE8 = 0x0012, //only Windows metafile cmyk, not supported in magick
-	//BI_CMYKRLE4 = 0x0013 //only Windows metafile cmyk, not supported in magick
-} E_COMPRESSIONS;
-
 typedef enum < DWORD > compressions1bpp {
 	BI_RGB_1 = 0x0000,
 } E_COMPRESSIONS1BPP;
@@ -76,13 +63,6 @@ typedef enum < WORD > bpp {
 	Thirtytwo = 32,
 } E_BPP;
 
-//bV5CSType
-typedef enum < DWORD > e_bV5CSType {
-	LCS_CALIBRATED_RGB = 0, //srgb
-	LCS_DEVICE_RGB = 1, //standard
-	//LCS_DEVICE_CMYK = 2, 
-} E_BV5CSTYPE;
-
 typedef struct {   // bmfh
 	local int evil = SetEvilBit(false);
     CHAR    bfType[2] = {"BM"};
@@ -95,12 +75,8 @@ typedef struct {   // bmfh
 
 typedef struct {    // bmih
     DWORD   biSize = { 40 };
-	//local int evil = SetEvilBit(false);
-	//LONG    biWidth = { 1 };
-    //LONG    biHeight = { 1 };
     LONG    biWidth <min=1>;
     LONG    biHeight <min=1>;
-	//local int evil = SetEvilBit(false);
     WORD    biPlanes = { 1 };	
     E_BPP    biBitCount;	
 	if(biBitCount == 1 ){
@@ -124,17 +100,6 @@ typedef struct {    // bmih
 	if(biBitCount == 32 ){
 		E_COMPRESSIONS32BPP biCompression;
 	}
-	//SetEvilBit(evil);
-	/*
-	else{
-		if(biBitCount == 4){
-			E_COMPRESSIONS4BPP biCompression;
-		}
-		else{
-			E_COMPRESSIONS   biCompression; //PNG and JPEG not supported by magick, OS/2 not supported since WIN 2000
-		}
-	}*/
-    //E_COMPRESSIONS   biCompression; //PNG and JPEG not supported by magick, OS/2 not supported since WIN 2000
 	if(biCompression == 0 || biCompression == 11){ //Size after compression set to 0 if no compression is used
 		DWORD biSizeImage = { 0 };
 	}
@@ -164,190 +129,9 @@ typedef struct {    // bmih
 		default:
 			DWORD   biClrUsed = { 0 };
 	}
-    //local int evil = SetEvilBit(false);
     DWORD   biClrImportant = { 0 };
-	//SetEvilBit(evil);
 } BITMAPINFOHEADER;
 
-typedef struct {   // BITMAPV4HEADER, 108 Bit
-	local int evil = SetEvilBit(false);
-	DWORD   biSize = { 108 }; 
-	
-	//LONG    biWidth = { 1 };
-    //LONG    biHeight = { 1 };
-    LONG    biWidth <min=1>;
-    LONG    biHeight <min=1>;
-	//local int evil = SetEvilBit(false);
-    WORD    biPlanes = { 1 };	
-    E_BPP    biBitCount;	
-	if(biBitCount == 1 ){
-		E_COMPRESSIONS1BPP biCompression;
-	}
-	if(biBitCount == 2 ){
-		E_COMPRESSIONS2BPP biCompression;
-	}
-	if(biBitCount == 4 ){
-		E_COMPRESSIONS4BPP biCompression;
-	}
-	if(biBitCount == 8 ){
-
-		E_COMPRESSIONS8BPP biCompression;
-	}
-	if(biBitCount == 16 ){
-		E_COMPRESSIONS16BPP biCompression;
-	}
-	if(biBitCount == 24 ){
-		E_COMPRESSIONS24BPP biCompression;
-	}
-	if(biBitCount == 32 ){
-		E_COMPRESSIONS32BPP biCompression;
-	}
-	//SetEvilBit(evil);
-	/*
-	else{
-		if(biBitCount == 4){
-			E_COMPRESSIONS4BPP biCompression;
-		}
-
-		else{
-			E_COMPRESSIONS   biCompression; //PNG and JPEG not supported by magick, OS/2 not supported since WIN 2000
-		}
-	}*/
-    //E_COMPRESSIONS   biCompression; //PNG and JPEG not supported by magick, OS/2 not supported since WIN 2000
-	if(biCompression == 0 || biCompression == 11){ //Size after compression set to 0 if no compression is used
-		DWORD biSizeImage = { 0 };
-	}
-	else{	
-		DWORD biSizeImage; //TODO if needed calculate decompressed size
-	}
-    LONG    biXPelsPerMeter = { 0 };
-    LONG    biYPelsPerMeter = { 0 };
-	switch(biBitCount){
-		
-		case 8:
-			DWORD biClrUsed <max=256>;
-			break;
-
-		case 4:
-			DWORD biClrUsed <max=16>;
-			break;
-	
-		case 2:
-			DWORD biClrUsed <max=4>;
-			break;
-
-		case 1:
-			DWORD biClrUsed <max=2>;
-			break;
-
-		default:
-			DWORD   biClrUsed = { 0 };
-	}
-    //local int evil = SetEvilBit(false);
-    DWORD   biClrImportant = { 0 };
-	SetEvilBit(evil);
-  DWORD        bV5RedMask = { 0 };
-  DWORD        bV5GreenMask = { 0 };
-  DWORD        bV5BlueMask = { 0 };
-  DWORD        bV5AlphaMask = { 0 };
-  E_BV5CSTYPE        bV5CSType; // 0 or 1
-  //CIEXYZTRIPLE bV4Endpoints; TODO Fix https://docs.microsoft.com/en-us/windows/win32/api/wingdi/ns-wingdi-bitmapv4header
-  DWORD        bV4GammaRed;//Tone response curve for red. This member is ignored unless color values are calibrated RGB values and bV4CSType is set to LCS_CALIBRATED_RGB. Specify in unsigned fixed 16.16 format. The upper 16 bits are the unsigned integer value. The lower 16 bits are the fractional part.
-  DWORD        bV4GammaGreen;
-  DWORD        bV4GammaBlue;
-} BITMAPV4HEADER;
-
-typedef struct {   // BITMAPV5HEADER, 124 Bit 
-  local int evil = SetEvilBit(false);
-	DWORD   biSize = { 124 };
-	
-	//LONG    biWidth = { 1 };
-    //LONG    biHeight = { 1 };
-    LONG    biWidth <min=1>;
-    LONG    biHeight <min=1>;
-	//local int evil = SetEvilBit(false);
-    WORD    biPlanes = { 1 };	
-    E_BPP    biBitCount;	
-	if(biBitCount == 1 ){
-		E_COMPRESSIONS1BPP biCompression;
-	}
-	if(biBitCount == 2 ){
-		E_COMPRESSIONS2BPP biCompression;
-	}
-	if(biBitCount == 4 ){
-		E_COMPRESSIONS4BPP biCompression;
-	}
-	if(biBitCount == 8 ){
-		E_COMPRESSIONS8BPP biCompression;
-	}
-	if(biBitCount == 16 ){
-		E_COMPRESSIONS16BPP biCompression;
-	}
-	if(biBitCount == 24 ){
-		E_COMPRESSIONS24BPP biCompression;
-	}
-	if(biBitCount == 32 ){
-		E_COMPRESSIONS32BPP biCompression;
-	}
-	//SetEvilBit(evil);
-	/*
-	else{
-		if(biBitCount == 4){
-			E_COMPRESSIONS4BPP biCompression;
-		}
-		else{
-			E_COMPRESSIONS   biCompression; //PNG and JPEG not supported by magick, OS/2 not supported since WIN 2000
-		}
-	}*/
-    //E_COMPRESSIONS   biCompression; //PNG and JPEG not supported by magick, OS/2 not supported since WIN 2000
-	if(biCompression == 0 || biCompression == 11){ //Size after compression set to 0 if no compression is used
-		DWORD biSizeImage = { 0 };
-	}
-	else{	
-		DWORD biSizeImage; //TODO if needed calculate decompressed size
-	}
-    LONG    biXPelsPerMeter = { 0 };
-    LONG    biYPelsPerMeter = { 0 };
-	switch(biBitCount){
-		
-		case 8:
-			DWORD biClrUsed <max=256>;
-			break;
-
-		case 4:
-			DWORD biClrUsed <max=16>;
-			break;
-	
-		case 2:
-			DWORD biClrUsed <max=4>;
-			break;
-
-		case 1:
-			DWORD biClrUsed <max=2>;
-			break;
-
-		default:
-			DWORD   biClrUsed = { 0 };
-	}
-    //local int evil = SetEvilBit(false);
-    DWORD   biClrImportant = { 0 };
-	SetEvilBit(evil);
-  DWORD        bV5RedMask = { 0 };
-  DWORD        bV5GreenMask = { 0 };
-  DWORD        bV5BlueMask = { 0 };
-  DWORD        bV5AlphaMask = { 0 };
-  E_BV5CSTYPE        bV5CSType; // 0 or 1
-  //CIEXYZTRIPLE bV5Endpoints; TODO fix https://docs.microsoft.com/en-us/windows/win32/api/wingdi/ns-wingdi-bitmapv5header
-  DWORD        bV5GammaRed;//Tone response curve for red. This member is ignored unless color values are calibrated RGB values and bV4CSType is set to LCS_CALIBRATED_RGB. Specify in unsigned fixed 16.16 format. The upper 16 bits are the unsigned integer value. The lower 16 bits are the fractional part.
-  DWORD        bV5GammaGreen;
-  DWORD        bV5GammaBlue;
-  DWORD        bV5Intent; //TODO make enum 
-  DWORD        bV5ProfileData; //TODO offset to profile data, implement profile data
-  DWORD        bV5ProfileSize; //TODO implemnt profile data
-  DWORD        bV5Reserved = { 0 };
-} BITMAPV5HEADER;
-
-//semi conditional when BitsPerPixel <= 8
 typedef struct {   // rgbq
     UBYTE   rgbBlue;
     UBYTE   rgbGreen;
@@ -366,7 +150,7 @@ typedef struct {   // rgba
     UBYTE   rgbGreen;
     UBYTE   rgbRed;
 	UBYTE	alphamaskFlag;
-} RGBALPHA <read=ReadRGBALPHA>;
+} RGBALPHA;
 
 //---------------------------------------------
 // Custom read functions for color types - this allows the
@@ -386,24 +170,6 @@ string ReadRGBTRIPLE( RGBTRIPLE &a )
     return s;
 }
 
-string ReadRGBALPHA( RGBALPHA &a )
-{
-    string s;
-	local UBYTE first;
-	local UBYTE second;
-	local UBYTE help = 0;
-	local UBYTE mask1 = 248; //first 5 bit
-	local UBYTE mask2 = 7; //last 3 bit
-	local UBYTE mask3 = 192; //first 2 bit
-	local UBYTE mask4 = 62;//bit 3 to 7 (inclusive borders)
-	local UBYTE mask5 = 1; //last bit
-    SPrintf( s, "#%02X%02X", first, second);
-	a.rgbRed = (first && mask1) >> 3;
-	a.rgbGreen = (first && mask2) + ( (second && mask3) >> 6 );
-	a.rgbBlue = (second && mask3) >> 1;
-	a.alphamaskFlag = (second && mask5);
-    return s;
-}
 //---------------------------------------------
 
 // Define the headers
@@ -454,8 +220,6 @@ else
     if( padding == 4 )
         padding = 0;
 
-
-
     // Define each line of the image
     struct BITMAPLINE {
 
@@ -463,7 +227,7 @@ else
         if( bmih.biBitCount < 8 )
              UBYTE     imageData[ bytesPerLine ];
         else if( bmih.biBitCount == 8 )
-			 UBYTE     colorIndex[ bmih.biWidth ];
+             UBYTE     colorIndex[ bmih.biWidth ];
 		else if( bmih.biBitCount == 16 )
              RGBALPHA  colors[ bmih.biWidth ];
         else if( bmih.biBitCount == 24 )
@@ -483,5 +247,3 @@ local int evil = SetEvilBit(false);
 local int file_size = FTell();
 FSeek(2);//fix size
 long real_hsize = { file_size };
-FSeek(file_size);
-SetEvilBit(evil);

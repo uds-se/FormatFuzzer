@@ -20,9 +20,6 @@ local uint list_index = 0;
 local uint frame_index = 0;
 local uint allow_vprp = 1;
 
-//SetEvilBit(false);
-//Printf("EVIL BIT DISABLED MODE\n");
-
 typedef struct
 { 
   WORD  wFormatTag; 
@@ -139,7 +136,6 @@ typedef struct
 {
   char id[4] = { "strf" };
   uint32  strf_hdr_bih_datalen<min = 40, max = 58>;
-  Printf("STRF_HDR_BIH_DATALEN: %d\n", strf_hdr_bih_datalen);
   BITMAPINFOHEADER bmiHeader;
   local int sz = sizeof(bmiHeader); //This is 40
   if (strf_hdr_bih_datalen == 44)
@@ -149,7 +145,6 @@ typedef struct
   }
   Printf("left: %d\n", sz);
   local uint exDataLen = strf_hdr_bih_datalen - sz;
-  Printf("exDataLen: %d\n", exDataLen);
   char exData[exDataLen];
 } strfHEADER_BIH;
 
@@ -159,7 +154,6 @@ typedef struct
 {
   char id[4] = { "strf" };
   uint32  strf_hdr_wave_datalen<min = 20, max = 36>;
-  Printf("%d\n", strf_hdr_wave_datalen);
   WAVEFORMATEX wave;
   char exData[strf_hdr_wave_datalen - 18];
 } strfHEADER_WAVE;
@@ -196,7 +190,7 @@ typedef struct
     char data[movi_datalen];
 } MOVICHUNK;
 
-// junk structure info
+
 typedef struct 
 {
   char id[4];
@@ -224,8 +218,9 @@ typedef struct
   }
   else if (!Memcmp(type,"strl",4))
   {
-    
     strhHEADER strh;
+
+    // Printf("->%c%c%c%c\n", strh.data.fccHandler[0], strh.data.fccHandler[1],strh.data.fccHandler[2],strh.data.fccHandler[3]);
     if (Memcmp(strh.data.fccType, "vids", 4) == 0)
     {
       strfHEADER_BIH strf;
@@ -251,6 +246,8 @@ typedef struct
   {
     local int32 pointer = 0;
     local int32 stop = list_datalen - 4;
+    
+    //Printf("stop=%d\n", stop);
 
     do
     {
@@ -345,6 +342,7 @@ typedef struct {
 
 } VideoPropHeader;
 
+// aviindex structure info
 typedef struct (string _type, DWORD _flags, DWORD _offset, DWORD _length)
 {
     char   ckid[4] = { _type };

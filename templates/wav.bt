@@ -16,30 +16,9 @@
 // More information available at:
 //  https://en.wikipedia.org/wiki/WAV
 //------------------------------------------------
-// Additional information:
-//  http://www.piclist.com/techref/io/serial/midi/wave.html
-//
-//
-//  https://web.archive.org/web/20160104081350/http://www.iem.thm.de/telekom-labor/zinke/nw/vp/doku/dito41.htm
-//
-//
-//   http://www.topherlee.com/software/pcm-tut-wavformat.html
-//
-//
-//   https://web.archive.org/web/20101207002408/http://www.it.fht-esslingen.de/~schmidt/vorlesungen/mm/seminar/ss00/HTML/node107.html
-//
-//
-//   https://www.lightlink.com/tjweber/StripWav/WAVE.html
-//
-//
-//   http://www-mmsp.ece.mcgill.ca/Documents/AudioFormats/WAVE/WAVE.html
-//
-//ffmpeg debug
-//
-//-------------------------------------------------
+
 // Record whether we have found a format chunk yet
 local int haveValidFormat = false;
-
 
 //-----------------------------------
 // Define structures used in WAV files
@@ -70,50 +49,18 @@ typedef enum < ushort > e_Format_Tags {
 	XBOX_ADPCM = 0x0069, //33%
 	CREATIVE_ADPCM = 0x0200, //99%
 } E_FORMAT_TAGS;
-typedef enum < ushort > e_Format_Tags_no_decoder {
-	IEEE_FLOAT = 0x0003,
-	IBM_CVSD = 0x0005, 
-	DVI_IMA_ADPCM = 0x0011,
-	MEDIASPACE_ADPCM = 0x0012,
-	SIERRA_ADPCM = 0x0013,
-	DIGISTD = 0x0015,
-	DIGIFIX = 0x0016,
-	SONARC = 0x0021,
-	ECHOSC1 = 0x0023,
-	AUDIOFILE_AF36 = 0x0024,
-	APTX = 0x0025,
-	AUDIOFILE_AF10 = 0x0026,
-	DOLBY_AC2 = 0x0030,
-	ANTEX_ADPCME = 0x0033,
-	CONTROL_RES_VQLPC = 0x0034,
-	CONTROL_RES_VQLPC_Alternate = 0x0035,
-	DIGIADPCM = 0x0036,
-	CONTROL_RES_CR10 = 0x0037,
-	CS_IMAADPCM_ROLAND_RDAC = 0x0039,
-	CREATIVE_FASTSPEECH8 = 0x0202,
-	CREATIVE_FASTSPEECH10 = 0x0203,
-	FM_TOWNS_SND = 0x0300,
-	OLIGSM = 0x1000,
-	OLIADPCM = 0x1001,
-	OLICELP = 0x1002,
-	OLISBC = 0x1003,
-	OLIOPR = 0x1004,
-} E_FORMAT_TAGS_NO_DECODER;
+
 // Stores the format information for the file
 typedef struct {
     char           chunkID[4];
     long           chunkSize = { 16 };
     local int pos = FTell();
-	//E_FORMAT_TAGS current_format;
-	//TODO use ReadBytes with 2 vectors
-	//ReadBytes(current_format, FTell(), 4, e_format_tags, e_format_tags_no_decoder)
     E_FORMAT_TAGS          wFormatTag; //bugfixing formats 
-    unsigned short wChannels; 
-    unsigned long  dwSamplesPerSec; 
-    unsigned long  dwAvgBytesPerSec; 
+    unsigned short wChannels;
+    unsigned long  dwSamplesPerSec;
+    unsigned long  dwAvgBytesPerSec;
     unsigned short wBlockAlign<max=16>; 
-    unsigned short wBitsPerSample; 
-
+    unsigned short wBitsPerSample;
     if (wFormatTag == 17) //DVI IMA ADPCM
     {
         unsigned short wcbsize;
@@ -124,11 +71,8 @@ typedef struct {
     haveValidFormat = true;
 
     // Unknown data at the end of the chunk
-	Printf("ChunkSize: %d , pos: %i , FTell: %d\n", chunkSize, pos, FTell());
-    if( chunkSize > (FTell() - pos) ){
+    if( chunkSize > (FTell() - pos) )
         uchar unknown[ chunkSize - (FTell() - pos) ];
-	}
-		
 
     // Padding so the next chunk starts on an even byte
     if( chunkSize & 1 )
@@ -141,7 +85,6 @@ typedef struct
     char           chunkID[4];
 	local int size_pos = FTell();
     long           chunkSize <min=32>;
-	local long start = FTell();
 
     // Test if we have a valid format
     if( !haveValidFormat )
@@ -186,17 +129,16 @@ typedef struct
     }
 	//Fix size TODO
 	local long end = FTell();
-	local long real_size = end - start;
+	local long real_size = end - size_pos - 4;
 	FSeek(size_pos);
 	local int evil = SetEvilBit(false);
 	long real_chunkSize = {real_size};
 	SetEvilBit(evil);
 	FSeek(end); 
-	//Fix size*/
     // Padding so the next chunk starts on an even byte
     if( (chunkSize & 1) && (FTell() < FileSize()) )
         uchar padding;
-} DATACHUNK; 
+} DATACHUNK;
 
 // Stores the size of the wave after decompression
 typedef struct
@@ -220,69 +162,45 @@ typedef struct {
     char      chunkID[4];
 	local int size_pos = FTell();
     long      chunkSize;
-	local int pos = FTell();
-    local long start = FTell(); //TODO
+    local int pos = FTell();
     long      dwCuePoints;
     CUEPOINT  points[dwCuePoints];
 	//Fix size TODO
 	local long end = FTell();
 	FSeek(size_pos);
 	local int evil = SetEvilBit(false);
-	long actual_chunkSize = {end - start};
+	long actual_chunkSize = {end - pos};
 	SetEvilBit(evil);
 	FSeek(end); 
-	/*Fix size*/
     // Unknown data at the end of the chunk
     if( chunkSize > (FTell() - pos) )
         uchar unknown[ chunkSize - (FTell() - pos) ];
-} CUECHUNK; 
+} CUECHUNK;
 
-//subchunk struct for LIST chunk
-
-
+// Define a list chunk with a set of subchunks
 typedef struct {
     char      chunkID[4];
 	local int size_pos = FTell();
     long      chunkSize <min=1>;
-	local long start = FTell(); //TODO
     char      listData[chunkSize];
 
 	//Fix size TODO
 	local long end = FTell();
-	local long real_size = end - start;
+	local long real_size = end - size_pos - 4;
 	FSeek(size_pos);
 	local int evil = SetEvilBit(false);
 	long real_chunkSize = {real_size};
 	SetEvilBit(evil);
 	FSeek(end); 
-	/*Fix size*/
-
     if( (chunkSize & 1) && (FTell() < FileSize()) )
         uchar padding;
 } LISTSUBCHUNK;
 
-// Define a list chunk with a set of subchunks
-//chunkID = LIST
-//chunkSize = whole list size
-//chunkType = INFO (so far no other values found)
-//+ listsubchunks
-local string list_tag_values_possible[] = { //"0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
-											"a", "b", "c", "d", "e", "f", "g", "h", "i", "j",
-											"A", "B", "C", "D", "E", "F", "G", "H", "I", "J",
-											"k", "l", "m", "n", "o", "p", "q", "r", "s", "u",
-											"K", "L", "M", "N", "O", "P", "Q", "R", "S", "U",
-											"v", "w", "x", "y", "z",
-											"V", "W", "X", "Y", "Z"};
 typedef struct {
     char      chunkID[4];
     long      chunkSize <min=1>;
     local quad pos = FTell();
-	//List tag is not allowed to contain specific symbols
 	local char list_tag[1];
-	//ReadBytes(list_tag, FTell(), 1, list_tag_values_possible, list_tag_values_possible);
-	//ReadBytes(list_tag, FTell()+1, 1, list_tag_values_possible, list_tag_values_possible);
-	//ReadBytes(list_tag, FTell()+2, 1, list_tag_values_possible, list_tag_values_possible);
-	//ReadBytes(list_tag, FTell()+3, 1, list_tag_values_possible, list_tag_values_possible);
     char      chunkType[4];
     local uint size;
 
@@ -299,98 +217,7 @@ typedef struct {
     if( (chunkSize & 1) && (FTell() < FileSize()) )
         uchar padding;
 } LISTCHUNK;
-//NEW CHUNKS------------------------------------------------------------------------------------------------------
-//Playlist chunk, sets order of cuepoints to be played ID is "plst"
-typedef struct {
-  long    dwIdentifier;
-  long    dwLength;
-  long    dwRepeats;
-} Segment;
 
-typedef struct {
-  char      chunkID[4];
-  long      chunkSize;//Segment size + dwSegments size
-  long      dwSegments;
-  Segment   Segments[dwSegments]; //no order needed
-} PlaylistChunk;
-/*
-//ID list
-typedef struct {
-  char      listID[4];    // 'list' 
-  long    chunkSize;   // includes the Type ID below 
-  char      typeID[4];     // 'adtl' 
-} ListHeader;
-*/
-//ID labl
-typedef struct {
-  char      chunkID[4];
-  long    chunkSize; //dwIdentifier size + dwText size
-  long    dwIdentifier;
-  char    dwText[chunkSize - 4]; //null terminated string
-} LabelChunk;
-
-//ID note
-typedef struct {
-  char      chunkID[4];
-  long    chunkSize; //dwIdentifier size + dwText size
-  long    dwIdentifier;
-  char    dwText[chunkSize - 4]; //null terminated String 
-} NoteChunk;
-
-//ID ltxt
-typedef struct {
-  char      chunkID[4];
-  long    chunkSize; //starts after chunkSize field
-  long    dwIdentifier;
-  long    dwSampleLength;
-  long    dwPurpose; //associated data list generic IDs
-  short   wCountry;
-  short   wLanguage;
-  short   wDialect;
-  short   wCodePage;
-  char    dwText[chunkSize - 28]; //null terminated string
-} LabelTextChunk;
-
-//ID smpl
-typedef struct {
-  char             chunkID[4];
-  long           chunkSize; //starts after chunkSize field
-  long           dwManufacturer; //set to 0 for no specific manufacturer
-  long           dwProduct;
-  long           dwSamplePeriod;
-  long           dwMIDIUnityNote;
-  long           dwMIDIPitchFraction;
-  long           dwSMPTEFormat;
-  long           dwSMPTEOffset;
-  long           cSampleLoops;
-  long           cbSamplerData;
-  struct SampleLoop Loops[];
-} SamplerChunk;
-
-//from SamplerChunk
-typedef struct {
-  long  dwIdentifier;
-  long  dwType;
-  long  dwStart;
-  long  dwEnd;
-  long  dwFraction;
-  long  dwPlayCount;
-} SampleLoop;
-
-//ID inst
-typedef struct {
-  char     chunkID[4];
-  long   chunkSize = { 7 }; //starts after chunkSize field
-  unsigned char UnshiftedNote;
-  char          FineTune;
-  char          Gain;
-  unsigned char LowNote;
-  unsigned char HighNote;
-  unsigned char LowVelocity;
-  unsigned char HighVelocity;
-} InstrumentChunk;
-//"inst", "smpl", "ltxt", "note", "labl", "list", "plst"
-//NEW CHUNKS END --------------------------------------------------------------------------------------------------
 // A chunk which could not be identified
 typedef struct {
     char      chunkID[4];
@@ -442,23 +269,12 @@ while(ReadBytes(chunk_tag, FTell(), 4, tag_values_preferred, tag_values_possible
             DATACHUNK   data;
 			tag_values_preferred -= "data"; //remove data tag, it is only allowed once
 			tag_values_possible -= "data";
-			//if (isCompressed == 1) {
-				//tag_values_preferred -= "fact";
-				//tag_values_possible += "fact"; 
-				//break;
-			//}
 			tag_values_possible += ( "fact", "cue ", "LIST"); //TODO enforce fact chunk for compressed formats, check list
             break;
 		//TODO check number of occurences for fact chunk
         case "fact":
             SetBackColor( cLtBlue );
             FACTCHUNK   fact;
-			//if (isCompressed == 1){
-				//tag_values_preferred -= "fact" ;
-				//isCompressed = false;
-				//tag_values_possible += {"cue ", "LIST"};
-				//break;
-			//}
 			tag_values_possible -= "fact";
 			tag_values_preferred -= "fact" ;
             break;
