@@ -280,9 +280,9 @@ typedef struct {
 	//List tag is not allowed to contain specific symbols
 	local char list_tag[1];
 	//ReadBytes(list_tag, FTell(), 1, list_tag_values_possible, list_tag_values_possible);
-	//ReadBytes(list_tag, FTell(), 1, list_tag_values_possible, list_tag_values_possible);
-	//ReadBytes(list_tag, FTell(), 1, list_tag_values_possible, list_tag_values_possible);
-	//ReadBytes(list_tag, FTell(), 1, list_tag_values_possible, list_tag_values_possible);
+	//ReadBytes(list_tag, FTell()+1, 1, list_tag_values_possible, list_tag_values_possible);
+	//ReadBytes(list_tag, FTell()+2, 1, list_tag_values_possible, list_tag_values_possible);
+	//ReadBytes(list_tag, FTell()+3, 1, list_tag_values_possible, list_tag_values_possible);
     char      chunkType[4];
     local uint size;
 
