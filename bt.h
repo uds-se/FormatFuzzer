@@ -597,7 +597,7 @@ int IsParsing() {
 	return !file_acc.generate;
 }
 
-int FEof() { return file_acc.feof(); }
+int FEof(double p = 0.125) { return file_acc.feof(p); }
 
 int64 FTell() { return file_acc.file_pos; }
 

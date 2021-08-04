@@ -59,7 +59,8 @@ typedef struct {
     unsigned short wChannels;
     unsigned long  dwSamplesPerSec;
     unsigned long  dwAvgBytesPerSec;
-    unsigned short wBlockAlign<max=16>; 
+    local unsigned short bps = ReadUShort(FTell() + 2);
+    unsigned short wBlockAlign = { (bps / 8) * wChannels }; 
     unsigned short wBitsPerSample;
     if (wFormatTag == 17) //DVI IMA ADPCM
     {
@@ -132,11 +133,11 @@ typedef struct
 	local long real_size = end - size_pos - 4;
 	FSeek(size_pos);
 	local int evil = SetEvilBit(false);
-	long real_chunkSize = {real_size};
+	long chunkSize = {real_size};
 	SetEvilBit(evil);
 	FSeek(end); 
     // Padding so the next chunk starts on an even byte
-    if( (chunkSize & 1) && (FTell() < FileSize()) )
+    if( (chunkSize & 1) && !FEof(0.0) )
         uchar padding;
 } DATACHUNK;
 
@@ -169,7 +170,7 @@ typedef struct {
 	local long end = FTell();
 	FSeek(size_pos);
 	local int evil = SetEvilBit(false);
-	long actual_chunkSize = {end - pos};
+	long chunkSize = {end - pos};
 	SetEvilBit(evil);
 	FSeek(end); 
     // Unknown data at the end of the chunk
@@ -189,10 +190,10 @@ typedef struct {
 	local long real_size = end - size_pos - 4;
 	FSeek(size_pos);
 	local int evil = SetEvilBit(false);
-	long real_chunkSize = {real_size};
+	long chunkSize = {real_size};
 	SetEvilBit(evil);
 	FSeek(end); 
-    if( (chunkSize & 1) && (FTell() < FileSize()) )
+    if( (chunkSize & 1) && !FEof(0.0) )
         uchar padding;
 } LISTSUBCHUNK;
 
@@ -205,16 +206,19 @@ typedef struct {
     local uint size;
 
     // Read the subchunks
-    while( FTell() - pos < chunkSize ) {
+    while( FTell() - pos <= chunkSize - 8 ) {
         size = ReadUInt( FTell()+4 );
         if  (FTell() - pos + size<= chunkSize)
             LISTSUBCHUNK subchunk;
         else
-            uchar unknown[ chunkSize - (FTell() - pos) ];       
+            break;
+    }
+    if ( FTell() - pos < chunkSize ) {
+        uchar unknown[ chunkSize - (FTell() - pos) ];       
     }
 
     // Padding so the next chunk starts on an even byte
-    if( (chunkSize & 1) && (FTell() < FileSize()) )
+    if( (chunkSize & 1) && !FEof(0.0) )
         uchar padding;
 } LISTCHUNK;
 
@@ -225,7 +229,7 @@ typedef struct {
     uchar     unknownData[chunkSize];
 
     // Padding so the next chunk starts on an even byte
-    if( (chunkSize & 1) && (FTell() < FileSize()) )
+    if( (chunkSize & 1) && !FEof(0.0) )
         uchar padding;
 } UNKNOWNCHUNK;
 
@@ -299,5 +303,5 @@ while(ReadBytes(chunk_tag, FTell(), 4, tag_values_preferred, tag_values_possible
 // adding file size to header, needed to be parsed
 local int file_size = FTell();
 FSeek(4);
-long real_hsize = { file_size - 8 };
+long hsize = { file_size - 8 };
 

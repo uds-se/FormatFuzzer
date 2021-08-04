@@ -106,7 +106,7 @@ def DirectoryExists(params, ctxt, scope, stream, coord):
 # int FEof()
 @native(name="FEof", ret=pfp.fields.Int)
 def FEof(params, ctxt, scope, stream, coord):
-    if len(params) > 0:
+    if len(params) > 1:
         raise errors.InvalidArguments(
             coord, "0 arguments", "{} args".format(len(params))
         )

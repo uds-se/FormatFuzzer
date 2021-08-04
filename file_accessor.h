@@ -422,15 +422,15 @@ public:
 		}
 	}
 
-	int feof() {
+	int feof(double p) {
 		if (file_pos < file_size)
 			return 0;
 		if (has_size)
 			return 1;
 		lookahead = true;
 		if (!generate)
-			parse = [this](unsigned char* file_buf) -> long long { return file_pos == final_file_size ? 7 : 0; };
-		int is_feof = rand_int(8, parse) == 7;
+			parse = [this](unsigned char* file_buf) -> long long { return file_pos == final_file_size ? 255 : 0; };
+		int is_feof = (rand_int(256, parse) >= 255 * (1.0 - p));
 		lookahead = false;
 		if (is_feof)
 			has_size = true;
