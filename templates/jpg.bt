@@ -162,6 +162,15 @@ typedef enum <WORD> tagID
 	M_COMM = 0xFFFE  // Comment
 } M_ID <format=hex>;
 
+#define T_DQT         "\xff\xdb"
+#define T_APP0        "\xff\xe0"
+#define T_APP1        "\xff\xe1"
+#define T_APP2        "\xff\xe2"
+#define T_APP12       "\xff\xec"
+#define T_APP13       "\xff\xed"
+#define T_APP14       "\xff\xee"
+#define T_COMM        "\xff\xfe"
+
 
 // ------------------------------------------------------------
 // EXIF tags
@@ -1116,6 +1125,7 @@ typedef struct tagApp0 {
 
 typedef struct tgAPP1 {
 	M_ID marker = {0xFFE0};
+	local uint16 sizePos = FTell();
 	WORD szSection;
 
 	local string values5[] = { "Exif\0", "http:" };
@@ -1173,15 +1183,22 @@ typedef struct tgAPP1 {
 	} else if (ReadStringN(FTell(), 29, values29) == "http://ns.adobe.com/xap/1.0/\0") {
 		// http://www.adobe.com/products/xmp/
 		char XAP[29];
-		char remain[szSection - 31];
+		if (szSection > 31)
+			char remain[szSection - 31];
 	} else {
 		//Warning("Unknown APP1");
 		char unknown[szSection - 2];
 	}
+	local uint16 curPos = FTell();
+	FSeek(sizePos);
+	local uint16 size = curPos - sizePos;
+	uint16 newSize = {size};
+	FSeek(curPos);
 } APP1;
 
 typedef struct tgAPP2 {
 	M_ID marker = {0xFFE2};
+	local uint16 sizePos = FTell();
 	WORD szSection;
 
 	local string values5[] = { "FPXR\0", "ICC_P" };
@@ -1195,15 +1212,22 @@ typedef struct tgAPP2 {
 			char ICC_PROFILE[12];
 			uchar block_num;
 			uchar block_total;
-			char data[szSection - 16];
+			if (szSection > 16)
+				char data[szSection - 16];
 	} else {
 		//Warning("Unknown APP2");
 		char unknown[szSection - 2];
 	}
+	local uint16 curPos = FTell();
+	FSeek(sizePos);
+	local uint16 size = curPos - sizePos;
+	uint16 newSize = {size};
+	FSeek(curPos);
 } APP2;
 
 typedef struct tagAPP12 {
 	M_ID marker;
+	local uint16 sizePos = FTell();
 	WORD szSection;
 
 	local string values5[] = { "Ducky" };
@@ -1222,7 +1246,8 @@ typedef struct tagAPP12 {
 				if (tag == DK_End)
 					break;
 
-				uint16 len;
+				local uint16 sizePos2 = FTell();
+				uint16 len <min=4>;
 
 				switch (tag) {
 					case DK_End:
@@ -1242,6 +1267,11 @@ typedef struct tagAPP12 {
 						char unknown[len];
 						break;
 				}
+				local uint16 curPos2 = FTell();
+				FSeek(sizePos2);
+				local uint16 size2 = curPos2 - sizePos2 - 2;
+				uint16 newSize2 = {size2};
+				FSeek(curPos2);
 			} entry;
 			if (entry.tag == DK_End)
 				break;
@@ -1251,6 +1281,11 @@ typedef struct tagAPP12 {
 		//Warning("Unknown APP12");
 		char unknown[szSection - 2];
 	}
+	local uint16 curPos = FTell();
+	FSeek(sizePos);
+	local uint16 size = curPos - sizePos;
+	uint16 newSize = {size};
+	FSeek(curPos);
 } APP12;
 
 typedef struct tagAPP13 {
@@ -1550,30 +1585,33 @@ typedef struct tgJPGFile {
 	BigEndian(); 		
 		
 	uint16 StartMarker = {M_SOI};
-	
-	local ushort possibleValues[] = {M_DQT, M_APP0, M_APP1, M_APP2, M_APP12, M_APP13, M_APP14, M_COMM};
-	while(ReadUShort(FTell(),possibleValues) != M_DQT){
-		local ushort nextMarker = ReadUShort(FTell(),possibleValues);
+
+	local char nextMarker[2];
+	local string preferredValues[] = {T_DQT, T_APP0};
+	local string possibleValues[] = {T_DQT, T_APP0, T_APP1, T_APP2, T_APP12, T_APP13, T_APP14, T_COMM};
+	while(ReadBytes(nextMarker, FTell(), 2, preferredValues, possibleValues, 0.999)){
+		if (nextMarker == T_DQT)
+			break;
 		switch(nextMarker){
-			case M_APP0:
+			case T_APP0:
 				APP0 app0;
 				break;
-			case M_APP1:
+			case T_APP1:
 				APP1 app1;
 				break;
-			case M_APP2:
+			case T_APP2:
 				APP2 app2;
 				break;
-			case M_APP12:
-				APP12 app0;
+			case T_APP12:
+				APP12 app12;
 				break;
-			case M_APP13:
-				APP13 app1;
+			case T_APP13:
+				APP13 app13;
 				break;
-			case M_APP14:
-				APP14 app2;
+			case T_APP14:
+				APP14 app14;
 				break;			
-			case M_COMM:
+			case T_COMM:
 				COMMENT comment;
 				break;
 		}	
