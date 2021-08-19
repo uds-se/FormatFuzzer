@@ -76,21 +76,28 @@ local quad frame_header_offset, seek_pos, sum_bitrate = 0;
 local uint16 data;
 local byte was_bad_sync, id3v1_tag_found = 0;
 local uchar buf[3];
+local uint32 id3v2_size = 0;
+local uint32 synchsafe_pos = 0;
+local uint32 mpeg_frame_start_pos = 0;
 
 
 typedef struct {
-    ubyte raw[4];
+	ubyte first <min=0, max=0>; //max=0x7F>;
+	ubyte second <min=0, max=0>; //max=0x7F>;
+	ubyte third <min=0x7F,/*, max=0>; /*/max=0x7F>;
+	ubyte fourth <min=0x7F, /*max=10>; /*/max=0x7F>;
+	Printf("First: %d\nSecond: %d\nThird: %d\nFourth: %d\n", first, second, third, fourth);
 
-    local uint32 computed = raw[0];
+    local uint32 computed = first;
     computed <<= 7;
-    computed |= raw[1];
+    computed |= second;
     computed <<= 7;
-    computed |= raw[2];
+    computed |= third;
     computed <<= 7;
-    computed |= raw[3];
+    computed |= fourth;
 
-    if (raw[0] >= 0x80  ||  raw[1] >= 0x80  ||
-        raw[2] >= 0x80  ||  raw[3] >= 0x80)
+    if (first >= 0x80  ||  second >= 0x80  ||
+        third >= 0x80  ||  fourth >= 0x80)
     {
         Printf("MP3: warning: invalid ID3v2 synchsafe integer\n");
     }
@@ -354,29 +361,35 @@ struct ID3v1_TAG
     DisplayFormatDecimal();
 
     SetBackColor(0x33BC55);
+	Printf("ID3v1 charID \n");
     char id[3] = {"TAG"};; // always must be "TAG"
 
     SetBackColor(0x48E048);
+	Printf("ID3v1 title \n");
     char title[30];
 
     SetBackColor(0x5DE45D);
+	Printf("ID3v1 artist \n");
     char artist[30];
 
     SetBackColor(0x72E872);
+	Printf("ID3v1 album \n");
     char album[30];
 
     SetBackColor(0x87EC87);
-    char year[4];
+	Printf("ID3v1 year \n");
+    char year[4]; //TODO restrict for numbers only
 
     if ( ReadByte(FTell()+28) == 0  &&  ReadByte(FTell()+29) != 0 )
     {
         // We have ID3v1.1 tag
 
         SetBackColor(0x9CF09C);
+		Printf("ID3v1.1 comment \n");
         char comment[28];
 
         SetBackColor(0xB1F4B1);
-        byte zero;
+        byte zero = { 0 };
 
         SetBackColor(0xC6F8C6);
         ubyte track;
@@ -386,6 +399,7 @@ struct ID3v1_TAG
         // We have ID3v1.0 tag
 
         SetBackColor(0x9CF09C);
+		Printf("ID3v1.0 comment \n");
         char comment[30];
     }
 
@@ -397,19 +411,41 @@ struct ID3v2_HEADER
 {
     char head[3] = {"ID3"}; 
 
-    char ver_major <max=10>; 
-    char ver_revision <max=10>; 
+    char ver_major <min=3, max=4>; 
+    char ver_revision <min=2, max=4>; 
 
+	
     struct FLAGS {
-        ubyte UNSYNCHRONISATION_USED  : 1; //set bit indicates usage of unsynchronisation
-        ubyte EXTENDED_HEADER_PRESENT : 1; //extended headder needs additional data
-        ubyte EXPERIMENTAL_TAG        : 1; //set when this version is still in beta/experimental stage
-        ubyte RESERVED_FLAGS: 5;
-    } flags;
+		//generate flag values
+		local int current_pos;
+		current_pos = FTell();
+		local ubyte full_flags = 0;
+	
+		ubyte i_unsyn_used = { 0 }; //TODO reserach unsync
+		local ubyte unsyn_used = (i_unsyn_used << 7);
+		FSeek(current_pos);
+		//TODO change after extended header implementation
+		ubyte i_extend_head_pres = { 0 };
+		local ubyte extend_head_pres = (i_extend_head_pres << 6);
+		FSeek(current_pos);
+		ubyte i_experiment_tag = { 0 };
+		local ubyte experiment_tag = (i_experiment_tag << 5);
+		FSeek(current_pos);
+		ubyte reserv_flags = { 0 };
+		FSeek(current_pos);
+	
+		full_flags += unsyn_used + extend_head_pres + experiment_tag + reserv_flags;
+		ubyte flags = { full_flags };
 
+        local ubyte UNSYNCHRONISATION_USED = unsyn_used >> 7; //set bit indicates usage of unsynchronisation
+        local ubyte EXTENDED_HEADER_PRESENT = extend_head_pres >> 6; //extended header needs additional data
+        local ubyte EXPERIMENTAL_TAG = experiment_tag >> 5; //set when this version is still in beta/experimental stage
+        local ubyte RESERVED_FLAGS = reserv_flags;
+    } flags;
     DisplayFormatHex();
 
-    synchsafe_integer size; // Is the size of the complete tag after unsynchronisation,
+	synchsafe_pos = FTell();
+    synchsafe_integer size <min=0, max=100>; // Is the size of the complete tag after unsynchronisation,
                    			// including padding, excluding the header but not excluding
                    			// the extended header (total tag size - 10). Most
                    			// significant bit (bit 7) of each byte is set to zero
@@ -427,6 +463,7 @@ struct ID3v2_EXTENDED_HEADER
     uint16 FLAG_CRC_PRESENT :  1;   // extended header flags
     uint16                  : 15;   //
 
+	//TODO fix padding_sz
     uint32 padding_sz;
 
     if (FLAG_CRC_PRESENT)
@@ -450,6 +487,7 @@ struct FRAME_FLAGS {
 
 struct ID3v2_FRAME
 {
+	Printf("ID3v2 frame alpha chars \n");
     char id[4]; // four alpha chars
 
     DisplayFormatDecimal();
@@ -464,14 +502,18 @@ struct ID3v2_FRAME
         if ( ReadByte(FTell()) == 0  &&  size > 1)
         {
             byte id_asciiz_str;
+			Printf("ID3v2 frame frame_data \n");
             char frame_data [size - 1];
         }
         else
+			Printf("Size: %d\n", size);
+			Printf("ID3v2 frame frame_data else \n");
             char frame_data [size];
     }
     else
     {
         DisplayFormatHex();
+		Printf("ID3v2 frame frame_data else 2 \n");
         ubyte frame_data [size];
     }
 };
@@ -479,6 +521,7 @@ struct ID3v2_FRAME
 
 struct ID3v2_4_FRAME
 {
+	Printf("ID3v2.4 frame alpha chars \n");
     char id[4]; // four alpha chars
 
     DisplayFormatDecimal();
@@ -496,12 +539,15 @@ struct ID3v2_4_FRAME
             UTF_16BE_without_BOM,
             UTF_8
         } encoding;
-
+		Printf("Size: %d\n", (size.computed - 1));
+		Printf("ID3v2.4 frame frame_data \n");
         char frame_data [size.computed - 1];
     }
     else
     {
         DisplayFormatHex();
+		Printf("Size: %d\n", size.computed);
+		Printf("ID3v2.4 frame frame_data else \n");
         ubyte frame_data [size.computed];
     }
 };
@@ -512,6 +558,7 @@ struct ID3v2_TAG
 
     // calculating real size of the ID3v2 tag
     local uint32 tag_sz = hdr.size.computed;
+	Printf("tag_sz: %d, hdr.size.computed: %d\n", tag_sz, hdr.size.computed);
 
     //
     // An ID3v2 tag header can be detected with the following pattern:
@@ -526,9 +573,11 @@ struct ID3v2_TAG
     {
         if ( !(hdr.ver_major == 3 || hdr.ver_major == 4)  ||  hdr.flags.UNSYNCHRONISATION_USED  ||  hdr.flags.EXPERIMENTAL_TAG)
         {
+			Printf("Major: %d, Version: %d, Unsync: %d, Exp: %d\n", hdr.ver_major, hdr.ver_revision, hdr.flags.UNSYNCHRONISATION_USED, hdr.flags.EXPERIMENTAL_TAG);
             Printf("MP3: warning: skipping unsupported ID3v2.%d tag\n", hdr.ver_major);
             SetBackColor(0xA9DCFF);
             DisplayFormatHex();
+			Printf("Unsupported ID3v2_data \n"); //TODO this is the issue, need to rewrite sizing
             ubyte id3v2_data[tag_sz];
         }
         else
@@ -543,6 +592,7 @@ struct ID3v2_TAG
             local uint32 frame_color = 0xC9FCFF;
             do
             {
+				//TODO fix frame size after creation
                 SetBackColor(frame_color);
                 if (hdr.ver_major == 3)
                     ID3v2_FRAME tf;
@@ -550,9 +600,12 @@ struct ID3v2_TAG
                     ID3v2_4_FRAME tf;
                 frame_color -= 0x020200;
             }
-            while ( FTell() < tag_sz + sizeof(hdr)  &&  ReadByte(FTell()) != 0 );
+            while ( FTell() < tag_sz + sizeof(hdr)  &&  ReadByte(FTell()) != 0 );//TODO rewrite frames with while readbytes from wav.bt
 
             SetBackColor(0x99CCFF);
+			Printf("tag_sz: %d\nsizeof(hdr): %d\nFtell(): %d\n", tag_sz, sizeof(hdr), FTell());
+			Printf("Size: %d\n", (tag_sz + sizeof(hdr) - FTell()));
+			Printf("id3v2_padding \n");
             ubyte id3v2_padding [ tag_sz + sizeof(hdr) - FTell() ];
         }
     }
@@ -1026,6 +1079,7 @@ struct MPEG_FRAME
         {
             DisplayFormatHex();
             SetBackColor(0xCCCCFF);
+			Printf("mpeg_frame_data \n");
             ubyte mpeg_frame_data [ frame_size ];
         }
 
@@ -1041,14 +1095,73 @@ struct MPEG_FRAME
 
 BigEndian();
 
+local char buf_input[3];
+//local string buf_tags[] = { "ID3", "TAG" };
 local string buf_values[] = { "ID3" };
 
+/*while(ReadBytes(buf_input, FTell(), 3, tag_values_preferred, tag_values_possible)){
+
+	switch( buf_input )
+    {
+        case "ID3": //ID3v2 found. Only in beginning of file
+			buf_tags -= { "ID3" };
+            break;
+
+		case "TAG": //ID3v1 found. Only in the end of file
+			buf_tags -= { "ID3" };
+            break;
+			break;
+
+		default: //MP3 frame. No ID3v2 can appear anymore. ID3v1 finishes the file
+			buf_tags -= { "ID3" };
+            break;
+
+
+}
+*/
 ReadBytes(buf, 0, 3, buf_values);
 
 if ( ! Strcmp(buf, "ID3") )
 {
     Printf("MP3: ID3v2 tag found\n");
     ID3v2_TAG id3v2_tag;
+	//TODO fix id3v2 tag size (total tag size -10)
+	local ubyte f_first = 0;
+	local ubyte f_second = 0;
+	local ubyte f_third = 0;
+	local ubyte f_fourth = 0;	
+
+	//encode size using syncsafe int system
+	local uint32 final_id3v2_tag_size = FTell() - 10;
+	local uint32 i = 0;
+	for (i; i <= 28; ++i){
+    	switch(i / 7){
+				case 0:
+					f_first += (final_id3v2_tag_size << (31 - i) >> (31 + i) );
+				break;
+	
+				case 1:
+					f_second += (final_id3v2_tag_size << (31 - i) >> (31 + i) );
+				break;
+
+				case 2:
+					f_third += (final_id3v2_tag_size << (31 - i) >> (31 + i) );
+				break;
+
+				default:
+					f_fourth += (final_id3v2_tag_size << (31 - i) >> (31 + i) );
+				break;
+		}
+  	}
+	
+	local uint32 jump_back_pos = FTell();
+	FSeek(synchsafe_pos);
+	ubyte syncsafe_1 = { f_first };
+	ubyte syncsafe_2 = { f_second };
+	ubyte syncsafe_3 = { f_third };
+	ubyte syncsafe_4 = { f_fourth };
+	FSeek(jump_back_pos);
+	
 }
 
 local ushort data_values[] = { 0x5441 };
@@ -1091,6 +1204,8 @@ while ( !FEof()  &&  !id3v1_tag_found )
 
     if ( !id3v1_tag_found )
     {
+		//TODO fix size of id3v2 tag here
+		
         MPEG_FRAME mf;
 
         if (frames_count == 1  &&  bitrate)
@@ -1111,6 +1226,7 @@ if (id3v1_tag_found)
 {
     Printf("MP3: ID3v1 tag found\n");
     ID3v1_TAG id3v1_tag;
+	//TODO finish file after id3v1 tag, make sure nothing follows
 }
 
 if ( !FEof() )
@@ -1120,3 +1236,6 @@ Printf("MP3: file parsing completed!\nMP3: valid MPEG frames found: %d\n", frame
 
 if (frames_count != 0)
     Printf("MP3: average frame bitrate: %d kbit\n", sum_bitrate / frames_count);
+
+//TODO edit syncsafe integer (frame size of ID3v2)
+//look up sizes for ALL ID3 tags (set them to not overflow array size)
