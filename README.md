@@ -77,7 +77,19 @@ xcode-select --install
 
 Note: all building commands require you to be in the same folder as this `README` file. Building a fuzzer outside of this folder is not yet supported.
 
-### Method 1: Using Make
+### Method 1: Using the build.sh script
+
+There's a `build.sh` script which automates all construction steps.
+Simply run
+```
+./build.sh gif
+```
+to create a GIF fuzzer.
+
+This works for all file formats provided in `templates/`; if there is a file `templates/FOO.bt`, then `./build.sh FOO` will build a fuzzer.
+
+
+### Method 2: Using Make
 
 There's a `Makefile` (source in `Makefile.am`) which automates all construction steps.
 (Requires `GNU make`.)
@@ -98,7 +110,7 @@ to create a GIF fuzzer.
 This works for all file formats provided in `templates/`; if there is a file `templates/FOO.bt`, then `make FOO-fuzzer` will build a fuzzer.
 
 
-### Method 2: Manual steps
+### Method 3: Manual steps
 
 If the above `make` method does not work, or if you want more control, you may have to proceed manually.
 
@@ -133,6 +145,9 @@ g++ -O3 gif.o fuzzer.o -o gif-fuzzer -lz
 
 
 ## Running the Fuzzer
+
+FormatFuzzer can be run as a standalone parser, generator or mutator of specific formats.
+In addition, it can called by general-purpose fuzzers such as [AFL++](https://github.com/uds-se/AFLplusplus) to integrate those format-specific capabilities into the fuzzing process (see section below on AFL++ integration).
 
 The generated fuzzer takes a _command_ as first argument, followed by options and arguments to that command.
 
@@ -182,6 +197,19 @@ If everything works well, both files should be identical:
 cmp input.gif input2.gif
 ```
 By _mutating_ a decision file (e.g. replacing individual bytes), you can create inputs that are _similar_ to the original file parsed. This is useful for interfacing with specific testing strategies and fuzzers such as AFL, where you can use `gif-fuzzer` and the like as _translators_ from decision files to binary files and back: AFL would mutate decision files, and the program under test would run on the translated binary files. In contrast to mutating binary files directly (as AFL would normally do), this would have the advantage of always having valid inputs - and thus progressing much faster towards coverage.
+
+
+## AFL++ Integration
+
+In addition to the format-specific fuzzers, such as `gif-fuzzer`, FormatFuzzer can also be compiled into format-specific shared libraries, such as `gif.so` (for that, simply run `./build.sh gif` or `make gif.so`).
+Those shared libraries can be loaded by general-purpose fuzzers, such as [AFL++](https://github.com/AFLplusplus/AFLplusplus).
+
+To run AFL++ with FormatFuzzer, just follow the instructions on [our modified version of AFL++](https://github.com/uds-se/AFLplusplus).
+We support different fuzzing strategies, including:
+
+  * AFL+FFMut: runs AFL++ using FormatFuzzer to provide format-specific smart mutations.
+
+  * AFL+FFGen: uses FormatFuzzer as a format-specific generator, while AFL++ mutates its decision seeds.
 
 
 ## Creating and Customizing Binary Templates
