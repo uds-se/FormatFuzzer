@@ -684,6 +684,27 @@ void VectorRemove(std::vector<T>& vec, std::unordered_set<T> set) {
 	vec.erase(std::remove_if(vec.begin(), vec.end(), [&set](T s) { return set.find(s) != set.end(); }), vec.end());
 }
 
+std::string ReadLine(int64 pos, int maxLen = -1, int includeLinefeeds = true) {
+	// This function is currently only implemented in parsing mode
+	assert(!file_acc.generate);
+
+	unsigned end = file_acc.final_file_size;
+	if (maxLen >= 0 && pos + maxLen < file_acc.final_file_size)
+		end = pos + maxLen;
+
+	unsigned i;
+	for (i = pos; i < end; ++i) {
+		unsigned char c = file_acc.file_buffer[i];
+		if (c == '\0' || c == '\n') {
+			if (includeLinefeeds && c == '\n')
+				++i;
+			break;
+		}
+	}
+	return std::string((const char *) file_acc.file_buffer + pos, i - pos);
+}
+
+
 extern std::vector<std::string> ReadBytesInitValues;
 
 bool ReadBytes(std::string& s, int64 pos, int n) {

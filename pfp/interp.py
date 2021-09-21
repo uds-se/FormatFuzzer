@@ -3441,7 +3441,10 @@ class PfpInterp(object):
                     name = "std::string"
                 func.node.cpp += name + " "
             func.node.cpp += func.name + "("
-            for param in func.node.decl.type.args.params:
+            params = []
+            if func.node.decl.type.args:
+                params = func.node.decl.type.args.params
+            for param in params:
                 if hasattr(param.type.type, "names"):
                     names = param.type.type.names
                 else:

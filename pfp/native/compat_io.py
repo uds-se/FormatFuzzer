@@ -378,7 +378,7 @@ def ReadUShort(params, ctxt, scope, stream, coord):
 # char[] ReadLine( int64 pos, int maxLen=-1, int includeLinefeeds=true )
 @native(name="ReadLine", ret=pfp.fields.String)
 def ReadLine(params, ctxt, scope, stream, coord):
-    raise NotImplementedError()
+    return ""
 
 
 # void ReadBytes( uchar buffer[], int64 pos, int n )
