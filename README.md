@@ -4,10 +4,12 @@
 It takes a *binary template* that describes the format of a binary input and generates an *executable* that produces and parses the given binary format.
 From a binary template for GIF, for instance, `FormatFuzzer` produces a GIF generator - also known as *GIF fuzzer*.
 
-The binary templates used by FormatFuzzer come from the [010 editor](https://www.sweetscape.com/010editor/).
-There are more than [170 binary templates](https://www.sweetscape.com/010editor/templates.html), which either can be used directly for `FormatFuzzer` or adapted for its use.
-Generators produced by `FormatFuzzer` are highly efficient, producing thousands of files with test inputs per second.
+Generators produced by `FormatFuzzer` are highly efficient, producing thousands of valid test inputs per second. These inputs are independent from the program under test (or actually, any program), so you can also use them in black-box settings. However, `FormatFuzzer` also integrates with AFL++ to obtain valid inputs that also aim for maximum coverage. In our experiments, this combination surpasses all other settings; see our paper for details.
 
+The binary templates used by FormatFuzzer come from the [010 editor](https://www.sweetscape.com/010editor/).
+There are more than [170 binary templates](https://www.sweetscape.com/010editor/templates.html), which either can be used directly for `FormatFuzzer` or adapted for its use. Out of the box, `FormatFuzzer` produces formats such as AVI, BMP, ELF, GIF, JPG, MIDI, MP3, MP4, PCAP, PNG, WAV, and ZIP; and we keep on extending this list every week.
+
+<!--
 The project is still in an early stage. Current work includes
 
 * creating `.bt` files that are optimized for input generation;
@@ -15,6 +17,7 @@ The project is still in an early stage. Current work includes
 * extending binary templates with specific fuzzing targets;
 and
 * interfacing with other test generators for coverage-guided testing and other test strategies.
+-->
 
 Contributors are welcome! Visit the [FormatFuzzer project page](https://github.com/uds-se/FormatFuzzer) for filing ideas and issues, or adding pull requests.
 
