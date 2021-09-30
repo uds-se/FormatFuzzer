@@ -246,4 +246,4 @@ else
 local int evil = SetEvilBit(false);
 local int file_size = FTell();
 FSeek(2);//fix size
-long real_hsize = { file_size };
+LONG real_hsize = { file_size };

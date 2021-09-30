@@ -1926,7 +1926,14 @@ class PfpInterp(object):
                 if classname in ["char", "uchar", "unsigned char", "CHAR", "UCHAR"]:
                     node.type.cpp += "std::string"
                 else:
-                    node.type.cpp += "std::vector<" + classname + ">"
+                    classtype = classname
+                    if classname == "long":
+                        classtype = "LONG"
+                    if classname == "ulong":
+                        classtype = "ULONG"
+                    if classname == "unsigned long":
+                        classtype = "ULONG"
+                    node.type.cpp += "std::vector<" + classtype + ">"
 
                 if in_struct:
                     node.cpp = "/**/" + node.name + "()"
@@ -2093,11 +2100,18 @@ class PfpInterp(object):
                     node.name += "_"
                 is_char_array = False
                 is_string = False
+                classtype = classname
                 if classname in ["char", "uchar", "unsigned char", "CHAR", "UCHAR", "byte", "ubyte", "BYTE", "UBYTE"]:
                     node.type.cpp = "std::string"
                     is_char_array = True
                 else:
-                    node.type.cpp = "std::vector<" + classname + ">"
+                    if classname == "long":
+                        classtype = "LONG"
+                    if classname == "ulong":
+                        classtype = "ULONG"
+                    if classname == "unsigned long":
+                        classtype = "ULONG"
+                    node.type.cpp = "std::vector<" + classtype + ">"
                 if classname == "string":
                     classname = "std::string"
                     is_string = True
@@ -2111,7 +2125,7 @@ class PfpInterp(object):
                     if is_string:
                         self.add_string_class(element_classname)
                     else:
-                        self.add_native_class(element_classname, classname)
+                        self.add_native_class(element_classname, classtype)
                     is_native = True
                 elif issubclass(nodetype, fields.Enum) or issubclass(nodetype, fields.Union):
                     pass
@@ -2142,18 +2156,18 @@ class PfpInterp(object):
                     if is_char_array:
                         cpp += "\tstd::vector<std::string> known_values;\n"
                     if is_native:
-                        cpp += "\tstd::unordered_map<int, std::vector<" + classname + ">> element_known_values;\n"
+                        cpp += "\tstd::unordered_map<int, std::vector<" + classtype + ">> element_known_values;\n"
                     cpp += "\t" + node.type.cpp + " " + "value;\n"
                     cpp += "public:\n"
                     cpp += "\tint64 _startof = 0;\n"
                     cpp += "\tstd::size_t _sizeof = 0;\n"
                     cpp += "\t" + node.type.cpp + " operator () () { return value; }\n"
-                    cpp += "\t" + classname + " operator [] (int index) {\n"
+                    cpp += "\t" + classtype + " operator [] (int index) {\n"
                     cpp += "\t\tassert_cond((unsigned)index < value.size(), \"array index out of bounds\");\n"
                     cpp += "\t\treturn " + is_pointer + "value[index];\n"
                     cpp += "\t}\n"
                     if is_native:
-                        cpp += "\t" + classname.replace(" ", "_") + "_array_class(" + element_classname + "& element, std::unordered_map<int, std::vector<" + classname + ">> element_known_values = {})\n\t\t: element(element), element_known_values(element_known_values) {}\n"
+                        cpp += "\t" + classname.replace(" ", "_") + "_array_class(" + element_classname + "& element, std::unordered_map<int, std::vector<" + classtype + ">> element_known_values = {})\n\t\t: element(element), element_known_values(element_known_values) {}\n"
                     else:
                         cpp += "\t" + classname.replace(" ", "_") + "_array_class(" + element_classname + "& element) : element(element) {}\n"
                     if is_char_array:
@@ -2194,8 +2208,8 @@ class PfpInterp(object):
                         cpp += "\t\t\t\tvalue.push_back(element.generate());\n"
                         cpp += "\t\t\t\t_sizeof += element._sizeof;\n"
                         cpp += "\t\t\t} else {\n"
-                        cpp += "\t\t\t\tvalue.push_back(file_acc.file_integer(sizeof(" + classname + "), 0, known->second));\n"
-                        cpp += "\t\t\t\t_sizeof += sizeof(" + classname + ");\n"
+                        cpp += "\t\t\t\tvalue.push_back(file_acc.file_integer(sizeof(" + classtype + "), 0, known->second));\n"
+                        cpp += "\t\t\t\t_sizeof += sizeof(" + classtype + ");\n"
                         cpp += "\t\t\t}\n"
                     else:
                         cpp += "\t\t\tvalue.push_back(element.generate());\n"
@@ -2316,6 +2330,8 @@ class PfpInterp(object):
                     node.type.cpp = " ".join(node.type.type.names)
                     if node.type.cpp == "long":
                         node.type.cpp = "LONG"
+                    if node.type.cpp == "ulong":
+                        node.type.cpp = "ULONG"
                     if node.type.cpp == "unsigned long":
                         node.type.cpp = "ULONG"
                     if node.type.cpp == "time_t":
@@ -2819,15 +2835,22 @@ class PfpInterp(object):
             if node.name == 'wchar_t':
                 node.cpp = ""
                 return
-            node.cpp = "typedef"
+            nodetype = ""
             for name in names:
                 realnames = scope.get_type(name)
                 if realnames:
                     for n in realnames:
-                        node.cpp += " " + n
+                        nodetype += " " + n
                 else:
-                    node.cpp += " " + name
-            node.cpp += " " + node.name
+                    nodetype += " " + name
+
+            if nodetype == " long":
+                nodetype = " LONG"
+            if nodetype == " ulong":
+                nodetype = " ULONG"
+            if nodetype == " unsigned long":
+                nodetype = " ULONG"
+            node.cpp = "typedef" + nodetype + " " + node.name
         if node.name in ["UINT", "byte", "CHAR", "BYTE", "uchar", "ubyte", "UCHAR", "UBYTE", "int16", "SHORT", "INT16", "uint16", "ushort", "USHORT", "UINT16", "WORD", "int32", "INT", "INT32", "LONG", "uint", "uint32", "ulong", "UINT", "UINT32", "ULONG", "DWORD", "int64", "quad", "QUAD", "INT64", "__int64", "uint64", "uquad", "UQUAD", "UINT64", "QWORD", "__uint64", "FLOAT", "DOUBLE", "hfloat", "HFLOAT", "OLETIME", "time_t"]:
             node.cpp = ""
 
