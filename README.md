@@ -9,23 +9,14 @@ Generators produced by `FormatFuzzer` are highly efficient, producing thousands 
 The binary templates used by FormatFuzzer come from the [010 editor](https://www.sweetscape.com/010editor/).
 There are more than [170 binary templates](https://www.sweetscape.com/010editor/templates.html), which either can be used directly for `FormatFuzzer` or adapted for its use. Out of the box, `FormatFuzzer` produces formats such as AVI, BMP, GIF, JPG, MIDI, MP3, MP4, PCAP, PNG, WAV, and ZIP; and we keep on extending this list every week.
 
-<!--
-The project is still in an early stage. Current work includes
-
-* creating `.bt` files that are optimized for input generation;
-* adding more configuration options to control the fuzzer;
-* extending binary templates with specific fuzzing targets;
-and
-* interfacing with other test generators for coverage-guided testing and other test strategies.
--->
-
 Contributors are welcome! Visit the [FormatFuzzer project page](https://github.com/uds-se/FormatFuzzer) for filing ideas and issues, or adding pull requests. For details on how `FormatFuzzer` works and how it compares, read [our paper](https://arxiv.org/abs/2109.11277) for more info.
 
 
 ## Getting
 
-FormatFuzzer is available from the [FormatFuzzer project page](https://github.com/uds-se/FormatFuzzer) by cloning its git repository:
+FormatFuzzer is available from the [FormatFuzzer project page](https://github.com/uds-se/FormatFuzzer). You can download and unpack the latest release from [the releases page](https://github.com/uds-se/FormatFuzzer/releases).
 
+For the very latest and greatest, you can also clone its git repository:
 ```
 git clone https://github.com/uds-se/FormatFuzzer.git
 ```
