@@ -19,6 +19,7 @@
 
 // Record whether we have found a format chunk yet
 local int haveValidFormat = false;
+local int data_size = 0;
 
 //-----------------------------------
 // Define structures used in WAV files
@@ -33,21 +34,21 @@ typedef struct
 //Formattag ()
 typedef enum < ushort > e_Format_Tags {
 	PCM = 0x0001,
-    MS_ADPCM = 0x0002,//3%, invalid number of samples in packet, block predictor invalid, needs compression algorithm to be fixed
-	ALAW = 0x0006,//92%
-	MULAW = 0x0007,//92%
-	OKI_ADPCM = 0x0010,// 92%
-	G723_ADPCM = 0x0014, //12%, invalid number of bits
-	DILOGIC_OKI_ADPCM = 0x0017,//87%
-	YAMAHA_ADPCM = 0x0020, //91%
-	DSPGROUP_TRUESPEECH = 0x0022, //14%, too small input buffer, need at least 32 bytes
-	GSM610 = 0x0031, //8%, packet too short
-	NMS_VBXADPCM = 0x0038,//5%, corrupt bitstream
-	G721_ADPCM = 0x0040, //26%, invalid number of bits
-	MPEG_1_LAYER_I_II = 0x0050, //3%, header missing, invalid data found
-	MPEG_1_LAYER_III_MP3 = 0x0055, //0%, header missing, invalid data found
-	XBOX_ADPCM = 0x0069, //33%
-	CREATIVE_ADPCM = 0x0200, //99%
+    //MS_ADPCM = 0x0002,//3%, invalid number of samples in packet, block predictor invalid, needs compression algorithm to be fixed
+	//ALAW = 0x0006,//92%
+	//MULAW = 0x0007,//92%
+	//OKI_ADPCM = 0x0010,// 92%
+	//G723_ADPCM = 0x0014, //12%, invalid number of bits
+	//DILOGIC_OKI_ADPCM = 0x0017,//87%
+	//YAMAHA_ADPCM = 0x0020, //91%
+	//DSPGROUP_TRUESPEECH = 0x0022, //14%, too small input buffer, need at least 32 bytes
+	//GSM610 = 0x0031, //8%, packet too short
+	//NMS_VBXADPCM = 0x0038,//5%, corrupt bitstream
+	//G721_ADPCM = 0x0040, //26%, invalid number of bits
+	//MPEG_1_LAYER_I_II = 0x0050, //3%, header missing, invalid data found
+	//MPEG_1_LAYER_III_MP3 = 0x0055, //0%, header missing, invalid data found
+	//XBOX_ADPCM = 0x0069, //33%
+	//CREATIVE_ADPCM = 0x0200, //99%
 } E_FORMAT_TAGS;
 
 // Stores the format information for the file
@@ -56,12 +57,20 @@ typedef struct {
     long           chunkSize = { 16 };
     local int pos = FTell();
     E_FORMAT_TAGS          wFormatTag; //bugfixing formats 
-    unsigned short wChannels;
+    unsigned short wChannels <min = 1, max = 256>;
+	data_size += wChannels; 
     unsigned long  dwSamplesPerSec;
     unsigned long  dwAvgBytesPerSec;
-    local unsigned short bps = ReadUShort(FTell() + 2);
-    unsigned short wBlockAlign = { (unsigned short) ((bps / 8) * wChannels) }; 
-    unsigned short wBitsPerSample;
+    //local unsigned short bps = ReadUShort(FTell() + 2);
+    //unsigned short wBlockAlign = { (unsigned short) ((bps / 8) * wChannels) }; 
+	local unsigned short dummy_pos = FTell();
+	unsigned short dummy;    
+	unsigned short wBitsPerSample = { 8, 16, 32 };
+	data_size = data_size * ( wBitsPerSample / 8 );
+	local unsigned short bps_pos = FTell();
+	FSeek(dummy_pos);
+	unsigned short wBlockAlign = { (unsigned short) ((wBitsPerSample / 8) * wChannels) };
+	FSeek(bps_pos);
     if (wFormatTag == 17) //DVI IMA ADPCM
     {
         unsigned short wcbsize;
@@ -84,8 +93,11 @@ typedef struct {
 typedef struct 
 {
     char           chunkID[4];
-	local int size_pos = FTell();
-    long           chunkSize <min=32>;
+	local int 	   size_pos = FTell();
+    long           chunkSize_temp <min=1>;
+		
+	FSeek(size_pos);
+	long chunkSize = { chunkSize_temp * data_size };
 
     // Test if we have a valid format
     if( !haveValidFormat )
@@ -93,7 +105,7 @@ typedef struct
         Warning( "File contains no valid WAVE format chunk." );
         return -1;
     }
-
+	//TODO change the way data is generated, size needs to be a multiple of data_size (single sample)
     // Parse the samples of the data
     if( ((format.wBitsPerSample != 8) && (format.wBitsPerSample != 16) && (format.wBitsPerSample != 32)) 
         || format.wBlockAlign == 0 || (chunkSize % (int)format.wBlockAlign != 0) )
@@ -128,14 +140,14 @@ typedef struct
                  int   channels[ format.wChannels ];
         } samples[ chunkSize / (int)format.wBlockAlign ];
     }
-	//Fix size TODO
-	local long end = FTell();
-	local long real_size = end - size_pos - 4;
-	FSeek(size_pos);
-	local int evil = SetEvilBit(false);
-	long chunkSize = {real_size};
-	SetEvilBit(evil);
-	FSeek(end); 
+	//Fix size
+	//local long end = FTell();
+	//local long real_size = end - size_pos - 4;
+	//FSeek(size_pos);
+	//local int evil = SetEvilBit(false);
+	//long chunkSize = {real_size};
+	//SetEvilBit(evil);
+	//FSeek(end); 
     // Padding so the next chunk starts on an even byte
     if( (chunkSize & 1) && !FEof(0.0) )
         uchar padding;
