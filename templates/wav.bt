@@ -94,7 +94,7 @@ typedef struct
 {
     char           chunkID[4];
 	local int 	   size_pos = FTell();
-    long           chunkSize_temp <min=1>;
+    long           chunkSize_temp <min=1,max=16>;
 		
 	FSeek(size_pos);
 	long chunkSize = { chunkSize_temp * data_size };
@@ -176,7 +176,7 @@ typedef struct {
 	local int size_pos = FTell();
     long      chunkSize;
     local int pos = FTell();
-    long      dwCuePoints;
+    long      dwCuePoints<min=1,max=16>;
     CUEPOINT  points[dwCuePoints];
 	//Fix size TODO
 	local long end = FTell();
