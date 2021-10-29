@@ -423,7 +423,7 @@ struct ID3v2_HEADER
 	
 		ubyte i_unsyn_used = { 0 }; //TODO reserach unsync
 		local ubyte unsyn_used = (i_unsyn_used << 7);
-		FSeek(current_pos);
+		FSeek(current_pos);f
 		//TODO change after extended header implementation
 		ubyte i_extend_head_pres = { 0 };
 		local ubyte extend_head_pres = (i_extend_head_pres << 6);
@@ -492,7 +492,8 @@ struct ID3v2_FRAME
 
     DisplayFormatDecimal();
 
-    uint32 size; // frame size without frame header
+    uint32 size; //TODO frame size without frame header
+	
 
     FRAME_FLAGS flags;
 
@@ -1239,3 +1240,5 @@ if (frames_count != 0)
 
 //TODO edit syncsafe integer (frame size of ID3v2)
 //look up sizes for ALL ID3 tags (set them to not overflow array size)
+//implement crc checksum for protection bit
+//make id3 tag a choice between { "ID3", ""} so that no tag can be generated as well
