@@ -31,7 +31,8 @@ To run FormatFuzzer, you need the following:
 * Python 3
 * A C++ compiler with GNU libraries (notably `getopt_long()`) such as `clang` or `gcc`
 * The Python packages `py010parser`, `six`, and `intervaltree`
-* A `zlib` library (for compression and checksum functions)
+* A `zlib` library (for compression functions)
+* A `boost` library (for checksum functions)
 
 If you plan to edit the build and configuration scripts (`.ac` and `.am` files), you will also need
 * GNU autoconf
@@ -40,7 +41,7 @@ If you plan to edit the build and configuration scripts (`.ac` and `.am` files),
 ### Installing Requirements on Linux (Debian Packages)
 
 ```
-sudo apt install git g++ make automake python3-pip zlib1g-dev
+sudo apt install git g++ make automake python3-pip zlib1g-dev libboost1.71-dev
 pip3 install py010parser six intervaltree
 ```
 
@@ -48,7 +49,7 @@ pip3 install py010parser six intervaltree
 
 ```
 xcode-select --install
-brew install python3 automake
+brew install python3 automake boost
 pip3 install py010parser six intervaltree
 ```
 

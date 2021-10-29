@@ -9,6 +9,8 @@
 #include <unordered_set>
 #include <stdarg.h>
 
+#include <boost/crc.hpp>
+
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -524,8 +526,15 @@ int SetEvilBit(int allow) {
 uint32 Checksum(int checksum_type, int64 start, int64 size) {
 	assert_cond(start + size <= file_acc.file_size, "checksum range invalid");
 	switch(checksum_type) {
+	case CHECKSUM_CRC16: {
+		boost::crc_16_type res;
+		res.process_bytes(file_acc.file_buffer + start, size);
+		return res.checksum();
+	}
 	case CHECKSUM_CRC32: {
-		return crc32(0, file_acc.file_buffer + start, size);
+		boost::crc_32_type res;
+		res.process_bytes(file_acc.file_buffer + start, size);
+		return res.checksum();
 	}
 	default:
 		abort();
