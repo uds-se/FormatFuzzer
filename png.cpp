@@ -2462,11 +2462,63 @@ PNG_CHUNK_FDAT* PNG_CHUNK_FDAT::generate() {
 
 
 
-std::string compress_data(std::string data, int level) {
+int ZEXPORT compress3(Bytef *dest, uLongf *destLen, const Bytef *source, uLong sourceLen, int level, int windowBits)
+{
+    z_stream stream;
+    int err;
+    const uInt max = (uInt)-1;
+    uLong left;
+
+    left = *destLen;
+    *destLen = 0;
+
+    stream.zalloc = (alloc_func)0;
+    stream.zfree = (free_func)0;
+    stream.opaque = (voidpf)0;
+
+    err = deflateInit2(&stream, level, Z_DEFLATED, windowBits, 8, Z_DEFAULT_STRATEGY);
+    if (err != Z_OK) return err;
+
+    stream.next_out = dest;
+    stream.avail_out = 0;
+    stream.next_in = (z_const Bytef *)source;
+    stream.avail_in = 0;
+
+    do {
+        if (stream.avail_out == 0) {
+            stream.avail_out = left > (uLong)max ? max : (uInt)left;
+            left -= stream.avail_out;
+        }
+        if (stream.avail_in == 0) {
+            stream.avail_in = sourceLen > (uLong)max ? max : (uInt)sourceLen;
+            sourceLen -= stream.avail_in;
+        }
+        err = deflate(&stream, sourceLen ? Z_NO_FLUSH : Z_FINISH);
+    } while (err == Z_OK);
+
+    *destLen = stream.total_out;
+    deflateEnd(&stream);
+    return err == Z_STREAM_END ? Z_OK : err;
+}
+
+
+
+std::string compress_data(std::string data, int level, int windowBits) {
 	unsigned long data_len = data.size();
-	unsigned long comp_len = compressBound(data_len);
+	unsigned long comp_len = 2 * compressBound(data_len);
 	unsigned char* compressed = (unsigned char*) malloc(comp_len);
-	compress2(compressed, &comp_len, (const Bytef*) data.c_str(), data_len, level);
+	compress3(compressed, &comp_len, (const Bytef*) data.c_str(), data_len, level, windowBits);
+	if (windowBits == 8 && compressed[0] == 0x18) {
+		compressed[0] = 0x08;
+		if (compressed[1] == 0x19)
+			compressed[1] = 0x1d;
+		if (compressed[1] == 0x57)
+			compressed[1] = 0x5b;
+		if (compressed[1] == 0x95)
+			compressed[1] = 0x99;
+		if (compressed[1] == 0xd3)
+			compressed[1] = 0xd7;
+	}
 	std::string compressed_str((char*) compressed, comp_len);
 	free(compressed);
 	return compressed_str;
@@ -2541,19 +2593,30 @@ std::string generate_data(uint32 width, uint32 height, PNG_COLOR_SPACE_TYPE colo
 		}
 	}
 
+	int windowBits = 15;
 	if (!file_acc.generate) {
 		assert_cond(data_len == data.length(), "wrong length for uncompressed IDAT data");
 		file_acc.parse = NULL;
 		std::string compressed((char*)&file_acc.file_buffer[file_acc.file_pos], ::g->length());
-		for (int l = 0; l < 10; ++l)
-			if (compress_data(data, l) == compressed) {
+		int cinfo = (unsigned) compressed[0] >> 4;
+		if (0 <= cinfo && cinfo <= 7)
+			windowBits = cinfo + 8;
+		for (int l = 0; l < 10; ++l) {
+			std::string candidate = compress_data(data, l, windowBits);
+			if (candidate == compressed) {
 				file_acc.parse = [l](unsigned char* file_buf) -> long long { return l + 1; };
 				break;
 			}
+		}
 		assert_cond(!!file_acc.parse, "failed to find working compression level");
 	}
 	int level = file_acc.rand_int(11, file_acc.parse) - 1;
-	return compress_data(data, level);
+	file_acc.parse = NULL;
+	if (!file_acc.generate) {
+		file_acc.parse = [windowBits](unsigned char* file_buf) -> long long { return windowBits - 8; };
+	}
+	windowBits = file_acc.rand_int(8, file_acc.parse) + 8;
+	return compress_data(data, level, windowBits);
 }
 
 

@@ -1748,7 +1748,7 @@ int benchmark(int argc, char *argv[])
 
 int version(int argc, char *argv[])
 {
-	fprintf(stderr, "This is FormatFuzzer 0.1.0\n");
+	fprintf(stderr, "This is FormatFuzzer 1.0\n");
 	return 0;
 }
 
