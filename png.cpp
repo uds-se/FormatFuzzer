@@ -1940,7 +1940,6 @@ public:
 		btPngSignature_element(false),
 		btPngSignature(btPngSignature_element, { { 0, {{0x8950}} }, { 1, {{0x4E47}} }, { 2, {{0x0D0A}} }, { 3, {{0x1A0A}} } }),
 		sig(PNG_SIGNATURE_sig_instances),
-		chunk_type(4, 0),
 		length(2),
 		cname_element(false),
 		cname(cname_element, { "IHDR", "tEXt", "PLTE", "cHRM", "sRGB", "iEXt", "zEXt", "tIME", "pHYs", "bKGD", "sBIT", "sPLT", "acTL", "fcTL", "fdAT", "IEND", "eXIf", "IHDR", "IEND" }),
@@ -2749,6 +2748,7 @@ void generate_file() {
 	};
 	ChangeArrayLength();
 	::g->chunk_count = 0;
+	::g->chunk_type.resize(4);
 	::g->preferred_chunks = { "IHDR" };
 	::g->possible_chunks = { "IHDR" };
 	while (ReadBytes(::g->chunk_type, (FTell() + 4), 4, ::g->preferred_chunks, ::g->possible_chunks)) {

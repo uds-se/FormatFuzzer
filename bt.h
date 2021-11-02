@@ -570,7 +570,11 @@ void SPrintf(std::string& s, const char* fmt, ...) {
 	s = res;
 }
 
-std::string::size_type Strlen(std::string s) { return s.size(); }
+int Atoi(std::string s) {
+	return atoi(s.c_str());
+}
+
+int Strlen(std::string s) { return s.size(); }
 
 int Strcmp(std::string s1, std::string s2) {
 	return strcmp(s1.c_str(), s2.c_str());
@@ -579,6 +583,10 @@ int Strcmp(std::string s1, std::string s2) {
 int Strncmp(std::string s1, std::string s2, int n) {
 	assert ((unsigned) n <= s1.length() && (unsigned) n <= s2.length());
 	return strncmp(s1.c_str(), s2.c_str(), n);
+}
+
+int Strstr(std::string s1, std::string s2) {
+	return s1.find(s2);
 }
 
 std::string SubStr(std::string s, int start, int count = -1) {
@@ -656,12 +664,56 @@ unsigned get_file_size() {
 	return file_acc.file_size;
 }
 
+
+class TFindResults {
+public:
+	int count_var = 0;
+	std::vector<long> start_var;
+	std::vector<long> size_var;
+
+	int& count() { return count_var; }
+	std::vector<long>& start() { return start_var; }
+	std::vector<long>& size() { return size_var; }
+};
+
+
+template<typename T>
+TFindResults FindAll(T data, int matchcase=true, int wholeword=false, int method=0, double tolerance=0.0, int dir=1, int64 start=0, int64 size=0, int wildcardMatchLength=24) {
+	// Arbitrary types T not yet handled
+	abort();
+}
+
+
+template<>
+TFindResults FindAll(const char* data, int matchcase, int wholeword, int method, double tolerance, int dir, int64 start, int64 size, int wildcardMatchLength) {
+	// Other configurations not yet handled
+	assert(matchcase == true && wholeword == false && method == 0 && tolerance == 0.0 && dir == 1 && size == 0 && wildcardMatchLength == 24);
+
+	// This function is currently only implemented in parsing mode
+	assert(!file_acc.generate);
+
+	unsigned data_size = strlen(data);
+	TFindResults res;
+	while (true) {
+		unsigned char* p = (unsigned char*) memmem(file_acc.file_buffer + start, file_acc.final_file_size - start, data, data_size);
+		if (!p)
+			break;
+		++res.count_var;
+		res.start_var.push_back(p - file_acc.file_buffer);
+		res.size_var.push_back(data_size);
+		start = (p - file_acc.file_buffer) + 1;
+	}
+	return res;
+}
+
 template<typename T>
 int64 FindFirst(T data, int matchcase=true, int wholeword=false, int method=0, double tolerance=0.0, int dir=1, int64 start=0, int64 size=0, int wildcardMatchLength=24) {
 	// Other configurations not yet handled
 	assert(matchcase == true && wholeword == false && method == 0 && tolerance == 0.0 && dir == 1 && size == 0 && wildcardMatchLength == 24);
+
 	T newdata = data;
 	swap_bytes(&newdata, sizeof(T));
+
 	file_acc.lookahead = true;
 	if (!file_acc.generate)
 		file_acc.evil_parse = [&start, &newdata](unsigned char* file_buf) -> bool {
@@ -687,6 +739,39 @@ int64 FindFirst(T data, int matchcase=true, int wholeword=false, int method=0, d
         return pos;
 
 }
+
+
+template<>
+int64 FindFirst(std::string data, int matchcase, int wholeword, int method, double tolerance, int dir, int64 start, int64 size, int wildcardMatchLength) {
+	// Other configurations not yet handled
+	assert(matchcase == true && wholeword == false && method == 0 && tolerance == 0.0 && dir == 1 && size == 0 && wildcardMatchLength == 24);
+
+	file_acc.lookahead = true;
+	if (!file_acc.generate)
+		file_acc.evil_parse = [&start, &data](unsigned char* file_buf) -> bool {
+			return memmem(file_acc.file_buffer + start, file_acc.final_file_size - start, data.c_str(), data.size()) == NULL;
+		};
+	if (file_acc.evil(file_acc.evil_parse)) {
+		file_acc.lookahead = false;
+		return -1;
+	}
+	if (!file_acc.generate)
+		file_acc.parse = [&start, &data](unsigned char* file_buf) -> long long {
+			return (unsigned char *)memmem(file_acc.file_buffer + start, file_acc.final_file_size - start, data.c_str(), data.size()) - (file_acc.file_buffer + start);
+		};
+	int64 pos = start + file_acc.rand_int(MAX_FILE_SIZE + 1 - data.size() - start, file_acc.parse);
+	int64 original_pos = FTell();
+	FSeek(pos);
+	std::vector<std::string> values = { data };
+	bool evil = file_acc.set_evil_bit(false);
+	file_acc.file_string(values);
+	file_acc.set_evil_bit(evil);
+        file_acc.lookahead = false;
+        FSeek(original_pos);
+        return pos;
+
+}
+
 
 template<typename T>
 void VectorRemove(std::vector<T>& vec, std::unordered_set<T> set) {

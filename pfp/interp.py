@@ -914,6 +914,8 @@ class PfpInterp(object):
             for local in frame:
                 if local.name in [l.name for l in self._struct_locals] + self._struct_vars:
                     continue
+                if hasattr(classnode, "args") and classnode.args is not None and local.name in [p.name for p in classnode.args.params]:
+                    continue
                 used = False
                 for decl in classnode.decls:
                     if hasattr(decl, "cpp") and "/**/" + local.name + "()" in decl.cpp:
@@ -1631,10 +1633,7 @@ class PfpInterp(object):
             self._handle_node(child, scope, ctxt, stream)
             for decl in self.get_decls(child):
                 if "local" in decl.quals and "const" not in decl.quals and hasattr(decl.type, "cpp") and decl.name not in self._global_locals:
-                    cpp = decl.type.cpp + " " + decl.name
-                    if hasattr(decl, "constructor"):
-                        cpp += decl.constructor
-                    cpp += ";\n"
+                    cpp = decl.type.cpp + " " + decl.name + ";\n"
                     self._globals.append((decl.name, cpp))
                     self._global_locals.append(decl.name)
             if child.cpp:
@@ -1671,7 +1670,9 @@ class PfpInterp(object):
         node.cpp += "\n\nstd::unordered_map<std::string, std::string> variable_types = { "
         for var in self._variable_types:
             node.cpp += '{ "' + var + '", "' + self._variable_types[var] + '" }, '
-        node.cpp = node.cpp[:-2] + " };"
+        if self._variable_types:
+            node.cpp = node.cpp[:-2]
+        node.cpp += " };"
         node.cpp += "\n\nstd::vector<std::vector<int>> integer_ranges = { "
         for (a, b) in self._integer_ranges:
             node.cpp += '{ ' + a + ', ' + b + ' }, '
@@ -1923,7 +1924,9 @@ class PfpInterp(object):
                 classname = " ".join(node.type.type.type.names)
                 if classname == "string":
                     classname = "std::string"
+                is_char_array = False
                 if classname in ["char", "uchar", "unsigned char", "CHAR", "UCHAR"]:
+                    is_char_array = True
                     node.type.cpp += "std::string"
                 else:
                     classtype = classname
@@ -1940,12 +1943,15 @@ class PfpInterp(object):
                 else:
                     node.cpp = node.type.cpp + " " + node.name
                 if node.init is None and node.type.dim.cpp != "0":
-                    if classname in ["char", "uchar", "unsigned char", "CHAR", "UCHAR"]:
-                        node.constructor = "(" + node.type.dim.cpp + ", 0)"
-                    else:
-                        node.constructor = "(" + node.type.dim.cpp + ")"
                     if in_struct:
-                        node.cpp = ""
+                        node.cpp += ".resize(" + node.type.dim.cpp + ")"
+                    else:
+                        if is_char_array:
+                            node.cpp += "(" + node.type.dim.cpp + ", 0)"
+                        else:
+                            node.cpp += "(" + node.type.dim.cpp + ")"
+                elif is_char_array and node.init is not None and not hasattr(node.init, "exprs"):
+                    node.cpp += " = " + node.init.cpp
                 else:
                     node.cpp += " = { "
                     if node.init is not None:
@@ -3467,6 +3473,8 @@ class PfpInterp(object):
             params = []
             if func.node.decl.type.args:
                 params = func.node.decl.type.args.params
+                if not isinstance(params[0], AST.Decl):
+                    params = []
             for param in params:
                 if hasattr(param.type.type, "names"):
                     names = param.type.type.names
@@ -3488,7 +3496,8 @@ class PfpInterp(object):
             for decl in decls:
                 if "local" in decl.quals:
                     func.body.cpp = func.body.cpp.replace("/**/" + decl.name + "()", decl.name)
-            func.node.cpp = func.node.cpp[:-2]
+            if params:
+                func.node.cpp = func.node.cpp[:-2]
             func.node.cpp += ") {\n"
             func.node.cpp += func.body.cpp
             func.node.cpp += "}\n"
@@ -3828,6 +3837,10 @@ class PfpInterp(object):
                 except errors.InterpContinue as e:
                     pass
 
+                except errors.InterpReturn as e:
+                    if not self._generate:
+                        raise e
+
             if node.next is not None:
                 # do the next statement
                 self._handle_node(node.next, scope, ctxt, stream)
@@ -3876,6 +3889,9 @@ class PfpInterp(object):
                     break
                 except errors.InterpContinue as e:
                     pass
+                except errors.InterpReturn as e:
+                    if not self._generate:
+                        raise e
             if self._generate:
                 break
         node.cpp = "while (" + node.cond.cpp + ") {\n"
@@ -3908,6 +3924,9 @@ class PfpInterp(object):
                     break
                 except errors.InterpContinue as e:
                     pass
+                except errors.InterpReturn as e:
+                    if not self._generate:
+                        raise e
             if node.cond is not None and not self._handle_node(
                 node.cond, scope, ctxt, stream,
             ):

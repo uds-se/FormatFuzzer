@@ -41,6 +41,8 @@ def Atoi(params, ctxt, scope, stream, coord):
         raise errors.InvalidArguments(
             coord, "{} args".format(len(params)), "one arg"
         )
+    if params[0]._pfp__interp._generate:
+        return 0
     return int(PYSTR(params[0]))
 
 
