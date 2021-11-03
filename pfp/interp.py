@@ -2964,7 +2964,7 @@ class PfpInterp(object):
         dest_type = scope.get_meta("dest_type")
 
         left_val = self._handle_node(node.left, scope, ctxt, stream)
-        if dest_type is not None and not isinstance(left_val, dest_type):
+        if dest_type is not None and left_val is not None and not isinstance(left_val, dest_type):
             new_left_val = dest_type()
             new_left_val._pfp__set_value(left_val)
             left_val = new_left_val
