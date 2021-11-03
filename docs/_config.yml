@@ -1,0 +1,31 @@
+theme: jekyll-theme-minimal
+title: FormatFuzzer
+layout: default
+plugins:
+    - jekyll-optional-front-matter
+    - jekyll-redirect-from
+include:
+    - README.md
+optional_front_matter:
+  remove_originals: true
+defaults:
+  - scope:
+      path: "*.md"
+    values:
+      layout: default
+tagline: High-efficiency, high-quality fuzzing with binary inputs
+twitter:
+    - username: FormatFuzzer
+social:
+  links:
+    - https://twitter.com/FormatFuzzer
+
+include:
+    - README.md
+
+description: FormatFuzzer is a framework for high-efficiency, high-quality generation and parsing of binary inputs.
+bio: <i class="fa fa-twitter" aria-hidden="true"></i>
+    <span class="sr-only">Twitter:</span>&nbsp;&nbsp;<a href="https://www.twitter.com/FormatFuzzer">@FormatFuzzer</a>
+
+logo: assets/gif-fuzzer.gif
+logo_title: FormatFuzzer in action

@@ -1,9 +1,0 @@
-theme: jekyll-theme-minimal
-title: FormatFuzzer
-
-include:
-    - README.md
-
-description: FormatFuzzer is a framework for high-efficiency, high-quality generation and parsing of binary inputs.
-
-logo: assets/gif-fuzzer.gif

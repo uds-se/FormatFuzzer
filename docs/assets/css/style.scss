@@ -1,0 +1,12 @@
+---
+---
+
+@import "{{ site.theme }}";
+
+/* Don't make links bold when hovering, underline instead */
+a:hover, a:focus {
+  font-weight: unset;
+  text-decoration: underline;
+}
+
+@import "font-awesome.min.css";
