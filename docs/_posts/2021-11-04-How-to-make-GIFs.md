@@ -14,9 +14,21 @@ In the past years, _fuzzers_ have become one of the most important tools to gene
 
 Could you thus use such a fuzzer to test your program? The answer is: yes and no. Since a fuzzer _mutates_ given GIF files, what it will generate first and foremost is plenty of _invalid_ GIF files. You will thus thoroughly test the _parser_ that reads in a file, as well as error handling. So, yes. However, it is  unlikely that a mutation will actually create a new GIF feature, unless it is already contained in one of the given GIFs. So, no.
 
-This is where _language_-based fuzzers come in. A language-based fuzzer such as `FormatFuzzer` uses a _format description_ called _binary template_ to generate millions of inputs that adhere to this very format. Using a binary template for GIFs, for instance, `FormatFuzzer` can generate millions of GIFs, all valid, and including all features that the GIF format has to offer. A simple `make gif-fuzzer` suffices, and you get a super-efficient GIF generator.
+This is where _language_-based fuzzers come in. A language-based fuzzer such as `FormatFuzzer` uses a _format description_ called _binary template_ to generate millions of inputs that adhere to this very format. Using a binary template for GIFs, for instance, `FormatFuzzer` can generate millions of GIFs, all valid, and including all features that the GIF format has to offer. A simple
 
-Here's one of the GIFs produced by FormatFuzzer –&nbsp;a series of three rectangles. It may look unspectacular, but it covers 
+```sh
+$ make gif-fuzzer
+```
+
+suffices, and you get a super-efficient GIF generator `gif-fuzzer`, which you can invoke as
+
+```sh
+$ ./gif-fuzzer fuzz foo.gif
+```
+
+to create a GIF file `foo.gif`.
+
+Here's one of the GIFs produced by FormatFuzzer –&nbsp;an animated series of six black rectangles. It may look unspectacular, but it covers plenty of GIF features, including animation. You can create a large number of these, and put your program to the test.
 
 ![](/assets/six-rectangles.gif)
 
