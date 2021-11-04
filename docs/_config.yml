@@ -1,6 +1,7 @@
 theme: jekyll-theme-minimal
 title: FormatFuzzer
 layout: default
+baseurl: /FormatFuzzer
 plugins:
     - jekyll-optional-front-matter
     - jekyll-redirect-from
