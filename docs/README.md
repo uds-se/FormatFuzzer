@@ -24,7 +24,7 @@ In the FormatFuzzer blog, we discuss how to address specific problems with Forma
 <ul>
   {% for post in site.posts %}
     <li>
-      <a href="{{ post.url }}">{{ post.title }}</a>
+      <a href="{{ post.url | remove_first:'/' }}">{{ post.title }}</a>
       (<span class="date">{{ post.date | date: "%Y-%m-%d" }}</span>)
     </li>
   {% endfor %}
