@@ -5,6 +5,7 @@ baseurl: /FormatFuzzer
 plugins:
     - jekyll-optional-front-matter
     - jekyll-redirect-from
+    - jekyll-feed
 include:
     - README.md
 optional_front_matter:
