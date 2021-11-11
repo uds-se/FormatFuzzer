@@ -14,7 +14,7 @@ In the past years, _fuzzers_ have become one of the most important tools to gene
 
 Could you thus use such a fuzzer to test your program? The answer is: yes and no. Since a fuzzer _mutates_ given GIF files, what it will generate first and foremost is plenty of _invalid_ GIF files. You will thus thoroughly test the _parser_ that reads in a file, as well as error handling. So, yes. However, it is  unlikely that a mutation will actually create a new GIF feature, unless it is already contained in one of the given GIFs. So, no.
 
-This is where _language_-based fuzzers come in. A language-based fuzzer such as `FormatFuzzer` uses a _format description_ called _binary template_ to generate millions of inputs that adhere to this very format. Using a binary template for GIFs, for instance, `FormatFuzzer` can generate millions of GIFs, all valid, and including all features that the GIF format has to offer. A simple
+This is where _language_-based fuzzers come in. A language-based fuzzer such as `FormatFuzzer` uses a _format description_ called [binary template](https://www.sweetscape.com/010editor/templates.html) to generate millions of inputs that adhere to this very format. Using a binary template for GIFs, for instance, `FormatFuzzer` can generate millions of GIFs, all valid, and including all features that the GIF format has to offer. A simple
 
 ```sh
 $ make gif-fuzzer
@@ -28,11 +28,25 @@ $ ./gif-fuzzer fuzz foo.gif
 
 to create a GIF file `foo.gif`.
 
-Here's one of the GIFs produced by FormatFuzzer –&nbsp;an animated series of six black rectangles. It may look unspectacular, but it covers plenty of GIF features, including animation. You can create a large number of these, and put your program to the test.
+Here's one of the GIFs produced by FormatFuzzer –&nbsp;[six-rectangles.gif]({{ '/assets/six-rectangles.gif' | relative_url }}), an animated series of six black rectangles. It may look unspectacular, but it covers plenty of GIF features, including animation. You can create a large number of these, and put your program to the test.
 
 ![]({{ '/assets/six-rectangles.gif' | relative_url }})
 
-The catch of tools like `FormatFuzzer`, however, is that someone has to write these binary templates in the first place -&nbsp;which means digging through file format specifications and encoding their rules such that `FormatFuzzer` can process them. Fortunately, many common formats already _are_ encoded as binary templates (including GIFs!) and it only takes little effort to make them suitable for high-quality production of inputs.
+Interestingly, `six-rectangles.gif` renders differently in different browsers. On Safari 15.1, it renders as a big black rectangle:
+
+![]({{ '/assets/GIF_Safari.png' | relative_url }})
+
+On Firefox 94.0, it renders as a small black rectangle:
+
+![]({{ '/assets/GIF_Firefox.png' | relative_url }})
+
+And on Google Chrome 95.0, it renders as white space:
+
+![]({{ '/assets/GIF_Chrome.png' | relative_url }})
+
+So, with the help of `FormatFuzzer`, we already detected an inconsistency in how GIF files are processed. Which one is the correct behavior?
+
+Once set up for a particular format, tools like `FormatFuzzer` can mbe tremendously useful. However, _someone has to write these binary templates in the first place_ -&nbsp;which means digging through file format specifications and encoding their rules such that `FormatFuzzer` can process them. We are currently exploring ways to _convert_ more existing formats, and also to [_mine_ such formats from existing programs](https://publications.cispa.saarland/3101/). However, [many common formats already _are_ encoded as binary templates](https://www.sweetscape.com/010editor/repository/templates/) (including GIFs!) and it only takes little effort to make them suitable for high-quality production of inputs.
 
 GIF is one of the formats that is already fully supported by `FormatFuzzer`. Hence, you can happily produce as many GIFs as you like, and test your program against them. Happy fuzzing!
 
