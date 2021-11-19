@@ -79,6 +79,8 @@ local uchar buf[3];
 local uint32 id3v2_size = 0;
 local uint32 synchsafe_pos = 0;
 local uint32 mpeg_frame_start_pos = 0;
+local uint32 id3v2_tag_no_header_start = 0;
+local uint32 id3v2_tag_end = 0;
 
 
 typedef struct {
@@ -134,7 +136,7 @@ typedef enum <uint32> e_layerVersion
 
 typedef enum <uint32> e_protectionBit
 {	//TODO research how MP3 handles CRC
-	//protect = 0, //16 bit crc checksum follows after header
+	protect = 0, //16 bit crc checksum follows after header
 	unprotect = 1,
 } E_PROTECTIONBIT;
 
@@ -423,7 +425,7 @@ struct ID3v2_HEADER
 	
 		ubyte i_unsyn_used = { 0 }; //TODO reserach unsync
 		local ubyte unsyn_used = (i_unsyn_used << 7);
-		FSeek(current_pos);f
+		FSeek(current_pos);
 		//TODO change after extended header implementation
 		ubyte i_extend_head_pres = { 0 };
 		local ubyte extend_head_pres = (i_extend_head_pres << 6);
@@ -449,6 +451,8 @@ struct ID3v2_HEADER
                    			// including padding, excluding the header but not excluding
                    			// the extended header (total tag size - 10). Most
                    			// significant bit (bit 7) of each byte is set to zero
+							//TODO change size in header after whole tag has been created
+							//size are all bytes after id3tag header until the end of id3 tag
 };
 
 struct ID3v2_EXTENDED_HEADER
@@ -457,6 +461,7 @@ struct ID3v2_EXTENDED_HEADER
     SetBackColor(0xA1D4FF);
 
     DisplayFormatDecimal();
+
 	
     uint32 size; // extended header size, excluding this 'size' field 6 - 10 bytes? 
 
@@ -469,7 +474,10 @@ struct ID3v2_EXTENDED_HEADER
     if (FLAG_CRC_PRESENT)
     {
         DisplayFormatHex();
+		//TODO CRC
+		//local uint32 crc32_calc = Checksum(CHECKSUM_CRC32, pos_start, data_size);
         uint32 crc;
+	
     }
 };
 
@@ -484,18 +492,78 @@ struct FRAME_FLAGS {
     uint16                    : 5;
 };
 
+//TODO implement known tag identifiers for frames
+//https://id3.org/id3v2.4.0-frames
+//possible known tags
+/*
+{"AENC", "APIC", "ASPI", //AENC - audio encryption, APIC, attached picture, ASPI audio seek point index
+
+"COMM","COMR", //COMM comments, COMR commercial frame
+
+"ENCR","EQU2","ETCO", //Encryption method registration, equalisation(2), event timing codes
+
+"GEOB","GRID", //general encapsulated object, group identification registration
+
+"LINK",//linked information
+
+"MCDI","MLLT", //Music CD identifier, MPEG location lookup table
+
+"OWNE", //ownership frame
+
+"PRIV","PCNT","POPM","POSS", //private frame, play counter, popularimeter, position sync frame
+
+"RBUF","RVA2","RVRB",//recommended buffer size, relatie volume adjustment(2), reverb
+
+"SEEK","SIGN","SYLT","SYTC",//seek frame, signature frame, sync lyric/text, sync tempo codes
+
+
+"TALB","TBPM","TCOM","TCON", //Text tags
+"TCOP","TDEN","TDLY","TDOR", // Text encoding $xx
+"TDRC","TDRL","TDTG","TENC", // text string according to encoding
+"TEXT","TFLT","TIPL","TIT1",
+"TIT2","TIT3","TKEY","TLAN",
+"TLEN","TMCL","TMED","TMOO",
+"TOAL","TOFN","TOLY","TOPE",
+"TOWN","TPE1","TPE2","TPE3",
+"TPE4","TPOS","TPRO","TPUB",
+"TRCK","TRSN","TRSO","TSOA",
+"TSOP","TSOT","TSRC","TSSE",
+"TSST",//"TXXT",
+
+"UFID","USER","USLT",//unique file identifier, terms of use, unsynchronised lyric/text transcription
+
+"WCOM","WCOP","WOAF","WOAR",//commercial info, copyright/legal info, official audio file webpage, official artist/performer webpage
+"WOAS","WORS","WPAY","WPUB",//official audio source webpage, official internet radio station homepage, payment, publishers official webpage
+"WXXX",};//user defined URL link frame*/
 
 struct ID3v2_FRAME
 {
+	//local int id3v2_frame_size_no_header = FTell();
 	Printf("ID3v2 frame alpha chars \n");
-    char id[4]; // four alpha chars
+    char id[4] = {"TALB","TBPM","TCOM","TCON", //Text tags
+"TCOP","TDEN","TDLY","TDOR", // Text encoding $xx
+"TDRC","TDRL","TDTG","TENC", // text string according to encoding
+"TEXT","TFLT","TIPL","TIT1",
+"TIT2","TIT3","TKEY","TLAN",
+"TLEN","TMCL","TMED","TMOO",
+"TOAL","TOFN","TOLY","TOPE",
+"TOWN","TPE1","TPE2","TPE3",
+"TPE4","TPOS","TPRO","TPUB",
+"TRCK","TRSN","TRSO","TSOA",
+"TSOP","TSOT","TSRC","TSSE",
+"TSST",};//"TXXT",; // four alpha chars, capital letters and numbers, identifiers X Y Z are experimental
 
     DisplayFormatDecimal();
 
-    uint32 size; //TODO frame size without frame header
+	local int id3v2_frame_size_location = FTell();
+    uint32 size <min = 1, max = 20>; //TODO frame size without frame header (-10 byte)
+
 	
 
     FRAME_FLAGS flags;
+	
+
+//TODO fix frame size
 
     if (id[0] == 'T')
     {
@@ -517,16 +585,30 @@ struct ID3v2_FRAME
 		Printf("ID3v2 frame frame_data else 2 \n");
         ubyte frame_data [size];
     }
+
+		
 };
 
 
 struct ID3v2_4_FRAME
 {
 	Printf("ID3v2.4 frame alpha chars \n");
-    char id[4]; // four alpha chars
+    char id[4]= {"TALB","TBPM","TCOM","TCON", //Text tags
+"TCOP","TDEN","TDLY","TDOR", // Text encoding $xx
+"TDRC","TDRL","TDTG","TENC", // text string according to encoding
+"TEXT","TFLT","TIPL","TIT1",
+"TIT2","TIT3","TKEY","TLAN",
+"TLEN","TMCL","TMED","TMOO",
+"TOAL","TOFN","TOLY","TOPE",
+"TOWN","TPE1","TPE2","TPE3",
+"TPE4","TPOS","TPRO","TPUB",
+"TRCK","TRSN","TRSO","TSOA",
+"TSOP","TSOT","TSRC","TSSE",
+"TSST",};
 
     DisplayFormatDecimal();
 
+	synchsafe_pos = FTell();
     synchsafe_integer size; // frame size without frame header
 
     FRAME_FLAGS flags;
@@ -556,6 +638,8 @@ struct ID3v2_4_FRAME
 struct ID3v2_TAG
 {
     ID3v2_HEADER hdr;
+	id3v2_tag_no_header_start = FTell();
+	
 
     // calculating real size of the ID3v2 tag
     local uint32 tag_sz = hdr.size.computed;
@@ -578,7 +662,7 @@ struct ID3v2_TAG
             Printf("MP3: warning: skipping unsupported ID3v2.%d tag\n", hdr.ver_major);
             SetBackColor(0xA9DCFF);
             DisplayFormatHex();
-			Printf("Unsupported ID3v2_data \n"); //TODO this is the issue, need to rewrite sizing
+			Printf("Unsupported ID3v2_data \n"); //TODO this is the issue, need to rewrite sizing, size gets used to setup the id3tag but needs to be changed later on
             ubyte id3v2_data[tag_sz];
         }
         else
@@ -610,6 +694,13 @@ struct ID3v2_TAG
             ubyte id3v2_padding [ tag_sz + sizeof(hdr) - FTell() ];
         }
     }
+	/*id3v2_tag_end = FTell();
+	//TODO fix syncsafe size
+	uint32 id3v2_tag_full_size = id3v2_tag_end - id3v2_tag_no_header_start;
+	FSeek(syncsafe_pos);
+	fix 
+	FSeek(id3v2_tag_end);*/
+	
 };
 
 //local uint32 mpeg_id_values[] = { 1, 2 };
@@ -921,7 +1012,11 @@ struct MPEG_HEADER{
 	FSeek(current_pos);
 	
 	uint32 full_hdr = { full_input };
-	//TODO finish CRC checksum 
+	
+	if (input3 == 0){
+	local uint16 crc_calc = Checksum(CHECKSUM_CRC16, current_pos, 32);
+	uint16 crc16 = { crc_calc };	
+	}
 };
 
 /*
@@ -1134,26 +1229,56 @@ if ( ! Strcmp(buf, "ID3") )
 
 	//encode size using syncsafe int system
 	local uint32 final_id3v2_tag_size = FTell() - 10;
+	Printf("ID3Tag length without header: %zu", final_id3v2_tag_size);
 	local uint32 i = 0;
-	for (i; i <= 28; ++i){
-    	switch(i / 7){
+	local ubyte size_bit_array[32];
+	for(i = 0; i<=31; i++){
+		if((i== 7) || (i==15)|| (i==23) || (i==31)){
+			size_bit_array[i] = 0;
+		}else{
+			size_bit_array[i] = ((final_id3v2_tag_size >> i) % 2 );
+		}
+		
+	}
+	for(i = 0; i<=32; i++){
+		switch((i / 8)){
 				case 0:
-					f_first += (final_id3v2_tag_size << (31 - i) >> (31 + i) );
+					f_first += size_bit_array[i] << (i%8);
 				break;
 	
 				case 1:
-					f_second += (final_id3v2_tag_size << (31 - i) >> (31 + i) );
+					f_second += size_bit_array[i] << (i%8);
 				break;
 
 				case 2:
-					f_third += (final_id3v2_tag_size << (31 - i) >> (31 + i) );
+					f_third += size_bit_array[i] << (i%8);
 				break;
 
 				default:
-					f_fourth += (final_id3v2_tag_size << (31 - i) >> (31 + i) );
+					f_fourth += size_bit_array[i] << (i%8);
 				break;
 		}
-  	}
+	}
+/*
+	for (i; i <= 28; ++i){
+    	switch((i / 7)){
+				case 0:
+					f_first += (final_id3v2_tag_size << (31 - i) >> (31 - i) );
+				break;
+	
+				case 1:
+					f_second += (final_id3v2_tag_size << (31 - i) >> (31 - (i - 7) ) );
+				break;
+
+				case 2:
+					f_third += (final_id3v2_tag_size << (31 - i) >> (31 - (i - 14) ) );
+				break;
+
+				default:
+					f_fourth += (final_id3v2_tag_size << (31 - i) >> (31 - (i - 21) ) );
+				break;
+		}
+  	}*/
 	
 	local uint32 jump_back_pos = FTell();
 	FSeek(synchsafe_pos);
@@ -1161,6 +1286,10 @@ if ( ! Strcmp(buf, "ID3") )
 	ubyte syncsafe_2 = { f_second };
 	ubyte syncsafe_3 = { f_third };
 	ubyte syncsafe_4 = { f_fourth };
+	/*ubyte syncsafe_1 = { 0 };
+	ubyte syncsafe_2 = { 0 };
+	ubyte syncsafe_3 = { 0 };
+	ubyte syncsafe_4 = { 0 };*/
 	FSeek(jump_back_pos);
 	
 }
@@ -1242,3 +1371,4 @@ if (frames_count != 0)
 //look up sizes for ALL ID3 tags (set them to not overflow array size)
 //implement crc checksum for protection bit
 //make id3 tag a choice between { "ID3", ""} so that no tag can be generated as well
+//crc calc: clocal uint32 crc_calc = Checksum(CHECKSUM_CRC32, pos_start, data_size);
