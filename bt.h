@@ -476,6 +476,11 @@ void exit_template(std::string message) {
 	throw -1;
 }
 
+void Assert(int value, const char* msg = "") {
+	if (!value)
+		exit_template(msg);
+}
+
 bool change_array_length = false;
 
 void check_array_length(unsigned& size) {
