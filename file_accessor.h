@@ -237,7 +237,7 @@ class file_accessor {
 		if (file_size < file_pos)
 			file_size = file_pos;
 
-		if (lookahead) {
+		if (lookahead && !is_padding) {
 			has_bitmap = true;
 			unsigned original_pos = file_pos - size;
 			for (unsigned i = 0; i < size; ++i)

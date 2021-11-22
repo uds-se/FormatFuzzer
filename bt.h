@@ -729,10 +729,15 @@ int64 FindFirst(T data, int matchcase=true, int wholeword=false, int method=0, d
 		return -1;
 	}
 	if (!file_acc.generate)
+		file_acc.evil_parse = [&start, &newdata](unsigned char* file_buf) -> bool {
+			return (unsigned char *)memmem(file_acc.file_buffer + start, file_acc.final_file_size - start, &newdata, sizeof(T)) - (file_acc.file_buffer + start) >= 16;
+		};
+	unsigned long long max = file_acc.evil(file_acc.evil_parse) ? MAX_FILE_SIZE + 1 - sizeof(T) - start : 16;
+	if (!file_acc.generate)
 		file_acc.parse = [&start, &newdata](unsigned char* file_buf) -> long long {
 			return (unsigned char *)memmem(file_acc.file_buffer + start, file_acc.final_file_size - start, &newdata, sizeof(T)) - (file_acc.file_buffer + start);
 		};
-	int64 pos = start + file_acc.rand_int(MAX_FILE_SIZE + 1 - sizeof(T) - start, file_acc.parse);
+	int64 pos = start + file_acc.rand_int(max, file_acc.parse);
 	int64 original_pos = FTell();
 	FSeek(pos);
 	std::vector<T> values = { data };
@@ -761,10 +766,15 @@ int64 FindFirst(std::string data, int matchcase, int wholeword, int method, doub
 		return -1;
 	}
 	if (!file_acc.generate)
+		file_acc.evil_parse = [&start, &data](unsigned char* file_buf) -> bool {
+			return (unsigned char *)memmem(file_acc.file_buffer + start, file_acc.final_file_size - start, data.c_str(), data.size()) - (file_acc.file_buffer + start) >= 16;
+		};
+	unsigned long long max = file_acc.evil(file_acc.evil_parse) ? MAX_FILE_SIZE + 1 - data.size() - start : 16;
+	if (!file_acc.generate)
 		file_acc.parse = [&start, &data](unsigned char* file_buf) -> long long {
 			return (unsigned char *)memmem(file_acc.file_buffer + start, file_acc.final_file_size - start, data.c_str(), data.size()) - (file_acc.file_buffer + start);
 		};
-	int64 pos = start + file_acc.rand_int(MAX_FILE_SIZE + 1 - data.size() - start, file_acc.parse);
+	int64 pos = start + file_acc.rand_int(max, file_acc.parse);
 	int64 original_pos = FTell();
 	FSeek(pos);
 	std::vector<std::string> values = { data };
@@ -793,10 +803,15 @@ int64 FindFirst(const char* data, int matchcase, int wholeword, int method, doub
 		return -1;
 	}
 	if (!file_acc.generate)
+		file_acc.evil_parse = [&start, &data](unsigned char* file_buf) -> bool {
+			return (unsigned char *)memmem(file_acc.file_buffer + start, file_acc.final_file_size - start, data, strlen(data)) - (file_acc.file_buffer + start) >= 16;
+		};
+	unsigned long long max = file_acc.evil(file_acc.evil_parse) ? MAX_FILE_SIZE + 1 - strlen(data) - start : 16;
+	if (!file_acc.generate)
 		file_acc.parse = [&start, &data](unsigned char* file_buf) -> long long {
 			return (unsigned char *)memmem(file_acc.file_buffer + start, file_acc.final_file_size - start, data, strlen(data)) - (file_acc.file_buffer + start);
 		};
-	int64 pos = start + file_acc.rand_int(MAX_FILE_SIZE + 1 - strlen(data) - start, file_acc.parse);
+	int64 pos = start + file_acc.rand_int(max, file_acc.parse);
 	int64 original_pos = FTell();
 	FSeek(pos);
 	std::vector<std::string> values = { data };
