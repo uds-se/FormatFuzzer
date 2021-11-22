@@ -773,6 +773,38 @@ int64 FindFirst(std::string data, int matchcase, int wholeword, int method, doub
 }
 
 
+template<>
+int64 FindFirst(const char* data, int matchcase, int wholeword, int method, double tolerance, int dir, int64 start, int64 size, int wildcardMatchLength) {
+	// Other configurations not yet handled
+	assert(matchcase == true && wholeword == false && method == 0 && tolerance == 0.0 && dir == 1 && size == 0 && wildcardMatchLength == 24);
+
+	file_acc.lookahead = true;
+	if (!file_acc.generate)
+		file_acc.evil_parse = [&start, &data](unsigned char* file_buf) -> bool {
+			return memmem(file_acc.file_buffer + start, file_acc.final_file_size - start, data, strlen(data)) == NULL;
+		};
+	if (file_acc.evil(file_acc.evil_parse)) {
+		file_acc.lookahead = false;
+		return -1;
+	}
+	if (!file_acc.generate)
+		file_acc.parse = [&start, &data](unsigned char* file_buf) -> long long {
+			return (unsigned char *)memmem(file_acc.file_buffer + start, file_acc.final_file_size - start, data, strlen(data)) - (file_acc.file_buffer + start);
+		};
+	int64 pos = start + file_acc.rand_int(MAX_FILE_SIZE + 1 - strlen(data) - start, file_acc.parse);
+	int64 original_pos = FTell();
+	FSeek(pos);
+	std::vector<std::string> values = { data };
+	bool evil = file_acc.set_evil_bit(false);
+	file_acc.file_string(values);
+	file_acc.set_evil_bit(evil);
+        file_acc.lookahead = false;
+        FSeek(original_pos);
+        return pos;
+
+}
+
+
 template<typename T>
 void VectorRemove(std::vector<T>& vec, std::unordered_set<T> set) {
 	vec.erase(std::remove_if(vec.begin(), vec.end(), [&set](T s) { return set.find(s) != set.end(); }), vec.end());

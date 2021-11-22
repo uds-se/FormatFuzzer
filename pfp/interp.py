@@ -2731,6 +2731,8 @@ class PfpInterp(object):
             return res
 
     def _handle_struct_decls(self, node, scope, ctxt, stream):
+        if not node.decls:
+            return
         self._dlog("handling struct decls")
         self._locals_stack.append([])
         if node.decls[0] in self._structs:
