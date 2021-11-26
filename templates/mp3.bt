@@ -84,10 +84,10 @@ local uint32 id3v2_tag_end = 0;
 
 
 
-uint32 write_synchsafe_integer( uint32 size ){
-	local ubyte f_first = 0;
+void write_synchsafe_integer( uint32 size ){
+	local ubyte f_first  = 0;
 	local ubyte f_second = 0;
-	local ubyte f_third = 0;
+	local ubyte f_third  = 0;
 	local ubyte f_fourth = 0;
 
 
@@ -125,19 +125,19 @@ uint32 write_synchsafe_integer( uint32 size ){
 		}
 	}
 
-	ubyte first  = { f_first };
-	ubyte second = { f_second };
-	ubyte third  = { f_third };
-	ubyte fourth = { f_fourth };
-	Printf("First: %d\nSecond: %d\nThird: %d\nFourth: %d\n", first, second, third, fourth);
+	local uint32 final_size = (f_first)+(f_second << 8)+(f_third << 16)+(f_fourth << 24);
+	uint32 size = { final_size };
+	//ubyte first  = { f_first };
+	//ubyte second = { f_second };
+	//ubyte third  = { f_third };
+	//ubyte fourth = { f_fourth };
+	Printf("First: %d\nSecond: %d\nThird: %d\nFourth: %d\n", f_first, f_second, f_third, f_fourth);
 
-    if (first >= 0x80  ||  second >= 0x80  ||
-        third >= 0x80  ||  fourth >= 0x80)
+    if (f_first >= 0x80  ||  f_second >= 0x80  ||
+        f_third >= 0x80  ||  f_fourth >= 0x80)
     {
         Printf("MP3: warning: invalid ID3v2 synchsafe integer\n");
     }
-	
-	return size;
 }
 
 /*
@@ -819,6 +819,7 @@ struct ID3v2_TAG
 //
 struct MPEG_HEADER{
 	DisplayFormatHex();
+	local uint64 mpeg_header_start = FTell();
 	
 	local int current_pos;
 	current_pos = FTell();
@@ -1120,9 +1121,12 @@ struct MPEG_HEADER{
 	
 	uint32 full_hdr = { full_input };
 	
+	local uint64 mpeg_header_end = FTell();
+	local uint64 mpeg_header_size = mpeg_header_end - mpeg_header_start;
 	if (input3 == 0){
-	//local uint16 crc_calc = Checksum(CHECKSUM_CRC16, current_pos, 32);
-	//uint16 crc16 = { crc_calc };	
+		//TODO checksum
+		local uint16 crc_calc = Checksum(CHECKSUM_CRC16, mpeg_header_start, mpeg_header_size);
+		uint16 crc16 = { crc_calc };
 	}
 };
 
