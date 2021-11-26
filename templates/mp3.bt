@@ -125,12 +125,11 @@ void write_synchsafe_integer( uint32 size ){
 		}
 	}
 
-	local uint32 final_size = (f_first)+(f_second << 8)+(f_third << 16)+(f_fourth << 24);
-	uint32 size = { final_size };
-	//ubyte first  = { f_first };
-	//ubyte second = { f_second };
-	//ubyte third  = { f_third };
-	//ubyte fourth = { f_fourth };
+	//TODO size
+	ubyte first  = { f_first };
+	ubyte second = { f_second };
+	ubyte third  = { f_third };
+	ubyte fourth = { f_fourth };
 	Printf("First: %d\nSecond: %d\nThird: %d\nFourth: %d\n", f_first, f_second, f_third, f_fourth);
 
     if (f_first >= 0x80  ||  f_second >= 0x80  ||
