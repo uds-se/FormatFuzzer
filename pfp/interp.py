@@ -658,7 +658,7 @@ class PfpInterp(object):
     _to_define = {}
     _to_replace = []
     _is_substructunion = False
-    _call_stack = []
+    _call_stack = [False]
 
 
     def add_decl(self, classname, classnode, node, is_union):
@@ -671,7 +671,7 @@ class PfpInterp(object):
             if hasattr(node, "originalname"):
                 name = node.originalname
             node.cpp = "GENERATE"
-            if len(self._incomplete_stack) > 1:
+            if len(self._call_stack) > 1 and not self._call_stack[-1]:
                 node.cpp += "_VAR"
             self._variable_types[node.name] = classname
             node.cpp += "(" + name + ", ::g->" + node.name + ".generate("
@@ -691,7 +691,7 @@ class PfpInterp(object):
         else:
             if classname not in self._to_define:
                 self._to_define[classname] = []
-            self._to_define[classname].append((node.name, node, len(self._incomplete_stack) > 1))
+            self._to_define[classname].append((node.name, node, len(self._call_stack) > 1 and not self._call_stack[-1]))
             node.cpp = "/*TODO field " + node.name + "("
             if hasattr(node.type, "args") and node.type.args:
                 for arg in node.type.args.exprs:
@@ -1918,7 +1918,7 @@ class PfpInterp(object):
                 field._pfp__freeze()
                 node.type.cpp += "const "
 
-            in_struct = "local" in node.quals and not self._call_stack and "const" not in node.quals
+            in_struct = "local" in node.quals and not self._call_stack[-1] and "const" not in node.quals
             field._pfp__interp = self
             if isinstance(node.type, AST.ArrayDecl):
                 classname = " ".join(node.type.type.type.names)
@@ -2245,7 +2245,7 @@ class PfpInterp(object):
                             self._cpp.append((classname, "\nclass " + classname + ";\n\n"))
 
                 node.cpp = "GENERATE"
-                if len(self._incomplete_stack) > 1:
+                if len(self._call_stack) > 1 and not self._call_stack[-1]:
                     node.cpp += "_VAR"
                 self._variable_types[node.name] = classname.replace(" ", "_") + "_array_class"
                 node.cpp += "(" + node.originalname + ", ::g->" + node.name + ".generate("
@@ -2266,7 +2266,7 @@ class PfpInterp(object):
                     node.name += "_"
                 self._defined[node.name] = classname
                 node.cpp = "GENERATE"
-                if len(self._incomplete_stack) > 1:
+                if len(self._call_stack) > 1 and not self._call_stack[-1]:
                     node.cpp += "_VAR"
                 self._variable_types[node.name] = classname
                 node.cpp += "(" + node.name + ", " + classname + "_generate("
@@ -2372,7 +2372,7 @@ class PfpInterp(object):
                         else:
                             self._globals.append((node.name, classname + " " + node.name + "(1);\n"))
                     node.cpp = "GENERATE"
-                    if len(self._incomplete_stack) > 1:
+                    if len(self._call_stack) > 1 and not self._call_stack[-1]:
                         node.cpp += "_VAR"
                     self._variable_types[node.name] = classnamebits
                     node.cpp += "(" + node.originalname + ", ::g->" + node.name + ".generate("
@@ -2394,7 +2394,7 @@ class PfpInterp(object):
                     node.cpp += "))"
                 elif issubclass(nodetype, fields.Enum):
                     node.cpp = "GENERATE"
-                    if len(self._incomplete_stack) > 1:
+                    if len(self._call_stack) > 1 and not self._call_stack[-1]:
                         node.cpp += "_VAR"
                     self._variable_types[node.name] = classname
                     node.cpp += "(" + node.name + ", " + classname + "_generate("
@@ -2634,6 +2634,7 @@ class PfpInterp(object):
         for decl in node.decls:
             decl.type.cpp = "/* TODO union decl*/"
         self._locals_stack.append([])
+        self._call_stack.append(False)
         if node.decls[0] in self._structs:
             self._incomplete_stack.append(True)
         else:
@@ -2658,6 +2659,7 @@ class PfpInterp(object):
             stream.seek(stream.tell() + ctxt._pfp__width(), 0)
             self._scope = scope._parent
             self._locals_stack.pop()
+            self._call_stack.pop()
             self._incomplete = self._incomplete_stack.pop()
 
     def _handle_init_list(self, node, scope, ctxt, stream):
@@ -2735,6 +2737,7 @@ class PfpInterp(object):
             return
         self._dlog("handling struct decls")
         self._locals_stack.append([])
+        self._call_stack.append(False)
         if node.decls[0] in self._structs:
             self._incomplete_stack.append(True)
         else:
@@ -2765,6 +2768,7 @@ class PfpInterp(object):
             if not self._is_substructunion:
                 self._scope = scope._parent
             self._locals_stack.pop()
+            self._call_stack.pop()
             self._incomplete = self._incomplete_stack.pop()
 
     def _handle_identifier_type(self, node, scope, ctxt, stream):
@@ -3462,7 +3466,7 @@ class PfpInterp(object):
         if node.name.name in ["SetEvilBit", "ChangeArrayLength", "EndChangeArrayLength", "IsParsing"]:
             return
         self._locals_stack.append([])
-        self._call_stack.append(None)
+        self._call_stack.append(True)
         ret = func.call(func_args, ctxt, scope, stream, self, node.coord)
         self._call_stack.pop()
         self._locals_stack.pop()
@@ -3555,7 +3559,7 @@ class PfpInterp(object):
                 if child[1].cpp:
                     node.cpp += "\t" + child[1].cpp.replace("\n", "\n\t") + ";\n"
             if ret is not None:
-                if self._call_stack:
+                if self._call_stack[-1]:
                     raise ret
                 else:
                     node.cpp = node.cpp.replace("return ", "exit_template")
@@ -3790,7 +3794,7 @@ class PfpInterp(object):
                             node.cpp += ";\n"
                     node.cpp += "}"
             if ret is not None:
-                if self._call_stack:
+                if self._call_stack[-1]:
                     raise ret
                 else:
                     node.cpp = node.cpp.replace("return ", "exit_template")
@@ -4073,7 +4077,7 @@ class PfpInterp(object):
                         node.cpp += "\t" + stmt.cpp.replace("\n", "\n\t") + ";\n"
             node.cpp += "}"
             if ret is not None:
-                if self._call_stack:
+                if self._call_stack[-1]:
                     raise ret
                 else:
                     node.cpp = node.cpp.replace("return ", "exit_template")
