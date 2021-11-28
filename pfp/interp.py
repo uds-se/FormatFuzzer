@@ -890,8 +890,10 @@ class PfpInterp(object):
                     self._to_define[decl.type.cpp].append((decl.type.cpp + "& " + classname + "::" + name + "() {\n\tassert_cond(" + name + "_exists, \"struct field " + name + " does not exist\");\n\treturn *" + name + "_var;\n}\n", decl, False))
             elif False and is_union and decl.type.cpp == "std::string" and decl.type.__class__ == AST.ArrayDecl:
                 cpp += "\tstd::string " + name + "() {\n\t\tassert_cond(" + name + "_exists, \"struct field " + name + " does not exist\");\n\t\treturn std::string(" + name + "_var, " + decl.type.dim.cpp + ");\n\t}\n"
-            else:
+            elif decl.bitsize is not None:
                 cpp += "\t" + decl.type.cpp + " " + name + "() {\n\t\tassert_cond(" + name + "_exists, \"struct field " + name + " does not exist\");\n\t\treturn " + name + "_var;\n\t}\n"
+            else:
+                cpp += "\t" + decl.type.cpp + "& " + name + "() {\n\t\tassert_cond(" + name + "_exists, \"struct field " + name + " does not exist\");\n\t\treturn " + name + "_var;\n\t}\n"
 
         locals_cpp = ""
         for decl in decls:
@@ -931,9 +933,9 @@ class PfpInterp(object):
         cpp += "\tint64 _startof = 0;\n"
         cpp += "\tstd::size_t _sizeof = 0;\n"
         cpp += "\t" + classname + "& operator () () { return *instances.back(); }\n"
-        cpp += "\t" + classname + "* operator [] (int index) {\n"
+        cpp += "\t" + classname + "& operator [] (int index) {\n"
         cpp += "\t\tassert_cond((unsigned)index < instances.size(), \"instance index out of bounds\");\n"
-        cpp += "\t\treturn instances[index];\n"
+        cpp += "\t\treturn *instances[index];\n"
         cpp += "\t}\n"
         cpp += "\t" + classname + "(std::vector<" + classname + "*>& instances) : instances(instances) { instances.push_back(this); }\n"
         cpp += "\t~" + classname + "() {\n"
@@ -1765,11 +1767,15 @@ class PfpInterp(object):
 
         scope.push_meta("dest_type", to_type)
         val_to_cast = self._handle_node(node.expr, scope, ctxt, stream)
-        scope.pop_meta("dest_type")
+        try:
+            scope.pop_meta("dest_type")
+        except:
+            pass
 
         res = to_type()
 
-        res._pfp__set_value(val_to_cast)
+        if val_to_cast is not None:
+            res._pfp__set_value(val_to_cast)
         node.cpp = "(" + " ".join(node.to_type.type.type.names) + ")" + node.expr.cpp
         return res
 
@@ -2101,7 +2107,8 @@ class PfpInterp(object):
                     classname = ctxt._pfp__node.name + "_" + field_name + "_struct"
                 if classname == field_name + "_union" and ctxt._pfp__node.name is not None:
                     classname = ctxt._pfp__node.name + "_" + field_name + "_union"
-                node.originalname = node.name
+                if not hasattr(node, "originalname"):
+                    node.originalname = node.name
                 while node.name in self._defined and self._defined[node.name] != classname.replace(" ", "_") + "_array_class":
                     node.name += "_"
                 is_char_array = False
@@ -2309,7 +2316,8 @@ class PfpInterp(object):
                 if classname == field_name + "_union" and hasattr(ctxt, "_pfp__node") and ctxt._pfp__node.name is not None:
                     classname = ctxt._pfp__node.name + "_" + field_name + "_union"
                 classnode = field._pfp__node
-                node.originalname = node.name
+                if not hasattr(node, "originalname"):
+                    node.originalname = node.name
                 while node.name in self._defined and self._defined[node.name] != classname:
                     node.name += "_"
                 is_union = isinstance(node.type.type, AST.Union)
@@ -2327,7 +2335,8 @@ class PfpInterp(object):
                         classname = "_".join(node.type.type.names) + "_bitfield"
                     else:
                         classname = "_".join(node.type.type.names) + "_class"
-                    node.originalname = node.name
+                    if not hasattr(node, "originalname"):
+                        node.originalname = node.name
                     classnamebits = classname
                     if is_bitfield:
                         classnamebits += node.bitsize.cpp
@@ -2407,6 +2416,8 @@ class PfpInterp(object):
                         node.cpp += " }"
                     node.cpp += "))"
                     node.type.cpp = nodetype.typename
+                    if node.bitsize is not None:
+                        node.type.cpp = " ".join(node.type.type.names)
                     if classname + "_generate" not in self._defined:
                         self._defined[classname + "_generate"] = None
                         cpp = "\n" + classname + " " + classname + "_generate() {\n\treturn (" + classname + ") file_acc.file_integer(sizeof(" + nodetype.typename + "), 0, " + classname + "_values);\n}\n"
@@ -2417,7 +2428,8 @@ class PfpInterp(object):
                         classnode = nodetype._pfp__node
                     else:
                         classnode = field._pfp__node
-                    node.originalname = node.name
+                    if not hasattr(node, "originalname"):
+                        node.originalname = node.name
                     while node.name in self._defined and self._defined[node.name] != classname:
                         node.name += "_"
                     is_union = issubclass(nodetype, fields.Union)
@@ -2583,10 +2595,7 @@ class PfpInterp(object):
         # field
         struct = self._handle_node(node.name, scope, ctxt, stream)
 
-        if node.name.__class__ == AST.ArrayRef:
-            node.cpp = node.name.cpp + "->" + node.field.name + "()"
-        else:
-            node.cpp = node.name.cpp + "." + node.field.name + "()"
+        node.cpp = node.name.cpp + "." + node.field.name + "()"
 
         try:
             sub_field = getattr(struct, node.field.name)
@@ -2821,7 +2830,10 @@ class PfpInterp(object):
             node.cpp += name
             node.cpp += " " + node.name
             self._global_consts.append(node.name + "_values")
-            cpp = "std::vector<" + " ".join(node.type.type.type.names) + "> " + node.name + "_values = { "
+            enum_type = "int"
+            if hasattr(node.type.type.type, "names"):
+                enum_type = " ".join(node.type.type.type.names)
+            cpp = "std::vector<" + enum_type + "> " + node.name + "_values = { "
             for enumerator in node.type.type.values.enumerators:
                 cpp += enumerator.name + ", "
             cpp = cpp[:-2]
@@ -3018,7 +3030,7 @@ class PfpInterp(object):
                         cpp += " });"
                         for i, (n, c) in enumerate(self._globals):
                             if n == name:
-                                self._globals[i] = (n, re.sub("_element.*", cpp, c))
+                                self._globals[i] = (n, re.sub("_element.*", "###", c).replace("###", cpp))
 
                 if exp is not None and exp.__class__ == AST.StructRef or exp.__class__ == AST.ID:
                     if exp.__class__ == AST.StructRef:
@@ -3041,7 +3053,7 @@ class PfpInterp(object):
                             cpp += " });"
                             for i, (n, c) in enumerate(self._globals):
                                 if n == name:
-                                    self._globals[i] = (n, re.sub("_element.*", cpp, c))
+                                    self._globals[i] = (n, re.sub("_element.*", "###", c).replace("###", cpp))
                         else:
                             cpp = "(1, { "
                             for value in self._known_values[name]:
@@ -3050,7 +3062,7 @@ class PfpInterp(object):
                             cpp += " });"
                             for i, (n, c) in enumerate(self._globals):
                                 if n == name:
-                                    self._globals[i] = (n, re.sub("\(1.*", cpp, c))
+                                    self._globals[i] = (n, re.sub("\(1.*", "###", c).replace("###", cpp))
 
                 if exp is not None and exp.__class__ == AST.FuncCall:
                     name = exp.name.name
@@ -3119,10 +3131,9 @@ class PfpInterp(object):
         if node.op in special_switch:
             result = special_switch[node.op](node, scope, ctxt, stream)
             if node.op == "exists" and node.expr.__class__ == AST.StructRef:
-                if node.expr.name.__class__ == AST.ArrayRef:
-                    node.cpp = node.expr.name.cpp + "->" + node.expr.field.name + "_exists"
-                else:
-                    node.cpp = node.expr.name.cpp + "." + node.expr.field.name + "_exists"
+                node.cpp = node.expr.name.cpp + "." + node.expr.field.name + "_exists"
+            if node.op == "exists" and node.expr.__class__ == AST.ArrayRef:
+                node.cpp = "((unsigned long)" + node.expr.subscript.cpp + " < " + node.expr.name.cpp + ".size())"
             return result
 
         field = self._handle_node(node.expr, scope, ctxt, stream)
@@ -3723,7 +3734,10 @@ class PfpInterp(object):
         """
         ary = self._handle_node(node.name, scope, ctxt, stream)
         subscript = self._handle_node(node.subscript, scope, ctxt, stream)
-        node.cpp = node.name.cpp + "[" + node.subscript.cpp + "]"
+        if hasattr(ary, "field_cls") and not hasattr(ary.field_cls, "format"):
+            node.cpp = "(*" + node.name.cpp + "[" + node.subscript.cpp + "])"
+        else:
+            node.cpp = node.name.cpp + "[" + node.subscript.cpp + "]"
         index = fields.PYVAL(subscript)
         if self._generate:
             index = 0

@@ -102,11 +102,11 @@ public:
 	bool Signature_exists = false;
 	bool Version_exists = false;
 
-	std::string Signature() {
+	std::string& Signature() {
 		assert_cond(Signature_exists, "struct field Signature does not exist");
 		return Signature_var;
 	}
-	std::string Version() {
+	std::string& Version() {
 		assert_cond(Version_exists, "struct field Version does not exist");
 		return Version_var;
 	}
@@ -118,9 +118,9 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	GIFHEADER& operator () () { return *instances.back(); }
-	GIFHEADER* operator [] (int index) {
+	GIFHEADER& operator [] (int index) {
 		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return instances[index];
+		return *instances[index];
 	}
 	GIFHEADER(std::vector<GIFHEADER*>& instances) : instances(instances) { instances.push_back(this); }
 	~GIFHEADER() {
@@ -231,9 +231,9 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	LOGICALSCREENDESCRIPTOR_PACKEDFIELDS& operator () () { return *instances.back(); }
-	LOGICALSCREENDESCRIPTOR_PACKEDFIELDS* operator [] (int index) {
+	LOGICALSCREENDESCRIPTOR_PACKEDFIELDS& operator [] (int index) {
 		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return instances[index];
+		return *instances[index];
 	}
 	LOGICALSCREENDESCRIPTOR_PACKEDFIELDS(std::vector<LOGICALSCREENDESCRIPTOR_PACKEDFIELDS*>& instances) : instances(instances) { instances.push_back(this); }
 	~LOGICALSCREENDESCRIPTOR_PACKEDFIELDS() {
@@ -296,11 +296,11 @@ public:
 	bool BackgroundColorIndex_exists = false;
 	bool PixelAspectRatio_exists = false;
 
-	ushort Width() {
+	ushort& Width() {
 		assert_cond(Width_exists, "struct field Width does not exist");
 		return Width_var;
 	}
-	ushort Height() {
+	ushort& Height() {
 		assert_cond(Height_exists, "struct field Height does not exist");
 		return Height_var;
 	}
@@ -308,11 +308,11 @@ public:
 		assert_cond(PackedFields_exists, "struct field PackedFields does not exist");
 		return *PackedFields_var;
 	}
-	UBYTE BackgroundColorIndex() {
+	UBYTE& BackgroundColorIndex() {
 		assert_cond(BackgroundColorIndex_exists, "struct field BackgroundColorIndex does not exist");
 		return BackgroundColorIndex_var;
 	}
-	UBYTE PixelAspectRatio() {
+	UBYTE& PixelAspectRatio() {
 		assert_cond(PixelAspectRatio_exists, "struct field PixelAspectRatio does not exist");
 		return PixelAspectRatio_var;
 	}
@@ -321,9 +321,9 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	LOGICALSCREENDESCRIPTOR& operator () () { return *instances.back(); }
-	LOGICALSCREENDESCRIPTOR* operator [] (int index) {
+	LOGICALSCREENDESCRIPTOR& operator [] (int index) {
 		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return instances[index];
+		return *instances[index];
 	}
 	LOGICALSCREENDESCRIPTOR(std::vector<LOGICALSCREENDESCRIPTOR*>& instances) : instances(instances) { instances.push_back(this); }
 	~LOGICALSCREENDESCRIPTOR() {
@@ -353,15 +353,15 @@ public:
 	bool G_exists = false;
 	bool B_exists = false;
 
-	UBYTE R() {
+	UBYTE& R() {
 		assert_cond(R_exists, "struct field R does not exist");
 		return R_var;
 	}
-	UBYTE G() {
+	UBYTE& G() {
 		assert_cond(G_exists, "struct field G does not exist");
 		return G_var;
 	}
-	UBYTE B() {
+	UBYTE& B() {
 		assert_cond(B_exists, "struct field B does not exist");
 		return B_var;
 	}
@@ -370,9 +370,9 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	RGB& operator () () { return *instances.back(); }
-	RGB* operator [] (int index) {
+	RGB& operator [] (int index) {
 		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return instances[index];
+		return *instances[index];
 	}
 	RGB(std::vector<RGB*>& instances) : instances(instances) { instances.push_back(this); }
 	~RGB() {
@@ -425,7 +425,7 @@ class GLOBALCOLORTABLE {
 public:
 	bool rgb_exists = false;
 
-	std::vector<RGB*> rgb() {
+	std::vector<RGB*>& rgb() {
 		assert_cond(rgb_exists, "struct field rgb does not exist");
 		return rgb_var;
 	}
@@ -438,9 +438,9 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	GLOBALCOLORTABLE& operator () () { return *instances.back(); }
-	GLOBALCOLORTABLE* operator [] (int index) {
+	GLOBALCOLORTABLE& operator [] (int index) {
 		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return instances[index];
+		return *instances[index];
 	}
 	GLOBALCOLORTABLE(std::vector<GLOBALCOLORTABLE*>& instances) : instances(instances) { instances.push_back(this); }
 	~GLOBALCOLORTABLE() {
@@ -502,9 +502,9 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	IMAGEDESCRIPTOR_PACKEDFIELDS& operator () () { return *instances.back(); }
-	IMAGEDESCRIPTOR_PACKEDFIELDS* operator [] (int index) {
+	IMAGEDESCRIPTOR_PACKEDFIELDS& operator [] (int index) {
 		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return instances[index];
+		return *instances[index];
 	}
 	IMAGEDESCRIPTOR_PACKEDFIELDS(std::vector<IMAGEDESCRIPTOR_PACKEDFIELDS*>& instances) : instances(instances) { instances.push_back(this); }
 	~IMAGEDESCRIPTOR_PACKEDFIELDS() {
@@ -540,23 +540,23 @@ public:
 	bool ImageHeight_exists = false;
 	bool PackedFields_exists = false;
 
-	UBYTE ImageSeperator() {
+	UBYTE& ImageSeperator() {
 		assert_cond(ImageSeperator_exists, "struct field ImageSeperator does not exist");
 		return ImageSeperator_var;
 	}
-	ushort ImageLeftPosition() {
+	ushort& ImageLeftPosition() {
 		assert_cond(ImageLeftPosition_exists, "struct field ImageLeftPosition does not exist");
 		return ImageLeftPosition_var;
 	}
-	ushort ImageTopPosition() {
+	ushort& ImageTopPosition() {
 		assert_cond(ImageTopPosition_exists, "struct field ImageTopPosition does not exist");
 		return ImageTopPosition_var;
 	}
-	ushort ImageWidth() {
+	ushort& ImageWidth() {
 		assert_cond(ImageWidth_exists, "struct field ImageWidth does not exist");
 		return ImageWidth_var;
 	}
-	ushort ImageHeight() {
+	ushort& ImageHeight() {
 		assert_cond(ImageHeight_exists, "struct field ImageHeight does not exist");
 		return ImageHeight_var;
 	}
@@ -569,9 +569,9 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	IMAGEDESCRIPTOR& operator () () { return *instances.back(); }
-	IMAGEDESCRIPTOR* operator [] (int index) {
+	IMAGEDESCRIPTOR& operator [] (int index) {
 		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return instances[index];
+		return *instances[index];
 	}
 	IMAGEDESCRIPTOR(std::vector<IMAGEDESCRIPTOR*>& instances) : instances(instances) { instances.push_back(this); }
 	~IMAGEDESCRIPTOR() {
@@ -597,7 +597,7 @@ class LOCALCOLORTABLE {
 public:
 	bool rgb_exists = false;
 
-	std::vector<RGB*> rgb() {
+	std::vector<RGB*>& rgb() {
 		assert_cond(rgb_exists, "struct field rgb does not exist");
 		return rgb_var;
 	}
@@ -610,9 +610,9 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	LOCALCOLORTABLE& operator () () { return *instances.back(); }
-	LOCALCOLORTABLE* operator [] (int index) {
+	LOCALCOLORTABLE& operator [] (int index) {
 		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return instances[index];
+		return *instances[index];
 	}
 	LOCALCOLORTABLE(std::vector<LOCALCOLORTABLE*>& instances) : instances(instances) { instances.push_back(this); }
 	~LOCALCOLORTABLE() {
@@ -640,11 +640,11 @@ public:
 	bool Size_exists = false;
 	bool Data_exists = false;
 
-	UBYTE Size() {
+	UBYTE& Size() {
 		assert_cond(Size_exists, "struct field Size does not exist");
 		return Size_var;
 	}
-	std::string Data() {
+	std::string& Data() {
 		assert_cond(Data_exists, "struct field Data does not exist");
 		return Data_var;
 	}
@@ -653,9 +653,9 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	DATASUBBLOCK& operator () () { return *instances.back(); }
-	DATASUBBLOCK* operator [] (int index) {
+	DATASUBBLOCK& operator [] (int index) {
 		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return instances[index];
+		return *instances[index];
 	}
 	DATASUBBLOCK(std::vector<DATASUBBLOCK*>& instances) : instances(instances) { instances.push_back(this); }
 	~DATASUBBLOCK() {
@@ -687,7 +687,7 @@ public:
 		assert_cond(DataSubBlock_exists, "struct field DataSubBlock does not exist");
 		return *DataSubBlock_var;
 	}
-	UBYTE BlockTerminator() {
+	UBYTE& BlockTerminator() {
 		assert_cond(BlockTerminator_exists, "struct field BlockTerminator does not exist");
 		return BlockTerminator_var;
 	}
@@ -701,9 +701,9 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	DATASUBBLOCKS& operator () () { return *instances.back(); }
-	DATASUBBLOCKS* operator [] (int index) {
+	DATASUBBLOCKS& operator [] (int index) {
 		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return instances[index];
+		return *instances[index];
 	}
 	DATASUBBLOCKS(std::vector<DATASUBBLOCKS*>& instances) : instances(instances) { instances.push_back(this); }
 	~DATASUBBLOCKS() {
@@ -731,7 +731,7 @@ public:
 	bool LZWMinimumCodeSize_exists = false;
 	bool DataSubBlocks_exists = false;
 
-	UBYTE LZWMinimumCodeSize() {
+	UBYTE& LZWMinimumCodeSize() {
 		assert_cond(LZWMinimumCodeSize_exists, "struct field LZWMinimumCodeSize does not exist");
 		return LZWMinimumCodeSize_var;
 	}
@@ -744,9 +744,9 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	IMAGEDATA& operator () () { return *instances.back(); }
-	IMAGEDATA* operator [] (int index) {
+	IMAGEDATA& operator [] (int index) {
 		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return instances[index];
+		return *instances[index];
 	}
 	IMAGEDATA(std::vector<IMAGEDATA*>& instances) : instances(instances) { instances.push_back(this); }
 	~IMAGEDATA() {
@@ -799,9 +799,9 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	GRAPHICCONTROLEXTENSION_DATASUBBLOCK_PACKEDFIELDS& operator () () { return *instances.back(); }
-	GRAPHICCONTROLEXTENSION_DATASUBBLOCK_PACKEDFIELDS* operator [] (int index) {
+	GRAPHICCONTROLEXTENSION_DATASUBBLOCK_PACKEDFIELDS& operator [] (int index) {
 		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return instances[index];
+		return *instances[index];
 	}
 	GRAPHICCONTROLEXTENSION_DATASUBBLOCK_PACKEDFIELDS(std::vector<GRAPHICCONTROLEXTENSION_DATASUBBLOCK_PACKEDFIELDS*>& instances) : instances(instances) { instances.push_back(this); }
 	~GRAPHICCONTROLEXTENSION_DATASUBBLOCK_PACKEDFIELDS() {
@@ -833,7 +833,7 @@ public:
 	bool DelayTime_exists = false;
 	bool TransparentColorIndex_exists = false;
 
-	UBYTE BlockSize() {
+	UBYTE& BlockSize() {
 		assert_cond(BlockSize_exists, "struct field BlockSize does not exist");
 		return BlockSize_var;
 	}
@@ -841,11 +841,11 @@ public:
 		assert_cond(PackedFields_exists, "struct field PackedFields does not exist");
 		return *PackedFields_var;
 	}
-	ushort DelayTime() {
+	ushort& DelayTime() {
 		assert_cond(DelayTime_exists, "struct field DelayTime does not exist");
 		return DelayTime_var;
 	}
-	UBYTE TransparentColorIndex() {
+	UBYTE& TransparentColorIndex() {
 		assert_cond(TransparentColorIndex_exists, "struct field TransparentColorIndex does not exist");
 		return TransparentColorIndex_var;
 	}
@@ -854,9 +854,9 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	GRAPHICCONTROLSUBBLOCK& operator () () { return *instances.back(); }
-	GRAPHICCONTROLSUBBLOCK* operator [] (int index) {
+	GRAPHICCONTROLSUBBLOCK& operator [] (int index) {
 		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return instances[index];
+		return *instances[index];
 	}
 	GRAPHICCONTROLSUBBLOCK(std::vector<GRAPHICCONTROLSUBBLOCK*>& instances) : instances(instances) { instances.push_back(this); }
 	~GRAPHICCONTROLSUBBLOCK() {
@@ -888,11 +888,11 @@ public:
 	bool GraphicControlSubBlock_exists = false;
 	bool BlockTerminator_exists = false;
 
-	UBYTE ExtensionIntroducer() {
+	UBYTE& ExtensionIntroducer() {
 		assert_cond(ExtensionIntroducer_exists, "struct field ExtensionIntroducer does not exist");
 		return ExtensionIntroducer_var;
 	}
-	UBYTE GraphicControlLabel() {
+	UBYTE& GraphicControlLabel() {
 		assert_cond(GraphicControlLabel_exists, "struct field GraphicControlLabel does not exist");
 		return GraphicControlLabel_var;
 	}
@@ -900,7 +900,7 @@ public:
 		assert_cond(GraphicControlSubBlock_exists, "struct field GraphicControlSubBlock does not exist");
 		return *GraphicControlSubBlock_var;
 	}
-	UBYTE BlockTerminator() {
+	UBYTE& BlockTerminator() {
 		assert_cond(BlockTerminator_exists, "struct field BlockTerminator does not exist");
 		return BlockTerminator_var;
 	}
@@ -909,9 +909,9 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	GRAPHICCONTROLEXTENSION& operator () () { return *instances.back(); }
-	GRAPHICCONTROLEXTENSION* operator [] (int index) {
+	GRAPHICCONTROLEXTENSION& operator [] (int index) {
 		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return instances[index];
+		return *instances[index];
 	}
 	GRAPHICCONTROLEXTENSION(std::vector<GRAPHICCONTROLEXTENSION*>& instances) : instances(instances) { instances.push_back(this); }
 	~GRAPHICCONTROLEXTENSION() {
@@ -941,11 +941,11 @@ public:
 	bool CommentLabel_exists = false;
 	bool CommentData_exists = false;
 
-	UBYTE ExtensionIntroducer() {
+	UBYTE& ExtensionIntroducer() {
 		assert_cond(ExtensionIntroducer_exists, "struct field ExtensionIntroducer does not exist");
 		return ExtensionIntroducer_var;
 	}
-	UBYTE CommentLabel() {
+	UBYTE& CommentLabel() {
 		assert_cond(CommentLabel_exists, "struct field CommentLabel does not exist");
 		return CommentLabel_var;
 	}
@@ -958,9 +958,9 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	COMMENTEXTENSION& operator () () { return *instances.back(); }
-	COMMENTEXTENSION* operator [] (int index) {
+	COMMENTEXTENSION& operator [] (int index) {
 		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return instances[index];
+		return *instances[index];
 	}
 	COMMENTEXTENSION(std::vector<COMMENTEXTENSION*>& instances) : instances(instances) { instances.push_back(this); }
 	~COMMENTEXTENSION() {
@@ -1002,39 +1002,39 @@ public:
 	bool TextForegroundColorIndex_exists = false;
 	bool TextBackgroundColorIndex_exists = false;
 
-	UBYTE BlockSize() {
+	UBYTE& BlockSize() {
 		assert_cond(BlockSize_exists, "struct field BlockSize does not exist");
 		return BlockSize_var;
 	}
-	ushort TextGridLeftPosition() {
+	ushort& TextGridLeftPosition() {
 		assert_cond(TextGridLeftPosition_exists, "struct field TextGridLeftPosition does not exist");
 		return TextGridLeftPosition_var;
 	}
-	ushort TextGridTopPosition() {
+	ushort& TextGridTopPosition() {
 		assert_cond(TextGridTopPosition_exists, "struct field TextGridTopPosition does not exist");
 		return TextGridTopPosition_var;
 	}
-	ushort TextGridWidth() {
+	ushort& TextGridWidth() {
 		assert_cond(TextGridWidth_exists, "struct field TextGridWidth does not exist");
 		return TextGridWidth_var;
 	}
-	ushort TextGridHeight() {
+	ushort& TextGridHeight() {
 		assert_cond(TextGridHeight_exists, "struct field TextGridHeight does not exist");
 		return TextGridHeight_var;
 	}
-	UBYTE CharacterCellWidth() {
+	UBYTE& CharacterCellWidth() {
 		assert_cond(CharacterCellWidth_exists, "struct field CharacterCellWidth does not exist");
 		return CharacterCellWidth_var;
 	}
-	UBYTE CharacterCellHeight() {
+	UBYTE& CharacterCellHeight() {
 		assert_cond(CharacterCellHeight_exists, "struct field CharacterCellHeight does not exist");
 		return CharacterCellHeight_var;
 	}
-	UBYTE TextForegroundColorIndex() {
+	UBYTE& TextForegroundColorIndex() {
 		assert_cond(TextForegroundColorIndex_exists, "struct field TextForegroundColorIndex does not exist");
 		return TextForegroundColorIndex_var;
 	}
-	UBYTE TextBackgroundColorIndex() {
+	UBYTE& TextBackgroundColorIndex() {
 		assert_cond(TextBackgroundColorIndex_exists, "struct field TextBackgroundColorIndex does not exist");
 		return TextBackgroundColorIndex_var;
 	}
@@ -1043,9 +1043,9 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	PLAINTEXTSUBBLOCK& operator () () { return *instances.back(); }
-	PLAINTEXTSUBBLOCK* operator [] (int index) {
+	PLAINTEXTSUBBLOCK& operator [] (int index) {
 		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return instances[index];
+		return *instances[index];
 	}
 	PLAINTEXTSUBBLOCK(std::vector<PLAINTEXTSUBBLOCK*>& instances) : instances(instances) { instances.push_back(this); }
 	~PLAINTEXTSUBBLOCK() {
@@ -1077,11 +1077,11 @@ public:
 	bool PlainTextSubBlock_exists = false;
 	bool PlainTextData_exists = false;
 
-	UBYTE ExtensionIntroducer() {
+	UBYTE& ExtensionIntroducer() {
 		assert_cond(ExtensionIntroducer_exists, "struct field ExtensionIntroducer does not exist");
 		return ExtensionIntroducer_var;
 	}
-	UBYTE PlainTextLabel() {
+	UBYTE& PlainTextLabel() {
 		assert_cond(PlainTextLabel_exists, "struct field PlainTextLabel does not exist");
 		return PlainTextLabel_var;
 	}
@@ -1098,9 +1098,9 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	PLAINTEXTEXTENTION& operator () () { return *instances.back(); }
-	PLAINTEXTEXTENTION* operator [] (int index) {
+	PLAINTEXTEXTENTION& operator [] (int index) {
 		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return instances[index];
+		return *instances[index];
 	}
 	PLAINTEXTEXTENTION(std::vector<PLAINTEXTEXTENTION*>& instances) : instances(instances) { instances.push_back(this); }
 	~PLAINTEXTEXTENTION() {
@@ -1130,15 +1130,15 @@ public:
 	bool ApplicationIdentifier_exists = false;
 	bool ApplicationAuthenticationCode_exists = false;
 
-	UBYTE BlockSize() {
+	UBYTE& BlockSize() {
 		assert_cond(BlockSize_exists, "struct field BlockSize does not exist");
 		return BlockSize_var;
 	}
-	std::string ApplicationIdentifier() {
+	std::string& ApplicationIdentifier() {
 		assert_cond(ApplicationIdentifier_exists, "struct field ApplicationIdentifier does not exist");
 		return ApplicationIdentifier_var;
 	}
-	std::string ApplicationAuthenticationCode() {
+	std::string& ApplicationAuthenticationCode() {
 		assert_cond(ApplicationAuthenticationCode_exists, "struct field ApplicationAuthenticationCode does not exist");
 		return ApplicationAuthenticationCode_var;
 	}
@@ -1147,9 +1147,9 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	APPLICATIONSUBBLOCK& operator () () { return *instances.back(); }
-	APPLICATIONSUBBLOCK* operator [] (int index) {
+	APPLICATIONSUBBLOCK& operator [] (int index) {
 		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return instances[index];
+		return *instances[index];
 	}
 	APPLICATIONSUBBLOCK(std::vector<APPLICATIONSUBBLOCK*>& instances) : instances(instances) { instances.push_back(this); }
 	~APPLICATIONSUBBLOCK() {
@@ -1181,11 +1181,11 @@ public:
 	bool ApplicationSubBlock_exists = false;
 	bool ApplicationData_exists = false;
 
-	UBYTE ExtensionIntroducer() {
+	UBYTE& ExtensionIntroducer() {
 		assert_cond(ExtensionIntroducer_exists, "struct field ExtensionIntroducer does not exist");
 		return ExtensionIntroducer_var;
 	}
-	UBYTE ApplicationLabel() {
+	UBYTE& ApplicationLabel() {
 		assert_cond(ApplicationLabel_exists, "struct field ApplicationLabel does not exist");
 		return ApplicationLabel_var;
 	}
@@ -1202,9 +1202,9 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	APPLICATIONEXTENTION& operator () () { return *instances.back(); }
-	APPLICATIONEXTENTION* operator [] (int index) {
+	APPLICATIONEXTENTION& operator [] (int index) {
 		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return instances[index];
+		return *instances[index];
 	}
 	APPLICATIONEXTENTION(std::vector<APPLICATIONEXTENTION*>& instances) : instances(instances) { instances.push_back(this); }
 	~APPLICATIONEXTENTION() {
@@ -1234,11 +1234,11 @@ public:
 	bool Label_exists = false;
 	bool DataSubBlocks_exists = false;
 
-	UBYTE ExtensionIntroducer() {
+	UBYTE& ExtensionIntroducer() {
 		assert_cond(ExtensionIntroducer_exists, "struct field ExtensionIntroducer does not exist");
 		return ExtensionIntroducer_var;
 	}
-	UBYTE Label() {
+	UBYTE& Label() {
 		assert_cond(Label_exists, "struct field Label does not exist");
 		return Label_var;
 	}
@@ -1251,9 +1251,9 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	UNDEFINEDDATA& operator () () { return *instances.back(); }
-	UNDEFINEDDATA* operator [] (int index) {
+	UNDEFINEDDATA& operator [] (int index) {
 		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return instances[index];
+		return *instances[index];
 	}
 	UNDEFINEDDATA(std::vector<UNDEFINEDDATA*>& instances) : instances(instances) { instances.push_back(this); }
 	~UNDEFINEDDATA() {
@@ -1334,9 +1334,9 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	DATA& operator () () { return *instances.back(); }
-	DATA* operator [] (int index) {
+	DATA& operator [] (int index) {
 		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return instances[index];
+		return *instances[index];
 	}
 	DATA(std::vector<DATA*>& instances) : instances(instances) { instances.push_back(this); }
 	~DATA() {
@@ -1362,7 +1362,7 @@ class TRAILER {
 public:
 	bool GIFTrailer_exists = false;
 
-	UBYTE GIFTrailer() {
+	UBYTE& GIFTrailer() {
 		assert_cond(GIFTrailer_exists, "struct field GIFTrailer does not exist");
 		return GIFTrailer_var;
 	}
@@ -1371,9 +1371,9 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	TRAILER& operator () () { return *instances.back(); }
-	TRAILER* operator [] (int index) {
+	TRAILER& operator [] (int index) {
 		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return instances[index];
+		return *instances[index];
 	}
 	TRAILER(std::vector<TRAILER*>& instances) : instances(instances) { instances.push_back(this); }
 	~TRAILER() {

@@ -17,6 +17,8 @@ import pfp.fields
 # double Abs( double x )
 @native(name="Abs", ret=pfp.fields.Double)
 def Abs(params, ctxt, scope, stream, coord):
+    if params[0]._pfp__interp._generate:
+        return 0.0
     raise NotImplementedError()
 
 
