@@ -364,7 +364,7 @@ typedef struct
 
 typedef struct
 {
-	byte value[4] = { 
+	char value[4] = { 
 	"dinf", "edts", "mdia", "minf", "moov", "moof", "stbl", "trak", "udta", "traf", "mvex", "sinf", "schi", "frma", "tenc", "schm", "pssh", "senc", "saio", "saiz", "trun", "tfhd", "mfhd", "sidx", "trex", "mehd", "stsd", "enca", "stts", "stsc", "stco", "co64", "stsz", "stss", "elst", "ftyp", "hdlr", "mdhd", "mvhd", "smhd", "tkhd", "vmhd", "data", "free" };
 } fourcc <read=ReadFourCC, open=suppress>;
 

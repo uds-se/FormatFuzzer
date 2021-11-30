@@ -680,7 +680,7 @@ class PfpInterp(object):
                 for arg in node.type.args.exprs:
                     arg_num += 1
                     node.cpp += arg.cpp + ", "
-            if classnode.args is not None:
+            if hasattr(classnode, "args") and classnode.args is not None:
                 for i in range(arg_num, len(classnode.args.params)):
                     arg_num += 1
                     node.cpp += classnode.args.params[i].name + ", "
@@ -2114,7 +2114,7 @@ class PfpInterp(object):
                 is_char_array = False
                 is_string = False
                 classtype = classname
-                if classname in ["char", "uchar", "unsigned char", "CHAR", "UCHAR", "byte", "ubyte", "BYTE", "UBYTE"]:
+                if classname in ["char", "uchar", "unsigned char", "CHAR", "UCHAR"]:#, "byte", "ubyte", "BYTE", "UBYTE"]:
                     node.type.cpp = "std::string"
                     is_char_array = True
                 else:
