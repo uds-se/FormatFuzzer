@@ -38,7 +38,7 @@ def gen_single_enum(key, values):
     lines = []
     #TODO FIND CORRECT TYPE? defaulting to <byte> for now
     size = "<byte>"
-    lines.append("typedef " + size +" " + key + " {")
+    lines.append("typedef enum " + size +" " + key + " {")
     keys = list(values.keys())
     for k in keys[0:-1]:
         lines.append("  " + (values[k] if "id" not in values[k] else values[k]["id"]) + " = " + str(k) + "," + ("" if "doc" not in values[k] else "  // " + (values[k]["doc"]).replace("\n", " ")))
