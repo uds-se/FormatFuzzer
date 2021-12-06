@@ -4,7 +4,7 @@ import yaml
 
 
 
-datatypes={"u4":"uint32","u1":"ubyte","u2":"ubyte16"} #TODO implement all types
+datatypes={"u4":"uint32","u1":"ubyte","u2":"uint16"} #TODO implement all types
 
 
 def main():
@@ -21,7 +21,8 @@ def main():
     lines=[]
     lines.extend(gen_enums(enums))
     lines.extend(gen_types(types))
-
+    with open(output_file_name,"w") as out_file:
+        out_file.write('\n'.join(lines))
 
     print('\n'.join(lines))
 
@@ -40,8 +41,8 @@ def gen_single_enum(key, values):
     lines.append("typedef " + size +" " + key + " {")
     keys = list(values.keys())
     for k in keys[0:-1]:
-        lines.append("  " + (values[k] if "id" not in values[k] else values[k]["id"]) + " = " + str(k) + "," + ("" if "doc" not in values[k] else "  // " + (values[k]["doc"]).replace("\n", "")))
-    lines.append("  " + (values[keys[-1]] if "id" not in values[keys[-1]] else values[keys[-1]]["id"]) + " = " + str(keys[-1]) + "" + ("" if "doc" not in values[keys[-1]] else "  // " + (values[keys[-1]]["doc"]).replace("\n", "")))
+        lines.append("  " + (values[k] if "id" not in values[k] else values[k]["id"]) + " = " + str(k) + "," + ("" if "doc" not in values[k] else "  // " + (values[k]["doc"]).replace("\n", " ")))
+    lines.append("  " + (values[keys[-1]] if "id" not in values[keys[-1]] else values[keys[-1]]["id"]) + " = " + str(keys[-1]) + "" + ("" if "doc" not in values[keys[-1]] else "  // " + (values[keys[-1]]["doc"]).replace("\n", " ")))
     lines.append("} " + str(key).upper() + ";")
     return lines
 
@@ -61,7 +62,7 @@ def gen_single_simple_type(key, values):
     #print(keys)
     for k in keys:
         if "doc" in k:
-            lines.append("  // "+values[k].replace("\n", ""))
+            lines.append("  // "+values[k].replace("\n", " "))
     for item in values["seq"]:
         #print(item)
         if "type" not in item.keys():
@@ -72,13 +73,13 @@ def gen_single_simple_type(key, values):
         else:
             local_type="type"
         if type(item[local_type]) is str or type(item[local_type]) is int:
-            lines.append("  "+gen_simple_var_creation(item[local_type],item["id"])+(""if "doc" not in item.keys() else"     //"+item["doc"]).replace("\n", ""))
+            lines.append("  "+gen_simple_var_creation(item[local_type],item["id"])+(""if "doc" not in item.keys() else"     //"+item["doc"]).replace("\n", " "))
         else:
             print("type not supported yet,skipping @ "+str(item[local_type].keys()))
 
 
 
-    lines.append("};")
+    lines.append("} "+str(key).upper()+";")
     return lines
 def gen_simple_var_creation(typ,name,content=None):  #TODO Refactor name
     type = typ if typ not in datatypes.keys() else datatypes[typ]
