@@ -1,4 +1,4 @@
-typedef <byte> color_type {
+typedef enum <byte> color_type {
   greyscale = 0,
   truecolor = 2,
   indexed = 3,
@@ -7,25 +7,25 @@ typedef <byte> color_type {
 } COLOR_TYPE;
 
 
-typedef <byte> phys_unit {
+typedef enum <byte> phys_unit {
   unknown = 0,
   meter = 1
 } PHYS_UNIT;
 
 
-typedef <byte> compression_methods {
+typedef enum <byte> compression_methods {
   zlib = 0
 } COMPRESSION_METHODS;
 
 
-typedef <byte> dispose_op_values {
+typedef enum <byte> dispose_op_values {
   none = 0,  // No disposal is done on this frame before rendering the next; the contents of the output buffer are left as is. 
   background = 1,  // The frame's region of the output buffer is to be cleared to fully transparent black before rendering the next frame. 
   previous = 2  // The frame's region of the output buffer is to be reverted to the previous contents before rendering the next frame. 
 } DISPOSE_OP_VALUES;
 
 
-typedef <byte> blend_op_values {
+typedef enum <byte> blend_op_values {
   source = 0,  // All color components of the frame, including alpha, overwrite the current contents of the frame's output buffer region. 
   over = 1  // The frame is composited onto the output buffer based on its alpha 
 } BLEND_OP_VALUES;
