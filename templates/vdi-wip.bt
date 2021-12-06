@@ -1,0 +1,90 @@
+//------------------------------------------------
+//--- 010 Editor v5.0 Binary Template
+//
+//      File: VDI.bt
+//   Authors: Diego Braga
+//    E-mail: dbraga@axcient.com
+//   Version: 1.0 
+//   Purpose: Oracle VirtualBox VDI format parser. 
+//  Category: Drives
+// File Mask: *.vdi
+//  ID Bytes: 
+//   History: 
+//   1.0    2021-06-17  Diego Braga: first version.
+//------------------------------------------------
+
+//----- VDI Structures ------
+
+// UUID type, as used by VirtualBox.
+// TODO: Replace with import in actual project
+typedef union {
+   uchar au8[16];  // 8-bit form.
+   uint16 au16[8];  // 16-bit form.
+   uint32 au32[4];  // 32-bit form.
+   uint64 au64[2];  // 64-bit form.
+   struct {       // Official DCE form.
+      uint32 u32TimeLow;
+      uint16 u16TimeMid;
+      uint16 u16TimeHiAndVersion;
+      uchar u8ClockSeqHiAndReserved;
+      uchar u8ClockSeqLow;
+      uchar au8Node[6];
+   } Gen;
+} uuid_t;
+
+//Disk geometry structure
+
+typedef struct {
+	uint32 			cyls;
+	uint32 			heads;
+	uint32 			secs_per_cyl;
+	uint32 			bytes_per_sec;
+} vdi_geometry_t;
+
+// VDI pre header
+
+typedef struct {
+	char 			text[64];   // Typically "<<< Sun VirtualBox Disk Image >>>\n". Must include terminating NUL.
+	uint32 			signature;     // == VDI_SIGNATURE
+	uint32 			version;       // VDI format version. Typically 0x00010001. Hi word=major version, Lo word=minor version.
+} vdi_pre_header_t;
+
+// VDI header
+
+typedef struct {          // header proper.
+	uint32 			header_size;           // Size in bytes of header proper.
+	uint32 			image_type;         // VDI type (see VDI_TYPE_xxxx).
+	uint32 			image_flags;        // VDI flags (see VDI_FLAG_xxxx). Typically 0.
+	char 			description[256]; // User supplied comment. Must include a terminating NUL.
+	uint32 			offset_bmap;    // Offset in bytes from beginning of VDI file to blocks array (should be sector aligned).
+	uint32 			offset_data;     // Offset in bytes from beginning of VDI file to disk image (should be sector aligned).
+	vdi_geometry_t 	geom;
+	uint32 			unused1;          // No longer used.
+	uint64 			disk_size;         // Maximum size in bytes of virtual disk.
+	uint32 			block_size;        // Size of an image block. Typically 1M (1024^2) bytes.
+	uint32 			block_extra;     // Size of additional service information of every data block. Prepended before block data. May be 0. Should be a power of 2 and sector-aligned for optimization reasons.
+	uint32 			blocks_in_image;          // Number of blocks == number of entries in blocks array.
+	uint32 			blocks_allocated; // Number of blocks allocated so far.
+	uuid_t 			uuid_image;     // UUID assigned to VDI on creation.
+	uuid_t 			uuid_last_snap;     // Modify UUID: when the VDI content changes, this also changes. See uuidParentModify.
+	uuid_t 			uuid_link;    // AKA uuidParent. In differencing VDIs, this is the creation UUID of the parent.
+	uuid_t 			uuid_parent; // In differencing VDIs, this is the modification UUID we expect to see in the parent.
+	vdi_geometry_t 	geom_lchs;/* LCHS image geometry (new field in VDI1.2 version. */ /* Note that version signature didn't change (still 0x10001), you can only tell this is here by checking cbSize. */
+	uint64			unused2[5];
+} vdi_header;
+
+typedef struct {
+	vdi_pre_header_t 	pre_header;
+	vdi_header 			header; /* VDI header (converted to host endianness). */
+	uint32 				bmap_sector; /* First sector of block map. */
+    uint32 				block_sectors; /* Size of block (sectors). */
+    uint32 				block_size; /* Size of block (bytes). */
+    uint32 				pointer_bmap; /* The block map entries are little endian (even in memory). */
+} vdi_file;
+
+// ---- VDI Definition -----
+
+LittleEndian();
+
+vdi_pre_header_t 	pre_header;
+vdi_header			header;
