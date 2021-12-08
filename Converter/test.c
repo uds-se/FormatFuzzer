@@ -1,44 +1,53 @@
-typedef enum <byte> color_type {
+enum <byte> {
   greyscale = 0,
   truecolor = 2,
   indexed = 3,
   greyscale_alpha = 4,
   truecolor_alpha = 6
-} COLOR_TYPE;
+} color_type;
 
 
-typedef enum <byte> phys_unit {
+enum <byte> {
   unknown = 0,
   meter = 1
-} PHYS_UNIT;
+} phys_unit;
 
 
-typedef enum <byte> compression_methods {
+enum <byte> {
   zlib = 0
-} COMPRESSION_METHODS;
+} compression_methods;
 
 
-typedef enum <byte> dispose_op_values {
-  none = 0,  // No disposal is done on this frame before rendering the next; the contents of the output buffer are left as is. 
-  background = 1,  // The frame's region of the output buffer is to be cleared to fully transparent black before rendering the next frame. 
-  previous = 2  // The frame's region of the output buffer is to be reverted to the previous contents before rendering the next frame. 
-} DISPOSE_OP_VALUES;
+enum <byte> {
+  none = 0,  // No disposal is done on this frame before rendering the next;
+     //the contents of the output buffer are left as is.
+     //
+  background = 1,  // The frame's region of the output buffer is to be cleared to
+     //fully transparent black before rendering the next frame.
+     //
+  previous = 2  // The frame's region of the output buffer is to be reverted
+     //to the previous contents before rendering the next frame.
+     //
+} dispose_op_values;
 
 
-typedef enum <byte> blend_op_values {
-  source = 0,  // All color components of the frame, including alpha, overwrite the current contents of the frame's output buffer region. 
-  over = 1  // The frame is composited onto the output buffer based on its alpha 
-} BLEND_OP_VALUES;
+enum <byte> {
+  source = 0,  // All color components of the frame, including alpha,
+     //overwrite the current contents of the frame's output buffer region.
+     //
+  over = 1  // The frame is composited onto the output buffer based on its alpha
+     //
+} blend_op_values;
 
 
-typedef struct {
+struct chunk{
     uint32 len;
-    STR type;
+    str type;
     4 crc;
-} CHUNK;
+};
 
 
-typedef struct {
+struct ihdr_chunk{
   // https://www.w3.org/TR/PNG/#11IHDR
     uint32 width;
     uint32 height;
@@ -47,86 +56,96 @@ typedef struct {
     ubyte compression_method;
     ubyte filter_method;
     ubyte interlace_method;
-} IHDR_CHUNK;
+};
 
 
-typedef struct {
+struct plte_chunk{
   // https://www.w3.org/TR/PNG/#11PLTE
-    RGB entries;
-} PLTE_CHUNK;
+    rgb entries;
+};
 
 
-typedef struct {
+struct rgb{
     ubyte r;
     ubyte g;
     ubyte b;
-} RGB;
+};
 
 
-typedef struct {
+struct chrm_chunk{
   // https://www.w3.org/TR/PNG/#11cHRM
-    POINT white_point;
-    POINT red;
-    POINT green;
-    POINT blue;
-} CHRM_CHUNK;
+    point white_point;
+    point red;
+    point green;
+    point blue;
+};
 
 
-typedef struct {
+struct point{
     uint32 x_int;
     uint32 y_int;
-} POINT;
+};
 
 
-typedef struct {
+struct gama_chunk{
   // https://www.w3.org/TR/PNG/#11gAMA
     uint32 gamma_int;
-} GAMA_CHUNK;
+};
 
 
-typedef struct {
+struct srgb_chunk{
   // https://www.w3.org/TR/PNG/#11sRGB
     ubyte render_intent;
-} SRGB_CHUNK;
+};
 
 
-typedef struct {
-  // Background chunk stores default background color to display this image against. Contents depend on `color_type` of the image. 
+struct bkgd_chunk{
+  // Background chunk stores default background color to display this
+     //image against. Contents depend on `color_type` of the image.
+     //
   // https://www.w3.org/TR/PNG/#11bKGD
-} BKGD_CHUNK;
+};
 
 
-typedef struct {
+struct bkgd_greyscale{
   // Background chunk for greyscale images.
     uint16 value;
-} BKGD_GREYSCALE;
+};
 
 
-typedef struct {
+struct bkgd_truecolor{
   // Background chunk for truecolor images.
     uint16 red;
     uint16 green;
     uint16 blue;
-} BKGD_TRUECOLOR;
+};
 
 
-typedef struct {
+struct bkgd_indexed{
   // Background chunk for images with indexed palette.
     ubyte palette_index;
-} BKGD_INDEXED;
+};
 
 
-typedef struct {
-  // "Physical size" chunk stores data that allows to translate logical pixels into physical units (meters, etc) and vice-versa. 
+struct phys_chunk{
+  // "Physical size" chunk stores data that allows to translate
+     //logical pixels into physical units (meters, etc) and vice-versa.
+     //
   // https://www.w3.org/TR/PNG/#11pHYs
-    uint32 pixels_per_unit_x;     //Number of pixels per physical unit (typically, 1 meter) by X axis. 
-    uint32 pixels_per_unit_y;     //Number of pixels per physical unit (typically, 1 meter) by Y axis. 
+    uint32 pixels_per_unit_x;     //Number of pixels per physical unit (typically, 1 meter) by X
+     //axis.
+     //
+    uint32 pixels_per_unit_y;     //Number of pixels per physical unit (typically, 1 meter) by Y
+     //axis.
+     //
     ubyte unit;
-} PHYS_CHUNK;
+};
 
 
-typedef struct {
-  // Time chunk stores time stamp of last modification of this image, up to 1 second precision in UTC timezone. 
+struct time_chunk{
+  // Time chunk stores time stamp of last modification of this image,
+     //up to 1 second precision in UTC timezone.
+     //
   // https://www.w3.org/TR/PNG/#11tIME
     uint16 year;
     ubyte month;
@@ -134,45 +153,66 @@ typedef struct {
     ubyte hour;
     ubyte minute;
     ubyte second;
-} TIME_CHUNK;
+};
 
 
-typedef struct {
-  // International text chunk effectively allows to store key-value string pairs in PNG container. Both "key" (keyword) and "value" (text) parts are given in pre-defined subset of iso8859-1 without control characters. 
+struct international_text_chunk{
+  // International text chunk effectively allows to store key-value string pairs in
+     //PNG container. Both "key" (keyword) and "value" (text) parts are
+     //given in pre-defined subset of iso8859-1 without control
+     //characters.
+     //
   // https://www.w3.org/TR/PNG/#11iTXt
-    STRZ keyword;     //Indicates purpose of the following text data.
-    ubyte compression_flag;     //0 = text is uncompressed, 1 = text is compressed with a method specified in `compression_method`. 
+    strz keyword;     //Indicates purpose of the following text data.
+    ubyte compression_flag;     //0 = text is uncompressed, 1 = text is compressed with a
+     //method specified in `compression_method`.
+     //
     ubyte compression_method;
-    STRZ language_tag;     //Human language used in `translated_keyword` and `text` attributes - should be a language code conforming to ISO 646.IRV:1991. 
-    STRZ translated_keyword;     //Keyword translated into language specified in `language_tag`. Line breaks are not allowed. 
-    STR text;     //Text contents ("value" of this key-value pair), written in language specified in `language_tag`. Linke breaks are allowed. 
-} INTERNATIONAL_TEXT_CHUNK;
+    strz language_tag;     //Human language used in `translated_keyword` and `text`
+     //attributes - should be a language code conforming to ISO
+     //646.IRV:1991.
+     //
+    strz translated_keyword;     //Keyword translated into language specified in
+     //`language_tag`. Line breaks are not allowed.
+     //
+    str text;     //Text contents ("value" of this key-value pair), written in
+     //language specified in `language_tag`. Linke breaks are
+     //allowed.
+     //
+};
 
 
-typedef struct {
-  // Text chunk effectively allows to store key-value string pairs in PNG container. Both "key" (keyword) and "value" (text) parts are given in pre-defined subset of iso8859-1 without control characters. 
+struct text_chunk{
+  // Text chunk effectively allows to store key-value string pairs in
+     //PNG container. Both "key" (keyword) and "value" (text) parts are
+     //given in pre-defined subset of iso8859-1 without control
+     //characters.
+     //
   // https://www.w3.org/TR/PNG/#11tEXt
-    STRZ keyword;     //Indicates purpose of the following text data.
-    STR text;
-} TEXT_CHUNK;
+    strz keyword;     //Indicates purpose of the following text data.
+    str text;
+};
 
 
-typedef struct {
-  // Compressed text chunk effectively allows to store key-value string pairs in PNG container, compressing "value" part (which can be quite lengthy) with zlib compression. 
+struct compressed_text_chunk{
+  // Compressed text chunk effectively allows to store key-value
+     //string pairs in PNG container, compressing "value" part (which
+     //can be quite lengthy) with zlib compression.
+     //
   // https://www.w3.org/TR/PNG/#11zTXt
-    STRZ keyword;     //Indicates purpose of the following text data.
+    strz keyword;     //Indicates purpose of the following text data.
     ubyte compression_method;
-} COMPRESSED_TEXT_CHUNK;
+};
 
 
-typedef struct {
+struct animation_control_chunk{
   // https://wiki.mozilla.org/APNG_Specification#.60acTL.60:_The_Animation_Control_Chunk
     uint32 num_frames;     //Number of frames, must be equal to the number of `frame_control_chunk`s
     uint32 num_plays;     //Number of times to loop, 0 indicates infinite looping.
-} ANIMATION_CONTROL_CHUNK;
+};
 
 
-typedef struct {
+struct frame_control_chunk{
   // https://wiki.mozilla.org/APNG_Specification#.60fcTL.60:_The_Frame_Control_Chunk
     uint32 sequence_number;     //Sequence number of the animation chunk
     uint32 width;     //Width of the following frame
@@ -183,11 +223,16 @@ typedef struct {
     uint16 delay_den;     //Frame delay fraction denominator
     ubyte dispose_op;     //Type of frame area disposal to be done after rendering this frame
     ubyte blend_op;     //Type of frame area rendering for this frame
-} FRAME_CONTROL_CHUNK;
+};
 
 
-typedef struct {
+struct frame_data_chunk{
   // https://wiki.mozilla.org/APNG_Specification#.60fdAT.60:_The_Frame_Data_Chunk
-    uint32 sequence_number;     //Sequence number of the animation chunk. The fcTL and fdAT chunks have a 4 byte sequence number. Both chunk types share the sequence. The first fcTL chunk must contain sequence number 0, and the sequence numbers in the remaining fcTL and fdAT chunks must be in order, with no gaps or duplicates. 
-} FRAME_DATA_CHUNK;
+    uint32 sequence_number;     //Sequence number of the animation chunk. The fcTL and fdAT chunks
+     //have a 4 byte sequence number. Both chunk types share the sequence.
+     //The first fcTL chunk must contain sequence number 0, and the sequence
+     //numbers in the remaining fcTL and fdAT chunks must be in order, with
+     //no gaps or duplicates.
+     //
+};
 

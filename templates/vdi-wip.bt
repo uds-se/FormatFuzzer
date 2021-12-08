@@ -44,7 +44,7 @@ typedef struct {
 // VDI pre header
 
 typedef struct {
-	char 			text[64];   // Typically "<<< Sun VirtualBox Disk Image >>>\n". Must include terminating NUL.
+	char 			text[64] ;   // Typically "<<< Sun VirtualBox Disk Image >>>\n". Must include terminating NUL.
 	uint32 			signature;     // == VDI_SIGNATURE
 	uint32 			version;       // VDI format version. Typically 0x00010001. Hi word=major version, Lo word=minor version.
 } vdi_pre_header_t;
