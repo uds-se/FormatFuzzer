@@ -18,6 +18,7 @@ def main():
     kaitaijs=yaml.load(input_file)
     types=kaitaijs["types"]
     enums=kaitaijs["enums"]
+    print(kaitaijs)
     lines=[]
     lines.extend(gen_enums(enums))
     lines.extend(gen_types(types))
