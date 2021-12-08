@@ -1,0 +1,69 @@
+First Level Entries:
+    -meta
+    -doc
+    -doc-ref
+    -seq
+    -types
+    -instances
+    -enums
+
+
+meta:
+    -id
+    -title
+    -application
+    -file-extension
+    -xref
+    -license
+    -tags
+    -ks-version
+    -ks-debug
+    -ks-opaque-types
+    -imports
+    -encoding
+    -endian
+
+doc: -handled as simple commented string without newlines
+doc-ref: -same
+    Both can be present on ~every level
+
+seq: list of dicts(attribute)
+
+entities of seq composed of:
+    -id = name/tag of attribute
+    -type:
+        -sX(be/le),uX(be/le)
+        -fX(be/le)
+        -str/strz
+        --encoding
+        -custom type
+        -dict composed of   (switch type depending on something beforehand)
+            -switch-on = tag
+            -cases = dict of cases
+            (if no match is found parsing by size if present)
+            (_ can be used as else)
+    -size (needed if no type is given but both can be present)
+        -number of bytes
+        -reference to previous attributes
+        -mathematical expression]
+        -expression language (accessing attributes of custom type =<type>.<attribute> like)
+    -doc/doc-ref
+    -contents = list of "magic" bytes represented as: (no size or type needed if present)
+        -utf-8 string
+        -array of bytes in dec or hex(starting with 0x)
+    -terminator = any byte that should be used to serve as terminator byte for a str
+                  size and terminator can both be present
+                  type str + terminator:0 == type strz
+    -encoding(if its a str/strz)
+    -size-eos (written as size-eos:True) = size is until end of stream
+    -enum = basically specifying a pool of possible values for the attribute
+            only in combination with type u* or s*
+    -if = expression that decides if attribute exists
+    -repeat = eos/expr/until
+    -repeat-expr = expression ( if repeat = expr)
+    -repeat-until = repeat until condition is met ( if repeat = until)
+                    can use _ as element just parsed ( _.len is possible)
+-instances: (dict of dicts where the keys are the attributes tags)
+    -pos = expression stating offset from file begin to parse from
+    -same as seq ~
+    -value = expression to calculate (if present nothing gets parsed/nothing else is needed)
