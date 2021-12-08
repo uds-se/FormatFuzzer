@@ -42,6 +42,7 @@ entities of seq composed of:
             -cases = dict of cases
             (if no match is found parsing by size if present)
             (_ can be used as else)
+    -process = proccessing data with given function #TODO
     -size (needed if no type is given but both can be present)
         -number of bytes
         -reference to previous attributes
@@ -55,7 +56,7 @@ entities of seq composed of:
                   size and terminator can both be present
                   type str + terminator:0 == type strz
     -encoding(if its a str/strz)
-    -size-eos (written as size-eos:True) = size is until end of stream
+    -size-eos (written as size-eos:True) = size is until end of stream (zero byte)
     -enum = basically specifying a pool of possible values for the attribute
             only in combination with type u* or s*
     -if = expression that decides if attribute exists
@@ -63,7 +64,17 @@ entities of seq composed of:
     -repeat-expr = expression ( if repeat = expr)
     -repeat-until = repeat until condition is met ( if repeat = until)
                     can use _ as element just parsed ( _.len is possible)
+    -orig-id (custom stuff will be dropped i think is name of id in spec #TODO)
+
 -instances: (dict of dicts where the keys are the attributes tags)
-    -pos = expression stating offset from file begin to parse from
+    -io = (_root._io specifying the stream in this case the files begining)
+    -pos = expression stating offset from (sub)stream begin to parse from
+         = if io is present offset to the specified stream
     -same as seq ~
     -value = expression to calculate (if present nothing gets parsed/nothing else is needed)
+
+-enums: (dict of dicts where the keys are the enumerations tags)
+    -integer to identifier dict
+    -int_to_dict dict:
+        -id = identifier
+        -doc/doc-ref
