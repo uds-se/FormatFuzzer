@@ -107,7 +107,7 @@ class enums(Converter):
             local_key = remap_keys(this_level_key)
             if local_key is not None:
                 self.subtrees[local_key] = attribute(local_key, self.input[this_level_key])
-                print(str(self.subtrees[local_key].get_name()) + " : " + str(self.subtrees[local_key].get_value()))
+                # print(str(self.subtrees[local_key].get_name()) + " : " + str(self.subtrees[local_key].get_value()))
 
     def generate_code(self):
         self.output = []
@@ -158,26 +158,34 @@ class data_point():
             if local_key is not None:
                 self.subtrees[local_key] = attribute(local_key, self.input[this_level_key])
 
-            print(str(self.subtrees[local_key].get_name()) + " : " + str(self.subtrees[local_key].get_value()))
+            #print(str(self.subtrees[local_key].get_name()) + " : " + str(self.subtrees[local_key].get_value()))
         if self.id is None:
             self.id = self.subtrees["id"].get_value()
 
     def generate_code(self):
         self.output = []
-        print(self.subtrees.keys())
+        # TODO EXTEND TO ALL VARIATIONS
         if (len(self.subtrees.keys()) == 2) and ("type" in self.subtrees.keys()):
             self.output.append(self.gen_atomic_variable(self.id, self.subtrees["type"].get_value()))
-            print(self.output)
+        elif (len(self.subtrees.keys()) == 4) and ("type" in self.subtrees.keys()):
+            if ("size" in self.subtrees.keys()):
+                self.output.append(self.gen_atomic_variable(self.id, self.subtrees["type"].get_value(),
+                                                            self.subtrees["size"].get_value()))
+            elif ("size-eos" in self.subtrees.keys()):
+                self.output.append(self.gen_atomic_variable(self.id, "strz"))
+        # print(self.output)
         return self.output
 
     def gen_atomic_variable(self, name, type, size=None):
-        output = ""
-        print(name)
-        if size is not None:
-            print("AAA")
-            pass
-        if str(type) in datatypes.keys():
-            return "    " + str(datatypes[type]) + " " + str(name) + ";"
+
+        if str(type) == "str" and size is not None:
+            # TODO IMPLEMENT CASE FOR DIFFERENT THAN ZEROBYTE TERMINATOR
+            return "    char " + str(name) + "[" + str(size) + "]" + ";"
+        elif str(type) == "strz":
+            return "    string " + str(name) + ";"
+        else:
+            if str(type) in datatypes.keys():
+                return "    " + str(datatypes[type]) + " " + str(name) + ";"
         return "    " + str(type) + " " + str(name) + ";"
 
 
