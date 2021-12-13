@@ -56,7 +56,7 @@ entities of seq composed of:
                   size and terminator can both be present
                   type str + terminator:0 == type strz
     -encoding(if its a str/strz)
-    -size-eos (written as size-eos:True) = size is until end of stream (zero byte)
+    -size-eos (written as size-eos:True) = size is until end of stream (zero byte) #TODO Check if true for all
     -enum = basically specifying a pool of possible values for the attribute
             only in combination with type u* or s*
     -if = expression that decides if attribute exists
