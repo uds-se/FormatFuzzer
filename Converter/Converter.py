@@ -17,7 +17,6 @@ class Converter(object):
         self.input = input_js
         try:
             self.this_level_keys = self.input.keys()
-            print(self.this_level_keys)
         except:
             self.this_level_keys = None
         if is_master:
@@ -35,9 +34,8 @@ class Converter(object):
     def generate_code_toplevel(self):
         self.output.extend(self.subtrees["enums"].generate_code())
         self.output.extend(self.subtrees["types"].generate_code())
-        print("AAAAAAAAAAAAAAAAAAAAAAA")
         self.output.extend(self.subtrees["seq"].generate_code())
-        print("AAAAAAAAAAAAAAAAAAAAAAA")
+
 
         return self.output
 
@@ -47,27 +45,15 @@ class Converter(object):
             if local_key is not None:
                 try:
                     self.output.extend(self.subtrees[local_key].generate_code())
-                except:
+                except Exception as err:
+                    print("++++++START Converter codeGEN exception START +++++")
+                    print(err)
+                    print(self.subtrees[local_key].input)
+                    print(self.this_level_keys)
+                    print("++++++END Converter codeGEN exception END +++++")
                     pass
         return self.output
 
-    def print_input(self):
-        print("+++++++++++++")
-        print(self.input)
-        print("+++++++++++++")
-        for this_level_key in self.this_level_keys:
-            print("=============")
-            print(this_level_key)
-            print(self.subtrees[this_level_key].input)
-            print("=============")
-
-    def print_recursive_input(self):
-        # TODO sense-full way of getting back json for checking
-        for this_level_key in self.this_level_keys:
-            print("=============")
-            print(this_level_key)
-            self.subtrees[this_level_key].print_recursive_input()
-            print("=============")
 
     def global_init(self):
         self.resolve_enum_sizes()
@@ -92,7 +78,7 @@ class doc(Converter):
         Converter.__init__(self, input_js)
 
     def parse_subtree(self):
-        self.output = "//     " + str(self.input).replace("\n", "\n//    ")
+        self.output = "     //     " + str(self.input).replace("\n", "\n//    ")
 
     def generate_code(self):
         return [self.output]
@@ -124,17 +110,19 @@ class enums(Converter):
         keys = list(values.keys())
         for k in keys[0:-1]:
             lines.append("  " + (values[k] if "id" not in values[k] else values[k]["id"]) + " = " + str(k) + "," + (
-                "" if "doc" not in values[k] else "  // " + (values[k]["doc"]).replace("\n", "\n     //")))
+                "" if "doc" not in values[k] else "     // " + (values[k]["doc"]).strip().replace("\n", "\n     //")))
         lines.append(
             "  " + (values[keys[-1]] if "id" not in values[keys[-1]] else values[keys[-1]]["id"]) + " = " + str(
                 keys[-1]) + "" + (
-                "" if "doc" not in values[keys[-1]] else "  // " + (values[keys[-1]]["doc"]).replace("\n",
-                                                                                                     "\n     //")))
+                "" if "doc" not in values[keys[-1]] else "      // " + (values[keys[-1]]["doc"]).strip().replace("\n",
+                                                                                                                 "\n     //")))
         lines.append("} " + str(key) + ";")
         return lines
 
 
 class attribute():
+    # A data_point is composed of mutiple attributes/they are the atomic informations
+    # TODO CHECK IF CLASS IS ACTUALLY NEEDED
     def __init__(self, name, value):
         self.value = value
         self.name = name
@@ -147,47 +135,98 @@ class attribute():
 
 
 class data_point():
+    #Things that start with getting an id assigned/elements of seq
     def __init__(self, input_js, name=None):
         self.subtrees = dict()
         self.input = input_js
         self.id = name
+        self.this_level_keys = self.input.keys()
+        self.type = None
+        self.size = None
 
     def parse(self):
-        for this_level_key in self.input.keys():
+        if "type" in self.input.keys(): self.type = self.input["type"]
+        if "size" in self.input.keys(): self.size = self.input["size"]
+        for this_level_key in self.this_level_keys:
             local_key = remap_keys(this_level_key)
             if local_key is not None:
                 self.subtrees[local_key] = attribute(local_key, self.input[this_level_key])
 
-            #print(str(self.subtrees[local_key].get_name()) + " : " + str(self.subtrees[local_key].get_value()))
+            # print(str(self.subtrees[local_key].get_name()) + " : " + str(self.subtrees[local_key].get_value()))
         if self.id is None:
             self.id = self.subtrees["id"].get_value()
 
     def generate_code(self):
-        self.output = []
         # TODO EXTEND TO ALL VARIATIONS
-        if (len(self.subtrees.keys()) == 2) and ("type" in self.subtrees.keys()):
-            self.output.append(self.gen_atomic_variable(self.id, self.subtrees["type"].get_value()))
-        elif (len(self.subtrees.keys()) == 4) and ("type" in self.subtrees.keys()):
-            if ("size" in self.subtrees.keys()):
-                self.output.append(self.gen_atomic_variable(self.id, self.subtrees["type"].get_value(),
-                                                            self.subtrees["size"].get_value()))
-            elif ("size-eos" in self.subtrees.keys()):
-                self.output.append(self.gen_atomic_variable(self.id, "strz"))
-        # print(self.output)
+        self.output = []
+        self.front = []
+        self.back = []
+
+        if "process" in self.this_level_keys:
+            self.gen_atomic(docu="IMPLEMENT" + str(self.input["process"]))
+            print("PROCESS NOT IMPLEMENTED YET\n")
+            # TODO IMPLEMENT
+            self.output.extend(self.front)
+            self.output.extend(self.back)
+            return self.output
+        elif "if" in self.this_level_keys:
+            self.gen_if()
+        elif "repeat" in self.this_level_keys:
+            self.gen_repeat()
+
+        if "encoding" in self.this_level_keys:
+            self.gen_str()
+        elif "contents" in self.this_level_keys:
+            self.gen_contents()
+        elif type(self.type) is dict:
+            self.gen_switch()
+        else:
+            self.gen_atomic()
+
+        self.output.extend(self.front)
+        self.output.extend(self.back)
         return self.output
 
-    def gen_atomic_variable(self, name, type, size=None):
+    def gen_switch(self):
+        # TODO implement
+        pass
 
-        if str(type) == "str" and size is not None:
-            # TODO IMPLEMENT CASE FOR DIFFERENT THAN ZEROBYTE TERMINATOR
-            return "    char " + str(name) + "[" + str(size) + "]" + ";"
-        elif str(type) == "strz":
-            return "    string " + str(name) + ";"
+    def gen_if(self):
+        # TODO implement
+        pass
+
+    def gen_repeat(self):
+        # TODO implement
+        pass
+
+    def gen_str(self):
+        self.gen_atomic()
+        # TODO THIS METHOD ONLY EXISTS IN CASE ENCODING NEEDS SPECIAL TREATMENT
+
+    def gen_contents(self):
+        # TODO implement
+        pass
+
+    def gen_atomic(self, docu=""):
+        if docu != "":
+            loc_doc = "     //" + str(docu)
         else:
-            if str(type) in datatypes.keys():
-                return "    " + str(datatypes[type]) + " " + str(name) + ";"
-        return "    " + str(type) + " " + str(name) + ";"
-
+            loc_doc = ""
+        if self.type == "str" and self.size is not None:
+            # TODO IMPLEMENT CASE FOR DIFFERENT THAN ZEROBYTE TERMINATOR
+            self.front.append("    char " + str(self.id) + "[" + str(self.size) + "]" + ";" + loc_doc)
+        elif self.type == "strz":
+            self.front.append("    string " + str(self.id) + ";" + loc_doc)
+        elif self.type is not None:
+            if self.type in datatypes.keys():
+                self.front.append("    " + str(datatypes[self.type]) + " " + str(self.id) + ";" + loc_doc)
+            else:
+                self.front.append("    " + str(self.type) + " " + str(self.id) + ";" + loc_doc)
+        elif self.size is not None:
+            self.front.append("    byte " + str(self.id) + "[" + str(self.size) + "]" + ";" + loc_doc)
+        else:
+            print("ERROR NO SIZE OR TYPE GIVEN AND ITS NO MAGIC\n")
+            self.front.append("//STUFF MISSING HERE @ NO MAGIC " + str(self.id) + " " + str(self.input))
 
 class seq(Converter):
     def __init__(self, input_js):
@@ -204,6 +243,7 @@ class seq(Converter):
     def generate_code(self):
         for this_level_key in self.this_level_keys:
             self.output.extend(self.subtrees[this_level_key].generate_code())
+        #print("SEQ"+str(self.output)+str(self.input))
         return self.output
 
 
@@ -229,7 +269,6 @@ class types(Converter):
         Converter.__init__(self, input_js)
 
     def parse_subtree(self):
-        print(self.input)
         for this_level_key in self.this_level_keys:
             local_key = remap_keys(this_level_key)
             if local_key is not None:
@@ -277,8 +316,8 @@ def main():
 
     converter = Converter(kaitaijs, True)
 
-    # output = converter.generate_code_toplevel()
-    output = converter.generate_code()
+    # output = converter.generate_code()
+    output = converter.generate_code_toplevel()
     print('\n'.join(output))
     # converter.print_input()
     exit(0)
