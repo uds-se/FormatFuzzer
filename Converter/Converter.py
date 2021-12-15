@@ -1,5 +1,6 @@
 import sys
 import yaml
+import binascii
 
 datatypes = {"u4": "uint32", "u1": "ubyte", "u2": "uint16"}  # TODO implement all types
 
@@ -83,7 +84,7 @@ class Converter(object):
         else:
             return expr
 
-    def rec_search_flag_present(self, flag):
+    def chck_flg(self, flag):
         try:
             if flag in self.this_level_keys:
                 return True
@@ -91,7 +92,7 @@ class Converter(object):
                 for this_level_key in self.this_level_keys:
                     local_key = remap_keys(this_level_key)
                     if local_key is not None:
-                        if self.subtrees[local_key].rec_search_flag_present(flag):
+                        if self.subtrees[local_key].chck_flg(flag):
                             return True
                         else:
                             pass
@@ -100,8 +101,8 @@ class Converter(object):
 
     def lookup_f_in_typ_pres(self, type, flag, id=None):
         if id is None:
-            return self.subtrees["types"].subtrees[type].rec_search_flag_present(flag)
-        return self.subtrees["types"].subtrees[type].subtrees[id].rec_search_flag_present(flag)
+            return self.subtrees["types"].subtrees[type].chck_flg(flag)
+        return self.subtrees["types"].subtrees[type].subtrees[id].chck_flg(flag)
 
 
 class meta(Converter):
@@ -207,7 +208,7 @@ class data_point():
 
             # print(str(self.subtrees[local_key].get_name()) + " : " + str(self.subtrees[local_key].get_value()))
         if self.id is None:
-            self.id = self.subtrees["id"].get_value()
+            self.id = str(self.subtrees["id"].get_value())
 
     def generate_code(self, size=None):
         # TODO EXTEND TO ALL VARIATIONS
@@ -265,13 +266,14 @@ class data_point():
             self.front.append("         case " + str(case_val) + ":")
             self.front.append("             " + str(cases[case_key]) + " " + str(self.id) + paramfield + ";")
             self.front.append("             break;")
-        self.front.append("};")
+        self.front.append("    }")
 
     def gen_if(self):
         # TODO implement
         pass
 
     def gen_repeat(self):
+
         # TODO implement
         pass
 
@@ -280,8 +282,43 @@ class data_point():
         # TODO THIS METHOD ONLY EXISTS IN CASE ENCODING NEEDS SPECIAL TREATMENT
 
     def gen_contents(self):
-        # TODO implement
-        pass
+        self.contents = self.input["contents"]
+        self.magic = self.to_hex_list(self.contents)
+        self.magic_len = len(self.magic)
+        self.front.append("    byte " + str(self.id) + "[" + str(self.magic_len) + "];")
+        # TODO HERE POSSIBLE SET_EVIL_BIT
+        self.front.append("    if (" + self.id + "[0] != " + self.magic[0] + " ||")
+        for x in range(1, self.magic_len - 1):
+            self.front.append("        " + self.id + "[" + str(x) + "] != " + self.magic[x] + " ||")
+        self.front.append(
+            "        " + self.id + "[" + str(self.magic_len) + "] != " + self.magic[self.magic_len - 1] + ") {")
+        self.front.append('    error_message("Magic Bytes of ' + self.id + ' not matching!");')
+        self.front.append("    return -1;};")
+
+    def to_hex_list(self, input):
+        if type(input) is list:
+            is_str = False
+            for x in input:
+                if type(x) is str:
+                    is_str = True
+            if not is_str:
+                return [hex(no) for no in input]
+            else:
+                out = []
+                for x in input:
+                    line = self.to_hex_list(x)
+                    if type(line) is list:
+                        out.extend(line)
+                    else:
+                        out.append(line)
+                return out
+        elif type(input) is str:
+            return list(map(lambda c: hex(ord(c)), input))
+        elif type(input) is int:
+            return hex(input)
+        else:
+            print("to_hex_list FAILURE\n")
+            exit(-1)
 
     def gen_atomic(self, docu="", size=None):
         if docu != "":
@@ -378,12 +415,12 @@ class types(Converter):
         else:
             lenfield = ""
         for this_level_key in self.this_level_keys:
-            if self.subtrees[this_level_key].rec_search_flag_present("size-eos") and not self.subtrees[
-                this_level_key].rec_search_flag_present("encoding"):
+            item = self.subtrees[this_level_key]
+            if item.chck_flg("size-eos") and not item.chck_flg("encoding"):
                 lenfield = "(int32 lenght)"
             output.append("struct " + str(this_level_key) + lenfield + " {")
             # TODO IMPLEMENT size Calc locals
-            output.extend(self.subtrees[this_level_key].generate_code(size))
+            output.extend(item.generate_code(size))
             output.append("};")
         return output
         # TODO IMPLEMENT THIS IS JUST A PLACEHOLDER
