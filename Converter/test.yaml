@@ -35,7 +35,9 @@ doc: |
 seq:
   # https://www.w3.org/TR/PNG/#5PNG-file-signature
   - id: magic
-    contents: [137, 80, 78, 71, 13, 10, 26, 10]
+    #contents: [CAFE, 0, BABE]
+    #contents: JFIF
+    contents: [ 137, 80, 78, 71, 13, 10, 26, 10 ]
   # https://www.w3.org/TR/PNG/#11IHDR
   # Always appears first, stores values referenced by other chunks
   - id: ihdr_len
