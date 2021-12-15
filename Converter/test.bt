@@ -1,0 +1,140 @@
+enum <byte> {
+  extension = 33,
+  local_image_descriptor = 44,
+  end_of_file = 59
+} block_type;
+
+
+enum <byte> {
+  graphic_control = 249,
+  comment = 254,
+  application = 255
+} extension_label;
+
+
+struct header;
+struct logical_screen_descriptor_struct;
+struct color_table;
+struct color_table_entry;
+struct block;
+struct local_image_descriptor;
+struct image_data;
+struct extension;
+struct ext_application;
+struct ext_graphic_control;
+struct subblocks;
+struct subblock;
+struct application_id;
+struct header {
+    //     https://www.w3.org/Graphics/GIF/spec-gif89a.txt - section 17
+    byte magic[3];
+    if (magic[0] != 0x47 ||
+        magic[1] != 0x49 ||
+        magic[3] != 0x46) {
+    error_message("Magic Bytes of magic not matching!");
+    return -1;};
+    char version[3];
+};
+struct logical_screen_descriptor_struct {
+    //     https://www.w3.org/Graphics/GIF/spec-gif89a.txt - section 18
+    uint16 screen_width;
+    uint16 screen_height;
+    ubyte flags;
+    ubyte bg_color_index;
+    ubyte pixel_aspect_ratio;
+};
+struct color_table {
+    //     https://www.w3.org/Graphics/GIF/spec-gif89a.txt - section 19
+};
+struct color_table_entry {
+    ubyte red;
+    ubyte green;
+    ubyte blue;
+};
+struct block {
+    ubyte block_type;
+     switch(block_type) {
+         case 33:
+             extension body;
+             break;
+         case 44:
+             local_image_descriptor body;
+             break;
+    }
+};
+struct local_image_descriptor {
+    uint16 left;
+    uint16 top;
+    uint16 width;
+    uint16 height;
+    ubyte flags;
+    local int64 has_color_table = (flags & 0b10000000) != 0;
+    if (has_color_table) {
+    color_table local_color_table;
+    local int64 has_color_table = (flags & 0b10000000) != 0;
+    if (has_color_table) {
+    color_table local_color_table;
+     }
+    image_data image_data;
+};
+struct image_data {
+    //     https://www.w3.org/Graphics/GIF/spec-gif89a.txt - section 22
+    ubyte lzw_min_code_size;
+    subblocks subblocks;
+};
+struct extension {
+    ubyte label;
+     switch(label) {
+         case 255:
+             ext_application body(None);
+             break;
+         case 254:
+             subblocks body(None);
+             break;
+         case 249:
+             ext_graphic_control body;
+             break;
+         case _:
+             subblocks body(None);
+             break;
+    }
+};
+struct ext_application {
+    application_id application_id;
+};
+struct ext_graphic_control {
+    //     https://www.w3.org/Graphics/GIF/spec-gif89a.txt - section 23
+    byte block_size[1];
+    if (block_size[0] != 0x4 ||
+        block_size[1] != 0x4) {
+    error_message("Magic Bytes of block_size not matching!");
+    return -1;};
+    ubyte flags;
+    uint16 delay_time;
+    ubyte transparent_idx;
+    byte terminator[1];
+    if (terminator[0] != 0x0 ||
+        terminator[1] != 0x0) {
+    error_message("Magic Bytes of terminator not matching!");
+    return -1;};
+};
+struct subblocks {
+};
+struct subblock {
+    ubyte len_bytes;
+    byte bytes[len_bytes];
+};
+struct application_id {
+    ubyte len_bytes;
+    char application_identifier[8];
+    byte application_auth_code[3];
+};
+    header hdr;
+    logical_screen_descriptor_struct logical_screen_descriptor;
+    local int64 has_color_table = (flags & 0b10000000) != 0;
+    if (logical_screen_descriptor.has_color_table) {
+    color_table global_color_table;
+    local int64 has_color_table = (flags & 0b10000000) != 0;
+    if (logical_screen_descriptor.has_color_table) {
+    color_table global_color_table;
+     }
