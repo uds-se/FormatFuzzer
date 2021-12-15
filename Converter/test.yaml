@@ -1,430 +1,206 @@
 meta:
-  id: png
-  title: PNG (Portable Network Graphics) file
-  file-extension:
-    - png
-    - apng
+  id: gif
+  title: GIF (Graphics Interchange Format) image file
+  file-extension: gif
   xref:
-    forensicswiki: Portable_Network_Graphics_(PNG)
-    iso: 15948:2004
-    justsolve:
-      - PNG
-      - APNG
-    loc: fdd000153
-    mime:
-      - image/png
-      - image/apng
-      - image/vnd.mozilla.apng
+    forensicswiki: GIF
+    justsolve: GIF
+    loc: fdd000133 # GIF 89a
+    mime: image/gif
     pronom:
-      - fmt/11 # PNG 1.0
-      - fmt/12 # PNG 1.1
-      - fmt/13 # PNG 1.2
-      - fmt/935 # APNG
-    rfc: 2083
-    wikidata:
-      - Q178051 # PNG
-      - Q433224 # APNG
+      - fmt/3 # GIF 87a
+      - fmt/4 # GIF 89a
+    wikidata: Q2192
   license: CC0-1.0
-  ks-version: 0.9
-  endian: be
+  endian: le
 doc: |
-  Test files for APNG can be found at the following locations:
+  GIF (Graphics Interchange Format) is an image file format, developed
+  in 1987. It became popular in 1990s as one of the main image formats
+  used in World Wide Web.
 
-    * <https://philip.html5.org/tests/apng/tests.html>
-    * <http://littlesvr.ca/apng/>
+  GIF format allows encoding of palette-based images up to 256 colors
+  (each of the colors can be chosen from a 24-bit RGB
+  colorspace). Image data stream uses LZW (Lempel-Ziv-Welch) lossless
+  compression.
+
+  Over the years, several version of the format were published and
+  several extensions to it were made, namely, a popular Netscape
+  extension that allows to store several images in one file, switching
+  between them, which produces crude form of animation.
+
+  Structurally, format consists of several mandatory headers and then
+  a stream of blocks follows. Blocks can carry additional
+  metainformation or image data.
 seq:
-  # https://www.w3.org/TR/PNG/#5PNG-file-signature
-  - id: magic
-    #contents: [CAFE, 0, BABE]
-    #contents: JFIF
-    contents: [ 137, 80, 78, 71, 13, 10, 26, 10 ]
-  # https://www.w3.org/TR/PNG/#11IHDR
-  # Always appears first, stores values referenced by other chunks
-  - id: ihdr_len
-    type: u4
-    valid: 13
-  - id: ihdr_type
-    contents: "IHDR"
-  - id: ihdr
-    type: ihdr_chunk
-  - id: ihdr_crc
-    size: 4
-  # The rest of the chunks
-  - id: chunks
-    type: chunk
+  - id: hdr
+    type: header
+  - id: logical_screen_descriptor
+    type: logical_screen_descriptor_struct
+  - id: global_color_table
+    type: color_table
+    if: logical_screen_descriptor.has_color_table
+    size: logical_screen_descriptor.color_table_size * 3
+    doc-ref: https://www.w3.org/Graphics/GIF/spec-gif89a.txt - section 18
+  - id: blocks
+    type: block
     repeat: until
-    repeat-until: _.type == "IEND" or _io.eof
+    repeat-until: _io.eof or _.block_type == block_type::end_of_file
 types:
-  chunk:
+  header:
+    doc-ref: https://www.w3.org/Graphics/GIF/spec-gif89a.txt - section 17
     seq:
-      - id: len
-        type: u4
-      - id: type
+      - id: magic
+        contents: 'GIF'
+      - id: version
         type: str
-        size: 4
-        encoding: UTF-8
-      - id: body
-        size: len
-        type:
-          switch-on: type
-          cases:
-            # Critical chunks
-            # '"IHDR"': ihdr_chunk
-            '"PLTE"': plte_chunk
-            # IDAT = raw
-            # IEND = empty, thus raw
-
-            # Ancillary chunks
-            '"cHRM"': chrm_chunk
-            '"gAMA"': gama_chunk
-            # iCCP
-            # sBIT
-            '"sRGB"': srgb_chunk
-            '"bKGD"': bkgd_chunk
-            # hIST
-            # tRNS
-            '"pHYs"': phys_chunk
-            # sPLT
-            '"tIME"': time_chunk
-            '"iTXt"': international_text_chunk
-            '"tEXt"': text_chunk
-            '"zTXt"': compressed_text_chunk
-
-            # animated PNG chunks
-            '"acTL"': animation_control_chunk
-            '"fcTL"': frame_control_chunk
-            '"fdAT"': frame_data_chunk
-      - id: crc
-        size: 4
-  ihdr_chunk:
-    doc-ref: https://www.w3.org/TR/PNG/#11IHDR
+        size: 3
+        encoding: ASCII
+  logical_screen_descriptor_struct:
+    doc-ref: https://www.w3.org/Graphics/GIF/spec-gif89a.txt - section 18
     seq:
-      - id: width
-        type: u4
-      - id: height
-        type: u4
-      - id: bit_depth
+      - id: screen_width
+        type: u2
+      - id: screen_height
+        type: u2
+      - id: flags
         type: u1
-      - id: color_type
+      - id: bg_color_index
         type: u1
-        enum: color_type
-      - id: compression_method
+      - id: pixel_aspect_ratio
         type: u1
-      - id: filter_method
-        type: u1
-      - id: interlace_method
-        type: u1
-  plte_chunk:
-    doc-ref: https://www.w3.org/TR/PNG/#11PLTE
+    instances:
+      has_color_table:
+        value: '(flags & 0b10000000) != 0'
+      color_table_size:
+        value: '2 << (flags & 7)'
+  color_table:
+    doc-ref: https://www.w3.org/Graphics/GIF/spec-gif89a.txt - section 19
     seq:
       - id: entries
-        type: rgb
+        type: color_table_entry
         repeat: eos
-  rgb:
+  color_table_entry:
     seq:
-      - id: r
-        type: u1
-      - id: g
-        type: u1
-      - id: b
-        type: u1
-  chrm_chunk:
-    doc-ref: https://www.w3.org/TR/PNG/#11cHRM
-    seq:
-      - id: white_point
-        type: point
       - id: red
-        type: point
-      - id: green
-        type: point
-      - id: blue
-        type: point
-  point:
-    seq:
-      - id: x_int
-        type: u4
-      - id: y_int
-        type: u4
-    instances:
-      x:
-        value: x_int / 100000.0
-      y:
-        value: y_int / 100000.0
-  gama_chunk:
-    doc-ref: https://www.w3.org/TR/PNG/#11gAMA
-    seq:
-      - id: gamma_int
-        type: u4
-    instances:
-      gamma_ratio:
-        value: 100000.0 / gamma_int
-  srgb_chunk:
-    doc-ref: https://www.w3.org/TR/PNG/#11sRGB
-    seq:
-      - id: render_intent
         type: u1
-        enum: intent
-    enums:
-      intent:
-        0: perceptual
-        1: relative_colorimetric
-        2: saturation
-        3: absolute_colorimetric
-  bkgd_chunk:
-    doc: |
-      Background chunk stores default background color to display this
-      image against. Contents depend on `color_type` of the image.
-    doc-ref: https://www.w3.org/TR/PNG/#11bKGD
+      - id: green
+        type: u1
+      - id: blue
+        type: u1
+  block:
+    -webide-representation: '{block_type}'
     seq:
-      - id: bkgd
+      - id: block_type
+        type: u1
+        enum: block_type
+      - id: body
         type:
-          switch-on: _root.ihdr.color_type
+          switch-on: block_type
           cases:
-            color_type::greyscale: bkgd_greyscale
-            color_type::greyscale_alpha: bkgd_greyscale
-            color_type::truecolor: bkgd_truecolor
-            color_type::truecolor_alpha: bkgd_truecolor
-            color_type::indexed: bkgd_indexed
-  bkgd_greyscale:
-    doc: Background chunk for greyscale images.
+            'block_type::extension': extension
+            'block_type::local_image_descriptor': local_image_descriptor
+  local_image_descriptor:
     seq:
-      - id: value
+      - id: left
         type: u2
-  bkgd_truecolor:
-    doc: Background chunk for truecolor images.
-    seq:
-      - id: red
+      - id: top
         type: u2
-      - id: green
-        type: u2
-      - id: blue
-        type: u2
-  bkgd_indexed:
-    doc: Background chunk for images with indexed palette.
-    seq:
-      - id: palette_index
-        type: u1
-  phys_chunk:
-    doc: |
-      "Physical size" chunk stores data that allows to translate
-      logical pixels into physical units (meters, etc) and vice-versa.
-    doc-ref: https://www.w3.org/TR/PNG/#11pHYs
-    seq:
-      - id: pixels_per_unit_x
-        type: u4
-        doc: |
-          Number of pixels per physical unit (typically, 1 meter) by X
-          axis.
-      - id: pixels_per_unit_y
-        type: u4
-        doc: |
-          Number of pixels per physical unit (typically, 1 meter) by Y
-          axis.
-      - id: unit
-        type: u1
-        enum: phys_unit
-  time_chunk:
-    doc: |
-      Time chunk stores time stamp of last modification of this image,
-      up to 1 second precision in UTC timezone.
-    doc-ref: https://www.w3.org/TR/PNG/#11tIME
-    seq:
-      - id: year
-        type: u2
-      - id: month
-        type: u1
-      - id: day
-        type: u1
-      - id: hour
-        type: u1
-      - id: minute
-        type: u1
-      - id: second
-        type: u1
-  international_text_chunk:
-    doc: |
-      International text chunk effectively allows to store key-value string pairs in
-      PNG container. Both "key" (keyword) and "value" (text) parts are
-      given in pre-defined subset of iso8859-1 without control
-      characters.
-    doc-ref: https://www.w3.org/TR/PNG/#11iTXt
-    seq:
-      - id: keyword
-        type: strz
-        encoding: UTF-8
-        doc: Indicates purpose of the following text data.
-      - id: compression_flag
-        type: u1
-        doc: |
-          0 = text is uncompressed, 1 = text is compressed with a
-          method specified in `compression_method`.
-      - id: compression_method
-        type: u1
-        enum: compression_methods
-      - id: language_tag
-        type: strz
-        encoding: ASCII
-        doc: |
-          Human language used in `translated_keyword` and `text`
-          attributes - should be a language code conforming to ISO
-          646.IRV:1991.
-      - id: translated_keyword
-        type: strz
-        encoding: UTF-8
-        doc: |
-          Keyword translated into language specified in
-          `language_tag`. Line breaks are not allowed.
-      - id: text
-        type: str
-        encoding: UTF-8
-        size-eos: true
-        doc: |
-          Text contents ("value" of this key-value pair), written in
-          language specified in `language_tag`. Linke breaks are
-          allowed.
-  text_chunk:
-    doc: |
-      Text chunk effectively allows to store key-value string pairs in
-      PNG container. Both "key" (keyword) and "value" (text) parts are
-      given in pre-defined subset of iso8859-1 without control
-      characters.
-    doc-ref: https://www.w3.org/TR/PNG/#11tEXt
-    seq:
-      - id: keyword
-        type: strz
-        encoding: iso8859-1
-        doc: Indicates purpose of the following text data.
-      - id: text
-        type: str
-        size-eos: true
-        encoding: iso8859-1
-  compressed_text_chunk:
-    doc: |
-      Compressed text chunk effectively allows to store key-value
-      string pairs in PNG container, compressing "value" part (which
-      can be quite lengthy) with zlib compression.
-    doc-ref: https://www.w3.org/TR/PNG/#11zTXt
-    seq:
-      - id: keyword
-        type: strz
-        encoding: UTF-8
-        doc: Indicates purpose of the following text data.
-      - id: compression_method
-        type: u1
-        enum: compression_methods
-      - id: text_datastream
-        process: zlib
-        size-eos: true
-  animation_control_chunk:
-    doc-ref: https://wiki.mozilla.org/APNG_Specification#.60acTL.60:_The_Animation_Control_Chunk
-    seq:
-      - id: num_frames
-        type: u4
-        doc: Number of frames, must be equal to the number of `frame_control_chunk`s
-      - id: num_plays
-        type: u4
-        doc: Number of times to loop, 0 indicates infinite looping.
-  frame_control_chunk:
-    doc-ref: https://wiki.mozilla.org/APNG_Specification#.60fcTL.60:_The_Frame_Control_Chunk
-    seq:
-      - id: sequence_number
-        type: u4
-        doc: Sequence number of the animation chunk
       - id: width
-        type: u4
-        valid:
-          min: 1
-          max: _root.ihdr.width
-        doc: Width of the following frame
+        type: u2
       - id: height
-        type: u4
-        valid:
-          min: 1
-          max: _root.ihdr.height
-        doc: Height of the following frame
-      - id: x_offset
-        type: u4
-        valid:
-          max: _root.ihdr.width - width
-        doc: X position at which to render the following frame
-      - id: y_offset
-        type: u4
-        valid:
-          max: _root.ihdr.height - height
-        doc: Y position at which to render the following frame
-      - id: delay_num
         type: u2
-        doc: Frame delay fraction numerator
-      - id: delay_den
-        type: u2
-        doc: Frame delay fraction denominator
-      - id: dispose_op
+      - id: flags
         type: u1
-        enum: dispose_op_values
-        doc: Type of frame area disposal to be done after rendering this frame
-      - id: blend_op
-        type: u1
-        enum: blend_op_values
-        doc: Type of frame area rendering for this frame
+      - id: local_color_table
+        type: color_table
+        if: has_color_table
+        size: color_table_size * 3
+      - id: image_data
+        type: image_data
     instances:
-      delay:
-        value: 'delay_num / (delay_den == 0 ? 100.0 : delay_den)'
-        doc: Time to display this frame, in seconds
-  frame_data_chunk:
-    doc-ref: https://wiki.mozilla.org/APNG_Specification#.60fdAT.60:_The_Frame_Data_Chunk
+      has_color_table:
+        value: '(flags & 0b10000000) != 0'
+      has_interlace:
+        value: '(flags & 0b01000000) != 0'
+      has_sorted_color_table:
+        value: '(flags & 0b00100000) != 0'
+      color_table_size:
+        value: '2 << (flags & 7)'
+  image_data:
+    doc-ref: https://www.w3.org/Graphics/GIF/spec-gif89a.txt - section 22
     seq:
-      - id: sequence_number
-        type: u4
-        doc: |
-          Sequence number of the animation chunk. The fcTL and fdAT chunks
-          have a 4 byte sequence number. Both chunk types share the sequence.
-          The first fcTL chunk must contain sequence number 0, and the sequence
-          numbers in the remaining fcTL and fdAT chunks must be in order, with
-          no gaps or duplicates.
-      - id: frame_data
-        size-eos: true
-        doc: |
-          Frame data for the frame. At least one fdAT chunk is required for
-          each frame. The compressed datastream is the concatenation of the
-          contents of the data fields of all the fdAT chunks within a frame.
+      - id: lzw_min_code_size
+        type: u1
+      - id: subblocks
+        type: subblocks
+  extension:
+    seq:
+      - id: label
+        type: u1
+        enum: extension_label
+      - id: body
+        type:
+          switch-on: label
+          cases:
+            'extension_label::application': ext_application
+            'extension_label::comment': subblocks
+            'extension_label::graphic_control': ext_graphic_control
+            _: subblocks
+  ext_application:
+    seq:
+      - id: application_id
+        type: application_id
+      - id: subblocks
+        type: subblock
+        repeat: until
+        repeat-until: _.len_bytes == 0
+  ext_graphic_control:
+    doc-ref: https://www.w3.org/Graphics/GIF/spec-gif89a.txt - section 23
+    seq:
+      - id: block_size
+        contents: [ 4 ]
+      - id: flags
+        type: u1
+      - id: delay_time
+        type: u2
+      - id: transparent_idx
+        type: u1
+      - id: terminator
+        contents: [ 0 ]
+    instances:
+      transparent_color_flag:
+        value: '(flags & 0b00000001) != 0'
+      user_input_flag:
+        value: '(flags & 0b00000010) != 0'
+  subblocks:
+    seq:
+      - id: entries
+        type: subblock
+        repeat: until
+        repeat-until: _.len_bytes == 0
+  subblock:
+    seq:
+      - id: len_bytes
+        type: u1
+      - id: bytes
+        size: len_bytes
+  application_id:
+    seq:
+      - id: len_bytes
+        type: u1
+        valid: 11
+      - id: application_identifier
+        type: str
+        encoding: ASCII
+        size: 8
+      - id: application_auth_code
+        size: 3
 enums:
-  color_type:
-    0: greyscale
-    2: truecolor
-    3: indexed
-    4: greyscale_alpha
-    6: truecolor_alpha
-  phys_unit:
-    0: unknown
-    1: meter
-  compression_methods:
-    0: zlib
-  dispose_op_values:
-    0:
-      id: none
-      doc: |
-        No disposal is done on this frame before rendering the next;
-        the contents of the output buffer are left as is.
-      doc-ref: https://wiki.mozilla.org/APNG_Specification#.60fcTL.60:_The_Frame_Control_Chunk
-    1:
-      id: background
-      doc: |
-        The frame's region of the output buffer is to be cleared to
-        fully transparent black before rendering the next frame.
-      doc-ref: https://wiki.mozilla.org/APNG_Specification#.60fcTL.60:_The_Frame_Control_Chunk
-    2:
-      id: previous
-      doc: |
-        The frame's region of the output buffer is to be reverted
-        to the previous contents before rendering the next frame.
-      doc-ref: https://wiki.mozilla.org/APNG_Specification#.60fcTL.60:_The_Frame_Control_Chunk
-  blend_op_values:
-    0:
-      id: source
-      doc: |
-        All color components of the frame, including alpha,
-        overwrite the current contents of the frame's output buffer region.
-    1:
-      id: over
-      doc: |
-        The frame is composited onto the output buffer based on its alpha
+  block_type:
+    0x21: extension
+    0x2c: local_image_descriptor
+    0x3b: end_of_file
+  extension_label:
+    0xf9: graphic_control
+    0xfe: comment
+    0xff: application
