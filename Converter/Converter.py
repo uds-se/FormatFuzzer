@@ -1,7 +1,7 @@
 import inspect
 import sys
 import yaml
-import binascii
+import re
 
 datatypes = {"u4": "uint32", "u1": "ubyte", "u2": "uint16"}  # TODO implement all types
 
@@ -56,7 +56,8 @@ class Converter(object):
         try:
             return self.root.global_instance_table[str(name)][getter]
         except:
-            print("ERROR INSTANCE " + str(name) + " NOT FOUND\n")
+            print("ERROR INSTANCE " + str(
+                name) + " NOT FOUND\nCan safely be ignored just for testing if expr_resolve works!")
             return None
 
     def lookup_type(self, name, check_if_implemented=False):  # returns dict of value and possible doc/doc-ref as keys
@@ -118,17 +119,22 @@ class Converter(object):
         for this_level_key in self.this_level_keys:
             local_key = remap_keys(this_level_key)
             if local_key is not None:
-                try:
-                    # if local_key =="seq":print("AAAAAAAAAAAAA")
-                    # if local_key =="instances":print("BBBBBBBBBBBBB")
+                if True:  # SWITCH BETWEEN SUPPRESSION OF "UNIMPLEMENTED" ERRORS
+                    try:
+                        # if local_key =="seq":print("AAAAAAAAAAAAA")
+                        # if local_key =="instances":print("BBBBBBBBBBBBB")
+                        self.output.extend(self.subtrees[local_key].generate_code(size))
+                    except Exception as err:
+                        print("++++++START Converter codeGEN exception START +++++")
+                        print(err)
+                        print(self.subtrees.keys())
+                        print(self.subtrees[local_key].input)
+                        print(self.this_level_keys)
+                        print("++++++END Converter codeGEN exception END +++++")
+                        pass
+                else:
                     self.output.extend(self.subtrees[local_key].generate_code(size))
-                except Exception as err:
-                    print("++++++START Converter codeGEN exception START +++++")
-                    print(err)
-                    print(self.subtrees[local_key].input)
-                    print(self.this_level_keys)
-                    print("++++++END Converter codeGEN exception END +++++")
-                    pass
+
         return self.output
 
     def global_init(self):
@@ -145,14 +151,41 @@ class Converter(object):
         inv_map = {v: k for k, v in self.enums[enum].items()}
         return inv_map[key]
 
-    def expr_resolve(self, expr):
-        if "::" in expr:
-            return expr.split("::")
+    def expr_resolve(self, expr, translate_condition_2_c=False, repeat_condition=False, id_of_obj=None):
+        # takes a string and depending on the flags returns a list of
+        # either elements that could be an instance or
+        # a string that works as condition in c
+        operator_replacement_dict = {"not ": " ! ", " and ": " && ", " or ": " || "}
+        condition_splitter_replacement = ["::", "."]
+        for to_be_rep in operator_replacement_dict.keys():
+            expr = expr.replace(to_be_rep, operator_replacement_dict[to_be_rep])
+        for element in expr.split(" "):  # replacing f**kin 0xffff_ffff with 0xffffffff
+            try:
+                temp = hex(element)
+                expr = expr.replac(element, temp)
+            except:
+                pass
+
+        if translate_condition_2_c:
+            if repeat_condition:
+                try:
+                    expr = expr.replace(" _.", " " + str(id_of_obj))
+                except:
+                    pass
+            pass
+            if "::" in expr:
+                for element in expr.split(" "):
+                    if "::" in element:
+                        expr = expr.replace(str(element), element.split("::")[1])
+
+            return expr
         elif False:
             pass
-        # TODO MORE THINGS
-        else:
-            return expr
+        else:  # no flag set
+            for splitter in condition_splitter_replacement:
+                expr = expr.replace(str(splitter), " ")
+
+            return expr.split(" ")
 
     def chck_flg(self, flag):
         try:
@@ -322,7 +355,9 @@ class data_point():
         self.front.append("     switch(" + str(switch_term) + ") {")
         for case_key in cases.keys():
             case = self.root.expr_resolve(case_key)
-            if type(case) is list:
+            if case == ["_"]:
+                case_val = "default"
+            elif type(case) is list:
                 case_val = self.root.lookup_enum_val_2_key(case[0], case[1])
             else:
                 case_val = case
@@ -341,7 +376,7 @@ class data_point():
     def gen_if(self):
         condition = self.input["if"]
         self.gen_instances(condition)
-        self.front.append("    if (" + self.root.expr_resolve(condition) + ") {")
+        self.front.append("    if (" + self.root.expr_resolve(condition, translate_condition_2_c=True) + ") {")
         self.generate_code(ignore_if=True)
         self.front.append("     }")
         # TODO implement
@@ -361,7 +396,8 @@ class data_point():
         pass
 
     def gen_instances(self, condition):
-        condition_list = condition.split(".")
+        # condition_list = condition.split(".")
+        condition_list = self.root.expr_resolve(condition)
         for element in condition_list:
             instance = self.root.lookup_instance(element)
             if instance is not None and not self.root.lookup_instance(element, check_if_implemented=True):
@@ -431,6 +467,9 @@ class data_point():
         elif self.type is not None:
             if self.type in datatypes.keys():  # BASIC TYPES
                 self.front.append("    " + str(datatypes[self.type]) + " " + str(self.id) + ";" + loc_doc)
+            elif " " in str(self.type):
+                self.type = self.root.expr_resolve(self.type, translate_condition_2_c=True)
+                self.front.append("    " + str(self.type) + " " + str(self.id) + ";" + loc_doc)
             else:  # CUSTOM TYPES
                 self.front.append("    " + str(self.type) + " " + str(self.id) + ";" + loc_doc)
         elif self.size is not None:  # JUST BYTES
@@ -515,7 +554,7 @@ class types(Converter):
             output.append("struct " + str(this_level_key) + lenfield + " {")
             # TODO IMPLEMENT size Calc locals
             output.extend(item.generate_code(size))  # GOING TO CHILD ITEM
-            output.append("};")
+            output.append("};\n")
         return output
         # TODO IMPLEMENT THIS IS JUST A PLACEHOLDER
 
@@ -528,7 +567,8 @@ class types(Converter):
 
 def remap_keys(key):
     remap = {"doc-ref": "doc_ref"}
-    blocklist = ["-webide-representation"]
+    blocklist = ["-webide-representation", "-orig-id", "params"]
+    # TODO EXTEND TO SUPPORT MORE THINGS ESPECIALLY PARAMS
     if key in blocklist: return None
     if key in remap.keys(): return remap[key]
     return key
