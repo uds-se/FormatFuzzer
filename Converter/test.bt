@@ -35,6 +35,7 @@ struct header {
     return -1;};
     char version[3];
 };
+
 struct logical_screen_descriptor_struct {
     //     https://www.w3.org/Graphics/GIF/spec-gif89a.txt - section 18
     uint16 screen_width;
@@ -43,14 +44,17 @@ struct logical_screen_descriptor_struct {
     ubyte bg_color_index;
     ubyte pixel_aspect_ratio;
 };
+
 struct color_table {
     //     https://www.w3.org/Graphics/GIF/spec-gif89a.txt - section 19
 };
+
 struct color_table_entry {
     ubyte red;
     ubyte green;
     ubyte blue;
 };
+
 struct block {
     ubyte block_type;
      switch(block_type) {
@@ -62,6 +66,7 @@ struct block {
              break;
     }
 };
+
 struct local_image_descriptor {
     uint16 left;
     uint16 top;
@@ -77,11 +82,13 @@ struct local_image_descriptor {
      }
     image_data image_data;
 };
+
 struct image_data {
     //     https://www.w3.org/Graphics/GIF/spec-gif89a.txt - section 22
     ubyte lzw_min_code_size;
     subblocks subblocks;
 };
+
 struct extension {
     ubyte label;
      switch(label) {
@@ -94,14 +101,16 @@ struct extension {
          case 249:
              ext_graphic_control body;
              break;
-         case _:
+         case default:
              subblocks body(None);
              break;
     }
 };
+
 struct ext_application {
     application_id application_id;
 };
+
 struct ext_graphic_control {
     //     https://www.w3.org/Graphics/GIF/spec-gif89a.txt - section 23
     byte block_size[1];
@@ -118,17 +127,21 @@ struct ext_graphic_control {
     error_message("Magic Bytes of terminator not matching!");
     return -1;};
 };
+
 struct subblocks {
 };
+
 struct subblock {
     ubyte len_bytes;
     byte bytes[len_bytes];
 };
+
 struct application_id {
     ubyte len_bytes;
     char application_identifier[8];
     byte application_auth_code[3];
 };
+
     header hdr;
     logical_screen_descriptor_struct logical_screen_descriptor;
     local int64 has_color_table = (flags & 0b10000000) != 0;
