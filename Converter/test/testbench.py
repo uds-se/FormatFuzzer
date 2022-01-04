@@ -2,11 +2,14 @@
 import os.path as path
 import subprocess
 import difflib
+import sys
+import argparse
 
 #NOTE change these as needed
 KAITAI_BASE_PATH = "kaitai_formats/"
 BT_TEMPLATE_BASE_PATH = "../templates/"
 FFCOMPILE = "../ffcompile"
+CONVERTER = "Converter.py"
 
 #TODO add better prints
 
@@ -35,13 +38,17 @@ def findFileRecursively(name, ext, maxDepth=3):
     return splitOut[0]
 
 
-def runSingleFormatParseTest(formatName, testInput):
+def runSingleFormatParseTest(formatName, resolveTestInput):
     convertedFile = callConverter(formatName)  #contains path to converted file
+    if not convertedFile:
+        return False
     parserUnderTest = compileParser(convertedFile)
     #contains path to reference template
     referenceTemplate = findFileRecursively(formatName, 'bt')
+    if not referenceTemplate:
+        return False
     referenceParser = compileParser(referenceTemplate)
-    # testInput = resolveTestInputByFormat(formatName)
+    testInput = resolveTestInput(formatName)
     PTunderTest = runParserOnInput(parserUnderTest, testInput)
     referencePT = runParserOnInput(referenceParser, testInput)
     return diffParseTrees(referencePT, PTunderTest)
@@ -58,7 +65,7 @@ def callConverter(formatName):
         return False
     print(f"found file to convert: {filePath}. converting...")
     convert = subprocess.run(
-        ["python3", "../Converter.py", filePath, f"{formatName}.bt"])
+        ["python3", CONVERTER, filePath, f"{formatName}.bt"], check=True)
     if (convert.returncode != 0):
         print(convert.stderr)
         return False
@@ -66,10 +73,10 @@ def callConverter(formatName):
     return f"{formatName}.bt"
 
 
-def runMultiFromatParseTest(formats=[]):
+def runMultiFromatParseTest(formats, testInputResolver):
     passed = []
     for fmt in formats:
-        passed.append((fmt, runSingleFormatParseTest(fmt)))
+        passed.append((fmt, runSingleFormatParseTest(fmt, testInputResolver)))
 
     print("Passed status of formats: \n")
     print(passed)
@@ -93,17 +100,17 @@ def compileParser(templatePath, test=False):
     # g++ -O3 gif.o fuzzer.o -o gif-fuzzer -lz
     fmtName = path.basename(templatePath).split('.')[0]
     ffCompCmd = [FFCOMPILE, templatePath, f"{fmtName}.cpp"]
-    result = subprocess.call(ffCompCmd, check=True)
+    result = subprocess.call(ffCompCmd)
     fuzzerCppCmd = "g++ -c -I . -std=c++17 -g -O3 -Wall fuzzer.cpp"
-    subprocess.call(ffCompCmd, check=True, shell=True)
+    subprocess.call(ffCompCmd, shell=True)
     compFuzzerCmd = [
         'g++', '-c', '-I', '.', '-std=c++17', '-g', '-O3', '-Wall',
         f'{fmtName}.cpp'
     ]
-    subprocess.call(compFuzzerCmd, check=True)
+    subprocess.call(compFuzzerCmd)
     binName = f'test-{fmtName}-fuzzer' if test else f'{fmtName}-fuzzer'
     linkCmd = ['g++', '-O3', f'{fmtName}.o', 'fuzzer.o', '-o', binName, '-lz']
-    subprocess.call(linkCmd, check=True)
+    subprocess.call(linkCmd)
     return binName
 
 
@@ -124,4 +131,26 @@ def resolveTestInputByFormat(formatName):  #TODO talk with daniel on this
     pass
 
 
-print(findFileRecursively("png", "ksy", 5))
+def main():
+    parser = argparse.ArgumentParser(
+        description="Run tests on converted templates")
+    parser.add_argument('formats',
+                        metavar='fmt',
+                        type=str,
+                        nargs='+',
+                        help='The formats to run tests on')
+    parser.add_argument('--test-input',
+                        metavar='testIn',
+                        dest='testInput',
+                        nargs='?',
+                        type=str)
+    parsedArgs = parser.parse_args(sys.argv[1::])
+    if (len(parsedArgs.formats) == 1):
+        testInputResolver = lambda fmt: parsedArgs.testInput if parsedArgs.testInput else resolveTestInputByFormat
+        runSingleFormatParseTest(parsedArgs.formats[0], testInputResolver)
+        return
+    runMultiFromatParseTest(parsedArgs.formats, resolveTestInputByFormat)
+
+
+if __name__ == "__main__":
+    main()
