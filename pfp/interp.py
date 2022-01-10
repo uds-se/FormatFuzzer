@@ -3734,7 +3734,7 @@ class PfpInterp(object):
         """
         ary = self._handle_node(node.name, scope, ctxt, stream)
         subscript = self._handle_node(node.subscript, scope, ctxt, stream)
-        if hasattr(ary, "field_cls") and not hasattr(ary.field_cls, "format"):
+        if hasattr(ary, "field_cls") and not hasattr(ary.field_cls, "format") and ary.field_cls != fields.String:
             node.cpp = "(*" + node.name.cpp + "[" + node.subscript.cpp + "])"
         else:
             node.cpp = node.name.cpp + "[" + node.subscript.cpp + "]"
