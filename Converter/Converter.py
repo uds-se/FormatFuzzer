@@ -2,7 +2,9 @@ import inspect
 import sys
 import yaml
 import re
+import traceback
 
+DEBUG=True
 datatypes = {"u4": "uint32", "u1": "ubyte", "u2": "uint16"}  # TODO implement all types
 
 
@@ -11,7 +13,6 @@ class Converter(object):
     # TODO implement size lookup funtion
 
     def __init__(self, input_js, is_master=False, parent=None, root=None):
-        print(self.__class__.__name__)
         self.output = []
         self.subtrees = {}
         self.this_level_keys = []
@@ -56,8 +57,7 @@ class Converter(object):
         try:
             return self.root.global_instance_table[str(name)][getter]
         except:
-            print("ERROR INSTANCE " + str(
-                name) + " NOT FOUND\nCan safely be ignored just for testing if expr_resolve works!")
+            #print_debug("\nERROR INSTANCE " + str(name) + " NOT FOUND\nCan safely be ignored just for testing if expr_resolve works!\n")
             return None
 
     def lookup_type(self, name, check_if_implemented=False):  # returns dict of value and possible doc/doc-ref as keys
@@ -68,7 +68,7 @@ class Converter(object):
         try:
             return self.root.global_type_table[str(name)][getter]
         except:
-            print("ERROR TYPE " + str(name) + " NOT FOUND\n")
+            print_debug("ERROR TYPE " + str(name) + " NOT FOUND\n")
             return None
 
     def lookup_enum(self, name, check_if_implemented=False):  # returns dict of value and possible doc/doc-ref as keys
@@ -79,7 +79,7 @@ class Converter(object):
         try:
             return self.root.global_enum_table[str(name)][getter]
         except:
-            print("ERROR ENUM " + str(name) + " NOT FOUND\n")
+            print_debug("ERROR ENUM " + str(name) + " NOT FOUND\n")
             return None
 
     def mark_as_implemented(self, type, name, value=True):
@@ -90,7 +90,7 @@ class Converter(object):
         elif type == "instance":
             getter = self.root.global_instance_table
         else:
-            print(str(type) + " TABLE NOT IMPLEMENTED\n")
+            print_debug(str(type) + " TABLE NOT IMPLEMENTED\n")
             exit(0)
         getter[str(name)]["IMPLEMENTED"] = value
 
@@ -99,10 +99,7 @@ class Converter(object):
             local_key = remap_keys(this_level_key)
             if local_key is not None:
                 self.__dict__[local_key] = self.input[this_level_key]
-                print(local_key)
-
                 self.subtrees[local_key] = globals()[local_key](self.input[this_level_key], self, self.root)
-
                 self.subtrees[local_key].parse_subtree()
 
     def generate_code_toplevel(self):
@@ -126,7 +123,7 @@ class Converter(object):
                         self.output.extend(self.subtrees[local_key].generate_code(size))
                     except Exception as err:
                         print("++++++START Converter codeGEN exception START +++++")
-                        print(err)
+                        traceback.print_exc()
                         print(self.subtrees.keys())
                         print(self.subtrees[local_key].input)
                         print(self.this_level_keys)
@@ -155,14 +152,21 @@ class Converter(object):
         # takes a string and depending on the flags returns a list of
         # either elements that could be an instance or
         # a string that works as condition in c
+        #TODO add CALL to this when implementig
         operator_replacement_dict = {"not ": " ! ", " and ": " && ", " or ": " || "}
         condition_splitter_replacement = ["::", "."]
         for to_be_rep in operator_replacement_dict.keys():
             expr = expr.replace(to_be_rep, operator_replacement_dict[to_be_rep])
-        for element in expr.split(" "):  # replacing f**kin 0xffff_ffff with 0xffffffff
+        for element in re.split('(\W+)',expr):  # replacing f**kin 0xffff_ffff with 0xffffffff
             try:
-                temp = hex(element)
-                expr = expr.replac(element, temp)
+                temp = str(int(element))
+                expr = expr.replace(element, temp)
+                continue
+            except:
+                pass
+            try:
+                temp = hex(int(element,2))
+                expr = expr.replace(element, temp)
             except:
                 pass
 
@@ -213,7 +217,7 @@ class meta(Converter):
         Converter.__init__(self, input_js, parent=parent, root=root)
 
     def parse_subtree(self):
-        print(self.input)
+        pass
 
 
 class doc(Converter):
@@ -261,7 +265,7 @@ class enums(Converter):
         values = enumerations.get_value()
         lines = []
         # TODO FIND CORRECT TYPE? defaulting to <byte> for now
-        lines.append("enum " + size + " {")
+        lines.append("enum " + size + " " + str(key) +"{")
         keys = list(values.keys())
         for k in keys[0:-1]:
             lines.append("  " + (values[k] if "id" not in values[k] else values[k]["id"]) + " = " + str(k) + "," + (
@@ -271,7 +275,7 @@ class enums(Converter):
                 keys[-1]) + "" + (
                 "" if "doc" not in values[keys[-1]] else "      // " + (values[keys[-1]]["doc"]).strip().replace("\n",
                                                                                                                  "\n     //")))
-        lines.append("} " + str(key) + ";")
+        lines.append("};")
         return lines
 
 
@@ -340,7 +344,9 @@ class data_point():
         else:
             self.gen_atomic()
 
-        self.output.extend(self.front)
+
+        if not ignore_if:
+            self.output.extend(self.front)
         self.output.extend(self.back)
         return self.output
 
@@ -356,7 +362,7 @@ class data_point():
         for case_key in cases.keys():
             case = self.root.expr_resolve(case_key)
             if case == ["_"]:
-                case_val = "default"
+                case_val = "default"            #TODO remove case from case default
             elif type(case) is list:
                 case_val = self.root.lookup_enum_val_2_key(case[0], case[1])
             else:
@@ -368,7 +374,10 @@ class data_point():
                 paramfield = "(" + str(size) + ")"
             else:
                 paramfield = ""
-            self.front.append("         case " + str(case_val) + ":")
+            if case_val != "default":
+                self.front.append("         case " + str(case_val) + ":")
+            else:
+                self.front.append("         default:")
             self.front.append("             " + str(cases[case_key]) + " " + str(self.id) + paramfield + ";")
             self.front.append("             break;")
         self.front.append("    }")
@@ -378,7 +387,10 @@ class data_point():
         self.gen_instances(condition)
         self.front.append("    if (" + self.root.expr_resolve(condition, translate_condition_2_c=True) + ") {")
         self.generate_code(ignore_if=True)
+
         self.front.append("     }")
+
+
         # TODO implement
 
     def gen_repeat(self):
@@ -391,7 +403,7 @@ class data_point():
         elif "eos" == self.input["repeat"]:
             pass
         else:
-            print("REPEAT MISSING" + str(self.input["repeat"]))
+            print_debug("REPEAT MISSING" + str(self.input["repeat"]))
         # TODO implement
         pass
 
@@ -401,7 +413,9 @@ class data_point():
         for element in condition_list:
             instance = self.root.lookup_instance(element)
             if instance is not None and not self.root.lookup_instance(element, check_if_implemented=True):
-                self.front.append("    local int64 " + str(element) + " = " + str(instance["value"]) + ";" + (
+                self.root.mark_as_implemented("instance",element,True)
+                temp =" ".join(self.root.expr_resolve(str(instance["value"])))
+                self.front.append("    local int64 " + str(element) + " = " + str(temp) + ";" + (
                     ("   //" + str(instance["doc"])) if "doc" in instance.keys() else ""))
 
     def gen_str(self):
@@ -419,8 +433,8 @@ class data_point():
             self.front.append("        " + self.id + "[" + str(x) + "] != " + self.magic[x] + " ||")
         self.front.append(
             "        " + self.id + "[" + str(self.magic_len) + "] != " + self.magic[self.magic_len - 1] + ") {")
-        self.front.append('    error_message("Magic Bytes of ' + self.id + ' not matching!");')
-        self.front.append("    return -1;};")
+        self.front.append('         Warning("Magic Bytes of ' + self.id + ' not matching!");')
+        self.front.append("         return -1;\n    };")
 
     def to_hex_list(self, input):
         if type(input) is list:
@@ -444,7 +458,7 @@ class data_point():
         elif type(input) is int:
             return hex(input)
         else:
-            print("to_hex_list FAILURE\n")
+            print_debug("to_hex_list FAILURE\n")
             exit(-1)
 
     def gen_atomic(self, docu="", size=None):
@@ -454,7 +468,7 @@ class data_point():
             loc_doc = ""
 
         if self.size_eos:
-            print("size-EOS found here")
+            print_debug("size-EOS found here")
             pass
         if self.type == "str":
             if self.size is not None:
@@ -475,11 +489,11 @@ class data_point():
         elif self.size is not None:  # JUST BYTES
             self.front.append("    byte " + str(self.id) + "[" + str(self.size) + "]" + ";" + loc_doc)
         else:
-            print(self.parent.input)
+            print_debug(self.parent.input)
             # self.gen_repeat()
 
-            print("ERROR NO SIZE OR TYPE GIVEN AND ITS NO MAGIC\n")
-            self.front.append("//STUFF MISSING HERE @ NO MAGIC " + str(self.id) + " " + str(self.input))
+            print_debug("ERROR NO SIZE OR TYPE GIVEN AND ITS NO MAGIC\n")
+            self.front.append("//STUFF MISSING HERE @ NO MAGIC " + str(self.id) + "----" + str(self.input))
 
     def chck_flg(self, flag):
         return flag in self.this_level_keys
@@ -500,7 +514,7 @@ class seq(Converter):
     def generate_code(self, size=None):
         for this_level_key in self.this_level_keys:
             self.output.extend(self.subtrees[this_level_key].generate_code(size))
-        # print("SEQ"+str(self.output)+str(self.input))
+        #print("SEQ"+"\n".join(self.output)+str(self.input))
         return self.output
 
 
@@ -508,6 +522,9 @@ class instances(seq):
 
     def __init__(self, input_js, parent, root):
         seq.__init__(self, input_js, parent=parent, root=root)
+        self.output = []
+        self.front = []
+        self.back = []
 
     def parse_subtree(self):
         for this_level_key in self.this_level_keys:
@@ -519,10 +536,18 @@ class instances(seq):
                 self.subtrees[local_key].parse()
 
     def generate_code(self, size=None):
-        return []
+        for this_level_key in self.this_level_keys:
+            instance = self.root.lookup_instance(this_level_key)
+            if instance is not None and not self.root.lookup_instance(this_level_key, check_if_implemented=True):
+                temp =" ".join(self.root.expr_resolve(str(instance["value"])))
+                self.front.append("    local int64 " + str(this_level_key) + " = " + str(temp) + ";" + (
+                    ("   //" + str(instance["doc"])) if "doc" in instance.keys() else ""))
+        self.output.extend(self.front)
+        self.output.extend(self.back)
+        return self.output
         # TODO IMPLEMENT instances as local vars just before they are used
+        #TODO If they are not yet implemented
         pass
-
 
 class types(Converter):
     def __init__(self, input_js, parent, root):
@@ -565,6 +590,12 @@ class types(Converter):
         return output
 
 
+def print_debug(string):
+    if DEBUG:
+        print("DEBUG: "+string.replace("\n","\n     "))
+
+
+
 def remap_keys(key):
     remap = {"doc-ref": "doc_ref"}
     blocklist = ["-webide-representation", "-orig-id", "params"]
@@ -575,7 +606,7 @@ def remap_keys(key):
 
 
 def main():
-    global converter
+    global converter, DEBUG
 
     if len(sys.argv) != 3:
         print("USAGE = python3 Converter.py <input file path> <output file path>")  # TODO
