@@ -143,15 +143,15 @@ def runParserOnInput(parser, testInput):
     cmd = [parser, testInput]
     parseTree = subprocess.run(cmd, stdout=subprocess.PIPE)
     if (parseTree.returncode != 0):
-        raise TestRunException(f"Error ret: {found_file.stderr}")
+        raise TestRunException(f"Error ret: {parseTree.stderr}")
     if (len(parseTree.stdout) == 0):
-        raise TestRunException(f"Error : {found_file.stderr}")
+        raise TestRunException(f"Error : {parseTree.stderr}")
     return parseTree.stdout.decode()
 
 
 def resolveTestInputByFormat(formatName, generator):
     try:
-        cmd = [parser, "fuzz", f"testinput.{formatName}"]
+        cmd = [generator, "fuzz", f"testinput.{formatName}"]
         out = subprocess.run(cmd,
                              check=True,
                              stdout=subprocess.DEVNULL,
