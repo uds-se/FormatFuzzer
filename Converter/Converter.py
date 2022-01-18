@@ -4,8 +4,7 @@ import yaml
 import re
 import traceback
 
-DEBUG=True
-datatypes = {"u4": "uint32", "u1": "ubyte", "u2": "uint16"}  # TODO implement all types
+DEBUG = True
 
 
 class Converter(object):
@@ -29,6 +28,7 @@ class Converter(object):
             self.global_enum_table = {}
             self.global_init()
             self.parse_subtree()
+            self.endian = ""
         else:
             self.parent = parent
             self.root = root
@@ -57,7 +57,7 @@ class Converter(object):
         try:
             return self.root.global_instance_table[str(name)][getter]
         except:
-            #print_debug("\nERROR INSTANCE " + str(name) + " NOT FOUND\nCan safely be ignored just for testing if expr_resolve works!\n")
+            # print_debug("\nERROR INSTANCE " + str(name) + " NOT FOUND\nCan safely be ignored just for testing if expr_resolve works!\n")
             return None
 
     def lookup_type(self, name, check_if_implemented=False):  # returns dict of value and possible doc/doc-ref as keys
@@ -152,12 +152,12 @@ class Converter(object):
         # takes a string and depending on the flags returns a list of
         # either elements that could be an instance or
         # a string that works as condition in c
-        #TODO add CALL to this when implementig
+        # TODO add CALL to this when implementig
         operator_replacement_dict = {"not ": " ! ", " and ": " && ", " or ": " || "}
         condition_splitter_replacement = ["::", "."]
         for to_be_rep in operator_replacement_dict.keys():
             expr = expr.replace(to_be_rep, operator_replacement_dict[to_be_rep])
-        for element in re.split('(\W+)',expr):  # replacing f**kin 0xffff_ffff with 0xffffffff
+        for element in re.split('(\W+)', expr):  # replacing f**kin 0xffff_ffff with 0xffffffff
             try:
                 temp = str(int(element))
                 expr = expr.replace(element, temp)
@@ -165,7 +165,7 @@ class Converter(object):
             except:
                 pass
             try:
-                temp = hex(int(element,2))
+                temp = hex(int(element, 2))
                 expr = expr.replace(element, temp)
             except:
                 pass
@@ -211,12 +211,49 @@ class Converter(object):
             return self.subtrees["types"].subtrees[type].chck_flg(flag)
         return self.subtrees["types"].subtrees[type].subtrees[id].chck_flg(flag)
 
+    def resolve_datatype(self, kaitype, getsize=False, getendian=False):
+        # TODO do something about LE????
+        datatypes = {"u4": "uint32", "u1": "ubyte", "u2": "uint16"}  # TODO implement all types
+
+        match = re.match(r'(?P<parsed_type>[a-zA-Z])(?P<parsed_size>[0-9])(?P<parsed_endian>[a-zA-Z]*)', kaitype)
+        if match is None:
+            return None
+        parsed_type = match.group('parsed_type')
+        parsed_size = match.group('parsed_size')
+        parsed_endian = match.group('parsed_endian')
+        if getsize:
+            return parsed_size
+        if getendian:
+            return parsed_endian
+
+        type_table = {"u": "uint", "s": "int", "b": "byte", "f": "float"}
+        endian_table = {"le": "/*LITTLE ENDIAN*/", "be": "/*BIG ENDIAN*/",
+                        "": ""}  # TODO No Clue how to handle right Now
+        to_be_size = int(parsed_size) * 8
+        if parsed_endian == self.root.endian:
+            to_be_endian = ""
+        else:
+            to_be_endian = endian_table[parsed_endian]
+        if int(parsed_size) == 1 and type_table[parsed_type] != "float":
+            result = "ubyte"
+        elif int(parsed_size) == 8 and type_table[parsed_type] == "float":
+            result = to_be_endian + "double"
+        elif type_table[parsed_type] == "float":
+            result = to_be_endian + "float"
+        elif type_table[parsed_type] == "byte":
+            result = to_be_endian + "byte"
+        else:
+            result = to_be_endian + type_table[parsed_type] + str(to_be_size)
+        return result
+
 
 class meta(Converter):
     def __init__(self, input_js, parent, root: Converter):
         Converter.__init__(self, input_js, parent=parent, root=root)
 
     def parse_subtree(self):
+        self.root.endian = self.input["endian"]
+
         pass
 
 
@@ -265,7 +302,7 @@ class enums(Converter):
         values = enumerations.get_value()
         lines = []
         # TODO FIND CORRECT TYPE? defaulting to <byte> for now
-        lines.append("enum " + size + " " + str(key) +"{")
+        lines.append("enum " + size + " " + str(key) + "{")
         keys = list(values.keys())
         for k in keys[0:-1]:
             lines.append("  " + (values[k] if "id" not in values[k] else values[k]["id"]) + " = " + str(k) + "," + (
@@ -344,7 +381,6 @@ class data_point():
         else:
             self.gen_atomic()
 
-
         if not ignore_if:
             self.output.extend(self.front)
         self.output.extend(self.back)
@@ -362,7 +398,7 @@ class data_point():
         for case_key in cases.keys():
             case = self.root.expr_resolve(case_key)
             if case == ["_"]:
-                case_val = "default"            #TODO remove case from case default
+                case_val = "default"  # TODO remove case from case default
             elif type(case) is list:
                 case_val = self.root.lookup_enum_val_2_key(case[0], case[1])
             else:
@@ -390,7 +426,6 @@ class data_point():
 
         self.front.append("     }")
 
-
         # TODO implement
 
     def gen_repeat(self):
@@ -413,8 +448,8 @@ class data_point():
         for element in condition_list:
             instance = self.root.lookup_instance(element)
             if instance is not None and not self.root.lookup_instance(element, check_if_implemented=True):
-                self.root.mark_as_implemented("instance",element,True)
-                temp =" ".join(self.root.expr_resolve(str(instance["value"])))
+                self.root.mark_as_implemented("instance", element, True)
+                temp = " ".join(self.root.expr_resolve(str(instance["value"])))
                 self.front.append("    local int64 " + str(element) + " = " + str(temp) + ";" + (
                     ("   //" + str(instance["doc"])) if "doc" in instance.keys() else ""))
 
@@ -479,8 +514,17 @@ class data_point():
         elif self.type == "strz":
             self.front.append("    string " + str(self.id) + ";" + loc_doc)
         elif self.type is not None:
-            if self.type in datatypes.keys():  # BASIC TYPES
-                self.front.append("    " + str(datatypes[self.type]) + " " + str(self.id) + ";" + loc_doc)
+
+            temp_type = self.root.resolve_datatype(self.type)
+
+            if (temp_type is not None):  # BASIC TYPES
+                if temp_type != "byte":
+                    self.front.append(
+                        "    " + str(self.root.resolve_datatype(self.type)) + " " + str(self.id) + ";" + loc_doc)
+                else:
+                    self.front.append(
+                        "    " + str(self.root.resolve_datatype(self.type)) + " " + str(self.id) + "[" + str(
+                            self.root.resolve_datatype(self.type, getsize=True)) + "]" + ";" + loc_doc)
             elif " " in str(self.type):
                 self.type = self.root.expr_resolve(self.type, translate_condition_2_c=True)
                 self.front.append("    " + str(self.type) + " " + str(self.id) + ";" + loc_doc)
@@ -514,7 +558,7 @@ class seq(Converter):
     def generate_code(self, size=None):
         for this_level_key in self.this_level_keys:
             self.output.extend(self.subtrees[this_level_key].generate_code(size))
-        #print("SEQ"+"\n".join(self.output)+str(self.input))
+        # print("SEQ"+"\n".join(self.output)+str(self.input))
         return self.output
 
 
@@ -539,15 +583,16 @@ class instances(seq):
         for this_level_key in self.this_level_keys:
             instance = self.root.lookup_instance(this_level_key)
             if instance is not None and not self.root.lookup_instance(this_level_key, check_if_implemented=True):
-                temp =" ".join(self.root.expr_resolve(str(instance["value"])))
+                temp = " ".join(self.root.expr_resolve(str(instance["value"])))
                 self.front.append("    local int64 " + str(this_level_key) + " = " + str(temp) + ";" + (
                     ("   //" + str(instance["doc"])) if "doc" in instance.keys() else ""))
         self.output.extend(self.front)
         self.output.extend(self.back)
         return self.output
         # TODO IMPLEMENT instances as local vars just before they are used
-        #TODO If they are not yet implemented
+        # TODO If they are not yet implemented
         pass
+
 
 class types(Converter):
     def __init__(self, input_js, parent, root):
@@ -592,8 +637,7 @@ class types(Converter):
 
 def print_debug(string):
     if DEBUG:
-        print("DEBUG: "+string.replace("\n","\n     "))
-
+        print("DEBUG: " + string.replace("\n", "\n     "))
 
 
 def remap_keys(key):
@@ -616,17 +660,10 @@ def main():
     with open(input_file_name, "r") as in_file:
         input_file = in_file.read()
     kaitaijs = yaml.load(input_file)
-
     converter = Converter(kaitaijs, True)
-
-    # output = converter.generate_code()
     output = converter.generate_code_toplevel()
-    # print('\n'.join(output))
-    # converter.print_input()
-
     with open(output_file_name, "w") as out_file:
         out_file.write('\n'.join(output))
-
     print('\n'.join(output))
 
 
