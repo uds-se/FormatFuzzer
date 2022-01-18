@@ -12,6 +12,9 @@ class Converter(object):
     # TODO implement size lookup funtion
 
     def __init__(self, input_js, is_master=False, parent=None, root=None):
+        self.output_enums = []
+        self.output_types = []
+        self.output_seqs = []
         self.output = []
         self.subtrees = {}
         self.this_level_keys = []
@@ -103,13 +106,16 @@ class Converter(object):
                 self.subtrees[local_key].parse_subtree()
 
     def generate_code_toplevel(self):
-        self.output.extend(self.subtrees["enums"].generate_code())
-        self.output.extend(self.subtrees["types"].generate_code())
-        self.output.extend(self.subtrees["seq"].generate_code())
+        self.output_enums.extend(self.subtrees["enums"].generate_code(called_lowlevel=False))
+        self.output_types.extend(self.subtrees["types"].generate_code(called_lowlevel=False))
+        self.output_seqs.extend(self.subtrees["seq"].generate_code(called_lowlevel=False))
+        self.output.extend(self.output_enums)
+        self.output.extend(self.output_types)
+        self.output.extend(self.output_seqs)
 
         return self.output
 
-    def generate_code(self, size=None):
+    def generate_code(self, size=None, called_lowlevel=True):
         if "instances" in self.this_level_keys:
             for x in self.input["instances"].keys():
                 self.mark_as_implemented("instance", x, value=False)
@@ -120,17 +126,17 @@ class Converter(object):
                     try:
                         # if local_key =="seq":print("AAAAAAAAAAAAA")
                         # if local_key =="instances":print("BBBBBBBBBBBBB")
-                        self.output.extend(self.subtrees[local_key].generate_code(size))
+                        self.output.extend(self.subtrees[local_key].generate_code(size, called_lowlevel))
                     except Exception as err:
-                        print("++++++START Converter codeGEN exception START +++++")
+                        print("\n++++++START Converter codeGEN exception START +++++")
                         traceback.print_exc()
                         print(self.subtrees.keys())
                         print(self.subtrees[local_key].input)
                         print(self.this_level_keys)
-                        print("++++++END Converter codeGEN exception END +++++")
+                        print("++++++END Converter codeGEN exception END +++++\n")
                         pass
                 else:
-                    self.output.extend(self.subtrees[local_key].generate_code(size))
+                    self.output.extend(self.subtrees[local_key].generate_code(size, called_lowlevel))
 
         return self.output
 
@@ -155,6 +161,7 @@ class Converter(object):
         # TODO add CALL to this when implementig
         operator_replacement_dict = {"not ": " ! ", " and ": " && ", " or ": " || "}
         condition_splitter_replacement = ["::", "."]
+        string_splitter_replacement = ['"']
         for to_be_rep in operator_replacement_dict.keys():
             expr = expr.replace(to_be_rep, operator_replacement_dict[to_be_rep])
         for element in re.split('(\W+)', expr):  # replacing f**kin 0xffff_ffff with 0xffffffff
@@ -163,19 +170,28 @@ class Converter(object):
                 expr = expr.replace(element, temp)
                 continue
             except:
+                # print_debug("AAAAAAAAAAAAAAAAAAA")
+                # traceback.print_exc()
                 pass
             try:
                 temp = hex(int(element, 2))
                 expr = expr.replace(element, temp)
             except:
+                # print_debug("BBBBBBBBBBBBBBBBBBB")
+                # traceback.print_exc()
                 pass
 
         if translate_condition_2_c:
             if repeat_condition:
                 try:
-                    expr = expr.replace(" _.", " " + str(id_of_obj))
+                    expr = expr.replace("_.", "" + str(id_of_obj) + ".")
                 except:
                     pass
+                try:
+                    expr = expr.replace("_io.eof", "FTell()==FileSize()")
+                except:
+                    pass
+
             pass
             if "::" in expr:
                 for element in expr.split(" "):
@@ -189,7 +205,13 @@ class Converter(object):
             for splitter in condition_splitter_replacement:
                 expr = expr.replace(str(splitter), " ")
 
-            return expr.split(" ")
+            # for splitter in string_splitter_replacement:  # TODO UNSURE ABOUT THIS
+            #     expr = expr.replace(str(splitter), "")
+
+            if " " in expr:
+                return expr.split(" ")
+            else:
+                return expr
 
     def chck_flg(self, flag):
         try:
@@ -213,8 +235,6 @@ class Converter(object):
 
     def resolve_datatype(self, kaitype, getsize=False, getendian=False):
         # TODO do something about LE????
-        datatypes = {"u4": "uint32", "u1": "ubyte", "u2": "uint16"}  # TODO implement all types
-
         match = re.match(r'(?P<parsed_type>[a-zA-Z])(?P<parsed_size>[0-9])(?P<parsed_endian>[a-zA-Z]*)', kaitype)
         if match is None:
             return None
@@ -264,7 +284,7 @@ class doc(Converter):
     def parse_subtree(self):
         self.output = "    //     " + str(self.input).replace("\n", "\n    //    ")
 
-    def generate_code(self, size=None):
+    def generate_code(self, size=None, called_lowlevel=True):
         return [self.output]
 
 
@@ -275,7 +295,7 @@ class doc_ref(Converter):
     def parse_subtree(self):
         self.output = "    //     " + str(self.input).replace("\n", "\n    //    ")
 
-    def generate_code(self, size=None):
+    def generate_code(self, size=None, called_lowlevel=True):
         return [self.output]
 
 
@@ -291,18 +311,23 @@ class enums(Converter):
                 self.subtrees[local_key] = attribute(local_key, self.input[this_level_key])
                 # print(str(self.subtrees[local_key].get_name()) + " : " + str(self.subtrees[local_key].get_value()))
 
-    def generate_code(self, size=None):
+    def generate_code(self, size=None, called_lowlevel=True):
         self.output = []
         for enum in self.subtrees.keys():
-            self.output.extend(self.gen_single_enum(enum, self.subtrees[enum], converter.lookup_enum_size("standard")))
+            self.output.extend(
+                self.gen_single_enum(enum, self.subtrees[enum], type=converter.lookup_enum_size("standard")))
             self.output.append("\n")
+
+        if called_lowlevel:
+            self.root.output_enums.extend(self.output)
+            return [""]
         return self.output
 
-    def gen_single_enum(self, key, enumerations, size="<byte>"):
+    def gen_single_enum(self, key, enumerations, type="<byte>"):
         values = enumerations.get_value()
         lines = []
         # TODO FIND CORRECT TYPE? defaulting to <byte> for now
-        lines.append("enum " + size + " " + str(key) + "{")
+        lines.append("enum " + type + " " + str(key) + "_ENUM{")
         keys = list(values.keys())
         for k in keys[0:-1]:
             lines.append("  " + (values[k] if "id" not in values[k] else values[k]["id"]) + " = " + str(k) + "," + (
@@ -358,9 +383,10 @@ class data_point():
         if self.id is None:
             self.id = str(self.subtrees["id"].get_value())
 
-    def generate_code(self, size=None, ignore_if=False):
+    def generate_code(self, size=None, ignore_if=False, called_lowlevel=True):
         # TODO EXTEND TO ALL VARIATIONS
-
+        if size:
+            print_debug(size)
         if "process" in self.this_level_keys:
             self.gen_atomic(docu="IMPLEMENT" + str(self.input["process"]), size=size)
             print("PROCESS NOT IMPLEMENTED YET\n")
@@ -379,7 +405,10 @@ class data_point():
         elif type(self.type) is dict:
             self.gen_switch(self.size)
         else:
-            self.gen_atomic()
+            if "enum" in self.input.keys():
+                self.gen_atomic(type_override=self.input["enum"])
+            else:
+                self.gen_atomic()
 
         if not ignore_if:
             self.output.extend(self.front)
@@ -389,6 +418,7 @@ class data_point():
     def gen_switch(self, size=None):
         switch = self.type["switch-on"]
         cases = self.type["cases"]
+
         switch_drop = ["_root", "_parent", "_io"]
         if switch.split(".")[0] in switch_drop:
             switch_term = ".".join(switch.split(".")[1:])
@@ -414,7 +444,7 @@ class data_point():
                 self.front.append("         case " + str(case_val) + ":")
             else:
                 self.front.append("         default:")
-            self.front.append("             " + str(cases[case_key]) + " " + str(self.id) + paramfield + ";")
+            self.front.append("             " + str(cases[case_key]) + "_TYPE " + str(self.id) + paramfield + ";")
             self.front.append("             break;")
         self.front.append("    }")
 
@@ -428,14 +458,25 @@ class data_point():
 
         # TODO implement
 
-    def gen_repeat(self):
+    def gen_repeat(self, size=None):
         if "repeat-until" in self.this_level_keys:
-            condition = self.input["repeat-until"]
+            condition_in = self.input["repeat-until"]
+            condition = self.root.expr_resolve(condition_in, translate_condition_2_c=True, repeat_condition=True,
+                                               id_of_obj=self.id)
             self.gen_instances(condition)
+            # TODO
+            # read first item
+            # while !(condition)
+            # read item
             # TODO IMPLEMENT THESEEE
         elif "repeat-expr" in self.this_level_keys:
+            expr_in = self.input["repeat-expr"]
+            expr = self.root.expr_resolve(expr_in, translate_condition_2_c=True)
+            self.gen_instances(expr)
+            self.gen_atomic(size=expr)
             pass
         elif "eos" == self.input["repeat"]:
+
             pass
         else:
             print_debug("REPEAT MISSING" + str(self.input["repeat"]))
@@ -467,7 +508,7 @@ class data_point():
         for x in range(1, self.magic_len - 1):
             self.front.append("        " + self.id + "[" + str(x) + "] != " + self.magic[x] + " ||")
         self.front.append(
-            "        " + self.id + "[" + str(self.magic_len) + "] != " + self.magic[self.magic_len - 1] + ") {")
+            "        " + self.id + "[" + str(self.magic_len - 1) + "] != " + self.magic[self.magic_len - 1] + ") {")
         self.front.append('         Warning("Magic Bytes of ' + self.id + ' not matching!");')
         self.front.append("         return -1;\n    };")
 
@@ -496,7 +537,9 @@ class data_point():
             print_debug("to_hex_list FAILURE\n")
             exit(-1)
 
-    def gen_atomic(self, docu="", size=None):
+    def gen_atomic(self, docu="", size=None, type_override=None):
+        if type_override:
+            self.type = type_override + "_ENUM"
         if docu != "":
             loc_doc = "     //" + str(docu)
         else:
@@ -519,24 +562,34 @@ class data_point():
 
             if (temp_type is not None):  # BASIC TYPES
                 if temp_type != "byte":
+                    # print_debug(self.type)
+                    # print_debug(temp_type)
                     self.front.append(
                         "    " + str(self.root.resolve_datatype(self.type)) + " " + str(self.id) + ";" + loc_doc)
                 else:
                     self.front.append(
                         "    " + str(self.root.resolve_datatype(self.type)) + " " + str(self.id) + "[" + str(
                             self.root.resolve_datatype(self.type, getsize=True)) + "]" + ";" + loc_doc)
+
             elif " " in str(self.type):
                 self.type = self.root.expr_resolve(self.type, translate_condition_2_c=True)
                 self.front.append("    " + str(self.type) + " " + str(self.id) + ";" + loc_doc)
+
+
             else:  # CUSTOM TYPES
-                self.front.append("    " + str(self.type) + " " + str(self.id) + ";" + loc_doc)
+                if type_override is None and True:
+                    self.type = self.type + "_TYPE"
+                length_addon = ""
+                if size:
+                    length_addon = "[" + size + "]"
+                self.front.append("    " + str(self.type) + " " + str(self.id) + length_addon + ";" + loc_doc)
         elif self.size is not None:  # JUST BYTES
             self.front.append("    byte " + str(self.id) + "[" + str(self.size) + "]" + ";" + loc_doc)
         else:
-            print_debug(self.parent.input)
-            # self.gen_repeat()
 
+            # self.gen_repeat()
             print_debug("ERROR NO SIZE OR TYPE GIVEN AND ITS NO MAGIC\n")
+            print_debug(self.input)
             self.front.append("//STUFF MISSING HERE @ NO MAGIC " + str(self.id) + "----" + str(self.input))
 
     def chck_flg(self, flag):
@@ -555,9 +608,9 @@ class seq(Converter):
             self.subtrees[data_dict["id"]].parse()
             self.this_level_keys.append(data_dict["id"])
 
-    def generate_code(self, size=None):
+    def generate_code(self, size=None, called_lowlevel=True):
         for this_level_key in self.this_level_keys:
-            self.output.extend(self.subtrees[this_level_key].generate_code(size))
+            self.output.extend(self.subtrees[this_level_key].generate_code(size, called_lowlevel=True))
         # print("SEQ"+"\n".join(self.output)+str(self.input))
         return self.output
 
@@ -579,7 +632,7 @@ class instances(seq):
                                                       root=self.root)
                 self.subtrees[local_key].parse()
 
-    def generate_code(self, size=None):
+    def generate_code(self, size=None, called_lowlevel=True):
         for this_level_key in self.this_level_keys:
             instance = self.root.lookup_instance(this_level_key)
             if instance is not None and not self.root.lookup_instance(this_level_key, check_if_implemented=True):
@@ -606,7 +659,7 @@ class types(Converter):
                 self.subtrees[local_key] = Converter(self.input[this_level_key], parent=self, root=self.root)
                 self.subtrees[local_key].parse_subtree()
 
-    def generate_code(self, size=None):
+    def generate_code(self, size=None, called_lowlevel=True):
         self.output.extend(self.gen_forward_types())
         self.output.extend(self.gen_complete_types(size))
         return self.output
@@ -621,9 +674,9 @@ class types(Converter):
             item = self.subtrees[this_level_key]
             if item.chck_flg("size-eos") and not item.chck_flg("encoding"):
                 lenfield = "(int32 lenght)"
-            output.append("struct " + str(this_level_key) + lenfield + " {")
+            output.append("struct " + str(this_level_key) + "_TYPE" + lenfield + " {")
             # TODO IMPLEMENT size Calc locals
-            output.extend(item.generate_code(size))  # GOING TO CHILD ITEM
+            output.extend(item.generate_code(size, called_lowlevel=True))  # GOING TO CHILD ITEM
             output.append("};\n")
         return output
         # TODO IMPLEMENT THIS IS JUST A PLACEHOLDER
@@ -631,13 +684,13 @@ class types(Converter):
     def gen_forward_types(self):
         output = []
         for this_level_key in self.this_level_keys:
-            output.append("struct " + str(this_level_key) + ";")
+            output.append("struct " + str(this_level_key) + "_TYPE ;")
         return output
 
 
 def print_debug(string):
     if DEBUG:
-        print("DEBUG: " + string.replace("\n", "\n     "))
+        print("DEBUG: " + str(string).replace("\n", "\n     "))
 
 
 def remap_keys(key):
