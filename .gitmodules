@@ -1,0 +1,6 @@
+[submodule "Converter/Converter/kaitai_struct_formats"]
+	path = Converter/Converter/kaitai_struct_formats
+	url = https://github.com/kaitai-io/kaitai_struct_formats.git
+[submodule "Converter/kaitai_struct_formats"]
+	path = Converter/kaitai_struct_formats
+	url = https://github.com/kaitai-io/kaitai_struct_formats.git
