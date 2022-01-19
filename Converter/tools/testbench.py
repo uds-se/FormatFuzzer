@@ -6,18 +6,22 @@ import difflib
 import sys
 import argparse
 import re
+import os
 
-#NOTE change these as needed
-KAITAI_BASE_PATH = "kaitai_formats/"
-BT_TEMPLATE_BASE_PATH = "../templates/"
-FFCOMPILE = "../ffcompile"
-CONVERTER = "Converter.py"
+# NOTE change these as needed
+TestBenchLoc = os.path.dirname(os.path.abspath(__file__))
+KAITAI_BASE_PATH = TestBenchLoc + "/../kaitai_struct_formats/"
+BT_TEMPLATE_BASE_PATH = TestBenchLoc + "/../../templates/"
+FFCOMPILE = TestBenchLoc + "/../../ffcompile"
+CONVERTER = TestBenchLoc + "/Converter.py"
 
-#TODO parse out the line, number and column form ffcompile error message
+
+# TODO parse out the line, number and column form ffcompile error message
 
 class TestRunException(Exception):
     """thrown if any part of a test run fails"""
-    def __init__(self, msg, cause: Exception=None):
+
+    def __init__(self, msg, cause: Exception = None):
         self.msg = msg
         self.cause = cause
 
@@ -157,7 +161,7 @@ def runParserOnInput(parser, testInput):
 
 def resolveTestInputByFormat(formatName, generator):
     try:
-        cmd = [generator, "fuzz", f"testinput.{formatName}"]
+        cmd = [TestBenchLoc + "/../../" + generator, "fuzz", f"testinput.{formatName}"]
         subprocess.run(cmd,
                              check=True,
                              stdout=subprocess.DEVNULL,
