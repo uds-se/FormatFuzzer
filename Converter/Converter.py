@@ -462,7 +462,7 @@ class data_point():
             encoding = self.root.lookup_f_in_typ_pres(cases[case_key], "encoding")
             if (sizeos or repeat) and not encoding:
                 print_debug(self.input)
-
+                size = "lenght_CONVERTER"  # TODO LOOK IF TRUE
                 # TODO IMPLEMENT MISSING CASES AND FIX THE repeat CASE
                 paramfield = "(" + str(size) + ")"
             else:
