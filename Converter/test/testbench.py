@@ -16,7 +16,7 @@ CONVERTER = "Converter.py"
 
 class TestRunException(Exception):
     """thrown if any part of a test run fails"""
-    def __init__(self, msg, cause: Exception):
+    def __init__(self, msg, cause: Exception=None):
         self.msg = msg
         self.cause = cause
 
@@ -25,15 +25,15 @@ class TestRunException(Exception):
         if isinstance(self.cause, subprocess.CalledProcessError):
             log.error(self.cause.cmd)
             log.error(self.cause.returncode)
-            log.error(self.cause.stderr)
-            log.error(self.cause.output)
+            log.error(self.cause.stderr.decode())
+            log.error(self.cause.output.decode())
 
 
 # should return file path or false in not found
-def findFileRecursively(name, ext, maxDepth=3):
+def findFileRecursively(base_path,name, ext, maxDepth=3):
     cmd = [
         'find',
-        path.normpath(KAITAI_BASE_PATH), '-maxdepth', f'{maxDepth}', '-name',
+        path.normpath(base_path), '-maxdepth', f'{maxDepth}', '-name',
         f'{name}.{ext}'
     ]
     found_file = subprocess.run(cmd, shell=False, stdout=subprocess.PIPE)
@@ -58,7 +58,7 @@ def runSingleFormatParseTest(formatName, resolveTestInput):
             formatName)  #contains path to converted file
         parserUnderTest = compileParser(convertedFile)
         #contains path to reference template
-        referenceTemplate = findFileRecursively(formatName, 'bt')
+        referenceTemplate = findFileRecursively(BT_TEMPLATE_BASE_PATH,formatName, 'bt')
         if not referenceTemplate:
             raise TestRunException("Reference template file not found")
         referenceParser = compileParser(referenceTemplate)
@@ -76,7 +76,7 @@ def callConverter(formatName):
     if (not path.isdir(KAITAI_BASE_PATH)):
         raise Exception("kaitai base path is no directory")
 
-    filePath = findFileRecursively(formatName, "ksy")
+    filePath = findFileRecursively(KAITAI_BASE_PATH,formatName, "ksy")
     if (not filePath):
         raise TestRunException(
             f"Kaitai struct file not found, path: {path.join(KAITAI_BASE_PATH,formatName)}.ksy"
@@ -120,21 +120,22 @@ def compileParser(templatePath, test=False):
         # g++ -O3 gif.o fuzzer.o -o gif-fuzzer -lz
         fmtName = path.basename(templatePath).split('.')[0]
         ffCompCmd = [FFCOMPILE, templatePath, f"{fmtName}.cpp"]
-        result = subprocess.check_call(ffCompCmd)
+        subprocess.run(ffCompCmd, capture_output=True, check=True)
         fuzzerCppCmd = "g++ -c -I . -std=c++17 -g -O3 -Wall fuzzer.cpp"
-        subprocess.check_call(ffCompCmd, shell=True)
+        subprocess.run(fuzzerCppCmd, shell=True, capture_output=True, check=True)
         compFuzzerCmd = [
             'g++', '-c', '-I', '.', '-std=c++17', '-g', '-O3', '-Wall',
             f'{fmtName}.cpp'
         ]
-        subprocess.check_call(compFuzzerCmd)
+        subprocess.run(compFuzzerCmd, capture_output=True, check=True)
         binName = f'test-{fmtName}-fuzzer' if test else f'{fmtName}-fuzzer'
         linkCmd = [
             'g++', '-O3', f'{fmtName}.o', 'fuzzer.o', '-o', binName, '-lz'
         ]
-        subprocess.check_call(linkCmd)
+        subprocess.run(linkCmd, capture_output=True, check=True)
         return binName
     except subprocess.CalledProcessError as err:
+        print(err)
         raise TestRunException(f"failed to compile", err)
 
 
@@ -151,7 +152,7 @@ def runParserOnInput(parser, testInput):
 def resolveTestInputByFormat(formatName, generator):
     try:
         cmd = [generator, "fuzz", f"testinput.{formatName}"]
-        out = subprocess.run(cmd,
+        subprocess.run(cmd,
                              check=True,
                              stdout=subprocess.DEVNULL,
                              stderr=subprocess.PIPE)
@@ -183,7 +184,7 @@ def main():
     numeric_level = getattr(log, parsedArgs.log_lvl.upper(), 'INFO')
 
     if not isinstance(numeric_level, int):
-        raise ValueError('Invalid log level: %s' % loglevel)
+        raise ValueError('Invalid log level: %s' % numeric_level)
     consoleLog = log.StreamHandler()
     logfile = log.FileHandler("testbench.log")
     log.basicConfig(format='%(asctime)s::%(levelname)s:%(message)s',
@@ -193,7 +194,7 @@ def main():
     log.info("===Statring test bench run===")
     if (len(parsedArgs.formats) == 1):
         log.info("Running test for single format %s", parsedArgs.formats[0])
-        testInputResolver = lambda fmt: parsedArgs.testInput if parsedArgs.testInput else resolveTestInputByFormat
+        testInputResolver = lambda fmt, parser: parsedArgs.testInput if parsedArgs.testInput else resolveTestInputByFormat(fmt,parser)
         runSingleFormatParseTest(parsedArgs.formats[0], testInputResolver)
         return
     log.info("Runing test for multiple formats")
