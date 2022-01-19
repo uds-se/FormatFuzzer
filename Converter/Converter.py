@@ -566,7 +566,8 @@ class data_point():
 
 
             else:  # CUSTOM TYPES
-                if type_override is None and True:
+                print_debug(self.type)
+                if type_override is None and "_TYPE" not in self.type:
                     self.type = self.type + "_TYPE"
                 length_addon = ""
                 if size:
