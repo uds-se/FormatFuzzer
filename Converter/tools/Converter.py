@@ -46,8 +46,12 @@ class Converter(object):
             self.root.global_instance_table[str(containing_type)] = {str(name): {"VALUE": value, "IMPLEMENTED": False}}
         return
 
-    def register_type(self, name, value):  # registers type in "global" table during parsing time
-        self.root.global_type_table[str(name)] = {"VALUE": value, "IMPLEMENTED": False}
+    def register_type(self, name, value=None,
+                      param_needed=False):  # registers type in "global" table during parsing time
+        if not param_needed:
+            self.root.global_type_table[str(name)] = {"VALUE": value, "IMPLEMENTED": False, "PARAM": param_needed}
+        else:
+            self.root.global_type_table[str(name)]["PARAM"] = True
 
     def register_enum(self, name, value):  # registers enum in "global" table during parsing time
         self.root.global_enum_table[str(name)] = {"VALUE": value, "IMPLEMENTED": False}
@@ -64,14 +68,18 @@ class Converter(object):
             # print_debug("\nERROR INSTANCE " + str(name) + " NOT FOUND\nCan safely be ignored just for testing if expr_resolve works!\n")
             return None
 
-    def lookup_type(self, name, check_if_implemented=False):  # returns dict of value and possible doc/doc-ref as keys
+    def lookup_type(self, name, check_if_implemented=False,
+                    check_if_param_needed=False):  # returns dict of value and possible doc/doc-ref as keys
         if check_if_implemented:
             getter = "IMPLEMENTED"
+        elif check_if_param_needed:
+            getter = "PARAM"
         else:
             getter = "VALUE"
         try:
             return self.root.global_type_table[str(name)][getter]
         except:
+            # traceback.print_exc()
             print_debug("ERROR TYPE " + str(name) + " NOT FOUND\n")
             return None
 
@@ -411,6 +419,7 @@ class data_point():
         # TODO EXTEND TO ALL VARIATIONS
         if size:
             print_debug(size)
+        pass
         if "process" in self.this_level_keys:
             self.gen_atomic(docu="IMPLEMENT" + str(self.input["process"]), size=size)
             print("PROCESS NOT IMPLEMENTED YET\n")
@@ -419,15 +428,15 @@ class data_point():
             self.output.extend(self.back)
             return self.output
         elif "if" in self.this_level_keys and not ignore_if:
-            self.gen_if()
+            self.gen_if(self.containing_type)
         elif "repeat" in self.this_level_keys:
             self.gen_repeat()
         elif "encoding" in self.this_level_keys:
             self.gen_str()
         elif "contents" in self.this_level_keys:
             self.gen_contents()
+
         elif type(self.type) is dict:
-            print_debug(size)
             self.gen_switch(self.size)
         else:
             if "enum" in self.input.keys():
@@ -451,9 +460,7 @@ class data_point():
             switch_term = switch
         self.front.append("     switch(" + str(switch_term) + ") {")
         for case_key in cases.keys():
-            paramfield = ""
             case = self.root.expr_resolve(case_key)
-            print_debug(case)
             if case == ["_"] or case == "_":
                 case_val = "default"  # TODO remove case from case default
             elif type(case) is list:
@@ -465,10 +472,10 @@ class data_point():
             repeat = self.root.lookup_f_in_typ_pres(cases[case_key], "repeat")
             encoding = self.root.lookup_f_in_typ_pres(cases[case_key], "encoding")
             if (sizeos or repeat) and not encoding:
-                print_debug(self.input)
-                size = "lenght_CONVERTER"  # TODO LOOK IF TRUE
-                # TODO IMPLEMENT MISSING CASES AND FIX THE repeat CASE
-                paramfield = "(" + str(size) + ")"
+                if self.root.lookup_f_in_typ_pres(cases[case_key], "repeat", flag_to_val=True) == "eos":
+                    paramfield = "(lenght_CONVERTER)"
+                else:
+                    paramfield = ""
             else:
                 paramfield = ""
             if case_val != "default":
@@ -479,9 +486,8 @@ class data_point():
             self.front.append("             break;")
         self.front.append("    }")
 
-    def gen_if(self):
+    def gen_if(self, containing_type=None):
         condition = self.input["if"]
-
         if "instances" in self.parent.parent.input.keys():
             pass
 
@@ -489,7 +495,7 @@ class data_point():
 
         self.front.append("    if (" + self.root.expr_resolve(condition, translate_condition_2_c=True) + ") {")
 
-        self.generate_code(ignore_if=True)
+        self.generate_code(ignore_if=True, containing_type=containing_type)
 
         self.front.append("     }")
 
@@ -516,8 +522,6 @@ class data_point():
             pass
         elif "eos" == self.input["repeat"]:
 
-            print_debug(self.id)
-            print_debug(self.input)
             self.front.append("//     repeat: eos PLACEHOLDER<=======")
             # TODO INSERT NEXT WHILE CONSTRUCTION
             pass
@@ -528,9 +532,9 @@ class data_point():
 
     def gen_atomic(self, docu="", size=None, type_override=None, indents=1):
 
-        # print_debug(self.id)
-        # print_debug(str(self.containing_type)+"\n")
-
+        # elif "size" in self.this_level_keys and self.root.lookup_type(name=self.type, check_if_param_needed=True):
+        #     print_debug(self.type)
+        #     print_debug(self.id)
         prepend = "    " * indents
         if type_override:
             self.type = type_override + "_ENUM"
@@ -571,10 +575,14 @@ class data_point():
 
 
             else:  # CUSTOM TYPES
-                print_debug(self.type)
+
                 if type_override is None and "_TYPE" not in self.type:
                     self.type = self.type + "_TYPE"
                 length_addon = ""
+                if "_ENUM" not in self.type and self.root.lookup_type(name=self.type.split("_TYPE")[0],
+                                                                      check_if_param_needed=True):
+                    # print_debug(self.input["size"])
+                    length_addon = "(" + self.root.expr_resolve(self.input["size"], translate_condition_2_c=True) + ")"
                 if size:
                     length_addon = "[" + size + "]"
                 self.front.append(prepend + str(self.type) + " " + str(self.id) + length_addon + ";" + loc_doc)
@@ -590,10 +598,12 @@ class data_point():
     def gen_instances(self, condition):
         # condition_list = condition.split(".")
         condition_list = self.root.expr_resolve(condition)
+        if type(condition_list) is not type([]):
+            condition_list = [condition_list]
         for element in condition_list:
-            instance = self.root.lookup_instance(element, self.id)
+            instance = self.root.lookup_instance(element, self.containing_type)
             if instance is not None and not self.root.lookup_instance(element, self.id, check_if_implemented=True):
-                self.root.mark_as_implemented("instance", element, value=True, containing_type=self.id)
+                self.root.mark_as_implemented("instance", element, value=True, containing_type=self.containing_type)
                 temp = " ".join(self.root.expr_resolve(str(instance["value"])))
                 self.front.append("    local int64 " + str(element) + " = " + str(temp) + ";" + (
                     ("   //" + str(instance["doc"])) if "doc" in instance.keys() else ""))
@@ -734,7 +744,8 @@ class types(Converter):
             if item.chck_flg("repeat", flag_to_val=True) == "eos":
                 print_debug(this_level_key)
                 lenfield = "(int32 lenght_CONVERTER)"
-
+            if lenfield != "":
+                self.root.register_type(name=this_level_key, param_needed=True)
             output.append("struct " + str(this_level_key) + "_TYPE" + lenfield + " {")
             # TODO IMPLEMENT size Calc locals
             output.extend(item.generate_code(size, called_lowlevel=True))  # GOING TO CHILD ITEM
@@ -745,7 +756,6 @@ class types(Converter):
     def gen_forward_types(self):
         output = []
         for this_level_key in self.this_level_keys:
-            lenfield = ""
             output.append("struct " + str(this_level_key) + "_TYPE ;")
         return output
 
