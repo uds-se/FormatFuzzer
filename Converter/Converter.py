@@ -456,7 +456,9 @@ class data_point():
             if case == ["_"] or case == "_":
                 case_val = "default"  # TODO remove case from case default
             elif type(case) is list:
-                case_val = str(hex(self.root.lookup_enum_val_2_key(case[0], case[1])))
+
+                case_val = case[1]
+                # case_val = str(hex(self.root.lookup_enum_val_2_key(case[0], case[1])))
 
             else:
                 case_val = case
@@ -726,12 +728,11 @@ class types(Converter):
         else:
             lenfield = ""
         for this_level_key in self.this_level_keys:
+            lenfield = ""
             item = self.subtrees[this_level_key]
             if item.chck_flg("size-eos") and not item.chck_flg("encoding"):
-                print_debug(this_level_key)
                 lenfield = "(int32 lenght_CONVERTER)"
             if item.chck_flg("repeat", flag_to_val=True) == "eos":
-                print_debug(this_level_key)
                 lenfield = "(int32 lenght_CONVERTER)"
 
             output.append("struct " + str(this_level_key) + "_TYPE" + lenfield + " {")
