@@ -11,7 +11,7 @@ class Converter(object):
 
     # TODO implement size lookup funtion
 
-    def __init__(self, input_js, is_master=False, parent=None, root=None):
+    def __init__(self, input_js, is_master=False, parent=None, root=None, name=None):
         self.output_enums = []
         self.output_types = []
         self.output_seqs = []
@@ -19,6 +19,7 @@ class Converter(object):
         self.subtrees = {}
         self.this_level_keys = []
         self.input = input_js
+        self.name = name
 
         try:
             self.this_level_keys = self.input.keys()
@@ -37,13 +38,13 @@ class Converter(object):
             self.root = root
 
     # TODO MAYBE ADD MORE TABLES HERE FOR MORE DYNAMIC CODE GENERATION
-    def register_instance(self, name, value):  # registers instance in "global" table during parsing time
+    def register_instance(self, name, value,
+                          containing_type):  # registers instance in "global" table during parsing time
         try:
-            temp = self.root.global_instance_table[str(name)]
+            self.root.global_instance_table[str(containing_type)][str(name)] = {"VALUE": value, "IMPLEMENTED": False}
         except:
-            self.root.global_instance_table[str(name)] = {"VALUE": value, "IMPLEMENTED": False}
-            return
-        # if temp["VALUE"]
+            self.root.global_instance_table[str(containing_type)] = {str(name): {"VALUE": value, "IMPLEMENTED": False}}
+        return
 
     def register_type(self, name, value):  # registers type in "global" table during parsing time
         self.root.global_type_table[str(name)] = {"VALUE": value, "IMPLEMENTED": False}
@@ -51,14 +52,14 @@ class Converter(object):
     def register_enum(self, name, value):  # registers enum in "global" table during parsing time
         self.root.global_enum_table[str(name)] = {"VALUE": value, "IMPLEMENTED": False}
 
-    def lookup_instance(self, name,
+    def lookup_instance(self, name, containing_type,
                         check_if_implemented=False):  # returns dict of value and possible doc/doc-ref as keys
         if check_if_implemented:
             getter = "IMPLEMENTED"
         else:
             getter = "VALUE"
         try:
-            return self.root.global_instance_table[str(name)][getter]
+            return self.root.global_instance_table[str(containing_type)][str(name)][getter]
         except:
             # print_debug("\nERROR INSTANCE " + str(name) + " NOT FOUND\nCan safely be ignored just for testing if expr_resolve works!\n")
             return None
@@ -85,25 +86,31 @@ class Converter(object):
             print_debug("ERROR ENUM " + str(name) + " NOT FOUND\n")
             return None
 
-    def mark_as_implemented(self, type, name, value=True):
+    def mark_as_implemented(self, type, name, containing_type=None, value=True):
+
         if type == "type":
             getter = self.root.global_type_table
         elif type == "enum":
             getter = self.root.global_enum_table
         elif type == "instance":
-            getter = self.root.global_instance_table
+
+            getter = self.root.global_instance_table[containing_type]
         else:
             print_debug(str(type) + " TABLE NOT IMPLEMENTED\n")
             exit(0)
         getter[str(name)]["IMPLEMENTED"] = value
 
-    def parse_subtree(self):
+    def parse_subtree(self, name=None):
+        self.name = name
+
         for this_level_key in self.this_level_keys:
             local_key = remap_keys(this_level_key)
             if local_key is not None:
+                # print_debug(local_key)
+                # print_debug(name)
                 self.__dict__[local_key] = self.input[this_level_key]
-                self.subtrees[local_key] = globals()[local_key](self.input[this_level_key], self, self.root)
-                self.subtrees[local_key].parse_subtree()
+                self.subtrees[local_key] = globals()[local_key](self.input[this_level_key], self, self.root, name=name)
+                self.subtrees[local_key].parse_subtree(name=name)
 
     def generate_code_toplevel(self):
         self.output_enums.extend(self.subtrees["enums"].generate_code(called_lowlevel=False))
@@ -115,10 +122,11 @@ class Converter(object):
 
         return self.output
 
-    def generate_code(self, size=None, called_lowlevel=True):
+    def generate_code(self, size=None, called_lowlevel=True, containing_type=None):
+
         if "instances" in self.this_level_keys:
             for x in self.input["instances"].keys():
-                self.mark_as_implemented("instance", x, value=False)
+                self.mark_as_implemented("instance", x, value=False, containing_type=self.name)
         for this_level_key in self.this_level_keys:
             local_key = remap_keys(this_level_key)
             if local_key is not None:
@@ -126,6 +134,7 @@ class Converter(object):
                     try:
                         # if local_key =="seq":print("AAAAAAAAAAAAA")
                         # if local_key =="instances":print("BBBBBBBBBBBBB")
+
                         self.output.extend(self.subtrees[local_key].generate_code(size, called_lowlevel))
                     except Exception as err:
                         print("\n++++++START Converter codeGEN exception START +++++")
@@ -213,7 +222,7 @@ class Converter(object):
             else:
                 return expr
 
-    def chck_flg(self, flag):
+    def chck_flg(self, flag, flag_to_val=False):
         try:
             if flag in self.this_level_keys:
                 return True
@@ -221,17 +230,29 @@ class Converter(object):
                 for this_level_key in self.this_level_keys:
                     local_key = remap_keys(this_level_key)
                     if local_key is not None:
-                        if self.subtrees[local_key].chck_flg(flag):
-                            return True
+                        if self.subtrees[local_key].chck_flg(flag, flag_to_val):
+                            return self.subtrees[local_key].chck_flg(flag, flag_to_val)
                         else:
                             pass
+                if flag_to_val:
+                    return None
+                else:
+                    return False
         except:
             return False
 
-    def lookup_f_in_typ_pres(self, type, flag, id=None):
+    def lookup_f_in_typ_pres(self, type, flag, id=None, flag_to_val=False):
+        # print_debug(type)
+        # print_debug(flag)
+        # print_debug(str(id))
+
         if id is None:
-            return self.subtrees["types"].subtrees[type].chck_flg(flag)
-        return self.subtrees["types"].subtrees[type].subtrees[id].chck_flg(flag)
+            temp = self.subtrees["types"].subtrees[type].chck_flg(flag, flag_to_val)
+            # print_debug(str(temp)+"\n")
+            return temp
+        temp = self.subtrees["types"].subtrees[type].subtrees[id].chck_flg(flag, flag_to_val)
+        # print_debug(str(temp)+"\n")
+        return temp
 
     def resolve_datatype(self, kaitype, getsize=False, getendian=False):
         # TODO do something about LE????
@@ -268,42 +289,42 @@ class Converter(object):
 
 
 class meta(Converter):
-    def __init__(self, input_js, parent, root: Converter):
-        Converter.__init__(self, input_js, parent=parent, root=root)
+    def __init__(self, input_js, parent, root: Converter, name=None):
+        Converter.__init__(self, input_js, parent=parent, root=root, name=name)
 
-    def parse_subtree(self):
+    def parse_subtree(self, name=None):
         self.root.endian = self.input["endian"]
 
         pass
 
 
 class doc(Converter):
-    def __init__(self, input_js, parent, root: Converter):
-        Converter.__init__(self, input_js, parent=parent, root=root)
+    def __init__(self, input_js, parent, root: Converter, name=None):
+        Converter.__init__(self, input_js, parent=parent, root=root, name=name)
 
-    def parse_subtree(self):
+    def parse_subtree(self, name=None):
         self.output = "    //     " + str(self.input).replace("\n", "\n    //    ")
 
-    def generate_code(self, size=None, called_lowlevel=True):
+    def generate_code(self, size=None, called_lowlevel=True, containing_type=None):
         return [self.output]
 
 
 class doc_ref(Converter):
-    def __init__(self, input_js, parent, root: Converter):
-        Converter.__init__(self, input_js, parent=parent, root=root)
+    def __init__(self, input_js, parent, root: Converter, name=None):
+        Converter.__init__(self, input_js, parent=parent, root=root, name=name)
 
-    def parse_subtree(self):
+    def parse_subtree(self, name=None):
         self.output = "    //     " + str(self.input).replace("\n", "\n    //    ")
 
-    def generate_code(self, size=None, called_lowlevel=True):
+    def generate_code(self, size=None, called_lowlevel=True, containing_type=None):
         return [self.output]
 
 
 class enums(Converter):
-    def __init__(self, input_js, parent, root: Converter):
-        Converter.__init__(self, input_js, parent=parent, root=root)
+    def __init__(self, input_js, parent, root: Converter, name=None):
+        Converter.__init__(self, input_js, parent=parent, root=root, name=name)
 
-    def parse_subtree(self):
+    def parse_subtree(self, name=None):
         for this_level_key in self.this_level_keys:
             local_key = remap_keys(this_level_key)
             if local_key is not None:
@@ -311,7 +332,7 @@ class enums(Converter):
                 self.subtrees[local_key] = attribute(local_key, self.input[this_level_key])
                 # print(str(self.subtrees[local_key].get_name()) + " : " + str(self.subtrees[local_key].get_value()))
 
-    def generate_code(self, size=None, called_lowlevel=True):
+    def generate_code(self, size=None, called_lowlevel=True, containing_type=None):
         self.output = []
         for enum in self.subtrees.keys():
             self.output.extend(
@@ -357,7 +378,7 @@ class attribute():
 
 class data_point():
     # Things that start with getting an id assigned/elements of seq
-    def __init__(self, input_js, name=None, parent=None, root: Converter = None, size_eos=False):
+    def __init__(self, input_js, name=None, parent=None, root: Converter = None, size_eos=False, containing_type=None):
         self.subtrees = dict()
         self.input = input_js
         self.id = name
@@ -370,6 +391,7 @@ class data_point():
         self.output = []
         self.front = []
         self.back = []
+        self.containing_type = containing_type
 
     def parse(self):
         if "type" in self.input.keys(): self.type = self.input["type"]
@@ -383,7 +405,7 @@ class data_point():
         if self.id is None:
             self.id = str(self.subtrees["id"].get_value())
 
-    def generate_code(self, size=None, ignore_if=False, called_lowlevel=True):
+    def generate_code(self, size=None, ignore_if=False, called_lowlevel=True, containing_type=None):
         # TODO EXTEND TO ALL VARIATIONS
         if size:
             print_debug(size)
@@ -403,6 +425,7 @@ class data_point():
         elif "contents" in self.this_level_keys:
             self.gen_contents()
         elif type(self.type) is dict:
+            print_debug(size)
             self.gen_switch(self.size)
         else:
             if "enum" in self.input.keys():
@@ -433,9 +456,12 @@ class data_point():
                 case_val = self.root.lookup_enum_val_2_key(case[0], case[1])
             else:
                 case_val = case
-            if (self.root.lookup_f_in_typ_pres(cases[case_key], "size-eos") or (
-                    self.root.lookup_f_in_typ_pres(cases[case_key], "repeat"))) and not self.root.lookup_f_in_typ_pres(
-                cases[case_key], "encoding"):
+            sizeos = self.root.lookup_f_in_typ_pres(cases[case_key], "size-eos")
+            repeat = self.root.lookup_f_in_typ_pres(cases[case_key], "repeat")
+            encoding = self.root.lookup_f_in_typ_pres(cases[case_key], "encoding")
+            if (sizeos or repeat) and not encoding:
+                print_debug(self.input)
+
                 # TODO IMPLEMENT MISSING CASES AND FIX THE repeat CASE
                 paramfield = "(" + str(size) + ")"
             else:
@@ -450,8 +476,14 @@ class data_point():
 
     def gen_if(self):
         condition = self.input["if"]
+
+        if "instances" in self.parent.parent.input.keys():
+            pass
+
         self.gen_instances(condition)
+
         self.front.append("    if (" + self.root.expr_resolve(condition, translate_condition_2_c=True) + ") {")
+
         self.generate_code(ignore_if=True)
 
         self.front.append("     }")
@@ -463,12 +495,14 @@ class data_point():
             condition_in = self.input["repeat-until"]
             condition = self.root.expr_resolve(condition_in, translate_condition_2_c=True, repeat_condition=True,
                                                id_of_obj=self.id)
+            # print_debug(condition)
             self.gen_instances(condition)
-            # TODO
-            # read first item
-            # while !(condition)
-            # read item
-            # TODO IMPLEMENT THESEEE
+            self.gen_atomic()
+            self.front.append("    while (!(" + condition + ")) {")
+            self.gen_atomic(indents=2)
+            self.front.append("    }")
+            # TODO CHECK IF DONE
+
         elif "repeat-expr" in self.this_level_keys:
             expr_in = self.input["repeat-expr"]
             expr = self.root.expr_resolve(expr_in, translate_condition_2_c=True)
@@ -477,19 +511,83 @@ class data_point():
             pass
         elif "eos" == self.input["repeat"]:
 
+            print_debug(self.id)
+            print_debug(self.input)
+            self.front.append("//     repeat: eos PLACEHOLDER<=======")
+            # TODO INSERT NEXT WHILE CONSTRUCTION
             pass
         else:
             print_debug("REPEAT MISSING" + str(self.input["repeat"]))
         # TODO implement
         pass
 
+    def gen_atomic(self, docu="", size=None, type_override=None, indents=1):
+
+        # print_debug(self.id)
+        # print_debug(str(self.containing_type)+"\n")
+
+        prepend = "    " * indents
+        if type_override:
+            self.type = type_override + "_ENUM"
+        if docu != "":
+            loc_doc = "     //" + str(docu)
+        else:
+            loc_doc = ""
+
+        if self.size_eos:
+            print_debug("size-EOS found here")
+            pass
+        if self.type == "str":
+            if self.size is not None:
+                # TODO IMPLEMENT CASE FOR DIFFERENT THAN ZEROBYTE TERMINATOR
+                self.front.append(prepend + "char " + str(self.id) + "[" + str(self.size) + "]" + ";" + loc_doc)
+            elif "size-eos" in self.input:
+                self.front.append(prepend + "string " + str(self.id) + ";" + loc_doc)
+        elif self.type == "strz":
+            self.front.append(prepend + "string " + str(self.id) + ";" + loc_doc)
+        elif self.type is not None:
+
+            temp_type = self.root.resolve_datatype(self.type)
+
+            if (temp_type is not None):  # BASIC TYPES
+                if temp_type != "byte":
+                    # print_debug(self.type)
+                    # print_debug(temp_type)
+                    self.front.append(
+                        prepend + str(self.root.resolve_datatype(self.type)) + " " + str(self.id) + ";" + loc_doc)
+                else:
+                    self.front.append(
+                        prepend + str(self.root.resolve_datatype(self.type)) + " " + str(self.id) + "[" + str(
+                            self.root.resolve_datatype(self.type, getsize=True)) + "]" + ";" + loc_doc)
+
+            elif " " in str(self.type):
+                self.type = self.root.expr_resolve(self.type, translate_condition_2_c=True)
+                self.front.append(prepend + str(self.type) + " " + str(self.id) + ";" + loc_doc)
+
+
+            else:  # CUSTOM TYPES
+                if type_override is None and True:
+                    self.type = self.type + "_TYPE"
+                length_addon = ""
+                if size:
+                    length_addon = "[" + size + "]"
+                self.front.append(prepend + str(self.type) + " " + str(self.id) + length_addon + ";" + loc_doc)
+        elif self.size is not None:  # JUST BYTES
+            self.front.append(prepend + "byte " + str(self.id) + "[" + str(self.size) + "]" + ";" + loc_doc)
+        else:
+
+            # self.gen_repeat()
+            print_debug("ERROR NO SIZE OR TYPE GIVEN AND ITS NO MAGIC\n")
+            print_debug(self.input)
+            self.front.append("//STUFF MISSING HERE @ NO MAGIC " + str(self.id) + "----" + str(self.input))
+
     def gen_instances(self, condition):
         # condition_list = condition.split(".")
         condition_list = self.root.expr_resolve(condition)
         for element in condition_list:
-            instance = self.root.lookup_instance(element)
-            if instance is not None and not self.root.lookup_instance(element, check_if_implemented=True):
-                self.root.mark_as_implemented("instance", element, True)
+            instance = self.root.lookup_instance(element, self.id)
+            if instance is not None and not self.root.lookup_instance(element, self.id, check_if_implemented=True):
+                self.root.mark_as_implemented("instance", element, value=True, containing_type=self.id)
                 temp = " ".join(self.root.expr_resolve(str(instance["value"])))
                 self.front.append("    local int64 " + str(element) + " = " + str(temp) + ";" + (
                     ("   //" + str(instance["doc"])) if "doc" in instance.keys() else ""))
@@ -537,105 +635,57 @@ class data_point():
             print_debug("to_hex_list FAILURE\n")
             exit(-1)
 
-    def gen_atomic(self, docu="", size=None, type_override=None):
-        if type_override:
-            self.type = type_override + "_ENUM"
-        if docu != "":
-            loc_doc = "     //" + str(docu)
-        else:
-            loc_doc = ""
-
-        if self.size_eos:
-            print_debug("size-EOS found here")
-            pass
-        if self.type == "str":
-            if self.size is not None:
-                # TODO IMPLEMENT CASE FOR DIFFERENT THAN ZEROBYTE TERMINATOR
-                self.front.append("    char " + str(self.id) + "[" + str(self.size) + "]" + ";" + loc_doc)
-            elif "size-eos" in self.input:
-                self.front.append("    string " + str(self.id) + ";" + loc_doc)
-        elif self.type == "strz":
-            self.front.append("    string " + str(self.id) + ";" + loc_doc)
-        elif self.type is not None:
-
-            temp_type = self.root.resolve_datatype(self.type)
-
-            if (temp_type is not None):  # BASIC TYPES
-                if temp_type != "byte":
-                    # print_debug(self.type)
-                    # print_debug(temp_type)
-                    self.front.append(
-                        "    " + str(self.root.resolve_datatype(self.type)) + " " + str(self.id) + ";" + loc_doc)
-                else:
-                    self.front.append(
-                        "    " + str(self.root.resolve_datatype(self.type)) + " " + str(self.id) + "[" + str(
-                            self.root.resolve_datatype(self.type, getsize=True)) + "]" + ";" + loc_doc)
-
-            elif " " in str(self.type):
-                self.type = self.root.expr_resolve(self.type, translate_condition_2_c=True)
-                self.front.append("    " + str(self.type) + " " + str(self.id) + ";" + loc_doc)
-
-
-            else:  # CUSTOM TYPES
-                if type_override is None and True:
-                    self.type = self.type + "_TYPE"
-                length_addon = ""
-                if size:
-                    length_addon = "[" + size + "]"
-                self.front.append("    " + str(self.type) + " " + str(self.id) + length_addon + ";" + loc_doc)
-        elif self.size is not None:  # JUST BYTES
-            self.front.append("    byte " + str(self.id) + "[" + str(self.size) + "]" + ";" + loc_doc)
-        else:
-
-            # self.gen_repeat()
-            print_debug("ERROR NO SIZE OR TYPE GIVEN AND ITS NO MAGIC\n")
-            print_debug(self.input)
-            self.front.append("//STUFF MISSING HERE @ NO MAGIC " + str(self.id) + "----" + str(self.input))
-
-    def chck_flg(self, flag):
+    def chck_flg(self, flag, flag_to_val=False):
+        if flag_to_val:
+            if flag in self.this_level_keys:
+                return self.input[flag]
+            else:
+                return None
         return flag in self.this_level_keys
 
 
 class seq(Converter):
-    def __init__(self, input_js, parent, root):
-        Converter.__init__(self, input_js, parent=parent, root=root)
+    def __init__(self, input_js, parent, root, name=None):
+        Converter.__init__(self, input_js, parent=parent, root=root, name=name)
 
-    def parse_subtree(self):
+    def parse_subtree(self, name=None):
         self.this_level_keys = []
         for data_dict in self.input:
             # if this_level_key == "doc-ref":this_level_key="doc"
-            self.subtrees[data_dict["id"]] = data_point(data_dict, parent=self, root=self.root)
+            self.subtrees[data_dict["id"]] = data_point(data_dict, containing_type=name, parent=self, root=self.root)
             self.subtrees[data_dict["id"]].parse()
             self.this_level_keys.append(data_dict["id"])
 
-    def generate_code(self, size=None, called_lowlevel=True):
+    def generate_code(self, size=None, called_lowlevel=True, containing_type=None):
         for this_level_key in self.this_level_keys:
-            self.output.extend(self.subtrees[this_level_key].generate_code(size, called_lowlevel=True))
+            self.output.extend(
+                self.subtrees[this_level_key].generate_code(size, called_lowlevel=True, containing_type=self.name))
         # print("SEQ"+"\n".join(self.output)+str(self.input))
         return self.output
 
 
 class instances(seq):
 
-    def __init__(self, input_js, parent, root):
-        seq.__init__(self, input_js, parent=parent, root=root)
+    def __init__(self, input_js, parent, root, name=None):
+        seq.__init__(self, input_js, parent=parent, root=root, name=name)
         self.output = []
         self.front = []
         self.back = []
 
-    def parse_subtree(self):
+    def parse_subtree(self, name=None):
         for this_level_key in self.this_level_keys:
             local_key = remap_keys(this_level_key)
             if local_key is not None:
-                self.root.register_instance(local_key, self.input[local_key])
+                self.root.register_instance(local_key, self.input[local_key], containing_type=name)
                 self.subtrees[local_key] = data_point(self.input[local_key], name=local_key, parent=self,
                                                       root=self.root)
                 self.subtrees[local_key].parse()
 
-    def generate_code(self, size=None, called_lowlevel=True):
+    def generate_code(self, size=None, called_lowlevel=True, containing_type=None):
         for this_level_key in self.this_level_keys:
-            instance = self.root.lookup_instance(this_level_key)
-            if instance is not None and not self.root.lookup_instance(this_level_key, check_if_implemented=True):
+            instance = self.root.lookup_instance(this_level_key, containing_type=self.name)
+            if instance is not None and not self.root.lookup_instance(this_level_key, containing_type=self.name,
+                                                                      check_if_implemented=True):
                 temp = " ".join(self.root.expr_resolve(str(instance["value"])))
                 self.front.append("    local int64 " + str(this_level_key) + " = " + str(temp) + ";" + (
                     ("   //" + str(instance["doc"])) if "doc" in instance.keys() else ""))
@@ -648,18 +698,18 @@ class instances(seq):
 
 
 class types(Converter):
-    def __init__(self, input_js, parent, root):
-        Converter.__init__(self, input_js, parent=parent, root=root)
+    def __init__(self, input_js, parent, root, name=None):
+        Converter.__init__(self, input_js, parent=parent, root=root, name=name)
 
-    def parse_subtree(self):
+    def parse_subtree(self, name=None):
         for this_level_key in self.this_level_keys:
             local_key = remap_keys(this_level_key)
             if local_key is not None:
                 self.root.register_type(local_key, self.input[local_key])
                 self.subtrees[local_key] = Converter(self.input[this_level_key], parent=self, root=self.root)
-                self.subtrees[local_key].parse_subtree()
+                self.subtrees[local_key].parse_subtree(name=local_key)
 
-    def generate_code(self, size=None, called_lowlevel=True):
+    def generate_code(self, size=None, called_lowlevel=True, containing_type=None):
         self.output.extend(self.gen_forward_types())
         self.output.extend(self.gen_complete_types(size))
         return self.output
@@ -673,7 +723,9 @@ class types(Converter):
         for this_level_key in self.this_level_keys:
             item = self.subtrees[this_level_key]
             if item.chck_flg("size-eos") and not item.chck_flg("encoding"):
-                lenfield = "(int32 lenght)"
+                lenfield = "(int32 lenght_CONVERTER)"
+            if item.chck_flg("repeat", flag_to_val=True) == "eos":
+                lenfield = "(int32 lenght_CONVERTER)"
             output.append("struct " + str(this_level_key) + "_TYPE" + lenfield + " {")
             # TODO IMPLEMENT size Calc locals
             output.extend(item.generate_code(size, called_lowlevel=True))  # GOING TO CHILD ITEM
