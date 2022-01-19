@@ -451,6 +451,7 @@ class data_point():
             switch_term = switch
         self.front.append("     switch(" + str(switch_term) + ") {")
         for case_key in cases.keys():
+            paramfield = ""
             case = self.root.expr_resolve(case_key)
             print_debug(case)
             if case == ["_"] or case == "_":
@@ -745,6 +746,7 @@ class types(Converter):
     def gen_forward_types(self):
         output = []
         for this_level_key in self.this_level_keys:
+            lenfield = ""
             output.append("struct " + str(this_level_key) + "_TYPE ;")
         return output
 
