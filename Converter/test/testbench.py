@@ -12,6 +12,7 @@ BT_TEMPLATE_BASE_PATH = "../templates/"
 FFCOMPILE = "../ffcompile"
 CONVERTER = "Converter.py"
 
+#TODO parse out the line, number and column form ffcompile error message
 
 class TestRunException(Exception):
     """thrown if any part of a test run fails"""
