@@ -35,7 +35,6 @@ def findFileRecursively(name, ext, maxDepth=3):
         path.normpath(KAITAI_BASE_PATH), '-maxdepth', f'{maxDepth}', '-name',
         f'{name}.{ext}'
     ]
-    #cmd = f"find {path.normpath(KAITAI_BASE_PATH)} -maxdepth {maxDepth} -name \"{name}.{ext}\""
     found_file = subprocess.run(cmd, shell=False, stdout=subprocess.PIPE)
     if (found_file.returncode != 0):
         log.error(f"Error ret: {found_file.stderr}")
@@ -44,7 +43,7 @@ def findFileRecursively(name, ext, maxDepth=3):
         log.error(f"Error: {found_file.stderr}")
         return False
 
-    # print(f"Debug: find output {found_file.stdout.decode()}")
+    log.debug(f"Debug: find output {found_file.stdout.decode()}")
     splitOut = found_file.stdout.decode().split("\n")
     if (len(splitOut) > 2):
         #some default behavior, maybe make this a user ask
@@ -76,7 +75,6 @@ def callConverter(formatName):
     if (not path.isdir(KAITAI_BASE_PATH)):
         raise Exception("kaitai base path is no directory")
 
-    #kaitai_ext = f"{0}.ksy".format(formatName)
     filePath = findFileRecursively(formatName, "ksy")
     if (not filePath):
         raise TestRunException(
@@ -181,7 +179,7 @@ def main():
                         nargs='?',
                         type=str)
     parsedArgs = parser.parse_args(sys.argv[1::])
-    numeric_level = getattr(log, parsedArgs.log_lvl.upper(), None)
+    numeric_level = getattr(log, parsedArgs.log_lvl.upper(), 'INFO')
 
     if not isinstance(numeric_level, int):
         raise ValueError('Invalid log level: %s' % loglevel)
