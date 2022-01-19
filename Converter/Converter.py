@@ -450,7 +450,8 @@ class data_point():
         self.front.append("     switch(" + str(switch_term) + ") {")
         for case_key in cases.keys():
             case = self.root.expr_resolve(case_key)
-            if case == ["_"]:
+            print_debug(case)
+            if case == ["_"] or case == "_":
                 case_val = "default"  # TODO remove case from case default
             elif type(case) is list:
                 case_val = self.root.lookup_enum_val_2_key(case[0], case[1])
