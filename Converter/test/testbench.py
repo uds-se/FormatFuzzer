@@ -5,6 +5,7 @@ import logging as log
 import difflib
 import sys
 import argparse
+import re
 
 #NOTE change these as needed
 KAITAI_BASE_PATH = "kaitai_formats/"
@@ -25,8 +26,13 @@ class TestRunException(Exception):
         if isinstance(self.cause, subprocess.CalledProcessError):
             log.error(self.cause.cmd)
             log.error(self.cause.returncode)
-            log.error(self.cause.stderr.decode())
-            log.error(self.cause.output.decode())
+            log.error(f"Stderr: {self.cause.stderr.decode()}")
+            linefinder = r"(Compile|Parse)Error.*:(\d+):(\d+):"
+            lines = re.finditer(linefinder, self.cause.stderr.decode())
+            for _, ma in enumerate(lines, 1):
+                _, ln, cl = ma.groups()
+                log.error("Error occurred on line: %s, column: %s",ln, cl)
+            log.error(f"Stdout: {self.cause.output.decode()}")
 
 
 # should return file path or false in not found
