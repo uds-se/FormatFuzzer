@@ -344,7 +344,7 @@ class enums(Converter):
             return [""]
         return self.output
 
-    def gen_single_enum(self, key, enumerations, type="<byte>"):
+    def gen_single_enum(self, key, enumerations, type="<ubyte>"):
         values = enumerations.get_value()
         lines = []
         # TODO FIND CORRECT TYPE? defaulting to <byte> for now
