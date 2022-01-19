@@ -153,7 +153,7 @@ class Converter(object):
         self.resolve_enum_sizes()
 
     def resolve_enum_sizes(self):
-        self.enum_size = {"standard": "<byte>"}
+        self.enum_size = {"standard": "<ubyte>"}
 
     def lookup_enum_size(self, enum):
         return self.enum_size[enum]
@@ -351,11 +351,13 @@ class enums(Converter):
         lines.append("enum " + type + " " + str(key) + "_ENUM{")
         keys = list(values.keys())
         for k in keys[0:-1]:
-            lines.append("  " + (values[k] if "id" not in values[k] else values[k]["id"]) + " = " + str(k) + "," + (
-                "" if "doc" not in values[k] else "     // " + (values[k]["doc"]).strip().replace("\n", "\n     //")))
+            lines.append(
+                "  " + (values[k] if "id" not in values[k] else values[k]["id"]) + " = " + str(hex(k)) + "," + (
+                    "" if "doc" not in values[k] else "     // " + (values[k]["doc"]).strip().replace("\n",
+                                                                                                      "\n     //")))
         lines.append(
-            "  " + (values[keys[-1]] if "id" not in values[keys[-1]] else values[keys[-1]]["id"]) + " = " + str(
-                keys[-1]) + "" + (
+            "  " + (values[keys[-1]] if "id" not in values[keys[-1]] else values[keys[-1]]["id"]) + " = " + str(hex(
+                keys[-1])) + "" + (
                 "" if "doc" not in values[keys[-1]] else "      // " + (values[keys[-1]]["doc"]).strip().replace("\n",
                                                                                                                  "\n     //")))
         lines.append("};")
@@ -454,7 +456,8 @@ class data_point():
             if case == ["_"] or case == "_":
                 case_val = "default"  # TODO remove case from case default
             elif type(case) is list:
-                case_val = self.root.lookup_enum_val_2_key(case[0], case[1])
+                case_val = str(hex(self.root.lookup_enum_val_2_key(case[0], case[1])))
+
             else:
                 case_val = case
             sizeos = self.root.lookup_f_in_typ_pres(cases[case_key], "size-eos")
@@ -725,9 +728,12 @@ class types(Converter):
         for this_level_key in self.this_level_keys:
             item = self.subtrees[this_level_key]
             if item.chck_flg("size-eos") and not item.chck_flg("encoding"):
+                print_debug(this_level_key)
                 lenfield = "(int32 lenght_CONVERTER)"
             if item.chck_flg("repeat", flag_to_val=True) == "eos":
+                print_debug(this_level_key)
                 lenfield = "(int32 lenght_CONVERTER)"
+
             output.append("struct " + str(this_level_key) + "_TYPE" + lenfield + " {")
             # TODO IMPLEMENT size Calc locals
             output.extend(item.generate_code(size, called_lowlevel=True))  # GOING TO CHILD ITEM
