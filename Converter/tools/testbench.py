@@ -13,14 +13,12 @@ TestBenchLoc = os.path.dirname(os.path.abspath(__file__))
 KAITAI_BASE_PATH = TestBenchLoc + "/../kaitai_struct_formats/"
 BT_TEMPLATE_BASE_PATH = TestBenchLoc + "/../../templates/"
 FFCOMPILE = TestBenchLoc + "/../../ffcompile"
+FFROOT = TestBenchLoc + "/../../"
 CONVERTER = TestBenchLoc + "/Converter.py"
 
 
-# TODO parse out the line, number and column form ffcompile error message
-
 class TestRunException(Exception):
     """thrown if any part of a test run fails"""
-
     def __init__(self, msg, cause: Exception = None):
         self.msg = msg
         self.cause = cause
@@ -35,18 +33,18 @@ class TestRunException(Exception):
             lines = re.finditer(linefinder, self.cause.stderr.decode())
             for _, ma in enumerate(lines, 1):
                 _, ln, cl = ma.groups()
-                log.error("Error occurred on line: %s, column: %s",ln, cl)
+                log.error("Error occurred on line: %s, column: %s", ln, cl)
             log.error(f"Stdout: {self.cause.output.decode()}")
 
 
 # should return file path or false in not found
-def findFileRecursively(base_path,name, ext, maxDepth=3):
+def findFileRecursively(base_path, name, ext, maxDepth=3):
     cmd = [
         'find',
         path.normpath(base_path), '-maxdepth', f'{maxDepth}', '-name',
         f'{name}.{ext}'
     ]
-    found_file = subprocess.run(cmd, shell=False, stdout=subprocess.PIPE)
+    found_file = subprocess.run(cmd, stdout=subprocess.PIPE)
     if (found_file.returncode != 0):
         log.error(f"Error ret: {found_file.stderr}")
         return False
@@ -66,15 +64,16 @@ def runSingleFormatParseTest(formatName, resolveTestInput):
     try:
         convertedFile = callConverter(
             formatName)  #contains path to converted file
-        parserUnderTest = compileParser(convertedFile)
+        parserUnderTest = compileParser(convertedFile, True)
         #contains path to reference template
-        referenceTemplate = findFileRecursively(BT_TEMPLATE_BASE_PATH,formatName, 'bt')
+        referenceTemplate = findFileRecursively(BT_TEMPLATE_BASE_PATH,
+                                                formatName, 'bt')
         if not referenceTemplate:
             raise TestRunException("Reference template file not found")
         referenceParser = compileParser(referenceTemplate)
         testInput = resolveTestInput(formatName, referenceParser)
-        PTunderTest = runParserOnInput(parserUnderTest, testInput)
         referencePT = runParserOnInput(referenceParser, testInput)
+        PTunderTest = runParserOnInput(parserUnderTest, testInput)
         return diffParseTrees(referencePT, PTunderTest)
     except TestRunException as e:
         e.print()
@@ -86,7 +85,7 @@ def callConverter(formatName):
     if (not path.isdir(KAITAI_BASE_PATH)):
         raise Exception("kaitai base path is no directory")
 
-    filePath = findFileRecursively(KAITAI_BASE_PATH,formatName, "ksy")
+    filePath = findFileRecursively(KAITAI_BASE_PATH, formatName, "ksy")
     if (not filePath):
         raise TestRunException(
             f"Kaitai struct file not found, path: {path.join(KAITAI_BASE_PATH,formatName)}.ksy"
@@ -114,11 +113,14 @@ def runMultiFromatParseTest(formats, testInputResolver):
 def diffParseTrees(expected, actual):
     if expected == actual:
         return True
-    for line in difflib.unified_diff(expected,
-                                     actual,
-                                     fromfile="expected-parse-tree",
-                                     tofile="actual-parse-tree"):
-        log.warn(line)
+    #TODO fix diff from beering wierd
+    for line in difflib.unified_diff(
+            expected,
+            actual,
+            fromfile="expected-parse-tree",
+            tofile="actual-parse-tree",
+    ):
+        print(line)
     return False
 
 
@@ -128,45 +130,67 @@ def compileParser(templatePath, test=False):
         #g++ -c -I . -std=c++17 -g -O3 -Wall fuzzer.cpp
         #g++ -c -I . -std=c++17 -g -O3 -Wall gif.cpp
         # g++ -O3 gif.o fuzzer.o -o gif-fuzzer -lz
+        log.info("Compiling template...")
         fmtName = path.basename(templatePath).split('.')[0]
         ffCompCmd = [FFCOMPILE, templatePath, f"{fmtName}.cpp"]
         subprocess.run(ffCompCmd, capture_output=True, check=True)
-        fuzzerCppCmd = "g++ -c -I . -std=c++17 -g -O3 -Wall fuzzer.cpp"
-        subprocess.run(fuzzerCppCmd, shell=True, capture_output=True, check=True)
+        log.info("Compiled template")
+        log.info("Compiling general fuzzer api...")
+        fuzzerCppCmd = [
+            'g++', '-c', '-I',
+            path.normpath(FFROOT) + "/", '-std=c++17', '-g', '-O3', '-Wall',
+            path.normpath(f'{FFROOT}fuzzer.cpp')
+        ]
+        subprocess.run(fuzzerCppCmd, capture_output=True, check=True)
+        log.info("Compiled general fuzzer api")
+        log.info("Compiling format code...")
         compFuzzerCmd = [
-            'g++', '-c', '-I', '.', '-std=c++17', '-g', '-O3', '-Wall',
+            'g++', '-c', '-I',
+            path.normpath(FFROOT), '-std=c++17', '-g', '-O3', '-Wall',
             f'{fmtName}.cpp'
         ]
         subprocess.run(compFuzzerCmd, capture_output=True, check=True)
+        log.info("Compiled format code")
+        log.info("Compiling fuzzer binary...")
         binName = f'test-{fmtName}-fuzzer' if test else f'{fmtName}-fuzzer'
         linkCmd = [
             'g++', '-O3', f'{fmtName}.o', 'fuzzer.o', '-o', binName, '-lz'
         ]
         subprocess.run(linkCmd, capture_output=True, check=True)
+        log.info("Compiled fuzzer binary")
         return binName
-    except subprocess.CalledProcessError as err:
-        print(err)
+    except Exception as err:
         raise TestRunException(f"failed to compile", err)
 
 
 def runParserOnInput(parser, testInput):
-    cmd = [parser, testInput]
-    parseTree = subprocess.run(cmd, stdout=subprocess.PIPE)
-    if (parseTree.returncode != 0):
-        raise TestRunException(f"Error ret: {parseTree.stderr}")
-    if (len(parseTree.stdout) == 0):
-        raise TestRunException(f"Error : {parseTree.stderr}")
-    return parseTree.stdout.decode()
+    try:
+        cmd = [f"./{parser}", "parse", testInput]
+        parseTree = subprocess.run(cmd, check=True, capture_output=True)
+        if (parseTree.returncode != 0):
+            raise TestRunException(f"Error ret: {parseTree.stderr}")
+        if (len(parseTree.stdout) == 0):
+            raise TestRunException(f"Error : {parseTree.stderr}")
+            with open(f"{parser}.output", "x") as file:
+                file.write(parseTree.stdout.decode())
+                file.close()
+        return parseTree.stdout.decode()
+    except Exception as err:
+        raise TestRunException(f"failed to run parser", err)
 
 
 def resolveTestInputByFormat(formatName, generator):
     try:
-        cmd = [TestBenchLoc + "/../../" + generator, "fuzz", f"testinput.{formatName}"]
+        cmd = [
+            TestBenchLoc + "/../../" + generator, "fuzz",
+            f"testinput.{formatName}"
+        ]
         subprocess.run(cmd,
-                             check=True,
-                             stdout=subprocess.DEVNULL,
-                             stderr=subprocess.PIPE)
-    except subprocess.CalledProcessError as err:
+                       check=True,
+                       stdout=subprocess.PIPE,
+                       stderr=subprocess.PIPE)
+        return f"testinput.{formatName}"
+    except Exception as err:
         raise TestRunException("Creating input failed!", err)
 
 
@@ -204,7 +228,8 @@ def main():
     log.info("===Statring test bench run===")
     if (len(parsedArgs.formats) == 1):
         log.info("Running test for single format %s", parsedArgs.formats[0])
-        testInputResolver = lambda fmt, parser: parsedArgs.testInput if parsedArgs.testInput else resolveTestInputByFormat(fmt,parser)
+        testInputResolver = lambda fmt, parser: parsedArgs.testInput if parsedArgs.testInput else resolveTestInputByFormat(
+            fmt, parser)
         runSingleFormatParseTest(parsedArgs.formats[0], testInputResolver)
         return
     log.info("Runing test for multiple formats")
