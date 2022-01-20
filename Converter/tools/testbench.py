@@ -130,6 +130,10 @@ def compileParser(templatePath, test=False):
         #g++ -c -I . -std=c++17 -g -O3 -Wall fuzzer.cpp
         #g++ -c -I . -std=c++17 -g -O3 -Wall gif.cpp
         # g++ -O3 gif.o fuzzer.o -o gif-fuzzer -lz
+        if test:
+            log.info("Compiling parser under test")
+        else:
+            log.info("Compiling reference parser")
         log.info("Compiling template...")
         fmtName = path.basename(templatePath).split('.')[0]
         ffCompCmd = [FFCOMPILE, templatePath, f"{fmtName}.cpp"]
