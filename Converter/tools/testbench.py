@@ -35,6 +35,9 @@ class TestRunException(Exception):
                 _, ln, cl = ma.groups()
                 log.error("Error occurred on line: %s, column: %s", ln, cl)
             log.error(f"Stdout: {self.cause.output.decode()}")
+        elif (self.cause is not None):
+            log.error(self.cause)
+            log.error(self.cause.args)
 
 
 # should return file path or false in not found
@@ -113,14 +116,13 @@ def runMultiFromatParseTest(formats, testInputResolver):
 def diffParseTrees(expected, actual):
     if expected == actual:
         return True
-    #TODO fix diff from beering wierd
-    for line in difflib.unified_diff(
-            expected,
-            actual,
-            fromfile="expected-parse-tree",
-            tofile="actual-parse-tree",
-    ):
-        print(line)
+    diff = "\n".join(
+        difflib.unified_diff(expected.split("\n"),
+                             actual.split("\n"),
+                             fromfile="expected-parse-tree",
+                             tofile="actual-parse-tree",
+                             n=4))
+    log.warning(diff)
     return False
 
 
@@ -175,9 +177,8 @@ def runParserOnInput(parser, testInput):
             raise TestRunException(f"Error ret: {parseTree.stderr}")
         if (len(parseTree.stdout) == 0):
             raise TestRunException(f"Error : {parseTree.stderr}")
-            with open(f"{parser}.output", "x") as file:
-                file.write(parseTree.stdout.decode())
-                file.close()
+        with open(f"{parser}.output", "w") as file:
+            file.write(parseTree.stdout.decode())
         return parseTree.stdout.decode()
     except Exception as err:
         raise TestRunException(f"failed to run parser", err)
@@ -225,6 +226,7 @@ def main():
         raise ValueError('Invalid log level: %s' % numeric_level)
     consoleLog = log.StreamHandler()
     logfile = log.FileHandler("testbench.log")
+    logfile.setLevel(numeric_level)
     log.basicConfig(format='%(asctime)s::%(levelname)s:%(message)s',
                     level=numeric_level,
                     handlers=[consoleLog, logfile],
