@@ -952,9 +952,17 @@ class PfpInterp(object):
         if hasattr(classnode, "args") and classnode.args is not None:
             for param in classnode.args.params:
                 if hasattr(param.type.type, "names"):
-                    param.type.cpp = " ".join(param.type.type.names)
-                    if param.type.cpp == "string":
-                        param.type.cpp = "std::string"
+                    names = param.type.type.names
+                else:
+                    names = param.type.type.type.names
+                paramtype = ""
+                for name in names:
+                    if name == "string":
+                        name = "std::string"
+                    paramtype += name + " "
+                if param.type.__class__ == AST.ArrayDecl:
+                    paramtype = "std::vector<" + paramtype[:-1] + ">& "
+                param.type.cpp = paramtype[:-1]
                 cpp += param.type.cpp
                 if not hasattr(param, "is_func_param") or not param.is_func_param:
                     cpp += "&"
