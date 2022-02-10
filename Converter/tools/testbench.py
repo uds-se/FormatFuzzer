@@ -191,7 +191,7 @@ def runParserOnInput(parser, testInput):
 def resolveTestInputByFormat(formatName, generator):
     try:
         cmd = [
-            TestBenchLoc + "/../../" + generator, "fuzz",
+            TestBenchLoc + "/../" + generator, "fuzz",
             f"testinput.{formatName}"
         ]
         subprocess.run(cmd,
