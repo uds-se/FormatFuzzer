@@ -183,12 +183,6 @@ class Converter(object):
         string_splitter_replacement = ['"']
         for to_be_rep in operator_replacement_dict.keys():
             expr = expr.replace(to_be_rep, operator_replacement_dict[to_be_rep])
-        # print_debug(expr)
-        # print_debug(re.findall('[^a-zA-Z0-9_]+', expr))
-        # print_debug(re.findall('(\W+)', expr))
-        # print_debug(re.split('(\W+)', expr))
-        # print_debug(re.split('[^a-zA-Z0-9_.]+', expr))
-        # FLOAT REGEX "[-+]?\d*\.\d+|\d+"        '[^a-zA-Z0-9_.]+'
         # for element in re.split('(\W+)', expr):  # replacing f**kin 0xffff_ffff with 0xffffffff
         for element in re.split('[^a-zA-Z0-9_.]+', expr):  # replacing f**kin 0xffff_ffff with 0xffffffff
             try:
@@ -233,10 +227,8 @@ class Converter(object):
         elif False:
             pass
         else:  # no flag set
-            print_debug(expr)
             for splitter in condition_splitter_replacement:
                 expr = expr.replace(str(splitter), " ")
-            print_debug(expr)
             # for splitter in string_splitter_replacement:  # TODO UNSURE ABOUT THIS
             #     expr = expr.replace(str(splitter), "")
 
@@ -489,9 +481,10 @@ class data_point():
             repeat = self.root.lookup_f_in_typ_pres(cases[case_key], "repeat")
             encoding = self.root.lookup_f_in_typ_pres(cases[case_key], "encoding")
             if (sizeos or repeat) and not encoding:
-                if self.root.lookup_f_in_typ_pres(cases[case_key], "repeat", flag_to_val=True) == "eos":
-                    paramfield = "(lenght_CONVERTER)"
+                if "size" in self.input.keys():
+                    paramfield = "(" + str(self.input["size"]) + ")"
                 else:
+                    # print_debug("ERROR NO SIZE GIVE FOR PARAMETERIZED STRUCT INSTANTIATION (1):\n"+str(self.input))
                     paramfield = ""
             else:
                 paramfield = ""
@@ -538,8 +531,14 @@ class data_point():
             self.gen_atomic(size=expr)
             pass
         elif "eos" == self.input["repeat"]:
+            print_debug(self.input)
+            self.front.append("    local int64 UNTIL_CONVERTER = FTell() + length_CONVERTER;")
+            self.front.append("    while(FTell() < UNTIL_CONVERTER){")
+            self.gen_atomic(indents=2)
+            self.front.append("    }")
+            # self.front.append("    ")
 
-            self.front.append("//     repeat: eos PLACEHOLDER<=======")
+            # self.front.append("//     repeat: eos PLACEHOLDER<=======")
             # TODO INSERT NEXT WHILE CONSTRUCTION
             pass
         else:
@@ -592,14 +591,13 @@ class data_point():
 
 
             else:  # CUSTOM TYPES
-
                 if type_override is None and "_TYPE" not in self.type:
                     self.type = self.type + "_TYPE"
                 length_addon = ""
                 if "_ENUM" not in self.type and self.root.lookup_type(name=self.type.split("_TYPE")[0],
                                                                       check_if_param_needed=True):
-                    # print_debug(self.input["size"])
                     length_addon = "(" + self.root.expr_resolve(self.input["size"], translate_condition_2_c=True) + ")"
+
                 if size:
                     length_addon = "[" + size + "]"
                 self.front.append(prepend + str(self.type) + " " + str(self.id) + length_addon + ";" + loc_doc)
@@ -613,6 +611,7 @@ class data_point():
             self.front.append("//STUFF MISSING HERE @ NO MAGIC " + str(self.id) + "----" + str(self.input))
 
     def gen_instances(self, condition):
+        # TODO CHECK FOR SPECIAL POSITION DEPENDENT INSTANCES
         # condition_list = condition.split(".")
         condition_list = self.root.expr_resolve(condition)
         if type(condition_list) is not type([]):
@@ -733,6 +732,7 @@ class instances(seq):
 class types(Converter):
     def __init__(self, input_js, parent, root, name=None):
         Converter.__init__(self, input_js, parent=parent, root=root, name=name)
+        self.pre=[]
 
     def parse_subtree(self, name=None):
         for this_level_key in self.this_level_keys:
@@ -743,9 +743,11 @@ class types(Converter):
                 self.subtrees[local_key].parse_subtree(name=local_key)
 
     def generate_code(self, size=None, called_lowlevel=True, containing_type=None):
-        self.output.extend(self.gen_forward_types())
+
+        # self.output.extend(self.gen_forward_types())
         self.output.extend(self.gen_complete_types(size))
-        return self.output
+        self.pre.extend(self.output)
+        return self.pre
 
     def gen_complete_types(self, size=None):
         output = []
@@ -757,11 +759,20 @@ class types(Converter):
             lenfield = ""
             item = self.subtrees[this_level_key]
             if item.chck_flg("size-eos") and not item.chck_flg("encoding"):
-                lenfield = "(int32 lenght_CONVERTER)"
+                lenfield = "(int32 length_CONVERTER)"
             if item.chck_flg("repeat", flag_to_val=True) == "eos":
-                lenfield = "(int32 lenght_CONVERTER)"
+                lenfield = "(int32 length_CONVERTER)"
             if lenfield != "":
                 self.root.register_type(name=this_level_key, param_needed=True)
+            if lenfield != "":
+                forward_lenfield = lenfield + "{}"
+            else:
+                forward_lenfield = ""
+            ##############WIP FORWARD DECLARATION RESTRUCTURE################
+            self.pre.append("struct " + str(this_level_key) + "_TYPE" + forward_lenfield + ";")
+
+            ##############WIP FORWARD DECLARATION RESTRUCTURE################
+
             output.append("struct " + str(this_level_key) + "_TYPE" + lenfield + " {")
             # TODO IMPLEMENT size Calc locals
             output.extend(item.generate_code(size, called_lowlevel=True))  # GOING TO CHILD ITEM
@@ -769,7 +780,7 @@ class types(Converter):
         return output
         # TODO IMPLEMENT THIS IS JUST A PLACEHOLDER
 
-    def gen_forward_types(self):
+    def gen_forward_types(self):  # DEPRECATED
         output = []
         for this_level_key in self.this_level_keys:
             output.append("struct " + str(this_level_key) + "_TYPE ;")
