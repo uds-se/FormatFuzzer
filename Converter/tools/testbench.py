@@ -15,10 +15,14 @@ BT_TEMPLATE_BASE_PATH = TestBenchLoc + "/../../templates/"
 FFCOMPILE = TestBenchLoc + "/../../ffcompile"
 FFROOT = TestBenchLoc + "/../../"
 CONVERTER = TestBenchLoc + "/Converter.py"
+TESTFOLDER = TestBenchLoc + "/../test/"
 
+
+# TODO save generated Files in test folder and adjust code to using that
 
 class TestRunException(Exception):
     """thrown if any part of a test run fails"""
+
     def __init__(self, msg, cause: Exception = None):
         self.msg = msg
         self.cause = cause
@@ -59,7 +63,7 @@ def findFileRecursively(base_path, name, ext, maxDepth=3):
     splitOut = found_file.stdout.decode().split("\n")
     if (len(splitOut) > 2):
         #some default behavior, maybe make this a user ask
-        log.warn(f"multiple results found. using the first one.")
+        log.warning(f"multiple results found. using the first one.")
     return splitOut[0]
 
 
