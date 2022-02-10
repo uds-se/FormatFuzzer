@@ -311,18 +311,20 @@ class Converter(object):
             else:
                 return expr
 
-    def chck_flg(self, flag, flag_to_val=False):
+    def chck_flg(self, flag, flag_to_val=False, exclude=None):
         try:
-            if flag in self.this_level_keys:
+            if flag in self.this_level_keys and (
+                    exclude is None or (exclude not in self.this_level_keys)):
                 return True
             else:
                 for this_level_key in self.this_level_keys:
                     local_key = remap_keys(this_level_key)
                     if local_key is not None:
-                        if self.subtrees[local_key].chck_flg(
-                                flag, flag_to_val):
+                        if self.subtrees[local_key].chck_flg(flag,
+                                                             flag_to_val,
+                                                             exclude=exclude):
                             return self.subtrees[local_key].chck_flg(
-                                flag, flag_to_val)
+                                flag, flag_to_val, exclude=exclude)
                         else:
                             pass
                 if flag_to_val:
@@ -332,18 +334,23 @@ class Converter(object):
         except:
             return False
 
-    def lookup_f_in_typ_pres(self, type, flag, id=None, flag_to_val=False):
+    def lookup_f_in_typ_pres(self,
+                             type,
+                             flag,
+                             id=None,
+                             flag_to_val=False,
+                             exclude=None):
         # print_debug(type)
         # print_debug(flag)
         # print_debug(str(id))
 
         if id is None:
             temp = self.subtrees["types"].subtrees[type].chck_flg(
-                flag, flag_to_val)
+                flag, flag_to_val, exclude=exclude)
             # print_debug(str(temp)+"\n")
             return temp
         temp = self.subtrees["types"].subtrees[type].subtrees[id].chck_flg(
-            flag, flag_to_val)
+            flag, flag_to_val, exclude=exclude)
         # print_debug(str(temp)+"\n")
         return temp
 
@@ -511,7 +518,10 @@ class data_point():
         self.size = None
         self.parent = parent
         self.root = root
-        self.size_eos = size_eos
+        if ("size-eos" in self.input.keys()):
+            self.size_eos = True
+        else:
+            self.size_eos = False
         self.output = []
         self.front = []
         self.back = []
@@ -536,10 +546,8 @@ class data_point():
                       called_lowlevel=True,
                       containing_type=None):
         # TODO EXTEND TO ALL VARIATIONS
-        if size:
-            print_debug(size)
-        pass
         if "process" in self.this_level_keys:
+
             self.gen_atomic(docu="IMPLEMENT" + str(self.input["process"]),
                             size=size)
             print("PROCESS NOT IMPLEMENTED YET\n")
@@ -561,6 +569,11 @@ class data_point():
         else:
             if "enum" in self.input.keys():
                 self.gen_atomic(type_override=self.input["enum"])
+            elif "size-eos" in self.input.keys():
+
+                self.front.append("    while(FTell() < UNTIL_CONVERTER){")
+                self.gen_atomic(indents=2, forwarding=True)
+                self.front.append("    }")
             else:
                 self.gen_atomic()
 
@@ -590,11 +603,11 @@ class data_point():
             else:
                 case_val = case
             sizeos = self.root.lookup_f_in_typ_pres(cases[case_key],
-                                                    "size-eos")
+                                                    "size-eos",
+                                                    exclude="encoding")
             repeat = self.root.lookup_f_in_typ_pres(cases[case_key], "repeat")
-            encoding = self.root.lookup_f_in_typ_pres(cases[case_key],
-                                                      "encoding")
-            if (sizeos or repeat) and not encoding:
+            # encoding = self.root.lookup_f_in_typ_pres(cases[case_key], "encoding")
+            if (sizeos or repeat):
                 if "size" in self.input.keys():
                     paramfield = "(" + str(self.input["size"]) + ")"
                 else:
@@ -652,10 +665,8 @@ class data_point():
             self.gen_atomic(size=expr)
             pass
         elif "eos" == self.input["repeat"]:
-            print_debug(self.input)
-            self.front.append(
-                "    local int64 UNTIL_CONVERTER = FTell() + length_CONVERTER;"
-            )
+            # print_debug(self.input)
+            # self.front.append("    local int64 UNTIL_CONVERTER = FTell() + length_CONVERTER;")
             self.front.append("    while(FTell() < UNTIL_CONVERTER){")
             self.gen_atomic(indents=2)
             self.front.append("    }")
@@ -667,9 +678,15 @@ class data_point():
         else:
             print_debug("REPEAT MISSING" + str(self.input["repeat"]))
         # TODO implement
+
         pass
 
-    def gen_atomic(self, docu="", size=None, type_override=None, indents=1):
+    def gen_atomic(self,
+                   docu="",
+                   size=None,
+                   type_override=None,
+                   indents=1,
+                   forwarding=False):
 
         # elif "size" in self.this_level_keys and self.root.lookup_type(name=self.type, check_if_param_needed=True):
         #     print_debug(self.type)
@@ -682,10 +699,15 @@ class data_point():
         else:
             loc_doc = ""
 
-        if self.size_eos:
-            print_debug("size-EOS found here")
-            pass
-        if self.type == "str":
+        if self.size_eos and not forwarding and "length_CONVERTER" == size:
+
+            print_debug(self.input)
+            self.front.append(
+                "    while(FTell() < UNTIL_CONVERTER){")  # OPTION B
+            self.gen_atomic(indents=2, forwarding=True)
+            self.front.append("    }")  # OPTION B
+
+        elif self.type == "str":
             if self.size is not None:
                 # TODO IMPLEMENT CASE FOR DIFFERENT THAN ZEROBYTE TERMINATOR
                 self.front.append(prepend + "char " + str(self.id) + "[" +
@@ -738,12 +760,19 @@ class data_point():
             self.front.append(prepend + "byte " + str(self.id) + "[" +
                               str(self.size) + "]" + ";" + loc_doc)
         else:
+            # self.front.append(prepend + "byte " + str(self.id) + "[UNTIL_CONVERTER - FTell()]" + ";" + loc_doc)#OPTION A
+            self.front.append(prepend + "byte " + str(self.id) + ";" +
+                              loc_doc)  # OPTION B
 
             # self.gen_repeat()
-            print_debug("ERROR NO SIZE OR TYPE GIVEN AND ITS NO MAGIC\n")
-            print_debug(self.input)
-            self.front.append("//STUFF MISSING HERE @ NO MAGIC " +
-                              str(self.id) + "----" + str(self.input))
+            # self.front.append("    local int64 UNTIL_CONVERTER = FTell() + length_CONVERTER;")
+            # self.front.append("    while(FTell() < UNTIL_CONVERTER){")
+            # self.gen_atomic(indents=2,)
+            # self.front.append("    }")
+            # print_debug("ERROR NO SIZE OR TYPE GIVEN AND ITS NO MAGIC")
+            # print_debug(self.input)
+            # self.front.append("//STUFF MISSING HERE @ NO MAGIC " + str(self.id) + "----" + str(self.input))
+            # print_debug(self.front)
 
     def gen_instances(self, condition):
         # TODO CHECK FOR SPECIAL POSITION DEPENDENT INSTANCES
@@ -814,13 +843,15 @@ class data_point():
             print_debug("to_hex_list FAILURE\n")
             exit(-1)
 
-    def chck_flg(self, flag, flag_to_val=False):
+    def chck_flg(self, flag, flag_to_val=False, exclude=None):
         if flag_to_val:
-            if flag in self.this_level_keys:
+            if flag in self.this_level_keys and (exclude is None or exclude
+                                                 not in self.this_level_keys):
                 return self.input[flag]
             else:
                 return None
-        return flag in self.this_level_keys
+        return flag in self.this_level_keys and (exclude is None or exclude
+                                                 not in self.this_level_keys)
 
 
 class seq(Converter):
@@ -842,6 +873,11 @@ class seq(Converter):
                       size=None,
                       called_lowlevel=True,
                       containing_type=None):
+        if "length_CONVERTER" == size:
+            self.output.append(
+                "    local int64 UNTIL_CONVERTER = FTell() + length_CONVERTER;"
+            )
+
         for this_level_key in self.this_level_keys:
             self.output.extend(self.subtrees[this_level_key].generate_code(
                 size, called_lowlevel=True, containing_type=self.name))
@@ -919,18 +955,18 @@ class types(Converter):
 
     def gen_complete_types(self, size=None):
         output = []
-        if size is not None:
-            lenfield = "(int32 lenght)"
-        else:
-            lenfield = ""
+        # if "process" in self.input["seq"]:
+        #     print_debug(self.input)
+        #     print_debug(self.input)
         for this_level_key in self.this_level_keys:
             item = self.subtrees[this_level_key]
             if item.chck_flg("size-eos") and not item.chck_flg("encoding"):
                 print_debug(this_level_key)
                 lenfield = "(int32 lenght_CONVERTER)"
             if item.chck_flg("repeat", flag_to_val=True) == "eos":
-                print_debug(this_level_key)
-                lenfield = "(int32 lenght_CONVERTER)"
+                lenfield = "(int32 length_CONVERTER)"
+            if item.chck_flg("process"):
+                lenfield = "(int32 length_CONVERTER)"
             if lenfield != "":
                 self.root.register_type(name=this_level_key, param_needed=True)
             if lenfield != "":
@@ -946,8 +982,12 @@ class types(Converter):
             output.append("struct " + str(this_level_key) + "_TYPE" +
                           lenfield + " {")
             # TODO IMPLEMENT size Calc locals
+            if lenfield != "":
+                sizer = "length_CONVERTER"
+            else:
+                sizer = None
             output.extend(item.generate_code(
-                size, called_lowlevel=True))  # GOING TO CHILD ITEM
+                sizer, called_lowlevel=True))  # GOING TO CHILD ITEM
             output.append("};\n")
         return output
         # TODO IMPLEMENT THIS IS JUST A PLACEHOLDER
