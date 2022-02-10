@@ -121,7 +121,8 @@ class Converter(object):
                 self.subtrees[local_key].parse_subtree(name=name)
 
     def generate_code_toplevel(self):
-        self.output_enums.extend(self.subtrees["enums"].generate_code(called_lowlevel=False))
+        if "enums" in self.subtrees.keys():
+            self.output_enums.extend(self.subtrees["enums"].generate_code(called_lowlevel=False))
         self.output_types.extend(self.subtrees["types"].generate_code(called_lowlevel=False))
         self.output_seqs.extend(self.subtrees["seq"].generate_code(called_lowlevel=False))
         self.output.extend(self.output_enums)
@@ -177,24 +178,37 @@ class Converter(object):
         # a string that works as condition in c
         # TODO add CALL to this when implementig
         operator_replacement_dict = {"not ": " ! ", " and ": " && ", " or ": " || "}
-        condition_splitter_replacement = ["::", "."]
+        # condition_splitter_replacement = ["::", "."] #TODO CHECK IF REMOVAL OF "." IS CORRECT (needed for floats to prevent removal of the dot)
+        condition_splitter_replacement = ["::"]
         string_splitter_replacement = ['"']
         for to_be_rep in operator_replacement_dict.keys():
             expr = expr.replace(to_be_rep, operator_replacement_dict[to_be_rep])
-        for element in re.split('(\W+)', expr):  # replacing f**kin 0xffff_ffff with 0xffffffff
+        # print_debug(expr)
+        # print_debug(re.findall('[^a-zA-Z0-9_]+', expr))
+        # print_debug(re.findall('(\W+)', expr))
+        # print_debug(re.split('(\W+)', expr))
+        # print_debug(re.split('[^a-zA-Z0-9_.]+', expr))
+        # FLOAT REGEX "[-+]?\d*\.\d+|\d+"        '[^a-zA-Z0-9_.]+'
+        # for element in re.split('(\W+)', expr):  # replacing f**kin 0xffff_ffff with 0xffffffff
+        for element in re.split('[^a-zA-Z0-9_.]+', expr):  # replacing f**kin 0xffff_ffff with 0xffffffff
             try:
-                temp = str(int(element))
-                expr = expr.replace(element, temp)
-                continue
+                try:
+                    temp = str(int(element))
+                    expr = expr.replace(element, temp)
+                    continue
+                except:
+                    temp = str(float(element))
+                    expr = expr.replace(element, temp)
+                    continue
             except:
-                # print_debug("AAAAAAAAAAAAAAAAAAA")
+                # print_debug("Failed to IntConvert : >"+str(element)+"< in "+str(expr))
                 # traceback.print_exc()
                 pass
             try:
                 temp = hex(int(element, 2))
                 expr = expr.replace(element, temp)
             except:
-                # print_debug("BBBBBBBBBBBBBBBBBBB")
+                # print_debug("Failed to HexConvert : >"+str(element)+"< in "+str(expr))
                 # traceback.print_exc()
                 pass
 
@@ -219,9 +233,10 @@ class Converter(object):
         elif False:
             pass
         else:  # no flag set
+            print_debug(expr)
             for splitter in condition_splitter_replacement:
                 expr = expr.replace(str(splitter), " ")
-
+            print_debug(expr)
             # for splitter in string_splitter_replacement:  # TODO UNSURE ABOUT THIS
             #     expr = expr.replace(str(splitter), "")
 
@@ -705,7 +720,7 @@ class instances(seq):
             if instance is not None and not self.root.lookup_instance(this_level_key, containing_type=self.name,
                                                                       check_if_implemented=True):
                 temp = " ".join(self.root.expr_resolve(str(instance["value"])))
-                self.front.append("    local int64 " + str(this_level_key) + " = " + str(temp) + ";" + (
+                self.front.append("    local double " + str(this_level_key) + " = " + str(temp) + ";" + (
                     ("   //" + str(instance["doc"])) if "doc" in instance.keys() else ""))
         self.output.extend(self.front)
         self.output.extend(self.back)
@@ -763,7 +778,7 @@ class types(Converter):
 
 def print_debug(string):
     if DEBUG:
-        print("DEBUG: " + str(string).replace("\n", "\n     "))
+        print("\nDEBUG: " + str(string).replace("\n", "\n     "))
 
 
 def remap_keys(key):
@@ -788,7 +803,7 @@ def main():
     kaitaijs = yaml.load(input_file)
     converter = Converter(kaitaijs, True)
     output = converter.generate_code_toplevel()
-    with open(output_file_name, "w") as out_file:
+    with open(output_file_name, "w+") as out_file:
         out_file.write('\n'.join(output))
     print('\n'.join(output))
 
