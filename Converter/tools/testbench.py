@@ -16,7 +16,7 @@ FFCOMPILE = TestBenchLoc + "/../../ffcompile"
 FFROOT = TestBenchLoc + "/../../"
 CONVERTER = TestBenchLoc + "/Converter.py"
 TESTFOLDER = TestBenchLoc + "/../test/"
-
+WORKING_DIR = ""
 
 # TODO save generated Files in test folder and adjust code to using that
 
@@ -95,15 +95,23 @@ def callConverter(formatName):
     filePath = findFileRecursively(KAITAI_BASE_PATH, formatName, "ksy")
     if (not filePath):
         raise TestRunException(
-            f"Kaitai struct file not found, path: {path.join(KAITAI_BASE_PATH,formatName)}.ksy"
+            f"Kaitai struct file not found, path: {path.join(KAITAI_BASE_PATH, formatName)}.ksy"
         )
+    if not os.path.exists(TESTFOLDER + formatName):
+        os.makedirs(TESTFOLDER + formatName)
+        os.makedirs(TESTFOLDER + formatName + "/build")
+        os.makedirs(TESTFOLDER + formatName + "/output")
+        os.makedirs(TESTFOLDER + formatName + "/input")
+    global WORKING_DIR
+    WORKING_DIR = TESTFOLDER + formatName + "/build"
+
     log.info(f"found file to convert: {filePath}. converting...")
     convert = subprocess.run(
-        ["python3", CONVERTER, filePath, f"{formatName}.bt"], check=True)
+        ["python3", CONVERTER, filePath, f"{WORKING_DIR}/{formatName}.bt"], check=True)
     if (convert.returncode != 0):
         raise TestRunException(f"Error: {convert.stderr}")
-    log.info(f"Converted file successfully. Result saved in {formatName}.bt")
-    return f"{formatName}.bt"
+    log.info(f"Converted file successfully. Result saved in Converter/test/{formatName}/build/{formatName}.bt")
+    return f"{WORKING_DIR}/{formatName}.bt"
 
 
 def runMultiFromatParseTest(formats, testInputResolver):
@@ -136,20 +144,24 @@ def compileParser(templatePath, test=False):
         #g++ -c -I . -std=c++17 -g -O3 -Wall fuzzer.cpp
         #g++ -c -I . -std=c++17 -g -O3 -Wall gif.cpp
         # g++ -O3 gif.o fuzzer.o -o gif-fuzzer -lz
+        flavor = ""
         if test:
             log.info("Compiling parser under test")
+            flavor = "test_"
         else:
             log.info("Compiling reference parser")
+            flavor = "reference_"
         log.info("Compiling template...")
         fmtName = path.basename(templatePath).split('.')[0]
-        ffCompCmd = [FFCOMPILE, templatePath, f"{fmtName}.cpp"]
+        ffCompCmd = [FFCOMPILE, templatePath, f"{WORKING_DIR}/{flavor}{fmtName}.cpp"]
         subprocess.run(ffCompCmd, capture_output=True, check=True)
         log.info("Compiled template")
         log.info("Compiling general fuzzer api...")
         fuzzerCppCmd = [
             'g++', '-c', '-I',
             path.normpath(FFROOT) + "/", '-std=c++17', '-g', '-O3', '-Wall',
-            path.normpath(f'{FFROOT}fuzzer.cpp')
+            path.normpath(f'{FFROOT}fuzzer.cpp'), '-o',
+            f'{WORKING_DIR}/fuzzer.o'
         ]
         subprocess.run(fuzzerCppCmd, capture_output=True, check=True)
         log.info("Compiled general fuzzer api")
@@ -157,14 +169,16 @@ def compileParser(templatePath, test=False):
         compFuzzerCmd = [
             'g++', '-c', '-I',
             path.normpath(FFROOT), '-std=c++17', '-g', '-O3', '-Wall',
-            f'{fmtName}.cpp'
+            f'{WORKING_DIR}/{flavor}{fmtName}.cpp', '-o',
+            f'{WORKING_DIR}/{flavor}{fmtName}.o'
         ]
         subprocess.run(compFuzzerCmd, capture_output=True, check=True)
         log.info("Compiled format code")
         log.info("Compiling fuzzer binary...")
         binName = f'test-{fmtName}-fuzzer' if test else f'{fmtName}-fuzzer'
         linkCmd = [
-            'g++', '-O3', f'{fmtName}.o', 'fuzzer.o', '-o', binName, '-lz'
+            'g++', '-O3', f'{WORKING_DIR}/{flavor}{fmtName}.o', f'{WORKING_DIR}/fuzzer.o', '-o',
+            f'{WORKING_DIR}/{binName}', '-lz'
         ]
         subprocess.run(linkCmd, capture_output=True, check=True)
         log.info("Compiled fuzzer binary")
@@ -175,13 +189,14 @@ def compileParser(templatePath, test=False):
 
 def runParserOnInput(parser, testInput):
     try:
-        cmd = [f"./{parser}", "parse", testInput]
+        cmd = [f"{WORKING_DIR}/{parser}", "parse", testInput]
         parseTree = subprocess.run(cmd, check=True, capture_output=True)
         if (parseTree.returncode != 0):
             raise TestRunException(f"Error ret: {parseTree.stderr}")
         if (len(parseTree.stdout) == 0):
             raise TestRunException(f"Error : {parseTree.stderr}")
-        with open(f"{parser}.output", "w") as file:
+
+        with open(f"{WORKING_DIR}/../output/{parser}.output", "w") as file:
             file.write(parseTree.stdout.decode())
         return parseTree.stdout.decode()
     except Exception as err:
@@ -191,14 +206,14 @@ def runParserOnInput(parser, testInput):
 def resolveTestInputByFormat(formatName, generator):
     try:
         cmd = [
-            TestBenchLoc + "/../" + generator, "fuzz",
-            f"testinput.{formatName}"
+            f'{WORKING_DIR}/{generator}', "fuzz",
+            f"{WORKING_DIR}/../input/testinput.{formatName}"
         ]
         subprocess.run(cmd,
                        check=True,
                        stdout=subprocess.PIPE,
                        stderr=subprocess.PIPE)
-        return f"testinput.{formatName}"
+        return f"{WORKING_DIR}/../input/testinput.{formatName}"
     except Exception as err:
         raise TestRunException("Creating input failed!", err)
 
