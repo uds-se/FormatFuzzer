@@ -286,7 +286,7 @@ class Converter(object):
                 except:
                     pass
                 try:
-                    expr = expr.replace("_io.eof", "FTell()>=FileSize()")
+                    expr = expr.replace("_io.eof", "FTell()+1>=FileSize()")
                 except:
                     pass
 
