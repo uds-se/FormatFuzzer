@@ -614,10 +614,10 @@ class data_point():
                     length_addon = "[" + size + "]"
                 self.front.append(prepend + str(self.type) + " " + str(self.id) + length_addon + ";" + loc_doc)
         elif self.size is not None:  # JUST BYTES
-            self.front.append(prepend + "byte " + str(self.id) + "[" + str(self.size) + "]" + ";" + loc_doc)
+            self.front.append(prepend + "ubyte " + str(self.id) + "[" + str(self.size) + "]" + ";" + loc_doc)
         else:
             # self.front.append(prepend + "byte " + str(self.id) + "[UNTIL_CONVERTER - FTell()]" + ";" + loc_doc)#OPTION A
-            self.front.append(prepend + "byte " + str(self.id) + ";" + loc_doc)  # OPTION B
+            self.front.append(prepend + "ubyte " + str(self.id) + ";" + loc_doc)  # OPTION B
 
             # self.gen_repeat()
             # self.front.append("    local int64 UNTIL_CONVERTER = FTell() + length_CONVERTER;")
@@ -651,7 +651,7 @@ class data_point():
         self.contents = self.input["contents"]
         self.magic = self.to_hex_list(self.contents)
         self.magic_len = len(self.magic)
-        self.front.append("    byte " + str(self.id) + "[" + str(self.magic_len) + "];")
+        self.front.append("    ubyte " + str(self.id) + "[" + str(self.magic_len) + "];")
         # TODO HERE POSSIBLE SET_EVIL_BIT
         self.front.append("    if (" + self.id + "[0] != " + self.magic[0] + " ||")
         for x in range(1, self.magic_len - 1):
