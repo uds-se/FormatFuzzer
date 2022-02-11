@@ -247,6 +247,8 @@ def RegExSearchW(params, ctxt, scope, stream, coord):
 # int SPrintf( char buffer[], const char format[] [, argument, ... ] )
 @native(name="SPrintf", ret=pfp.fields.Int)
 def SPrintf(params, ctxt, scope, stream, coord):
+    if params[0]._pfp__interp._generate:
+        return 0
     if len(params) < 2:
         raise errors.InvalidArguments(
             coord, "{} args".format(len(params)), "at least 2 args"

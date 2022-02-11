@@ -145,7 +145,7 @@ class PNG_SIGNATURE {
 public:
 	bool btPngSignature_exists = false;
 
-	std::vector<uint16> btPngSignature() {
+	std::vector<uint16>& btPngSignature() {
 		assert_cond(btPngSignature_exists, "struct field btPngSignature does not exist");
 		return btPngSignature_var;
 	}
@@ -154,9 +154,9 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	PNG_SIGNATURE& operator () () { return *instances.back(); }
-	PNG_SIGNATURE* operator [] (int index) {
+	PNG_SIGNATURE& operator [] (int index) {
 		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return instances[index];
+		return *instances[index];
 	}
 	PNG_SIGNATURE(std::vector<PNG_SIGNATURE*>& instances) : instances(instances) { instances.push_back(this); }
 	~PNG_SIGNATURE() {
@@ -301,11 +301,11 @@ public:
 	bool cname_exists = false;
 	bool ctype_exists = false;
 
-	std::string cname() {
+	std::string& cname() {
 		assert_cond(cname_exists, "struct field cname does not exist");
 		return cname_var;
 	}
-	uint32 ctype() {
+	uint32& ctype() {
 		assert_cond(ctype_exists, "struct field ctype does not exist");
 		return ctype_var;
 	}
@@ -314,9 +314,9 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	CTYPE& operator () () { return *instances.back(); }
-	CTYPE* operator [] (int index) {
+	CTYPE& operator [] (int index) {
 		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return instances[index];
+		return *instances[index];
 	}
 	CTYPE(std::vector<CTYPE*>& instances) : instances(instances) { instances.push_back(this); }
 	~CTYPE() {
@@ -415,31 +415,31 @@ public:
 	bool filter_method_exists = false;
 	bool interlace_method_exists = false;
 
-	uint32 width() {
+	uint32& width() {
 		assert_cond(width_exists, "struct field width does not exist");
 		return width_var;
 	}
-	uint32 height() {
+	uint32& height() {
 		assert_cond(height_exists, "struct field height does not exist");
 		return height_var;
 	}
-	ubyte bits() {
+	ubyte& bits() {
 		assert_cond(bits_exists, "struct field bits does not exist");
 		return bits_var;
 	}
-	byte color_type() {
+	byte& color_type() {
 		assert_cond(color_type_exists, "struct field color_type does not exist");
 		return color_type_var;
 	}
-	byte compr_method() {
+	byte& compr_method() {
 		assert_cond(compr_method_exists, "struct field compr_method does not exist");
 		return compr_method_var;
 	}
-	byte filter_method() {
+	byte& filter_method() {
 		assert_cond(filter_method_exists, "struct field filter_method does not exist");
 		return filter_method_var;
 	}
-	byte interlace_method() {
+	byte& interlace_method() {
 		assert_cond(interlace_method_exists, "struct field interlace_method does not exist");
 		return interlace_method_var;
 	}
@@ -448,9 +448,9 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	PNG_CHUNK_IHDR& operator () () { return *instances.back(); }
-	PNG_CHUNK_IHDR* operator [] (int index) {
+	PNG_CHUNK_IHDR& operator [] (int index) {
 		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return instances[index];
+		return *instances[index];
 	}
 	PNG_CHUNK_IHDR(std::vector<PNG_CHUNK_IHDR*>& instances) : instances(instances) { instances.push_back(this); }
 	~PNG_CHUNK_IHDR() {
@@ -501,11 +501,11 @@ public:
 	bool label_exists = false;
 	bool data_exists = false;
 
-	std::string label() {
+	std::string& label() {
 		assert_cond(label_exists, "struct field label does not exist");
 		return label_var;
 	}
-	std::string data() {
+	std::string& data() {
 		assert_cond(data_exists, "struct field data does not exist");
 		return data_var;
 	}
@@ -514,9 +514,9 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	PNG_CHUNK_TEXT& operator () () { return *instances.back(); }
-	PNG_CHUNK_TEXT* operator [] (int index) {
+	PNG_CHUNK_TEXT& operator [] (int index) {
 		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return instances[index];
+		return *instances[index];
 	}
 	PNG_CHUNK_TEXT(std::vector<PNG_CHUNK_TEXT*>& instances) : instances(instances) { instances.push_back(this); }
 	~PNG_CHUNK_TEXT() {
@@ -575,15 +575,15 @@ public:
 	bool btGreen_exists = false;
 	bool btBlue_exists = false;
 
-	byte btRed() {
+	byte& btRed() {
 		assert_cond(btRed_exists, "struct field btRed does not exist");
 		return btRed_var;
 	}
-	byte btGreen() {
+	byte& btGreen() {
 		assert_cond(btGreen_exists, "struct field btGreen does not exist");
 		return btGreen_var;
 	}
-	byte btBlue() {
+	byte& btBlue() {
 		assert_cond(btBlue_exists, "struct field btBlue does not exist");
 		return btBlue_var;
 	}
@@ -592,9 +592,9 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	PNG_PALETTE_PIXEL& operator () () { return *instances.back(); }
-	PNG_PALETTE_PIXEL* operator [] (int index) {
+	PNG_PALETTE_PIXEL& operator [] (int index) {
 		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return instances[index];
+		return *instances[index];
 	}
 	PNG_PALETTE_PIXEL(std::vector<PNG_PALETTE_PIXEL*>& instances) : instances(instances) { instances.push_back(this); }
 	~PNG_PALETTE_PIXEL() {
@@ -647,7 +647,7 @@ class PNG_CHUNK_PLTE {
 public:
 	bool plteChunkData_exists = false;
 
-	std::vector<PNG_PALETTE_PIXEL*> plteChunkData() {
+	std::vector<PNG_PALETTE_PIXEL*>& plteChunkData() {
 		assert_cond(plteChunkData_exists, "struct field plteChunkData does not exist");
 		return plteChunkData_var;
 	}
@@ -656,9 +656,9 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	PNG_CHUNK_PLTE& operator () () { return *instances.back(); }
-	PNG_CHUNK_PLTE* operator [] (int index) {
+	PNG_CHUNK_PLTE& operator [] (int index) {
 		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return instances[index];
+		return *instances[index];
 	}
 	PNG_CHUNK_PLTE(std::vector<PNG_CHUNK_PLTE*>& instances) : instances(instances) { instances.push_back(this); }
 	~PNG_CHUNK_PLTE() {
@@ -686,11 +686,11 @@ public:
 	bool x_exists = false;
 	bool y_exists = false;
 
-	uint32 x() {
+	uint32& x() {
 		assert_cond(x_exists, "struct field x does not exist");
 		return x_var;
 	}
-	uint32 y() {
+	uint32& y() {
 		assert_cond(y_exists, "struct field y does not exist");
 		return y_var;
 	}
@@ -699,9 +699,9 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	PNG_POINT& operator () () { return *instances.back(); }
-	PNG_POINT* operator [] (int index) {
+	PNG_POINT& operator [] (int index) {
 		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return instances[index];
+		return *instances[index];
 	}
 	PNG_POINT(std::vector<PNG_POINT*>& instances) : instances(instances) { instances.push_back(this); }
 	~PNG_POINT() {
@@ -754,9 +754,9 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	PNG_CHUNK_CHRM& operator () () { return *instances.back(); }
-	PNG_CHUNK_CHRM* operator [] (int index) {
+	PNG_CHUNK_CHRM& operator [] (int index) {
 		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return instances[index];
+		return *instances[index];
 	}
 	PNG_CHUNK_CHRM(std::vector<PNG_CHUNK_CHRM*>& instances) : instances(instances) { instances.push_back(this); }
 	~PNG_CHUNK_CHRM() {
@@ -790,7 +790,7 @@ class PNG_CHUNK_SRGB {
 public:
 	bool srgbChunkData_exists = false;
 
-	byte srgbChunkData() {
+	byte& srgbChunkData() {
 		assert_cond(srgbChunkData_exists, "struct field srgbChunkData does not exist");
 		return srgbChunkData_var;
 	}
@@ -799,9 +799,9 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	PNG_CHUNK_SRGB& operator () () { return *instances.back(); }
-	PNG_CHUNK_SRGB* operator [] (int index) {
+	PNG_CHUNK_SRGB& operator [] (int index) {
 		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return instances[index];
+		return *instances[index];
 	}
 	PNG_CHUNK_SRGB(std::vector<PNG_CHUNK_SRGB*>& instances) : instances(instances) { instances.push_back(this); }
 	~PNG_CHUNK_SRGB() {
@@ -837,27 +837,27 @@ public:
 	bool iextTranslatedKeyword_exists = false;
 	bool iextValChunkData_exists = false;
 
-	std::string iextIdChunkData() {
+	std::string& iextIdChunkData() {
 		assert_cond(iextIdChunkData_exists, "struct field iextIdChunkData does not exist");
 		return iextIdChunkData_var;
 	}
-	byte iextCompressionFlag() {
+	byte& iextCompressionFlag() {
 		assert_cond(iextCompressionFlag_exists, "struct field iextCompressionFlag does not exist");
 		return iextCompressionFlag_var;
 	}
-	byte iextComprMethod() {
+	byte& iextComprMethod() {
 		assert_cond(iextComprMethod_exists, "struct field iextComprMethod does not exist");
 		return iextComprMethod_var;
 	}
-	std::string iextLanguageTag() {
+	std::string& iextLanguageTag() {
 		assert_cond(iextLanguageTag_exists, "struct field iextLanguageTag does not exist");
 		return iextLanguageTag_var;
 	}
-	std::string iextTranslatedKeyword() {
+	std::string& iextTranslatedKeyword() {
 		assert_cond(iextTranslatedKeyword_exists, "struct field iextTranslatedKeyword does not exist");
 		return iextTranslatedKeyword_var;
 	}
-	std::string iextValChunkData() {
+	std::string& iextValChunkData() {
 		assert_cond(iextValChunkData_exists, "struct field iextValChunkData does not exist");
 		return iextValChunkData_var;
 	}
@@ -866,9 +866,9 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	PNG_CHUNK_IEXT& operator () () { return *instances.back(); }
-	PNG_CHUNK_IEXT* operator [] (int index) {
+	PNG_CHUNK_IEXT& operator [] (int index) {
 		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return instances[index];
+		return *instances[index];
 	}
 	PNG_CHUNK_IEXT(std::vector<PNG_CHUNK_IEXT*>& instances) : instances(instances) { instances.push_back(this); }
 	~PNG_CHUNK_IEXT() {
@@ -898,15 +898,15 @@ public:
 	bool comprMethod_exists = false;
 	bool zextValChunkData_exists = false;
 
-	std::string zextIdChunkData() {
+	std::string& zextIdChunkData() {
 		assert_cond(zextIdChunkData_exists, "struct field zextIdChunkData does not exist");
 		return zextIdChunkData_var;
 	}
-	byte comprMethod() {
+	byte& comprMethod() {
 		assert_cond(comprMethod_exists, "struct field comprMethod does not exist");
 		return comprMethod_var;
 	}
-	std::string zextValChunkData() {
+	std::string& zextValChunkData() {
 		assert_cond(zextValChunkData_exists, "struct field zextValChunkData does not exist");
 		return zextValChunkData_var;
 	}
@@ -915,9 +915,9 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	PNG_CHUNK_ZEXT& operator () () { return *instances.back(); }
-	PNG_CHUNK_ZEXT* operator [] (int index) {
+	PNG_CHUNK_ZEXT& operator [] (int index) {
 		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return instances[index];
+		return *instances[index];
 	}
 	PNG_CHUNK_ZEXT(std::vector<PNG_CHUNK_ZEXT*>& instances) : instances(instances) { instances.push_back(this); }
 	~PNG_CHUNK_ZEXT() {
@@ -982,27 +982,27 @@ public:
 	bool timeMin_exists = false;
 	bool timeSec_exists = false;
 
-	int16 timeYear() {
+	int16& timeYear() {
 		assert_cond(timeYear_exists, "struct field timeYear does not exist");
 		return timeYear_var;
 	}
-	byte timeMonth() {
+	byte& timeMonth() {
 		assert_cond(timeMonth_exists, "struct field timeMonth does not exist");
 		return timeMonth_var;
 	}
-	byte timeDay() {
+	byte& timeDay() {
 		assert_cond(timeDay_exists, "struct field timeDay does not exist");
 		return timeDay_var;
 	}
-	byte timeHour() {
+	byte& timeHour() {
 		assert_cond(timeHour_exists, "struct field timeHour does not exist");
 		return timeHour_var;
 	}
-	byte timeMin() {
+	byte& timeMin() {
 		assert_cond(timeMin_exists, "struct field timeMin does not exist");
 		return timeMin_var;
 	}
-	byte timeSec() {
+	byte& timeSec() {
 		assert_cond(timeSec_exists, "struct field timeSec does not exist");
 		return timeSec_var;
 	}
@@ -1011,9 +1011,9 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	PNG_CHUNK_TIME& operator () () { return *instances.back(); }
-	PNG_CHUNK_TIME* operator [] (int index) {
+	PNG_CHUNK_TIME& operator [] (int index) {
 		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return instances[index];
+		return *instances[index];
 	}
 	PNG_CHUNK_TIME(std::vector<PNG_CHUNK_TIME*>& instances) : instances(instances) { instances.push_back(this); }
 	~PNG_CHUNK_TIME() {
@@ -1086,15 +1086,15 @@ public:
 	bool physPixelPerUnitY_exists = false;
 	bool physUnitSpec_exists = false;
 
-	uint physPixelPerUnitX() {
+	uint& physPixelPerUnitX() {
 		assert_cond(physPixelPerUnitX_exists, "struct field physPixelPerUnitX does not exist");
 		return physPixelPerUnitX_var;
 	}
-	uint physPixelPerUnitY() {
+	uint& physPixelPerUnitY() {
 		assert_cond(physPixelPerUnitY_exists, "struct field physPixelPerUnitY does not exist");
 		return physPixelPerUnitY_var;
 	}
-	byte physUnitSpec() {
+	byte& physUnitSpec() {
 		assert_cond(physUnitSpec_exists, "struct field physUnitSpec does not exist");
 		return physUnitSpec_var;
 	}
@@ -1103,9 +1103,9 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	PNG_CHUNK_PHYS& operator () () { return *instances.back(); }
-	PNG_CHUNK_PHYS* operator [] (int index) {
+	PNG_CHUNK_PHYS& operator [] (int index) {
 		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return instances[index];
+		return *instances[index];
 	}
 	PNG_CHUNK_PHYS(std::vector<PNG_CHUNK_PHYS*>& instances) : instances(instances) { instances.push_back(this); }
 	~PNG_CHUNK_PHYS() {
@@ -1139,23 +1139,23 @@ public:
 	bool bgColorPixelGreen_exists = false;
 	bool bgColorPixelBlue_exists = false;
 
-	ubyte bgColorPaletteIndex() {
+	ubyte& bgColorPaletteIndex() {
 		assert_cond(bgColorPaletteIndex_exists, "struct field bgColorPaletteIndex does not exist");
 		return bgColorPaletteIndex_var;
 	}
-	uint16 bgGrayscalePixelValue() {
+	uint16& bgGrayscalePixelValue() {
 		assert_cond(bgGrayscalePixelValue_exists, "struct field bgGrayscalePixelValue does not exist");
 		return bgGrayscalePixelValue_var;
 	}
-	uint16 bgColorPixelRed() {
+	uint16& bgColorPixelRed() {
 		assert_cond(bgColorPixelRed_exists, "struct field bgColorPixelRed does not exist");
 		return bgColorPixelRed_var;
 	}
-	uint16 bgColorPixelGreen() {
+	uint16& bgColorPixelGreen() {
 		assert_cond(bgColorPixelGreen_exists, "struct field bgColorPixelGreen does not exist");
 		return bgColorPixelGreen_var;
 	}
-	uint16 bgColorPixelBlue() {
+	uint16& bgColorPixelBlue() {
 		assert_cond(bgColorPixelBlue_exists, "struct field bgColorPixelBlue does not exist");
 		return bgColorPixelBlue_var;
 	}
@@ -1164,9 +1164,9 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	PNG_CHUNK_BKGD& operator () () { return *instances.back(); }
-	PNG_CHUNK_BKGD* operator [] (int index) {
+	PNG_CHUNK_BKGD& operator [] (int index) {
 		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return instances[index];
+		return *instances[index];
 	}
 	PNG_CHUNK_BKGD(std::vector<PNG_CHUNK_BKGD*>& instances) : instances(instances) { instances.push_back(this); }
 	~PNG_CHUNK_BKGD() {
@@ -1216,55 +1216,55 @@ public:
 	bool sbitColorAlphaBlue_exists = false;
 	bool sbitColorAlphaAlpha_exists = false;
 
-	byte sbitRed() {
+	byte& sbitRed() {
 		assert_cond(sbitRed_exists, "struct field sbitRed does not exist");
 		return sbitRed_var;
 	}
-	byte sbitGreen() {
+	byte& sbitGreen() {
 		assert_cond(sbitGreen_exists, "struct field sbitGreen does not exist");
 		return sbitGreen_var;
 	}
-	byte sbitBlue() {
+	byte& sbitBlue() {
 		assert_cond(sbitBlue_exists, "struct field sbitBlue does not exist");
 		return sbitBlue_var;
 	}
-	byte sbitGraySource() {
+	byte& sbitGraySource() {
 		assert_cond(sbitGraySource_exists, "struct field sbitGraySource does not exist");
 		return sbitGraySource_var;
 	}
-	byte sbitGrayAlphaSource() {
+	byte& sbitGrayAlphaSource() {
 		assert_cond(sbitGrayAlphaSource_exists, "struct field sbitGrayAlphaSource does not exist");
 		return sbitGrayAlphaSource_var;
 	}
-	byte sbitGrayAlphaSourceAlpha() {
+	byte& sbitGrayAlphaSourceAlpha() {
 		assert_cond(sbitGrayAlphaSourceAlpha_exists, "struct field sbitGrayAlphaSourceAlpha does not exist");
 		return sbitGrayAlphaSourceAlpha_var;
 	}
-	byte sbitColorRed() {
+	byte& sbitColorRed() {
 		assert_cond(sbitColorRed_exists, "struct field sbitColorRed does not exist");
 		return sbitColorRed_var;
 	}
-	byte sbitColorGreen() {
+	byte& sbitColorGreen() {
 		assert_cond(sbitColorGreen_exists, "struct field sbitColorGreen does not exist");
 		return sbitColorGreen_var;
 	}
-	byte sbitColorBlue() {
+	byte& sbitColorBlue() {
 		assert_cond(sbitColorBlue_exists, "struct field sbitColorBlue does not exist");
 		return sbitColorBlue_var;
 	}
-	byte sbitColorAlphaRed() {
+	byte& sbitColorAlphaRed() {
 		assert_cond(sbitColorAlphaRed_exists, "struct field sbitColorAlphaRed does not exist");
 		return sbitColorAlphaRed_var;
 	}
-	byte sbitColorAlphaGreen() {
+	byte& sbitColorAlphaGreen() {
 		assert_cond(sbitColorAlphaGreen_exists, "struct field sbitColorAlphaGreen does not exist");
 		return sbitColorAlphaGreen_var;
 	}
-	byte sbitColorAlphaBlue() {
+	byte& sbitColorAlphaBlue() {
 		assert_cond(sbitColorAlphaBlue_exists, "struct field sbitColorAlphaBlue does not exist");
 		return sbitColorAlphaBlue_var;
 	}
-	byte sbitColorAlphaAlpha() {
+	byte& sbitColorAlphaAlpha() {
 		assert_cond(sbitColorAlphaAlpha_exists, "struct field sbitColorAlphaAlpha does not exist");
 		return sbitColorAlphaAlpha_var;
 	}
@@ -1273,9 +1273,9 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	PNG_CHUNK_SBIT& operator () () { return *instances.back(); }
-	PNG_CHUNK_SBIT* operator [] (int index) {
+	PNG_CHUNK_SBIT& operator [] (int index) {
 		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return instances[index];
+		return *instances[index];
 	}
 	PNG_CHUNK_SBIT(std::vector<PNG_CHUNK_SBIT*>& instances) : instances(instances) { instances.push_back(this); }
 	~PNG_CHUNK_SBIT() {
@@ -1355,15 +1355,15 @@ public:
 	bool sampleDepth_exists = false;
 	bool spltData_exists = false;
 
-	std::string paletteName() {
+	std::string& paletteName() {
 		assert_cond(paletteName_exists, "struct field paletteName does not exist");
 		return paletteName_var;
 	}
-	byte sampleDepth() {
+	byte& sampleDepth() {
 		assert_cond(sampleDepth_exists, "struct field sampleDepth does not exist");
 		return sampleDepth_var;
 	}
-	std::string spltData() {
+	std::string& spltData() {
 		assert_cond(spltData_exists, "struct field spltData does not exist");
 		return spltData_var;
 	}
@@ -1372,9 +1372,9 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	PNG_CHUNK_SPLT& operator () () { return *instances.back(); }
-	PNG_CHUNK_SPLT* operator [] (int index) {
+	PNG_CHUNK_SPLT& operator [] (int index) {
 		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return instances[index];
+		return *instances[index];
 	}
 	PNG_CHUNK_SPLT(std::vector<PNG_CHUNK_SPLT*>& instances) : instances(instances) { instances.push_back(this); }
 	~PNG_CHUNK_SPLT() {
@@ -1402,11 +1402,11 @@ public:
 	bool num_frames_exists = false;
 	bool num_plays_exists = false;
 
-	uint32 num_frames() {
+	uint32& num_frames() {
 		assert_cond(num_frames_exists, "struct field num_frames does not exist");
 		return num_frames_var;
 	}
-	uint32 num_plays() {
+	uint32& num_plays() {
 		assert_cond(num_plays_exists, "struct field num_plays does not exist");
 		return num_plays_var;
 	}
@@ -1415,9 +1415,9 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	PNG_CHUNK_ACTL& operator () () { return *instances.back(); }
-	PNG_CHUNK_ACTL* operator [] (int index) {
+	PNG_CHUNK_ACTL& operator [] (int index) {
 		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return instances[index];
+		return *instances[index];
 	}
 	PNG_CHUNK_ACTL(std::vector<PNG_CHUNK_ACTL*>& instances) : instances(instances) { instances.push_back(this); }
 	~PNG_CHUNK_ACTL() {
@@ -1475,39 +1475,39 @@ public:
 	bool dispose_op_exists = false;
 	bool blend_op_exists = false;
 
-	uint32 sequence_number() {
+	uint32& sequence_number() {
 		assert_cond(sequence_number_exists, "struct field sequence_number does not exist");
 		return sequence_number_var;
 	}
-	uint32 width() {
+	uint32& width() {
 		assert_cond(width_exists, "struct field width does not exist");
 		return width_var;
 	}
-	uint32 height() {
+	uint32& height() {
 		assert_cond(height_exists, "struct field height does not exist");
 		return height_var;
 	}
-	uint32 x_offset() {
+	uint32& x_offset() {
 		assert_cond(x_offset_exists, "struct field x_offset does not exist");
 		return x_offset_var;
 	}
-	uint32 y_offset() {
+	uint32& y_offset() {
 		assert_cond(y_offset_exists, "struct field y_offset does not exist");
 		return y_offset_var;
 	}
-	int16 delay_num() {
+	int16& delay_num() {
 		assert_cond(delay_num_exists, "struct field delay_num does not exist");
 		return delay_num_var;
 	}
-	int16 delay_den() {
+	int16& delay_den() {
 		assert_cond(delay_den_exists, "struct field delay_den does not exist");
 		return delay_den_var;
 	}
-	byte dispose_op() {
+	byte& dispose_op() {
 		assert_cond(dispose_op_exists, "struct field dispose_op does not exist");
 		return dispose_op_var;
 	}
-	byte blend_op() {
+	byte& blend_op() {
 		assert_cond(blend_op_exists, "struct field blend_op does not exist");
 		return blend_op_var;
 	}
@@ -1516,9 +1516,9 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	PNG_CHUNK_FCTL& operator () () { return *instances.back(); }
-	PNG_CHUNK_FCTL* operator [] (int index) {
+	PNG_CHUNK_FCTL& operator [] (int index) {
 		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return instances[index];
+		return *instances[index];
 	}
 	PNG_CHUNK_FCTL(std::vector<PNG_CHUNK_FCTL*>& instances) : instances(instances) { instances.push_back(this); }
 	~PNG_CHUNK_FCTL() {
@@ -1596,11 +1596,11 @@ public:
 	bool sequence_number_exists = false;
 	bool frame_data_exists = false;
 
-	uint32 sequence_number() {
+	uint32& sequence_number() {
 		assert_cond(sequence_number_exists, "struct field sequence_number does not exist");
 		return sequence_number_var;
 	}
-	std::string frame_data() {
+	std::string& frame_data() {
 		assert_cond(frame_data_exists, "struct field frame_data does not exist");
 		return frame_data_var;
 	}
@@ -1609,9 +1609,9 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	PNG_CHUNK_FDAT& operator () () { return *instances.back(); }
-	PNG_CHUNK_FDAT* operator [] (int index) {
+	PNG_CHUNK_FDAT& operator [] (int index) {
 		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return instances[index];
+		return *instances[index];
 	}
 	PNG_CHUNK_FDAT(std::vector<PNG_CHUNK_FDAT*>& instances) : instances(instances) { instances.push_back(this); }
 	~PNG_CHUNK_FDAT() {
@@ -1675,7 +1675,7 @@ public:
 	bool crc_exists = false;
 	bool pad_exists = false;
 
-	uint32 length() {
+	uint32& length() {
 		assert_cond(length_exists, "struct field length does not exist");
 		return length_var;
 	}
@@ -1743,15 +1743,15 @@ public:
 		assert_cond(fdat_exists, "struct field fdat does not exist");
 		return *fdat_var;
 	}
-	std::string data() {
+	std::string& data() {
 		assert_cond(data_exists, "struct field data does not exist");
 		return data_var;
 	}
-	uint32 crc() {
+	uint32& crc() {
 		assert_cond(crc_exists, "struct field crc does not exist");
 		return crc_var;
 	}
-	uint16 pad() {
+	uint16& pad() {
 		assert_cond(pad_exists, "struct field pad does not exist");
 		return pad_var;
 	}
@@ -1769,9 +1769,9 @@ public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	PNG_CHUNK& operator () () { return *instances.back(); }
-	PNG_CHUNK* operator [] (int index) {
+	PNG_CHUNK& operator [] (int index) {
 		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return instances[index];
+		return *instances[index];
 	}
 	PNG_CHUNK(std::vector<PNG_CHUNK*>& instances) : instances(instances) { instances.push_back(this); }
 	~PNG_CHUNK() {
@@ -2661,10 +2661,10 @@ PNG_CHUNK* PNG_CHUNK::generate() {
 		GENERATE_VAR(phys, ::g->phys.generate());
 	} else {
 	if ((type().cname() == "bKGD")) {
-		GENERATE_VAR(bkgd, ::g->bkgd.generate(::g->chunk()[0]->ihdr().color_type()));
+		GENERATE_VAR(bkgd, ::g->bkgd.generate(::g->chunk()[0].ihdr().color_type()));
 	} else {
 	if ((type().cname() == "sBIT")) {
-		GENERATE_VAR(sbit, ::g->sbit.generate(::g->chunk()[0]->ihdr().color_type()));
+		GENERATE_VAR(sbit, ::g->sbit.generate(::g->chunk()[0].ihdr().color_type()));
 	} else {
 	if ((type().cname() == "sPLT")) {
 		GENERATE_VAR(splt, ::g->splt.generate(length()));
@@ -2679,7 +2679,7 @@ PNG_CHUNK* PNG_CHUNK::generate() {
 		GENERATE_VAR(fdat, ::g->fdat.generate());
 	} else {
 	if ((type().cname() == "IDAT")) {
-		std::string compressed_data = generate_data(::g->chunk()[0]->ihdr().width(), ::g->chunk()[0]->ihdr().height(), (PNG_COLOR_SPACE_TYPE) ::g->chunk()[0]->ihdr().color_type(), ::g->chunk()[0]->ihdr().bits(), (PNG_INTERLACE_METHOD) ::g->chunk()[0]->ihdr().interlace_method());
+		std::string compressed_data = generate_data(::g->chunk()[0].ihdr().width(), ::g->chunk()[0].ihdr().height(), (PNG_COLOR_SPACE_TYPE) ::g->chunk()[0].ihdr().color_type(), ::g->chunk()[0].ihdr().bits(), (PNG_INTERLACE_METHOD) ::g->chunk()[0].ihdr().interlace_method());
 		std::vector<std::string> good_data = { compressed_data };
 		bool evil = file_acc.set_evil_bit(false);
 		start_generation("data");
@@ -2818,10 +2818,10 @@ void generate_file() {
 		};
 	};
 	if ((::g->CHUNK_CNT > 1)) {
-		if ((::g->chunk()[0]->type().cname() != "IHDR")) {
+		if ((::g->chunk()[0].type().cname() != "IHDR")) {
 			error_message("*ERROR: Chunk IHDR must be first chunk.");
 		};
-		if ((::g->chunk()[(::g->CHUNK_CNT - 1)]->type().cname() != "IEND")) {
+		if ((::g->chunk()[(::g->CHUNK_CNT - 1)].type().cname() != "IEND")) {
 			error_message("*ERROR: Chunk IEND must be last chunk.");
 		};
 	};

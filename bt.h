@@ -481,6 +481,10 @@ void Assert(int value, const char* msg = "") {
 		exit_template(msg);
 }
 
+int Abs(int value) {
+	return abs(value);
+}
+
 bool change_array_length = false;
 
 void check_array_length(unsigned& size) {

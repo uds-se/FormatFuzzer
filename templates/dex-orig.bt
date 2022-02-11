@@ -1,0 +1,1626 @@
+//------------------------------------------------
+//--- 010 Editor v3.1.3 Binary Template
+//
+//      File: DEX.bt
+//   Authors: Jon Larimer
+//    E-mail: jlarimer@gmail.com
+//   Version: 1.2
+//   Purpose: A template for analyzing Dalvik VM 
+//            (Android) DEX files.
+//  Category: Operating System
+// File Mask: *.dex
+//  ID Bytes: 64 65 78 0A, 64 65 79 0A //dex\n,dey\n
+//   History: 
+//   1.2   2019-04-24 SweetScape Software: Fixed runtime error with FieldIdItemRead function.
+//   1.1   2016-02-11 SweetScape Software: Updated header for repository submission.
+//   1.0   2011-05-10 J Larimer: Initial version.
+//
+// License: This file is released into the public domain. People may 
+//          use it for any purpose, commercial or otherwise. 
+//
+// KNOWN ISSUES:
+// - display of floats and doubles in encoded_value is incorrect
+// - display of MUTF-8 strings may be incorrect
+// - doesn't handle big endian (byte swapped) files
+// - doesn't disassemble DEX instructions
+// - only decodes partial information from optimized (ODEX/DexOpt) files
+// - could use a bit of refactoring and removing duplicate code
+// - not decoding items in the map_list structure - they're already
+//   referenced through other items in the header so adding them
+//   in the map_list would be reduntant
+// - colors?
+//------------------------------------------------
+
+LittleEndian();
+
+#define NO_INDEX (0xFFFFFFFF)
+#define ENDIAN_CONSTANT (0x12345678)
+#define REVERSE_ENDIAN_CONSTANT (0x78563412);
+
+// offset used when seeking within a dex file inside of an odex wrapper
+local int odexpad = 0;
+
+string SHA1Read(ubyte sig[20]) {
+    string ret;
+    string tmp;
+    int i;
+
+    for(i = 0; i<20; i++) {
+        SPrintf(tmp, "%.2X", sig[i]);
+        ret += tmp;
+    }
+
+    return ret;
+}
+
+// utility for reading/checking the magic value
+typedef struct {
+    char dex[3];
+    char newline;
+    char ver[3];
+    char zero;
+
+    // XXX not checking the version, but it should be 035
+    if((Strcmp(dex, "dex") && Strcmp(dex, "dey")) ||
+        newline != '\n' ||
+        zero != 0) {
+
+        Warning("Invalid DEX file");
+        return -1;
+    }
+} dex_magic <read=DexMagicRead>;
+
+string DexMagicRead(dex_magic &m) {
+    string s;
+    SPrintf(s, "%s %s", m.dex, m.ver);
+    return s;
+}
+
+//////////////////////////////////////////////////
+// LEB128 stuff
+//////////////////////////////////////////////////
+
+// struct to read a uleb128 value. uleb128's are a variable-length encoding for
+// a 32 bit value. some of the uleb128/sleb128 code was adapted from dalvik's
+// libdex/Leb128.h
+
+typedef struct {
+    ubyte val <comment="uleb128 element">;
+    local uint result = val;
+    if(val > 0x7f) {
+        ubyte val <comment="uleb128 element">;
+        result = (result & 0x7f) | (uint)((val & 0x7f) << 7);
+        if (val > 0x7f) {
+            ubyte val <comment="uleb128 element">;
+            result |= (uint)(val & 0x7f) << 14;
+            if(val > 0x7f) {
+                ubyte val <comment="uleb128 element">;
+                result |= (uint)(val & 0x7f) << 21;
+                if(val > 0x7f) {
+                    ubyte val <comment="uleb128 element">;
+                    result |= (uint)val << 28;
+                }
+            }
+        }
+    }
+} uleb128 <read=ULeb128Read, comment="Unsigned little-endian base 128 value">;
+
+// get the actual uint value of the uleb128
+uint uleb128_value(uleb128 &u) {
+    return u.result;
+}
+
+int uleb128p1_value(uleb128 &u) {
+    return (int)uleb128_value(u) - 1;
+}
+
+string ULeb128Read(uleb128 &u) {
+    local string s;
+    s = SPrintf(s, "0x%X", uleb128_value(u));
+    return s;
+}
+
+// sleb128
+typedef struct {
+    ubyte val <comment="sleb128 element">;
+    local int result = val;
+    if(result <= 0x7f) {
+        result = (result << 25) >> 25;
+    } else {
+        ubyte val <comment="sleb128 element">;
+        result = (result & 0x7f) | ((uint)(val & 0x7f) << 7);
+        if(val <= 0x7f) {
+            result = (result << 18) >> 18;
+        } else {
+            ubyte val <comment="sleb128 element">;
+            result |= (uint)(val & 0x7f) << 14;
+            if(val <= 0x7f) {
+                result = (result << 11) >> 11;
+            } else {
+                ubyte val <comment="sleb128 element">;
+                result |= (uint)(val & 0x7f) << 21;
+                if(val <= 0x7f) {
+                    result = (result << 4) >> 4;
+                } else {
+                    ubyte val <comment="sleb128 element">; 
+                    result |= (uint)val << 28;
+                }
+            }
+        }
+    }
+} sleb128 <read=SLeb128Read, comment="Signed little-endian base 128 value">;
+
+// get the actual uint value of the uleb128
+int sleb128_value(sleb128 &u) {
+    return u.result;
+}
+
+string SLeb128Read(sleb128 &u) {
+    local string s;
+    s = SPrintf(s, "%i", sleb128_value(u));
+    return s;
+}
+
+//////////////////////////////////////////////////
+// encoded_value type
+//////////////////////////////////////////////////
+
+typedef enum <ubyte> {
+    VALUE_BYTE = 0x00,
+    VALUE_SHORT = 0x02,
+    VALUE_CHAR = 0x03,
+    VALUE_INT = 0x04,
+    VALUE_LONG = 0x06,
+    VALUE_FLOAT = 0x10,
+    VALUE_DOUBLE = 0x11,
+    VALUE_STRING = 0x17,
+    VALUE_TYPE = 0x18,
+    VALUE_FIELD = 0x19,
+    VALUE_METHOD = 0x1a,
+    VALUE_ENUM = 0x1b,
+    VALUE_ARRAY = 0x1c,
+    VALUE_ANNOTATION = 0x1d,
+    VALUE_NULL = 0x1e,
+    VALUE_BOOLEAN = 0x1f
+} VALUE;
+
+// variable-width integer used by encoded_value types
+typedef struct (int size, VALUE type) {
+    local int s = size + 1;
+    local VALUE t = type;
+    local int i;
+    local int shift = 0;
+    local int64 result = 0;
+    
+    for(i=0; i<s; i++) {
+        ubyte val <comment="Encoded value element">;
+        result |= (uint64)val << shift;
+        shift += 8;
+    }
+} EncodedValue <read=EncodedValueRead, optimize=false>;
+
+string EncodedValueRead(EncodedValue &v) {
+    local string s = "";
+
+    switch(v.t) {
+        case VALUE_BYTE:
+        case VALUE_SHORT:
+        case VALUE_INT:
+        case VALUE_LONG:
+        case VALUE_FLOAT:
+        case VALUE_DOUBLE:
+            SPrintf(s, "0x%X", EncodedValueValue(v));
+            break;
+        case VALUE_STRING:
+            s = StringIdRead(EncodedValueValue(v));
+            break;
+        case VALUE_TYPE:
+            s = LongTypeIdRead(EncodedValueValue(v));
+            break;
+        case VALUE_FIELD:
+            s = FieldIdRead(EncodedValueValue(v));
+            break;
+        case VALUE_ENUM:
+            s = FieldIdRead(EncodedValueValue(v));
+            break;
+        case VALUE_ARRAY:
+        case VALUE_ANNOTATION:
+        case VALUE_BOOLEAN:
+        case VALUE_NULL:
+            s = "NULL";
+            break;
+    }            
+    return s;
+}
+
+int64 EncodedValueValue(EncodedValue &v) {
+    return v.result;
+}
+
+typedef struct {
+    VALUE value_type:5 <comment="Value type">;
+    ubyte value_arg:3 <comment="Value clarifying argument">;
+    local string valstr = "";
+    local string typestr = "";
+
+    switch (value_type) {
+        case VALUE_BYTE:
+            ubyte value_byte <comment="Byte value">;
+            SPrintf(valstr, "0x%.2X", value_byte);
+            typestr = "byte";
+            break;
+        case VALUE_SHORT:
+            // value_arg has size-1, either 0 or 1
+            EncodedValue value_short(value_arg, value_type) <comment="Short value">;
+            SPrintf(valstr, "%i", EncodedValueValue(value_short));
+            typestr = "short";
+            break;
+        case VALUE_CHAR:
+            EncodedValue value_char(value_arg, value_type) <comment="Char value">;
+            SPrintf(valstr, "'%c'", EncodedValueValue(value_char));
+            typestr = "char";
+            break;
+        case VALUE_INT:
+            EncodedValue value_int(value_arg, value_type) <comment="Int value">;
+            SPrintf(valstr, "%i", EncodedValueValue(value_int));
+            typestr = "int";
+            break;
+        case VALUE_LONG:
+            EncodedValue value_long(value_arg, value_type) <comment="Long value">;
+            SPrintf(valstr, "%li", EncodedValueValue(value_long));
+            typestr = "long";
+            break;
+        case VALUE_FLOAT: // XXX this doesn't work
+            EncodedValue value_float(value_arg, value_type) <comment="Float value">;
+            SPrintf(valstr, "%f", EncodedValueValue(value_float));
+            typestr = "float";
+            break;
+        case VALUE_DOUBLE:
+            EncodedValue value_double(value_arg, value_type) <comment="Double value">;
+            SPrintf(valstr, "%li", EncodedValueValue(value_double));
+            typestr = "double";
+            break;
+        case VALUE_STRING:
+            EncodedValue value_string(value_arg, value_type) <comment="String value">;
+            valstr = "\"" + GetStringById(EncodedValueValue(value_string)) + "\"";
+            typestr = "string";
+            break;
+        case VALUE_TYPE:
+            EncodedValue value_t(value_arg, value_type) <comment="Type value">;
+            valstr = GetLongTypeById(EncodedValueValue(value_t));
+            typestr = "type";
+            break;
+        case VALUE_FIELD:
+            EncodedValue value_field(value_arg, value_type) <comment="Field value">;
+            valstr = GetFieldById(EncodedValueValue(value_field));
+            typestr = "field";
+            break;
+        case VALUE_METHOD:
+            EncodedValue value_method(value_arg, value_type) <comment="Method value">;
+            valstr = GetMethodById(EncodedValueValue(value_method));
+            typestr = "method";
+            break;
+        case VALUE_ENUM:
+            EncodedValue value_enum(value_arg, value_type) <comment="Enum value">;
+            valstr = GetFieldById(EncodedValueValue(value_enum));
+            typestr = "enum";
+            break;
+        case VALUE_ARRAY:
+            struct encoded_array array <comment="Encoded array">;
+            break;
+        case VALUE_ANNOTATION:
+            struct encoded_annotation annotation <comment="Encoded annotation">;
+            break;
+        case VALUE_NULL:
+            // no additional bytes used by null
+            typestr = valstr = "NULL";
+            break;
+        case VALUE_BOOLEAN:
+            // no additional bytes used by boolean
+            typestr = "boolean";
+            if(value_arg == 0) {
+                valstr = "false";
+            } else {
+                valstr = "true";
+            }
+            break;
+        default:
+            Warning("Unknown type for encoded value 0x%X", value_type);
+            break;
+    }
+} encoded_value <read=EncodedValueStructRead, optimize=false>;
+
+string EncodedValueStructRead(encoded_value &v) {
+    return v.typestr + ": " + v.valstr;
+}
+
+typedef struct {
+    uleb128 size <comment="Number of elements in array">;
+    encoded_value values[uleb128_value(size)] <comment="Encoded value element">;
+} encoded_array <read=EncodedArrayRead>;
+
+// show first 5 elements of the array
+string EncodedArrayRead(encoded_array &a) {
+    local int count = 5;
+    local int dots = 1;
+    local int i;
+
+    if(uleb128_value(a.size) < 5) {
+        count = uleb128_value(a.size);
+        dots = 0;
+    }
+
+    string val = "[";
+
+    for(i=0; i<count; i++) {
+        val += EncodedValueStructRead(a.values[i]);
+        if(i < (count-1) || dots) {
+            val += ", ";
+        }
+    }
+
+    if(dots) {
+        val += "...";
+    }
+
+    val += "]";
+
+    return val;
+}
+
+typedef struct {
+    uleb128 name_idx <read=StringIdReadUleb, comment="String ID of annotation element name">;
+    encoded_value value <comment="Encoded value">;
+} annotation_element <read=AnnotationElementRead, optimize=false>;
+
+string AnnotationElementRead(annotation_element &e) {
+    string name = GetStringById(uleb128_value(e.name_idx));
+    return name + " = " + e.value.valstr;
+}
+
+typedef struct {
+    uleb128 type_idx <read=LongTypeIdReadUleb, comment="Annotation type">;
+    uleb128 size <comment="Number of name-value mappings in annotation">;
+
+    if(uleb128_value(size) > 0) {
+        annotation_element elements[uleb128_value(size)] <comment="Encoded annotation contents">;
+    }
+} encoded_annotation <read=EncodedAnnotationRead>;
+
+string EncodedAnnotationRead(encoded_annotation &a) {
+    string s;
+    SPrintf(s, "%i annotations for %s", uleb128_value(a.size), GetLongTypeById(uleb128_value(a.type_idx)));
+    return s;
+}
+
+//////////////////////////////////////////////////
+// dex file header
+//////////////////////////////////////////////////
+
+typedef struct {
+    dex_magic magic <comment="Magic value">; 
+    uint checksum <format=hex, comment="Alder32 checksum of rest of file">;
+    ubyte signature[20] <comment="SHA-1 signature of rest of file">;
+    uint file_size <comment="File size in bytes">;
+    uint header_size <comment="Header size in bytes">;
+    uint endian_tag <format=hex, comment="Endianness tag">;
+
+    if(endian_tag != ENDIAN_CONSTANT) {
+        // XXX we don't handle big endian files
+        Warning("Invalid endian_tag %.8X, should be %.8X", endian_tag, ENDIAN_CONSTANT);
+    }
+
+    uint link_size <comment="Size of link section">;
+    uint link_off <comment="File offset of link section">;
+    uint map_off <comment="File offset of map list">;
+    uint string_ids_size <comment="Count of strings in the string ID list">;
+    uint string_ids_off <comment="File offset of string ID list">;
+    uint type_ids_size <comment="Count of types in the type ID list">;
+    uint type_ids_off <comment="File offset of type ID list">;
+    uint proto_ids_size <comment="Count of items in the method prototype ID list">;
+    uint proto_ids_off <comment="File offset of method prototype ID list">;
+    uint field_ids_size <comment="Count of items in the field ID list">;
+    uint field_ids_off <comment="File offset of field ID list">; 
+    uint method_ids_size <comment="Count of items in the method ID list">;
+    uint method_ids_off <comment="File offset of method ID list">;
+    uint class_defs_size <comment="Count of items in the class definitions list">;
+    uint class_defs_off <comment="File offset of class definitions list">;
+    uint data_size <comment="Size of data section in bytes">;
+    uint data_off <comment="File offset of data section">;    
+} header_item;
+
+//////////////////////////////////////////////////
+// odex file header
+//////////////////////////////////////////////////
+
+typedef enum <uint> {
+    DEX_FLAG_VERIFIED = 0x1,
+    DEX_OPT_FLAG_BIG = 0x2,
+    DEX_OPT_FLAG_FIELDS = 0x4,
+    DEX_OPT_FLAG_INVOCATIONS = 0x8
+} DEX_OPT_FLAGS;
+
+typedef struct {
+    dex_magic magic <comment="Magic value">;
+    uint dex_offset <comment="File offset of DEX header">;
+    uint dex_length <comment="Size of DEX file">;
+    uint deps_offset <comment="File offset of optimized DEX dependency table">;
+    uint deps_length <comment="Size of DEX dependency table">;
+    uint opt_offset <comment="File offset of optimized data tables">;
+    uint opt_length <comment="Size of optimized data tables">;
+    DEX_OPT_FLAGS flags <read=DexOptFlagsRead, comment="Flags">;
+    uint checksum <comment="Alder32 checksum of dependency table and optimization table">;    
+} dexopt_header_item;
+
+string DexOptFlagsRead(DEX_OPT_FLAGS f) {
+    string ret = "";
+    string flags = "";
+    DEX_OPT_FLAGS i = 1;
+
+    while(i <= DEX_OPT_FLAG_INVOCATIONS) {
+        if (f & i) {
+            flags += EnumToString(i) + " ";
+        }
+        i = i << 1;
+    }
+
+    SPrintf(ret, "(0x%X) %s", f, flags);
+    return ret;
+}
+
+//////////////////////////////////////////////////
+// strings
+//////////////////////////////////////////////////
+
+typedef struct {
+    uleb128 utf16_size <comment="Size of string in UTF-16 code units">;
+    string data <comment="A string in MUTF-8 format">;
+} string_item;
+
+typedef struct {
+    uint string_data_off <comment="File offset of string data">;
+    
+    local int64 pos = FTell();
+    FSeek(odexpad + string_data_off);
+
+    string_item string_data <comment="String item">;
+    
+    FSeek(pos);
+} string_id_item <read=StringDataReader, optimize=false>;
+
+string StringDataReader(string_id_item &i) {
+    return i.string_data.data;
+}
+
+typedef struct (int size) {
+    local int s = size;
+    string_id_item string_id[size] <comment="String ID">;
+} string_id_list <read=StringIDListRead, comment="String ID list">;
+
+string StringIDListRead(string_id_list &l) {
+    string s;
+    s = SPrintf(s, "%d strings", l.s);
+    return s;
+}
+
+//////////////////////////////////////////////////
+// type IDs
+//////////////////////////////////////////////////
+
+typedef struct {
+    uint descriptor_idx <read=StringIdRead, comment="String ID for this type descriptor">;
+} type_id_item <read=TypeIDRead, optimize=false>;
+
+string TypeIDRead(type_id_item &i) {
+    return GetLongTypeDescriptor(GetStringById(i.descriptor_idx));
+}
+
+typedef struct (int size) {
+    local int s = size;
+    type_id_item type_id[size] <comment="Type ID">;
+} type_id_list <read=TypeIDListRead>;
+
+string TypeIDListRead(type_id_list &l) {
+    string s;
+    s = SPrintf(s, "%d types", l.s);
+    return s;
+}
+
+//////////////////////////////////////////////////
+// type list
+//////////////////////////////////////////////////
+typedef struct {
+    ushort type_idx <comment="Index into type_ids list">;
+} type_item;
+
+typedef struct {
+    uint size <comment="Number of entries in type list">;
+    type_item list[size] <read=TypeItemRead, comment="Type entry">;
+} type_item_list <read=TypeItemListRead, optimize=false>;
+
+string TypeItemRead(type_item &t) {
+    return GetTypeById(t.type_idx);
+}
+
+string TypeItemListRead(type_item_list &l) {
+    string s = "";
+    string tmp;
+    int i;
+
+    for(i = 0; i < l.size; i++) {
+        s += GetTypeById(l.list[i].type_idx);
+        if(i+1 < l.size) {
+            s += ", ";
+        }
+    }
+    return s;
+}
+
+string GetLongTypeDescriptor(string descriptor) {
+    local string desc = "";
+    local string post = "";
+    local int i = 0;
+    local int len = Strlen(descriptor);
+
+    // array descriptors
+    while(descriptor[i] == '[') {
+        post += "[]";
+        i++;
+
+        if(i >= len) return "ERROR";
+    }
+
+    if(descriptor[i] == 'L') {
+        // fully qualified class descriptors
+        i++;
+        while(i < len) {
+            if(descriptor[i] == '/') desc += ".";
+            else if(descriptor[i] == ';') break;
+            else desc += descriptor[i];
+            i++;
+        }
+    } else {
+        // simple type descriptors
+        switch(descriptor[i]) {
+            case 'V': desc = "void"; break;
+            case 'Z': desc = "boolean"; break;
+            case 'B': desc = "byte"; break;
+            case 'S': desc = "short"; break;
+            case 'C': desc = "char"; break;
+            case 'I': desc = "int"; break;
+            case 'J': desc = "long"; break;
+            case 'F': desc = "float"; break;
+            case 'D': desc = "double"; break;
+        }
+    }
+
+    return desc + post;
+}
+
+//////////////////////////////////////////////////
+// protoypes
+//////////////////////////////////////////////////
+
+typedef struct {
+    uint shorty_idx <read=StringIdRead, comment="String ID of short-form descriptor">;
+    uint return_type_idx <read=TypeIdRead, comment="Type ID of the return type">;
+    uint parameters_off <comment="File offset of parameter type list">;
+
+    if(parameters_off != 0) {
+        local int64 pos = FTell();
+        FSeek(odexpad + parameters_off);
+
+        type_item_list parameters <comment="Prototype parameter data">;
+    
+        FSeek(pos);
+    }
+
+} proto_id_item <read=ProtoIDItemRead, optimize=false>;
+
+string ProtoIDItemRead(proto_id_item &i) {
+    return GetPrototypeSignature(i);
+}
+
+typedef struct (int size) {
+    local int s = size;
+    proto_id_item proto_id[size] <comment="Prototype ID">;
+} proto_id_list <read=ProtoIDListRead>;
+
+string ProtoIDListRead(proto_id_list &l) {
+    string s;
+    s = SPrintf(s, "%d prototypes", l.s);
+    return s;
+}
+
+string GetParameterListString(type_item_list &l) {
+    local string s = "(";
+    local string tmp;
+    local uint i;
+
+    for(i = 0; i < l.size; i++) {
+        s += GetLongTypeDescriptor(GetTypeById(l.list[i].type_idx));
+        if(i+1 < l.size) {
+            s += ", ";
+        }
+    }
+    return s + ")";
+}
+
+string GetPrototypeSignature(proto_id_item &item) {
+    string ret = GetLongTypeDescriptor(GetTypeById(item.return_type_idx));
+    string params = "()";
+    if(exists(item.parameters)) {
+        params = GetParameterListString(item.parameters);
+    } 
+
+    return ret + " " + params;
+}
+
+//////////////////////////////////////////////////
+// fields
+//////////////////////////////////////////////////
+
+typedef struct {
+    ushort class_idx <read=LongTypeIdRead, comment="Type ID of the class that defines this field">;
+    ushort type_idx <read=LongTypeIdRead, comment="Type ID for the type of this field">;
+    uint name_idx <read=StringIdRead, comment="String ID for the field's name">;
+} field_id_item <read=FieldIdItemRead, optimize=false>;
+
+string FieldIdItemRead(field_id_item &i) {
+    local string type = GetLongTypeDescriptor(GetTypeById(i.type_idx));
+    local string classname = GetLongTypeDescriptor(GetTypeById(i.class_idx));
+    local string name = GetStringById(i.name_idx);
+
+    return type + " " + classname + "." + name;
+}
+
+typedef struct (int size) {
+    local int s = size;
+    field_id_item field_id[size] <comment="Field ID">;
+} field_id_list <read=FieldIDListRead>;
+
+string FieldIDListRead(field_id_list &l) {
+    string s;
+    s = SPrintf(s, "%d fields", l.s);
+    return s;
+}
+
+//////////////////////////////////////////////////
+// methods
+//////////////////////////////////////////////////
+
+typedef struct {
+    ushort class_idx <read=LongTypeIdRead, comment="Type ID of the class that defines this method">;
+    ushort proto_idx <read=ProtoIdxRead, comment="Prototype ID for this method">;
+    uint name_idx <read=StringIdRead, comment="String ID for the method's name">;
+} method_id_item <read=MethodIdItemRead, optimize=false>;
+
+string ProtoIdxRead(ushort p) {
+    string s;
+    SPrintf(s, "(0x%X) %s", p, GetPrototypeSignature(dex_proto_ids.proto_id[p]));
+    return s;
+}
+
+string MethodIdItemRead(method_id_item &m) {
+    local string retval = GetLongTypeDescriptor(GetTypeById(dex_proto_ids.proto_id[m.proto_idx].return_type_idx));
+    local string classname = GetLongTypeDescriptor(GetStringById(dex_type_ids.type_id[m.class_idx].descriptor_idx));
+    local string methodname = GetStringById(m.name_idx);
+    local string params = "()";
+    if(exists(dex_proto_ids.proto_id[m.proto_idx].parameters)) {
+        params = GetParameterListString(dex_proto_ids.proto_id[m.proto_idx].parameters);
+    } 
+    return retval + " " + classname + "." + methodname + params;
+}
+
+typedef struct (int size) {
+    local int s = size;
+    method_id_item method_id[size] <comment="Method ID">;
+} method_id_list <read=MethodIDListRead>;
+
+string MethodIDListRead(method_id_list &l) {
+    string s;
+    s = SPrintf(s, "%d methods", l.s);
+    return s;
+}
+
+//////////////////////////////////////////////////
+// annotations
+//////////////////////////////////////////////////
+
+typedef struct {
+    uint field_idx <read=FieldIdRead>;
+    uint annotations_off;
+
+    if(annotations_off != 0) {
+        local int64 pos = FTell();
+        FSeek(odexpad + annotations_off);
+    
+        struct annotation_set_item field_annotations;
+        
+        FSeek(pos);       
+    }
+} field_annotation <read=FieldAnnotationRead, optimize=false>;
+
+string FieldAnnotationRead(field_annotation &f) {
+    return GetFieldById(f.field_idx);
+}
+
+typedef struct {
+    uint method_idx <read=MethodIdRead>;
+    uint annotations_off;
+
+    if(annotations_off != 0) {
+        local int64 pos = FTell();
+        FSeek(odexpad + annotations_off);
+    
+        struct annotation_set_item method_annotations;
+        
+        FSeek(pos);       
+    }
+} method_annotation <read=MethodAnnotationRead, optimize=false>;
+
+string MethodAnnotationRead(method_annotation &m) {
+    return GetMethodById(m.method_idx);
+}
+
+typedef struct {
+    uint method_idx <read=MethodIdRead>;
+    uint annotations_off;
+
+    if(annotations_off != 0) {
+        local int64 pos = FTell();
+        FSeek(odexpad + annotations_off);
+    
+        struct annotation_set_ref_list annotations_list;
+        
+        FSeek(pos);       
+    }
+} parameter_annotation <read=ParameterAnnotationRead, optimize=false>;
+
+string ParameterAnnotationRead(parameter_annotation &p) {
+    return GetParameterListString(dex_proto_ids.proto_id[dex_method_ids.method_id[p.method_idx].proto_idx].parameters);
+}
+
+typedef enum <ubyte> {
+    VISIBILITY_BUILD = 0x0,
+    VISIBILITY_RUNTIME = 0x1,
+    VISIBILITY_SYSTEM = 0x2
+} VISIBILITY;
+
+typedef struct {
+    VISIBILITY visibility <comment="Visibility of item">;
+    encoded_annotation annotation <comment="Encoded annotation contents">;
+} annotation_item <read=AnnotationItemRead, optimize=false>;
+
+string AnnotationItemRead(annotation_item &i) {
+    return EncodedAnnotationRead(i.annotation);
+}
+
+typedef struct {
+    uint annotation_off <comment="File offset of this annotation entry">;
+    
+    if(annotation_off != 0) {
+        local int64 pos = FTell();
+        FSeek(odexpad + annotation_off);
+    
+        annotation_item item <comment="Annotation item">;
+        
+        FSeek(pos);
+    }
+
+} annotation_off_item <read=AnnotationOffItemRead, optimize=false>;
+
+string AnnotationOffItemRead(annotation_off_item &i) {
+    if(exists(i.item)) {
+        return AnnotationItemRead(i.item);
+    }
+}
+
+typedef struct {
+    uint size <comment="Number of entries in set">;
+    
+    if(size > 0) {
+        annotation_off_item entries[size] <comment="Annotation entry elements">;
+    }
+} annotation_set_item <read=AnnotationSetItemRead, optimize=false>;
+
+string AnnotationSetItemRead(annotation_set_item &i) {
+    local string s;
+    SPrintf(s, "%i annotation entries", i.size);
+    return s;
+}
+
+typedef struct {
+    uint class_annotations_off <comment="File offset to class annotations">;
+
+    if(class_annotations_off != 0) {
+        local int64 pos = FTell();
+        FSeek(odexpad + class_annotations_off);
+    
+        annotation_set_item class_annotations <comment="Class annotations">;
+        
+        FSeek(pos);       
+    }
+    uint fields_size <comment="Number of fields annotated by this item">;
+    uint methods_size <comment="Number of methods annotated by this item">;
+    uint parameters_size <comment="Number of method parameter lists annotated by this item">;
+    
+    if(fields_size > 0) {
+        field_annotation field_annotations[fields_size] <comment="List of field annotations">;
+    }
+
+    if(methods_size > 0) {
+        method_annotation method_annotations[methods_size] <comment="List of method annotations">;
+    }
+
+    if(parameters_size > 0) {
+        parameter_annotation parameter_annotations[parameters_size] <comment="List of method parameter annotations">;    
+    }
+} annotations_directory_item <read=AnnotationsDirectoryItemRead, optimize=false>;
+
+string AnnotationsDirectoryItemRead(annotations_directory_item &i) {
+    local string s; 
+    local int classes = 0;
+    if(exists(i.class_annotations)) {
+        classes = i.class_annotations.size;
+    }
+
+    SPrintf(s, "%i class annotations, %i field annotations, %i method annotations, %i parameter annotations",
+        classes, i.fields_size, i.methods_size, i.parameters_size);        
+    return s;
+}
+
+typedef struct {
+    uint annotations_off <comment="File offset of annotation">;
+
+    if(annotations_off != 0) {
+        local int64 pos = FTell();
+        FSeek(odexpad + annotations_off);
+    
+        struct annotation_set_item item <comment="Annotation set item">;
+        
+        FSeek(pos);       
+    }
+} annotation_set_ref_item <optimize=false>;
+
+typedef struct {
+    uint size <comment="Number of entries in annotation list">;
+    
+    if(size > 0) {
+       annotation_set_ref_item list[size] <comment="Annotation set elements">;
+    }
+} annotation_set_ref_list;
+
+//////////////////////////////////////////////////
+// classes
+//////////////////////////////////////////////////
+
+// access flags. some of these mean different things for different items (class/field/method)
+typedef enum <uint> {
+    ACC_PUBLIC = 0x1,
+    ACC_PRIVATE = 0x2,
+    ACC_PROTECTED = 0x4,
+    ACC_STATIC = 0x8,
+    ACC_FINAL = 0x10,
+    ACC_SYNCHRONIZED = 0x20,
+    ACC_VOLATILE = 0x40, // field
+    //ACC_BRIDGE = 0x40, // method
+    ACC_TRANSIENT = 0x80, // field
+    //ACC_VARARGS = 0x80, // method
+    ACC_NATIVE = 0x100,
+    ACC_INTERFACE = 0x200,
+    ACC_ABSTRACT = 0x400,
+    ACC_STRICT = 0x800,
+    ACC_SYNTHETIC = 0x1000,
+    ACC_ANNOTATION = 0x2000,
+    ACC_ENUM = 0x4000,
+    ACC_CONSTRUCTOR = 0x10000,
+    ACC_DECLARED_SYNCHRONIZED = 0x20000
+} ACCESS_FLAGS <read=AccessFlagsRead>;
+
+string AccessFlagsRead(ACCESS_FLAGS f) {
+    string ret = "";
+    string flags = "";
+    ACCESS_FLAGS i = 1;
+
+    while(i <= ACC_DECLARED_SYNCHRONIZED) {
+        if (f & i) {
+            flags += EnumToString(i) + " ";
+        }
+        i = i << 1;
+    }
+
+    SPrintf(ret, "(0x%X) %s", f, flags);
+    return ret;
+}
+
+string AccessFlagsReadUleb(uleb128 &f) {
+    return AccessFlagsRead(uleb128_value(f));
+}
+
+typedef enum {
+    AF_CLASS, AF_FIELD, AF_METHOD
+} AF_TYPE;
+
+string GetFriendlyAccessFlag(int flag, AF_TYPE type) {
+    switch (flag) {
+        case ACC_PUBLIC: return "public";
+        case ACC_PRIVATE: return "private";
+        case ACC_PROTECTED: return "protected";
+        case ACC_STATIC: return "static";
+        case ACC_FINAL: return "final";
+        case ACC_SYNCHRONIZED: return "synchronized";
+        case ACC_VOLATILE:
+            if(type == AF_FIELD) return "volatile";
+            else return "bridge"; // 0x40 is 'bridge' for methods
+        case ACC_TRANSIENT:
+            if(type == AF_FIELD) return "transient";
+            else return "varargs"; // 0x80 is 'varargs' for methods
+        case ACC_NATIVE: return "native";
+        case ACC_INTERFACE: return "interface";
+        case ACC_ABSTRACT: return "abstract";
+        case ACC_STRICT: return "strict";
+        case ACC_SYNTHETIC: return "synthetic";
+        case ACC_ANNOTATION: return "annotation";
+        case ACC_ENUM: return "enum";
+        case ACC_CONSTRUCTOR: return "constructor";
+        case ACC_DECLARED_SYNCHRONIZED: return "declared-synchronized";
+    }
+    return "ERROR";
+}
+
+string GetFriendlyAccessFlags(ACCESS_FLAGS f, AF_TYPE type) {
+    string flags = "";
+    ACCESS_FLAGS i = 1;
+
+    while(i <= ACC_DECLARED_SYNCHRONIZED) {
+        if (f & i) {
+            flags += GetFriendlyAccessFlag(i, type) + " ";
+        }
+        i = i << 1;
+    }
+
+    return flags;
+}
+
+// encoded fields
+typedef struct (int previd) {
+    local int p = previd;
+
+    uleb128 field_idx_diff <comment="Field ID for this field, represented as the difference from the previous index">;
+    uleb128 access_flags <read=AccessFlagsReadUleb, comment="Access flags">;
+} encoded_field <read=EncodedFieldRead, optimize=false>;
+
+string EncodedFieldRead(encoded_field &f) {
+    local int realid = f.p + uleb128_value(f.field_idx_diff);
+    return GetFriendlyAccessFlags(uleb128_value(f.access_flags), AF_FIELD) + GetFieldById(realid);
+}
+
+typedef struct (int size) {
+    local int s = size;
+    local int i;
+    local int fieldid = 0;
+
+    for(i=0; i<size; i++) {
+        encoded_field field(fieldid) <comment="Encoded field">;
+        fieldid = fieldid + uleb128_value(field.field_idx_diff);
+    }
+} encoded_field_list <read=EncodedFieldListRead>;
+
+string EncodedFieldListRead(encoded_field_list &l) {
+    local string s;
+    SPrintf(s, "%i fields", l.s);
+    return s;
+}
+
+// encoded methods
+typedef struct (int previd) {
+    local int p = previd;
+
+    uleb128 method_idx_diff <comment="Method ID for this method, represented as the difference from the previous index">;
+    uleb128 access_flags <read=AccessFlagsReadUleb, comment="Access flags">;
+    uleb128 code_off <comment="File offset to the code for this method">;
+
+    if(uleb128_value(code_off) != 0) {
+        local int64 pos = FTell();
+        FSeek(odexpad + uleb128_value(code_off));
+        struct code_item code <comment="Code structure for this method">;
+        FSeek(pos);
+    }
+} encoded_method <read=EncodedMethodRead, optimize=false>;
+
+string EncodedMethodRead(encoded_method &m) {
+    local int realid = m.p + uleb128_value(m.method_idx_diff);
+    return GetFriendlyAccessFlags(uleb128_value(m.access_flags), AF_METHOD) + GetMethodById(realid);
+}
+
+typedef struct (int size) {
+    local int s = size;
+    local int i;
+    local int methodid = 0;
+
+    for(i=0; i<size; i++) {
+        encoded_method method(methodid) <comment="Encoded method">;
+        methodid = methodid + uleb128_value(method.method_idx_diff);
+    }
+} encoded_method_list <read=EncodedMethodListRead>;
+
+string EncodedMethodListRead(encoded_method_list &l) {
+    local string s;
+    SPrintf(s, "%i methods", l.s);
+    return s;
+}    
+
+typedef struct {
+    uleb128 static_fields_size <comment="The number of static fields">;
+    uleb128 instance_fields_size <comment="The number of instance fields">;
+    uleb128 direct_methods_size <comment="The number of direct methods">;
+    uleb128 virtual_methods_size <comment="The number of virtual methods">;
+
+    if(uleb128_value(static_fields_size) > 0) {
+        encoded_field_list static_fields(uleb128_value(static_fields_size)) <comment="Encoded sequence of static fields">;
+    }
+
+    if(uleb128_value(instance_fields_size) > 0) {
+        encoded_field_list instance_fields(uleb128_value(instance_fields_size)) <comment="Encoded sequence of instance fields">;
+    }
+
+    if(uleb128_value(direct_methods_size) > 0) {
+        encoded_method_list direct_methods(uleb128_value(direct_methods_size)) <comment="Encoded sequence of direct methods">;
+    }
+
+    if(uleb128_value(virtual_methods_size) > 0) {
+        encoded_method_list virtual_methods(uleb128_value(virtual_methods_size)) <comment="Encoded sequence of virtual methods">;
+    }
+} class_data_item <read=ClassDataItemRead>;
+
+string ClassDataItemRead(class_data_item &i) {
+    local string s;
+    SPrintf(s, "%i static fields, %i instance fields, %i direct methods, %i virtual methods",
+        uleb128_value(i.static_fields_size), uleb128_value(i.instance_fields_size), 
+        uleb128_value(i.direct_methods_size), uleb128_value(i.virtual_methods_size));
+    return s;
+}   
+
+typedef struct {
+    local int64 pos;
+
+    uint class_idx <read=LongTypeIdRead, comment="Type ID for this class">;
+    ACCESS_FLAGS access_flags <comment="Access flags">;
+    uint superclass_idx <read=LongTypeIdRead, comment="Type ID for this class's superclass">; 
+
+    uint interfaces_off <comment="File offset to interface list">;
+    if(interfaces_off != 0) {
+        pos = FTell();
+        FSeek(odexpad + interfaces_off);
+        type_item_list interfaces <read=InterfacesRead, comment="Interface data">;
+        FSeek(pos);
+    }
+
+    uint source_file_idx <read=StringIdRead, comment="String ID for the name of the file with this class defined">;
+
+    uint annotations_off <comment="File offset to the annotation structure for this class">;
+    if(annotations_off != 0) {
+        pos = FTell();
+        FSeek(odexpad + annotations_off);
+        annotations_directory_item annotations <comment="Annotation data">;
+        FSeek(pos);
+    }
+
+    uint class_data_off <comment="File offset to the class data for this class">;
+    if(class_data_off != 0) {
+        pos = FTell();
+        FSeek(odexpad + class_data_off);
+        class_data_item class_data <comment="Class data">;
+        FSeek(pos);
+    }
+
+    uint static_values_off <comment="File offset to static field data">;
+    if(static_values_off != 0) {
+        pos = FTell();
+        FSeek(odexpad + static_values_off);
+        struct encoded_array_item static_values <comment="Static values">;
+        FSeek(pos);        
+    }
+} class_def_item <read=ClassDefItemRead, optimize=false>;
+
+string ClassDefItemRead(class_def_item &i) {
+    local string classname = GetLongTypeById(i.class_idx);
+    local string flags = GetFriendlyAccessFlags(i.access_flags, AF_CLASS);
+    return flags + classname;
+}
+
+string InterfacesRead(type_item_list &l) {
+    string s = "";
+    int i;
+
+    for(i = 0; i < l.size; i++) {
+        s += GetLongTypeDescriptor(GetTypeById(l.list[i].type_idx));
+        if(i+1 < l.size) {
+            s += ", ";
+        }
+    }
+    return s;
+}
+
+typedef struct (int size) {
+    local int s = size;
+    class_def_item class_def[size] <comment="Class ID">;
+} class_def_item_list <read=ClassDefItemListRead>;
+
+string ClassDefItemListRead(class_def_item_list &l) {
+    string s;
+    s = SPrintf(s, "%d classes", l.s);
+    return s;
+}
+
+typedef struct {
+    uint start_addr <comment="Start address of code block covered by this entry, in 16-bit code units from the start of the first instruction">;
+    ushort insn_count <comment="Number of 16-bit code units covered by this entry">;
+    ushort handler_off <comment="Offset to the catch_handler_item for this entry">;
+} try_item <optimize=false>;
+
+typedef struct {
+    sleb128 size <comment="Number of catch types in the list">;
+
+    local int s = sleb128_value(size);
+    local int numhandlers = 0;
+    
+    if(s != 0) {
+        numhandlers = Abs(s);
+        struct encoded_type_addr_pair handlers[numhandlers] <comment="Exception handler pairs">;
+    }
+    
+    if(s <= 0) {
+        uleb128 catch_all_addr <comment="Address of catch-all handler">;
+        numhandlers++;
+    }
+} encoded_catch_handler <read=EncodedCatchHandlerRead, optimize=false>;
+
+string EncodedCatchHandlerRead(encoded_catch_handler &h) {
+    local string s;
+    SPrintf(s, "%i handlers", h.numhandlers);
+    return s;
+}
+
+typedef struct {
+    uleb128 size <comment="Number of handler lists">;
+    encoded_catch_handler list[uleb128_value(size)] <comment="List of handler lists">;
+} encoded_catch_handler_list <read=EncodedCatchHandlerListRead>;
+
+string EncodedCatchHandlerListRead(encoded_catch_handler_list &l) {
+    local string s;
+    SPrintf(s, "%i handler lists", uleb128_value(l.size));
+    return s;
+}
+
+typedef struct {
+    ushort registers_size <comment="Number of registers used by this code">;
+    ushort ins_size <comment="Number of words of incoming arguments for this code's method">;
+    ushort outs_size <comment="Number of words of outgoing arguments for this code's method">;
+    ushort tries_size <comment="Number of try_item entries for this code">;
+    uint debug_info_off <comment="File offset for the debug information">;
+
+    if(debug_info_off != 0) {
+        local int64 pos = FTell();
+        FSeek(odexpad + debug_info_off);
+
+        struct debug_info_item debug_info <comment="Debug information for this method">;
+        FSeek(pos);
+    }
+
+    uint insns_size <comment="Size of instruction list, in 16-bit code units">;
+    if(insns_size != 0) {
+        ushort insns[insns_size] <comment="Instruction">;
+    }
+    
+    if(tries_size != 0) {
+        if (insns_size & 1 == 1) {
+            ushort padding <comment="Padding...">;
+        }
+
+        try_item tries[tries_size] <comment="Array of code try block addresses">;
+        encoded_catch_handler_list handlers <comment="Array of catch types and handler addresses">;
+    }
+} code_item <read=CodeItemRead>;
+
+string CodeItemRead(code_item &i) {
+    local string s;
+    SPrintf(s, "%i registers, %i in arguments, %i out arguments, %i tries, %i instructions", 
+        i.registers_size, i.ins_size, i.outs_size, i.tries_size, i.insns_size);
+    return s;
+}
+
+typedef struct {
+    uleb128 type_idx <read=LongTypeIdReadUleb, comment="Type ID for the type of exception to catch">;
+    uleb128 addr <comment="Bytecode address of exception handler">;
+} encoded_type_addr_pair <read=EncodedTypeAddrPairRead, optimize=false>;
+
+string EncodedTypeAddrPairRead(encoded_type_addr_pair &p) {
+    string s;
+    SPrintf(s, "%s at 0x%X", GetLongTypeById(uleb128_value(p.type_idx)), uleb128_value(p.addr));
+    return s;
+}
+
+typedef struct {
+    encoded_array value <comment="The encoded array value">;
+} encoded_array_item <read=EncodedArrayItemRead>;
+
+string EncodedArrayItemRead(encoded_array_item &i) {
+    local string s;
+    SPrintf(s, "%i items: %s", uleb128_value(i.value.size), EncodedArrayRead(i.value));
+    return s;
+}
+
+enum <ushort> TYPE_CODES {
+    TYPE_HEADER_ITEM = 0x0000,
+    TYPE_STRING_ID_ITEM = 0x0001,
+    TYPE_TYPE_ID_ITEM = 0x0002,
+    TYPE_PROTO_ID_ITEM = 0x0003,
+    TYPE_FIELD_ID_ITEM = 0x0004,
+    TYPE_METHOD_ID_ITEM = 0x0005,
+    TYPE_CLASS_DEF_ITEM = 0x0006,
+
+    TYPE_MAP_LIST = 0x1000,
+    TYPE_TYPE_LIST = 0x1001,
+    TYPE_ANNOTATION_SET_REF_LIST = 0x1002,
+    TYPE_ANNOTATION_SET_ITEM = 0x1003,
+
+    TYPE_CLASS_DATA_ITEM = 0x2000,
+    TYPE_CODE_ITEM = 0x2001,
+    TYPE_STRING_DATA_ITEM = 0x2002,
+    TYPE_DEBUG_INFO_ITEM = 0x2003,
+    TYPE_ANNOTATION_ITEM = 0x2004,
+    TYPE_ENCODED_ARRAY_ITEM = 0x2005,
+    TYPE_ANNOTATIONS_DIRECTORY_ITEM = 0x2006
+};
+
+//////////////////////////////////////////////////
+// debug info
+//////////////////////////////////////////////////
+
+typedef enum <ubyte> {
+    DBG_END_SEQUENCE = 0x00,
+    DBG_ADVANCE_PC = 0x01,
+    DBG_ADVANCE_LINE = 0x02,
+    DBG_START_LOCAL = 0x03,
+    DBG_START_LOCAL_EXTENDED = 0x04,
+    DBG_END_LOCAL = 0x05,
+    DBG_RESTART_LOCAL = 0x06,
+    DBG_SET_PROLOGUE_END = 0x07,
+    DBG_SET_EPILOGUE_BEGIN = 0x08,
+    DBG_SET_FILE = 0x09
+} DBG_OPCODE;
+
+typedef struct {
+    DBG_OPCODE opcode <comment="Debug opcode">;
+    local string args = "";
+
+    switch (opcode) {
+        case DBG_END_SEQUENCE: 
+            break;
+        case DBG_ADVANCE_PC:
+            uleb128 addr_diff <comment="Amount to add to address register">;
+            SPrintf(args, "%i", uleb128_value(addr_diff));
+            break;
+        case DBG_ADVANCE_LINE:
+            sleb128 line_diff <comment="Amount to change line register by">;
+            SPrintf(args, "%i", sleb128_value(line_diff));
+            break;
+        case DBG_START_LOCAL:
+            uleb128 register_num <comment="Register that will contain local">;
+            uleb128 name_idx <read=StringIdReadUlebp1, comment="String index of name">;
+            uleb128 type_idx <read=LongTypeIdReadUlebp1,comment="Type index of type">;
+            SPrintf(args, "%i, %s, %s", uleb128_value(register_num), StringIdReadUlebp1(name_idx), 
+                LongTypeIdReadUlebp1(type_idx));
+            break;
+        case DBG_START_LOCAL_EXTENDED:
+            uleb128 register_num <comment="Register that will contain local">;
+            uleb128 name_idx <read=StringIdReadUlebp1, comment="String index of name">;
+            uleb128 type_idx <read=LongTypeIdReadUlebp1, comment="Type index of type">;
+            uleb128 sig_idx <read=StringIdReadUlebp1, comment="String index of type signature">;
+            SPrintf(args, "%i, %s, %s, %s", uleb128_value(register_num), StringIdReadUlebp1(name_idx), 
+                LongTypeIdReadUlebp1(type_idx), StringIdReadUlebp1(sig_idx));
+            break;
+        case DBG_END_LOCAL:
+            uleb128 register_num <comment="Register that contained local">;
+            SPrintf(args, "%i", uleb128_value(register_num));
+            break;
+        case DBG_RESTART_LOCAL:
+            uleb128 register_num <comment="Register to restart">;
+            SPrintf(args, "%i", uleb128_value(register_num));
+            break;
+        case DBG_SET_PROLOGUE_END:
+        case DBG_SET_EPILOGUE_BEGIN:
+            break;
+        case DBG_SET_FILE:
+            uleb128 name_idx <read=StringIdReadUlebp1, comment="String index of source file name">;
+            SPrintf(args, "%s", StringIdReadUlebp1(name_idx));
+    }
+} debug_opcode <read=DebugOpcodeRead, optimize=false>;
+
+#define DBG_FIRST_SPECIAL 0x0a
+#define DBG_LINE_BASE -4
+#define DBG_LINE_RANGE 15
+
+string DebugOpcodeRead(debug_opcode &opcode) {
+    local string s;
+    if(opcode.opcode >= DBG_FIRST_SPECIAL) {
+        local ubyte adjusted = opcode.opcode - DBG_FIRST_SPECIAL;
+        SPrintf(s, "Special opcode: line + %i, address + %i", DBG_LINE_BASE + (adjusted % DBG_LINE_RANGE), (adjusted / DBG_LINE_RANGE));
+    } else {
+        s = EnumToString(opcode.opcode);
+    }
+
+    if(opcode.args != "") {
+        s += " (" + opcode.args + ")";
+    }
+
+    return s;
+}
+
+typedef struct {
+    uleb128 line_start <comment="Initial value for state machine 'line' register">;
+    uleb128 parameters_size <comment="Number of encoded parameter names">;
+    if(uleb128_value(parameters_size) > 0) {
+        uleb128 parameter_names[uleb128_value(parameters_size)] <comment="String ID of method parameter names", optimize=false>; // actually uleb128p1
+    }
+
+    do {
+        debug_opcode opcode <comment="A debug opcode">;
+    } while (opcode.opcode != DBG_END_SEQUENCE);
+} debug_info_item;
+
+//////////////////////////////////////////////////
+// map list
+//////////////////////////////////////////////////
+typedef struct {
+    TYPE_CODES type;
+    ushort unused;
+    uint size;
+    uint offset;  
+} map_item <read=MapItemRead>;
+
+string MapItemRead(map_item &m) {
+    string s;
+    SPrintf(s, "%s", EnumToString(m.type));
+    return s;
+}
+
+typedef struct {
+    uint size;
+    map_item list[size];
+} map_list_type <read=MapListTypeRead>;
+
+string MapListTypeRead(map_list_type &t) {
+    local string s;
+    SPrintf(s, "%i items", t.size);
+    return s;
+}
+
+//////////////////////////////////////////////////
+// utility functions for reading various strings
+// note: strings are stored in a format called MUTF-8, and its 
+//   possible they won't always display correctly in the 010 UI
+//////////////////////////////////////////////////
+
+// read a value from the string table
+string StringIdRead(uint id) {
+    if(id == NO_INDEX) {
+        return "NO_INDEX";
+    }
+    
+    local string s;
+    SPrintf(s, "(0x%.X) \"%s\"", id, GetStringById(id));
+    return s;
+}
+
+string StringIdReadUleb(uleb128 &id) {
+    return StringIdRead(uleb128_value(id));
+}
+
+string StringIdReadUlebp1(uleb128 &id) {
+    return StringIdRead(uleb128p1_value(id));
+}
+
+// read a value from the type table, return short form
+string TypeIdRead(int id) {
+    return GetIdAndNameString(id, GetTypeById(id));
+}
+
+// read a value from the type table, return the long form
+string LongTypeIdRead(int id) {
+    return GetIdAndNameString(id, GetLongTypeById(id));
+}
+
+string LongTypeIdReadUleb(uleb128 &id) {
+    return LongTypeIdRead(uleb128_value(id));
+}
+
+string LongTypeIdReadUlebp1(uleb128 &id) {
+    return LongTypeIdRead(uleb128p1_value(id));
+}
+
+string FieldIdRead(int id) {
+    return GetIdAndNameString(id, GetFieldById(id));
+}
+
+string MethodIdRead(int id) {
+    return GetIdAndNameString(id, GetMethodById(id));
+}
+
+string GetIdAndNameString(int id, string name) {
+    local string s;
+    SPrintf(s, "(0x%X) %s", id, name);
+    return s;
+}
+
+// read a string from the string table
+string GetStringById(uint id) {
+    if(id == NO_INDEX) {
+        return "NO_INDEX";
+    }
+
+    if(exists(dex_string_ids.string_id[id])) {
+        return dex_string_ids.string_id[id].string_data.data;
+    } else {
+        return "*** NO STRING";
+    }
+}
+
+string GetTypeById(uint id) {
+   if(id == NO_INDEX) {
+        return "NO_INDEX";
+    }
+
+    if(exists(dex_type_ids.type_id[id])) {
+        return GetStringById(dex_type_ids.type_id[id].descriptor_idx);
+    } else {
+        return "*** NO TYPE";
+    }
+}
+
+string GetLongTypeById(int id) {
+    return GetLongTypeDescriptor(GetTypeById(id));
+}
+
+string GetMethodById(uint id) {
+    if(id == NO_INDEX) {
+        return "NO_INDEX";
+    }
+
+    if(exists(dex_method_ids.method_id[id])) {
+        return MethodIdItemRead(dex_method_ids.method_id[id]);
+    } else {
+        return "*** NO METHOD";
+    }
+}
+
+string GetFieldById(uint id) {
+    if(id == NO_INDEX) {
+        return "NO_INDEX";
+    }
+
+    if(exists(dex_field_ids.field_id[id])) {
+        return FieldIdItemRead(dex_field_ids.field_id[id]);
+    } else {
+        return "*** NO FIELD";
+    }
+}
+
+//////////////////////////////////////////////////
+// dexopt stuff
+//////////////////////////////////////////////////
+
+typedef enum<uint> {
+  DEX_CHUNK_CLASS_LOOKUP = 0x434c4b50,
+  DEX_CHUNK_REGISTER_MAPS = 0x524d4150,
+  DEX_CHUNK_END = 0x41454e44
+} DEX_CHUNK_TYPE;
+
+typedef struct {
+    DEX_CHUNK_TYPE type <comment="Chunk type">;
+    uint size <comment="Size of chunk, in bytes">;
+    local int realsize = (size + 7) & ~7;
+
+    
+    if(type == DEX_CHUNK_CLASS_LOOKUP) {
+        struct dex_class_lookup class_lookup_table <comment="DexOpt class lookup hash table">;
+    } else if (type == DEX_CHUNK_REGISTER_MAPS) {
+        ubyte chunkbytes[realsize];
+    } else if (type == DEX_CHUNK_END) {
+        //ubyte chunkbytes[realsize];
+    } else {
+        Warning("Unknown chunk type 0x%X", type);
+        return;
+    }
+} dexopt_opt_chunk <read=DexOptChunkRead, optimize=false>;
+
+typedef struct {
+    local int count = 0;
+    do {
+        dexopt_opt_chunk chunk;
+        count++;
+    } while(chunk.type != DEX_CHUNK_END);
+} dexopt_opt_table <read=DexoptOptTableRead>;
+
+string DexoptOptTableRead(dexopt_opt_table &t) {
+    local string s;
+    SPrintf(s, "%i items", t.count);
+    return s;
+}
+
+string DexOptChunkRead(dexopt_opt_chunk &c) {
+    local string s;
+    SPrintf(s, "%s chunk: %i bytes", EnumToString(c.type), c.size);
+    return s;
+}
+
+typedef struct {
+    uint class_descriptor_hash <comment="Class descriptor hash code">; 
+    int class_descriptor_offset <comment="File offset of class descriptor">;
+    int class_definition_offset <comment="File offset of class definition">; 
+} dex_class_lookup_entry <read=DexClassLookupEntryRead, optimize=false>;
+
+string DexClassLookupEntryRead(dex_class_lookup_entry &e) {
+    local string s;
+    SPrintf(s, "0x%X: (descriptor 0x%X, definition 0x%X)", e.class_descriptor_hash, e.class_descriptor_offset, e.class_definition_offset);
+    return s;
+}
+
+typedef struct {
+    int size <comment="Size of dex_class_lookup structure">;
+    int num_entries <comment="Number of entries in class lookup hashtable">;
+
+    if(num_entries > 0) {
+        dex_class_lookup_entry table[num_entries] <comment="Class lookup table">;
+    }
+} dex_class_lookup;
+
+//////////////////////////////////////////////////
+// main stuff
+//////////////////////////////////////////////////
+
+// first check file type - dex files start with 'dex', odex files start with 'dey'
+local int odex = 0;
+local char tmp[3];
+ReadBytes(tmp, 0, 3);
+FSeek(0);
+
+if(!Strcmp(tmp, "dey")) {
+    odex = 1;
+}     
+
+// dexopt files start with a dexopt header
+if(odex) {
+    dexopt_header_item dexopt_header <comment="DexOpt file header">;
+    odexpad = dexopt_header.dex_offset;
+    FSeek(odexpad);
+} 
+
+// main dex header and structs
+header_item dex_header <comment="Dex file header">;
+string_id_list dex_string_ids(dex_header.string_ids_size) <comment="String ID list">;
+type_id_list dex_type_ids(dex_header.type_ids_size) <comment="Type ID list">;
+proto_id_list dex_proto_ids(dex_header.proto_ids_size) <comment="Method prototype ID list">;
+field_id_list dex_field_ids(dex_header.field_ids_size) <comment="Field ID list">;
+method_id_list dex_method_ids(dex_header.method_ids_size) <comment="Method ID list">;
+class_def_item_list dex_class_defs(dex_header.class_defs_size) <comment="Class definitions list">;
+
+// map list, we don't really do anything with it though
+if(dex_header.map_off != 0) {
+    FSeek(odexpad + dex_header.map_off);
+    map_list_type dex_map_list <comment="Map list">;
+}
+
+if(odex) {
+    if(dexopt_header.deps_offset != 0) {
+        FSeek(dexopt_header.deps_offset);
+        ubyte dexopt_deps[dexopt_header.deps_length] <comment="DexOpt dependency table">;
+    }
+
+    if(dexopt_header.opt_offset != 0) {
+        FSeek(dexopt_header.opt_offset);
+        dexopt_opt_table opt_table <comment="DexOpt OPT tabls">;
+    }
+}

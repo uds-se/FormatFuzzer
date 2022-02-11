@@ -76,6 +76,8 @@ def Checksum(params, ctxt, scope, stream, coord):
     values as described in the Check Sum/Hash Algorithms topic. A negative
     number is returned on error.
     """
+    if params[0]._pfp__interp._generate:
+        return 0
     checksum_types = {
         0: "CHECKSUM_BYTE",  # Treats the file as a set of unsigned bytes
         1: "CHECKSUM_SHORT_LE",  # Treats the file as a set of unsigned little-endian shorts

@@ -83,6 +83,87 @@ local uint32 id3v2_tag_no_header_start = 0;
 local uint32 id3v2_tag_end = 0;
 
 
+
+void write_synchsafe_integer( uint32 size ){
+	local ubyte f_first  = 0;
+	local ubyte f_second = 0;
+	local ubyte f_third  = 0;
+	local ubyte f_fourth = 0;
+
+
+	if(size > 0xFFFFFFF){
+		Printf("Size: %zu is too large!\n", size);
+	}
+
+	local uint32 i = 0;
+	local ubyte size_bit_array[32];
+	for(i = 0; i<=31; i++){
+		if((i== 7) || (i==15)|| (i==23) || (i==31)){
+			size_bit_array[i] = 0;
+		}else{
+			size_bit_array[i] = ((size >> i) % 2 );
+		}
+		
+	}
+	for(i = 0; i<=32; i++){
+		switch((i / 8)){
+				case 0:
+					f_first += size_bit_array[i] << (i%8);
+				break;
+	
+				case 1:
+					f_second += size_bit_array[i] << (i%8);
+				break;
+
+				case 2:
+					f_third += size_bit_array[i] << (i%8);
+				break;
+
+				default:
+					f_fourth += size_bit_array[i] << (i%8);
+				break;
+		}
+	}
+
+	//TODO size
+	ubyte first  = { f_first };
+	ubyte second = { f_second };
+	ubyte third  = { f_third };
+	ubyte fourth = { f_fourth };
+	Printf("First: %d\nSecond: %d\nThird: %d\nFourth: %d\n", f_first, f_second, f_third, f_fourth);
+
+    if (f_first >= 0x80  ||  f_second >= 0x80  ||
+        f_third >= 0x80  ||  f_fourth >= 0x80)
+    {
+        Printf("MP3: warning: invalid ID3v2 synchsafe integer\n");
+    }
+}
+
+/*
+typedef struct {
+	ubyte first <min=0, max=0>; //max=0x7F>;
+	ubyte second <min=0, max=0>; //max=0x7F>;
+	ubyte third <min=0x7F,/*, max=0>; /*//*max=0x7F>;
+	ubyte fourth <min=0x7F, /*max=10>; /*//*max=0x7F>;
+	Printf("First: %d\nSecond: %d\nThird: %d\nFourth: %d\n", first, second, third, fourth);
+
+    local uint32 computed = first;
+    computed <<= 7;
+    computed |= second;
+    computed <<= 7;
+    computed |= third;
+    computed <<= 7;
+    computed |= fourth;
+
+    if (first >= 0x80  ||  second >= 0x80  ||
+        third >= 0x80  ||  fourth >= 0x80)
+    {
+        Printf("MP3: warning: invalid ID3v2 synchsafe integer\n");
+    }
+} synchsafe_integer <read=read_synchsafe_integer>;
+*/
+
+
 typedef struct {
 	ubyte first <min=0, max=0>; //max=0x7F>;
 	ubyte second <min=0, max=0>; //max=0x7F>;
@@ -447,7 +528,11 @@ struct ID3v2_HEADER
     DisplayFormatHex();
 
 	synchsafe_pos = FTell();
-    synchsafe_integer size <min=0, max=100>; // Is the size of the complete tag after unsynchronisation,
+
+	//synchsafe_integer size; // frame size without frame header
+	local uint32 size <min = 0, max = 0xFFFFFFF>;
+	FSeek(FTell - 4);
+	write_synchsafe_integer(size); // Is the size of the complete tag after unsynchronisation,
                    			// including padding, excluding the header but not excluding
                    			// the extended header (total tag size - 10). Most
                    			// significant bit (bit 7) of each byte is set to zero
@@ -608,8 +693,14 @@ struct ID3v2_4_FRAME
 
     DisplayFormatDecimal();
 
-	synchsafe_pos = FTell();
-    synchsafe_integer size; // frame size without frame header
+	local int id3v2_4_synchsafe_pos = FTell();
+	
+    //synchsafe_integer size; // frame size without frame header
+	uint32 size <min = 0, max = 0xFFFFFFF>;
+	FSeek(FTell - 4);
+	write_synchsafe_integer(size);
+	
+	local int id3v2_4_frame_start_no_header = FTell();
 
     FRAME_FLAGS flags;
 
@@ -622,17 +713,28 @@ struct ID3v2_4_FRAME
             UTF_16BE_without_BOM,
             UTF_8
         } encoding;
-		Printf("Size: %d\n", (size.computed - 1));
+		//Printf("Size: %d\n", (size.computed - 1));
+		Printf("Size: %d\n", (size - 1));
 		Printf("ID3v2.4 frame frame_data \n");
-        char frame_data [size.computed - 1];
+        //char frame_data [size.computed - 1];
+		char frame_data [size - 1];
     }
     else
     {
         DisplayFormatHex();
-		Printf("Size: %d\n", size.computed);
+		//Printf("Size: %d\n", size.computed);
+		Printf("Size: %d\n", size);
 		Printf("ID3v2.4 frame frame_data else \n");
-        ubyte frame_data [size.computed];
+        //ubyte frame_data [size.computed];
+		ubyte frame_data [size];
     }
+
+	local int id3v2_4_frame_end = FTell();
+	FSeek(id3v2_4_synchsafe_pos);
+	local int id3v2_4_frame_size = id3v2_4_frame_end - id3v2_4_frame_start_no_header;
+	write_synchsafe_integer(id3v2_4_frame_size);
+	FSeek(id3v2_4_frame_end);
+	
 };
 
 struct ID3v2_TAG
@@ -642,8 +744,10 @@ struct ID3v2_TAG
 	
 
     // calculating real size of the ID3v2 tag
-    local uint32 tag_sz = hdr.size.computed;
-	Printf("tag_sz: %d, hdr.size.computed: %d\n", tag_sz, hdr.size.computed);
+    //local uint32 tag_sz = hdr.size.computed;
+	local uint32 tag_sz = hdr.size;
+	//Printf("tag_sz: %d, hdr.size.computed: %d\n", tag_sz, hdr.size.computed);
+	Printf("tag_sz: %d, hdr.size.computed: %d\n", tag_sz, hdr.size);
 
     //
     // An ID3v2 tag header can be detected with the following pattern:
@@ -694,12 +798,14 @@ struct ID3v2_TAG
             ubyte id3v2_padding [ tag_sz + sizeof(hdr) - FTell() ];
         }
     }
-	/*id3v2_tag_end = FTell();
+	id3v2_tag_end = FTell();
 	//TODO fix syncsafe size
-	uint32 id3v2_tag_full_size = id3v2_tag_end - id3v2_tag_no_header_start;
-	FSeek(syncsafe_pos);
-	fix 
-	FSeek(id3v2_tag_end);*/
+	local uint32 id3v2_tag_full_size = ( id3v2_tag_end - id3v2_tag_no_header_start );
+	FSeek(synchsafe_pos);
+	local uint32 size = id3v2_tag_full_size;
+	FSeek(FTell - 4);
+	write_synchsafe_integer(size);
+	FSeek(id3v2_tag_end);
 	
 };
 
@@ -712,6 +818,7 @@ struct ID3v2_TAG
 //
 struct MPEG_HEADER{
 	DisplayFormatHex();
+	local uint64 mpeg_header_start = FTell();
 	
 	local int current_pos;
 	current_pos = FTell();
@@ -1013,9 +1120,12 @@ struct MPEG_HEADER{
 	
 	uint32 full_hdr = { full_input };
 	
+	local uint64 mpeg_header_end = FTell();
+	local uint64 mpeg_header_size = mpeg_header_end - mpeg_header_start;
 	if (input3 == 0){
-	local uint16 crc_calc = Checksum(CHECKSUM_CRC16, current_pos, 32);
-	uint16 crc16 = { crc_calc };	
+		//TODO checksum
+		local uint16 crc_calc = Checksum(CHECKSUM_CRC16, mpeg_header_start, mpeg_header_size);
+		uint16 crc16 = { crc_calc };
 	}
 };
 
@@ -1222,75 +1332,21 @@ if ( ! Strcmp(buf, "ID3") )
     Printf("MP3: ID3v2 tag found\n");
     ID3v2_TAG id3v2_tag;
 	//TODO fix id3v2 tag size (total tag size -10)
-	local ubyte f_first = 0;
-	local ubyte f_second = 0;
-	local ubyte f_third = 0;
-	local ubyte f_fourth = 0;	
-
 	//encode size using syncsafe int system
-	local uint32 final_id3v2_tag_size = FTell() - 10;
-	Printf("ID3Tag length without header: %zu", final_id3v2_tag_size);
-	local uint32 i = 0;
-	local ubyte size_bit_array[32];
-	for(i = 0; i<=31; i++){
-		if((i== 7) || (i==15)|| (i==23) || (i==31)){
-			size_bit_array[i] = 0;
-		}else{
-			size_bit_array[i] = ((final_id3v2_tag_size >> i) % 2 );
-		}
-		
-	}
-	for(i = 0; i<=32; i++){
-		switch((i / 8)){
-				case 0:
-					f_first += size_bit_array[i] << (i%8);
-				break;
+	//local uint32 final_id3v2_tag_size = FTell() - 10;
+	//Printf("ID3Tag length without header: %zu", final_id3v2_tag_size);
 	
-				case 1:
-					f_second += size_bit_array[i] << (i%8);
-				break;
-
-				case 2:
-					f_third += size_bit_array[i] << (i%8);
-				break;
-
-				default:
-					f_fourth += size_bit_array[i] << (i%8);
-				break;
-		}
-	}
-/*
-	for (i; i <= 28; ++i){
-    	switch((i / 7)){
-				case 0:
-					f_first += (final_id3v2_tag_size << (31 - i) >> (31 - i) );
-				break;
-	
-				case 1:
-					f_second += (final_id3v2_tag_size << (31 - i) >> (31 - (i - 7) ) );
-				break;
-
-				case 2:
-					f_third += (final_id3v2_tag_size << (31 - i) >> (31 - (i - 14) ) );
-				break;
-
-				default:
-					f_fourth += (final_id3v2_tag_size << (31 - i) >> (31 - (i - 21) ) );
-				break;
-		}
-  	}*/
-	
-	local uint32 jump_back_pos = FTell();
-	FSeek(synchsafe_pos);
-	ubyte syncsafe_1 = { f_first };
+	//*local uint32 jump_back_pos = FTell();
+	//FSeek(synchsafe_pos);
+	/*ubyte syncsafe_1 = { f_first };
 	ubyte syncsafe_2 = { f_second };
 	ubyte syncsafe_3 = { f_third };
 	ubyte syncsafe_4 = { f_fourth };
-	/*ubyte syncsafe_1 = { 0 };
+	ubyte syncsafe_1 = { 1 };
 	ubyte syncsafe_2 = { 0 };
 	ubyte syncsafe_3 = { 0 };
-	ubyte syncsafe_4 = { 0 };*/
-	FSeek(jump_back_pos);
+	ubyte syncsafe_4 = { 0 };
+	FSeek(jump_back_pos);*/
 	
 }
 

@@ -364,7 +364,7 @@ typedef struct
 
 typedef struct
 {
-    byte value[4] <open=suppress>;
+    char value[4] <open=suppress>;
 } fourcc <read=ReadFourCC, open=suppress>;
 
 typedef struct
