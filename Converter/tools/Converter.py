@@ -286,7 +286,7 @@ class Converter(object):
                 except:
                     pass
                 try:
-                    expr = expr.replace("_io.eof", "FTell()==FileSize()")
+                    expr = expr.replace("_io.eof", "FTell()>=FileSize()")
                 except:
                     pass
 
@@ -547,11 +547,8 @@ class data_point():
                       containing_type=None):
         # TODO EXTEND TO ALL VARIATIONS
         if "process" in self.this_level_keys:
-
             self.gen_atomic(docu="IMPLEMENT" + str(self.input["process"]),
                             size=size)
-            print("PROCESS NOT IMPLEMENTED YET\n")
-            # TODO IMPLEMENT
             self.output.extend(self.front)
             self.output.extend(self.back)
             return self.output
@@ -700,8 +697,6 @@ class data_point():
             loc_doc = ""
 
         if self.size_eos and not forwarding and "length_CONVERTER" == size:
-
-            print_debug(self.input)
             self.front.append(
                 "    while(FTell() < UNTIL_CONVERTER){")  # OPTION B
             self.gen_atomic(indents=2, forwarding=True)
@@ -1030,7 +1025,7 @@ def main():
     output = converter.generate_code_toplevel()
     with open(output_file_name, "w+") as out_file:
         out_file.write('\n'.join(output))
-    print('\n'.join(output))
+    # print('\n'.join(output))
 
 
 if __name__ == "__main__":
