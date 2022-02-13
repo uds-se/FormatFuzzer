@@ -195,9 +195,10 @@ def runParserOnInput(parser, testInput):
             raise TestRunException(f"Error ret: {parseTree.stderr}")
         if (len(parseTree.stdout) == 0):
             raise TestRunException(f"Error : {parseTree.stderr}")
-
+        #print(parseTree.stderr.decode())
         with open(f"{WORKING_DIR}/../output/{parser}.output", "w") as file:
             file.write(parseTree.stdout.decode())
+
         return parseTree.stdout.decode()
     except Exception as err:
         raise TestRunException(f"failed to run parser", err)
