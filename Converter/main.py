@@ -1,21 +1,37 @@
 #! /usr/bin/env python3
-import test.testbench as tb
+import tools.testbench  as tb
 import argparse
 import logging as log
 import subprocess as sub
+import sys
 
-#TODO add orchestration for batch run here.
-# TODO skip auto file gen if BT doesn't support it
-# TODO create convert /(& build) only mode+
 
 
 def run_tests_on_all():
-    pass
-
+    filenames = sub.run("basename -s .bt -a $(exa ../templates | grep -v - )",
+            shell=True, stdout=sub.PIPE, check=True)
+    tb.runMultiFromatParseTest(filenames.stdout.decode(), tb.resolveTestInputByFormat)
 
 def convert_all():
-    pass
-
+    fmts = sub.run(
+            'basename -s .ksy -a $(find kaitai_struct_formats -name "*.ksy")', 
+            shell=True, check=True, stdout=sub.PIPE)
+    for fmt in fmts.stdout.decode().split("\n"):
+        conv = tb.callConverter(fmt)
+        tb.compileParser(conv)
+        #TODO refine this
 
 def main():
-    pass
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--convert-only',
+            dest='run', 
+            action='run_funct', 
+            const=convert_all, 
+            default=run_tests_on_all,
+            help="do only conversion")
+    args = parser.parse_args(sys.argv)
+    args.run()
+
+
+if __name__ == "__main__":
+    main()
