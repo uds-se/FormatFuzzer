@@ -8,11 +8,14 @@ import sys
 
 
 def run_tests_on_all():
+    print("test")
     filenames = sub.run("basename -s .bt -a $(exa ../templates | grep -v - )",
             shell=True, stdout=sub.PIPE, check=True)
-    tb.runMultiFromatParseTest(filenames.stdout.decode(), tb.resolveTestInputByFormat)
+    fns = filenames.stdout.decode().split("\n")[:-1:]
+    tb.runMultiFromatParseTest(fns, tb.resolveTestInputByFormat)
 
 def convert_all():
+    print("convert")
     fmts = sub.run(
             'basename -s .ksy -a $(find kaitai_struct_formats -name "*.ksy")', 
             shell=True, check=True, stdout=sub.PIPE)
@@ -25,11 +28,28 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--convert-only',
             dest='run', 
-            action='run_funct', 
+            action='store', 
+            nargs='?',
             const=convert_all, 
             default=run_tests_on_all,
             help="do only conversion")
-    args = parser.parse_args(sys.argv)
+    parser.add_argument('--log',
+            metavar='loglevel',
+            dest='log_lvl',
+            default='INFO',
+            nargs='?',
+            type=str)
+    args = parser.parse_args(sys.argv[1:])
+    numeric_level = getattr(log, args.log_lvl.upper(), 'INFO')
+    if not isinstance(numeric_level, int):
+        raise ValueError('Invalid log level: %s' % numeric_level)
+    consoleLog = log.StreamHandler()
+    logfile = log.FileHandler("testbench.log")
+    logfile.setLevel(numeric_level)
+    log.basicConfig(format='%(asctime)s::%(levelname)s:%(message)s',
+                    level=numeric_level,
+                    handlers=[consoleLog, logfile],
+                    datefmt="%Y-%m-%d %H:%M:%S")
     args.run()
 
 
