@@ -330,7 +330,7 @@ typedef struct {
         PNG_CHUNK_CHRM    chrm;
     else if (type.cname == "sRGB")
         PNG_CHUNK_SRGB    srgb;
-    else if (type.cname == "iEXt")
+    else if (type.cname == "iTXt")
         PNG_CHUNK_IEXT    iext(length);
     else if (type.cname == "zEXt")
         PNG_CHUNK_ZEXT    zext(length);
