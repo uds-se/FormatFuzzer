@@ -31,7 +31,9 @@ class Converter(object):
             self.global_type_table = {}
             self.global_enum_table = {}
             self.global_init()
+
             self.endian = ""
+
             self.parse_subtree()
         else:
             self.parent = parent
@@ -127,10 +129,15 @@ class Converter(object):
             self.output_enums.extend(self.subtrees["enums"].generate_code(called_lowlevel=False))
         self.output_types.extend(self.subtrees["types"].generate_code(called_lowlevel=False))
         self.output_seqs.extend(self.subtrees["seq"].generate_code(called_lowlevel=False))
+
         if self.endian == "be":
             self.output.append("BigEndian();")
+        #  print_debug("BigENDIAN")
         elif self.endian == "le":
+            #   print_debug("LittleENDIAN")
             self.output.append("LittleEndian();")
+        else:
+            print_debug("NO ENDIAN")
         # self.output.append("SetEvilBit(false);")
         self.output.extend(self.output_enums)
         self.output.extend(self.output_types)
@@ -313,7 +320,7 @@ class meta(Converter):
         Converter.__init__(self, input_js, parent=parent, root=root, name=name)
 
     def parse_subtree(self, name=None):
-        if self.root.endian != "":
+        if self.root.endian == "":
             self.root.endian = self.input["endian"]
         pass
 
@@ -440,6 +447,7 @@ class data_point():
             self.id = str(self.subtrees["id"].get_value())
 
     def generate_code(self, size=None, ignore_if=False, called_lowlevel=True, containing_type=None):
+
         # TODO EXTEND TO ALL VARIATIONS
         if "if" in self.this_level_keys and not ignore_if:
             self.gen_if(self.containing_type)
@@ -486,7 +494,10 @@ class data_point():
             switch_term = ".".join(switch.split(".")[1:])
         else:
             switch_term = switch
+        ###INJECTION LOCAL VAR FOR START
+
         self.front.append("     switch(" + str(switch_term) + ") {")
+
         # print_debug(self.input)
         if type(switch_term.split(".")) is list:
             poss_enum_dict = self.root.lookup_enum(switch_term.split(".")[::-1][0], error_suppresion=True)
@@ -573,8 +584,8 @@ class data_point():
             self.gen_atomic(size=expr)
             pass
         elif "eos" == self.input["repeat"]:
-            # print_debug(self.input)
-            # self.front.append("    local int64 UNTIL_CONVERTER = FTell() + length_CONVERTER;")
+            print_debug(self.input)
+            # self.front.append("    local uint32 UNTIL_CONVERTER = length_CONVERTER;") #TODO THIS IS OPTION B FOR EOS
             self.front.append("    while(FTell() < UNTIL_CONVERTER){")
             self.gen_atomic(indents=2)
             self.front.append("    }")
@@ -642,8 +653,11 @@ class data_point():
                 if "_ENUM" not in self.type and self.root.lookup_type(name=self.type.split("_TYPE")[0],
                                                                       check_if_param_needed=True):
 
-
-                    self.gen_instances(self.input["size"])
+                    try:
+                        self.gen_instances(self.input["size"])
+                    except:
+                        print_debug(self.input)
+                        exit(-1)
                     length_addon = "(" + self.root.expr_resolve(self.input["size"], translate_condition_2_c=True) + ")"
 
                 if size:
@@ -750,7 +764,9 @@ class seq(Converter):
 
     def generate_code(self, size=None, called_lowlevel=True, containing_type=None):
         if "length_CONVERTER" == size:
-            self.output.append("    local uint32 UNTIL_CONVERTER = FTell() + length_CONVERTER;")
+            # self.output.append("    local uint32 UNTIL_CONVERTER = FTell() + length_CONVERTER;") #TODO THIS IS OPTION A FOR EOS
+            self.output.append(
+                "    local uint32 UNTIL_CONVERTER = FTell() + length_CONVERTER;//TESST")  # TODO THIS IS OPTION B FOR EOS
             #self.output.append('    Warning("LENGTH %hu UNTIL %hu FTell %hu",length_CONVERTER,UNTIL_CONVERTER,FTell());')
 
         for this_level_key in self.this_level_keys:
@@ -836,11 +852,15 @@ class types(Converter):
                 forward_lenfield = ""
             ##############WIP FORWARD DECLARATION RESTRUCTURE################
             self.pre.append("struct " + str(this_level_key) + "_TYPE" + forward_lenfield + ";")
-            #self.pre[str(this_level_key)]=("struct " + str(this_level_key) + "_TYPE" + forward_lenfield + ";")
+
+            # self.pre[str(this_level_key)]=("struct " + str(this_level_key) + "_TYPE" + forward_lenfield + ";")
 
             ##############WIP FORWARD DECLARATION RESTRUCTURE################
 
             output.append("struct " + str(this_level_key) + "_TYPE" + lenfield + " {")
+            if lenfield != "":
+                output.append("    local uint32 struct_start_CONVERTER = FTell();")
+
             # TODO IMPLEMENT size Calc locals
             if lenfield != "":
                 sizer = "length_CONVERTER"
