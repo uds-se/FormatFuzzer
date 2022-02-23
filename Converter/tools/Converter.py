@@ -8,7 +8,7 @@ DEBUG = True
 
 
 class Converter(object):
-
+    # TODO implement kaitai imports
     # TODO implement size lookup funtion
 
     def __init__(self, input_js, is_master=False, parent=None, root=None, name=None):
@@ -159,11 +159,12 @@ class Converter(object):
                     except Exception as err:
                         print("\n++++++START Converter codeGEN exception START +++++")
                         traceback.print_exc()
-                        print(self.subtrees.keys())
-                        print(self.input)
-                        print(self.subtrees[local_key].input)
-                        print(self.this_level_keys)
-                        print("++++++END Converter codeGEN exception END +++++\n")
+                        print_debug(err.args)
+                        print_debug(self.this_level_keys)
+                        print_debug(self.subtrees.keys())
+                        print_debug(self.input)
+                        print_debug(self.subtrees[local_key].input)
+                        print("\n++++++END Converter codeGEN exception END +++++\n")
                         pass
                 else:
                     self.output.extend(self.subtrees[local_key].generate_code(size, called_lowlevel))
@@ -658,7 +659,7 @@ class data_point():
                         self.gen_instances(self.input["size"])
                     except:
                         print_debug(self.input)
-                        exit(-1)
+
                     length_addon = "(" + self.root.expr_resolve(self.input["size"], translate_condition_2_c=True) + ")"
 
                 if size:
