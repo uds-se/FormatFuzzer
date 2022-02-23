@@ -69,13 +69,17 @@ def findFileRecursively(base_path, name, ext, maxDepth=3):
 
 def runSingleFormatParseTest(formatName, resolveTestInput):
     logger = ROOT_LOGGER.getChild(formatName)
-    logfileName = f'{WORKING_DIR}/output/test-{formatName}-fuzzer.output'
-    logger.handlers = [log.StreamHandler(), log.FileHandler(logfileName)]
+
+    # logfileName = f'{WORKING_DIR}/output/test-{formatName}-fuzzer.output'
+    # logger.handlers = [log.StreamHandler(), log.FileHandler(logfileName)]
     try:
         convertedFile = callConverter(
-            formatName)  #contains path to converted file
+            formatName)  # contains path to converted file
+
+        logfileName = f'{TESTFOLDER}{formatName}/output/test-{formatName}-fuzzer.output'
+        logger.handlers = [log.StreamHandler(), log.FileHandler(logfileName)]
         parserUnderTest = compileParser(convertedFile, True)
-        #contains path to reference template
+        # contains path to reference template
         referenceTemplate = findFileRecursively(BT_TEMPLATE_BASE_PATH,
                                                 formatName, 'bt')
         if not referenceTemplate:
@@ -236,7 +240,10 @@ def resolveTestInputByFormat(formatName, generator):
 
 
 def main():
-
+    global ROOT_LOGGER
+    global logger
+    ROOT_LOGGER = log.getLogger('root')
+    logger = log.getLogger('root')
     parser = argparse.ArgumentParser(
         description="Run tests on converted templates")
     parser.add_argument('formats',
@@ -256,8 +263,7 @@ def main():
                         nargs='?',
                         type=str)
     parsedArgs = parser.parse_args(sys.argv[1::])
-    numeric_level = getattr(logger, parsedArgs.log_lvl.upper(), 'INFO')
-
+    numeric_level = getattr(logger, parsedArgs.log_lvl.upper(), log.INFO)
     if not isinstance(numeric_level, int):
         raise ValueError('Invalid log level: %s' % numeric_level)
     consoleLog = log.StreamHandler()
@@ -267,10 +273,7 @@ def main():
                     level=numeric_level,
                     handlers=[consoleLog, logfile],
                     datefmt="%Y-%m-%d %H:%M:%S")
-    global ROOT_LOGGER
-    global logger
     logger = log.getLogger('root')
-    ROOT_LOGGER = logger
     logger.info("===Starting test bench run===")
     if (len(parsedArgs.formats) == 1):
         logger.info("Running test for single format %s", parsedArgs.formats[0])
