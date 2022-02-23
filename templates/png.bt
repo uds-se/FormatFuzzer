@@ -350,6 +350,8 @@ typedef struct {
         PNG_CHUNK_FCTL    fctl;
     else if (type.cname == "fdAT")
         PNG_CHUNK_FDAT    fdat;
+    else if (type.cname == "gAMA")
+        uint32 gamma_int;
     else if( length > 0 && type.cname != "IEND" )
         ubyte   data[length];       // Data (or not present)
     local int64 pos_end = FTell();
@@ -371,8 +373,7 @@ typedef struct {
         error_message( msg );
     }
     CHUNK_CNT++;
-    if (type.cname == "eXIf")
-        uint16 pad;
+
 } PNG_CHUNK <read=readCHUNK>;
 
 
