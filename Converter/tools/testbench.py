@@ -233,7 +233,7 @@ def resolveTestInputByFormat(formatName, generator):
         subprocess.run(cmd,
                        check=True,
                        stdout=subprocess.PIPE,
-                       stderr=subprocess.PIPE)
+                       stderr=subprocess.PIPE, env={"DONT_BE_EVIL": "1"})
         return f"{WORKING_DIR}/../input/testinput.{formatName}"
     except Exception as err:
         raise TestRunException("Creating input failed!", err)
