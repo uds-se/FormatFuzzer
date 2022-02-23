@@ -715,7 +715,6 @@ class data_point():
             self.gen_atomic(size=expr)
             pass
         elif "eos" == self.input["repeat"]:
-            print_debug(self.input)
             # self.front.append("    local uint32 UNTIL_CONVERTER = length_CONVERTER;") #TODO THIS IS OPTION B FOR EOS
             self.front.append("    while(FTell() < UNTIL_CONVERTER){")
             self.gen_atomic(indents=2)
@@ -756,13 +755,11 @@ class data_point():
             self.front.append("    }")  # OPTION B
 
         elif self.type == "str":
-            print_debug(self.input)
             if self.size is not None:
-                # TODO IMPLEMENT CASE FOR DIFFERENT THAN ZEROBYTE TERMINATOR
+                # TODO Done? IMPLEMENT CASE FOR DIFFERENT THAN ZEROBYTE TERMINATOR
                 self.front.append(prepend + "char " + str(self.id) + "[" +
                                   str(self.size) + "]" + ";" + loc_doc)
             elif "size-eos" in self.input:
-                print_debug(size)
                 self.front.append(
                     prepend + "char " + str(self.id) +
                     "[length_CONVERTER -(FTell()-struct_start_CONVERTER)];" +
