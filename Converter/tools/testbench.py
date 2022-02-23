@@ -106,10 +106,12 @@ def callConverter(formatName):
     WORKING_DIR = TESTFOLDER + formatName + "/build"
 
     log.info(f"found file to convert: {filePath}. converting...")
-    convert = subprocess.run(
-        ["python3", CONVERTER, filePath, f"{WORKING_DIR}/{formatName}.bt"],
-        check=True, capture_output=True, 
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    try:
+        convert = subprocess.run(
+            ["python3", CONVERTER, filePath, f"{WORKING_DIR}/{formatName}.bt"],
+            check=True, capture_output=True)
+    except Exception as err:
+        raise TestRunException("Conversion Failed", err)
     if (convert.returncode != 0):
         raise TestRunException(f"Error: {convert.stderr}")
     log.info(f"Converted file successfully. Result saved in Converter/test/{formatName}/build/{formatName}.bt")
