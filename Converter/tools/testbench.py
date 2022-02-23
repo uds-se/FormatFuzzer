@@ -20,28 +20,28 @@ WORKING_DIR = ""
 
 # TODO save generated Files in test folder and adjust code to using that
 
+
 class TestRunException(Exception):
     """thrown if any part of a test run fails"""
-
     def __init__(self, msg, cause: Exception = None):
         self.msg = msg
         self.cause = cause
 
     def print(self):
-        log.error(self.msg)
+        logger.error(self.msg)
         if isinstance(self.cause, subprocess.CalledProcessError):
-            log.error(self.cause.cmd)
-            log.error(self.cause.returncode)
-            log.error(f"Stderr: {self.cause.stderr.decode()}")
+            logger.error(self.cause.cmd)
+            logger.error(self.cause.returncode)
+            logger.error(f"Stderr: {self.cause.stderr.decode()}")
             linefinder = r"(Compile|Parse)Error.*:(\d+):(\d+):"
             lines = re.finditer(linefinder, self.cause.stderr.decode())
             for _, ma in enumerate(lines, 1):
                 _, ln, cl = ma.groups()
-                log.error("Error occurred on line: %s, column: %s", ln, cl)
-            log.error(f"Stdout: {self.cause.output.decode()}")
+                logger.error("Error occurred on line: %s, column: %s", ln, cl)
+            logger.error(f"Stdout: {self.cause.output.decode()}")
         elif (self.cause is not None):
-            log.error(self.cause)
-            log.error(self.cause.args)
+            logger.error(self.cause)
+            logger.error(self.cause.args)
 
 
 # should return file path or false in not found
@@ -53,21 +53,24 @@ def findFileRecursively(base_path, name, ext, maxDepth=3):
     ]
     found_file = subprocess.run(cmd, stdout=subprocess.PIPE)
     if (found_file.returncode != 0):
-        log.error(f"Error ret: {found_file.stderr}")
+        logger.error(f"Error ret: {found_file.stderr}")
         return False
     if (len(found_file.stdout) == 0):
-        log.error(f"Error: {found_file.stderr}")
+        logger.error(f"Error: {found_file.stderr}")
         return False
 
-    log.debug(f"Debug: find output {found_file.stdout.decode()}")
+    logger.debug(f"Debug: find output {found_file.stdout.decode()}")
     splitOut = found_file.stdout.decode().split("\n")
     if (len(splitOut) > 2):
         #some default behavior, maybe make this a user ask
-        log.warning(f"multiple results found. using the first one.")
+        logger.warning(f"multiple results found. using the first one.")
     return splitOut[0]
 
 
 def runSingleFormatParseTest(formatName, resolveTestInput):
+    logger = ROOT_LOGGER.getChild(formatName)
+    logfileName = f'{WORKING_DIR}/output/test-{formatName}-fuzzer.output'
+    logger.handlers = [log.StreamHandler(), log.FileHandler(logfileName)]
     try:
         convertedFile = callConverter(
             formatName)  #contains path to converted file
@@ -82,8 +85,10 @@ def runSingleFormatParseTest(formatName, resolveTestInput):
         referencePT = runParserOnInput(referenceParser, testInput)
         PTunderTest = runParserOnInput(parserUnderTest, testInput)
         return diffParseTrees(referencePT, PTunderTest)
+        logger = ROOT_LOGGER
     except TestRunException as e:
         e.print()
+        logger = ROOT_LOGGER
         return False
 
 
@@ -105,28 +110,33 @@ def callConverter(formatName):
     global WORKING_DIR
     WORKING_DIR = TESTFOLDER + formatName + "/build"
 
-    log.info(f"found file to convert: {filePath}. converting...")
+    logger.info(f"found file to convert: {filePath}. converting...")
     try:
         convert = subprocess.run(
             ["python3", CONVERTER, filePath, f"{WORKING_DIR}/{formatName}.bt"],
-            check=True, capture_output=True)
+            check=True,
+            capture_output=True)
+        logger.info(convert.stdout.decode())
     except Exception as err:
         raise TestRunException("Conversion Failed", err)
     if (convert.returncode != 0):
         raise TestRunException(f"Error: {convert.stderr}")
-    log.info(f"Converted file successfully. Result saved in Converter/test/{formatName}/build/{formatName}.bt")
+    logger.info(
+        f"Converted file successfully. Result saved in Converter/test/{formatName}/build/{formatName}.bt"
+    )
     return f"{WORKING_DIR}/{formatName}.bt"
 
 
 def runMultiFromatParseTest(formats, testInputResolver):
     passed = []
     for fmt in formats:
-        log.info("Current format: %s", fmt)
+        logger.info("Current format: %s", fmt)
         passed.append((fmt, runSingleFormatParseTest(fmt, testInputResolver)))
 
-    log.info("Passed status of formats: \n")
+    logger.info("Passed status of formats: \n")
     for (fmt, status) in passed:
-        log.info(f"Format: {fmt}, Status: { 'Passed' if status else 'Failed'}")
+        logger.info(
+            f"Format: {fmt}, Status: { 'Passed' if status else 'Failed'}")
 
 
 def diffParseTrees(expected, actual):
@@ -138,7 +148,7 @@ def diffParseTrees(expected, actual):
                              fromfile="expected-parse-tree",
                              tofile="actual-parse-tree",
                              n=4))
-    log.warning(diff)
+    logger.warning(diff)
     return False
 
 
@@ -150,17 +160,19 @@ def compileParser(templatePath, test=False):
         # g++ -O3 gif.o fuzzer.o -o gif-fuzzer -lz
         flavor = ""
         if test:
-            log.info("Compiling parser under test")
+            logger.info("Compiling parser under test")
             flavor = "test_"
         else:
-            log.info("Compiling reference parser")
+            logger.info("Compiling reference parser")
             flavor = "reference_"
-        log.info("Compiling template...")
+        logger.info("Compiling template...")
         fmtName = path.basename(templatePath).split('.')[0]
-        ffCompCmd = [FFCOMPILE, templatePath, f"{WORKING_DIR}/{flavor}{fmtName}.cpp"]
+        ffCompCmd = [
+            FFCOMPILE, templatePath, f"{WORKING_DIR}/{flavor}{fmtName}.cpp"
+        ]
         subprocess.run(ffCompCmd, capture_output=True, check=True)
-        log.info("Compiled template")
-        log.info("Compiling general fuzzer api...")
+        logger.info("Compiled template")
+        logger.info("Compiling general fuzzer api...")
         fuzzerCppCmd = [
             'g++', '-c', '-I',
             path.normpath(FFROOT) + "/", '-std=c++17', '-g', '-O3', '-Wall',
@@ -168,8 +180,8 @@ def compileParser(templatePath, test=False):
             f'{WORKING_DIR}/fuzzer.o'
         ]
         subprocess.run(fuzzerCppCmd, capture_output=True, check=True)
-        log.info("Compiled general fuzzer api")
-        log.info("Compiling format code...")
+        logger.info("Compiled general fuzzer api")
+        logger.info("Compiling format code...")
         compFuzzerCmd = [
             'g++', '-c', '-I',
             path.normpath(FFROOT), '-std=c++17', '-g', '-O3', '-Wall',
@@ -177,15 +189,15 @@ def compileParser(templatePath, test=False):
             f'{WORKING_DIR}/{flavor}{fmtName}.o'
         ]
         subprocess.run(compFuzzerCmd, capture_output=True, check=True)
-        log.info("Compiled format code")
-        log.info("Compiling fuzzer binary...")
+        logger.info("Compiled format code")
+        logger.info("Compiling fuzzer binary...")
         binName = f'test-{fmtName}-fuzzer' if test else f'{fmtName}-fuzzer'
         linkCmd = [
-            'g++', '-O3', f'{WORKING_DIR}/{flavor}{fmtName}.o', f'{WORKING_DIR}/fuzzer.o', '-o',
-            f'{WORKING_DIR}/{binName}', '-lz'
+            'g++', '-O3', f'{WORKING_DIR}/{flavor}{fmtName}.o',
+            f'{WORKING_DIR}/fuzzer.o', '-o', f'{WORKING_DIR}/{binName}', '-lz'
         ]
         subprocess.run(linkCmd, capture_output=True, check=True)
-        log.info("Compiled fuzzer binary")
+        logger.info("Compiled fuzzer binary")
         return binName
     except Exception as err:
         raise TestRunException(f"failed to compile", err)
@@ -244,7 +256,7 @@ def main():
                         nargs='?',
                         type=str)
     parsedArgs = parser.parse_args(sys.argv[1::])
-    numeric_level = getattr(log, parsedArgs.log_lvl.upper(), 'INFO')
+    numeric_level = getattr(logger, parsedArgs.log_lvl.upper(), 'INFO')
 
     if not isinstance(numeric_level, int):
         raise ValueError('Invalid log level: %s' % numeric_level)
@@ -255,14 +267,18 @@ def main():
                     level=numeric_level,
                     handlers=[consoleLog, logfile],
                     datefmt="%Y-%m-%d %H:%M:%S")
-    log.info("===Statring test bench run===")
+    global ROOT_LOGGER
+    global logger
+    logger = log.getLogger('root')
+    ROOT_LOGGER = logger
+    logger.info("===Starting test bench run===")
     if (len(parsedArgs.formats) == 1):
-        log.info("Running test for single format %s", parsedArgs.formats[0])
+        logger.info("Running test for single format %s", parsedArgs.formats[0])
         testInputResolver = lambda fmt, parser: parsedArgs.testInput if parsedArgs.testInput else resolveTestInputByFormat(
             fmt, parser)
         runSingleFormatParseTest(parsedArgs.formats[0], testInputResolver)
         return
-    log.info("Runing test for multiple formats")
+    logger.info("Runing test for multiple formats")
     runMultiFromatParseTest(parsedArgs.formats, resolveTestInputByFormat)
 
 
