@@ -417,7 +417,7 @@ local string possible_chunks[] = { "IHDR" };
 while(ReadBytes(chunk_type, FTell() + 4, 4, preferred_chunks, possible_chunks)) {
     SetBackColor( (chunk_count++ % 2) ? cNone : cLtGray);
     PNG_CHUNK chunk;
-    
+
     switch (chunk_type) {
     case "IHDR":
         switch (chunk.ihdr.color_type) {
