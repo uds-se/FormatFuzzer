@@ -8,20 +8,20 @@ import sys
 
 
 def run_tests_on_all():
-    print("test")
+    print(log.root)
     filenames = sub.run("basename -s .bt -a $(exa ../templates | grep -v - )",
             shell=True, stdout=sub.PIPE, check=True)
     fns = filenames.stdout.decode().split("\n")[:-1:]
-    tb.runMultiFromatParseTest(fns, tb.resolveTestInputByFormat)
+    tb.runMultiFromatParseTest(fns, tb.resolveTestInputByFormat, log.root)
 
 def convert_all():
-    print("convert")
     fmts = sub.run(
             'basename -s .ksy -a $(find kaitai_struct_formats -name "*.ksy")', 
             shell=True, check=True, stdout=sub.PIPE)
     for fmt in fmts.stdout.decode().split("\n"):
-        conv = tb.callConverter(fmt)
-        tb.compileParser(conv)
+        bp = tb.create_fmt_folder(fmt),
+        conv = tb.callConverter(fmt, bp, log.root) 
+        tb.compileParser(conv, bp, log.root)
         #TODO refine this
 
 def main():
