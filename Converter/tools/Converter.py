@@ -298,7 +298,7 @@ class Converter(object):
                 except:
                     pass
                 try:
-                    expr = expr.replace("_io.eof", "FTell()>=FileSize()")
+                    expr = expr.replace("_io.eof", "FEof()")
                 except:
                     pass
 
@@ -639,9 +639,9 @@ class data_point():
 
             else:
                 case_val = case
+            # sizeos = self.root.lookup_f_in_typ_pres(cases[case_key], "size-eos", exclude="encoding")
             sizeos = self.root.lookup_f_in_typ_pres(cases[case_key],
-                                                    "size-eos",
-                                                    exclude="encoding")
+                                                    "size-eos")
             repeat = self.root.lookup_f_in_typ_pres(cases[case_key], "repeat")
             # encoding = self.root.lookup_f_in_typ_pres(cases[case_key], "encoding")
             if (sizeos or repeat):
@@ -756,13 +756,17 @@ class data_point():
             self.front.append("    }")  # OPTION B
 
         elif self.type == "str":
+            print_debug(self.input)
             if self.size is not None:
                 # TODO IMPLEMENT CASE FOR DIFFERENT THAN ZEROBYTE TERMINATOR
                 self.front.append(prepend + "char " + str(self.id) + "[" +
                                   str(self.size) + "]" + ";" + loc_doc)
             elif "size-eos" in self.input:
-                self.front.append(prepend + "string " + str(self.id) + ";" +
-                                  loc_doc)
+                print_debug(size)
+                self.front.append(
+                    prepend + "char " + str(self.id) +
+                    "[length_CONVERTER -(FTell()-struct_start_CONVERTER)];" +
+                    loc_doc)
         elif self.type == "strz":
             self.front.append(prepend + "string " + str(self.id) + ";" +
                               loc_doc)
@@ -936,7 +940,7 @@ class seq(Converter):
         if "length_CONVERTER" == size:
             # self.output.append("    local uint32 UNTIL_CONVERTER = FTell() + length_CONVERTER;") #TODO THIS IS OPTION A FOR EOS
             self.output.append(
-                "    local uint32 UNTIL_CONVERTER = FTell() + length_CONVERTER;//TESST"
+                "    local uint32 UNTIL_CONVERTER = FTell() + length_CONVERTER;//A"
             )  # TODO THIS IS OPTION B FOR EOS
             #self.output.append('    Warning("LENGTH %hu UNTIL %hu FTell %hu",length_CONVERTER,UNTIL_CONVERTER,FTell());')
 
@@ -1023,7 +1027,8 @@ class types(Converter):
         #     print_debug(self.input)
         for this_level_key in self.this_level_keys:
             item = self.subtrees[this_level_key]
-            if item.chck_flg("size-eos") and not item.chck_flg("encoding"):
+            # if item.chck_flg("size-eos") and not item.chck_flg("encoding"):
+            if item.chck_flg("size-eos"):
                 lenfield = "(uint32 length_CONVERTER)"
             if item.chck_flg("repeat", flag_to_val=True) == "eos":
                 lenfield = "(uint32 length_CONVERTER)"
