@@ -125,6 +125,7 @@ class Converter(object):
                 self.subtrees[local_key].parse_subtree(name=name)
 
     def generate_code_toplevel(self):
+        # print_debug(self.root.global_type_table,True)
         if "enums" in self.subtrees.keys():
             self.output_enums.extend(self.subtrees["enums"].generate_code(called_lowlevel=False))
         self.output_types.extend(self.subtrees["types"].generate_code(called_lowlevel=False))
@@ -185,6 +186,14 @@ class Converter(object):
         inv_map = {v: k for k, v in self.enums[enum].items()}
         return inv_map[key]
 
+    def resolve_switch(self, switch_dict):
+        type_list = []
+        if "switch-on" in switch_dict.keys():
+            cases = switch_dict["cases"]
+        else:
+            cases = switch_dict
+        return list(cases.values())
+
     def expr_resolve(self, expr, translate_condition_2_c=False, repeat_condition=False, id_of_obj=None):
         # takes a string and depending on the flags returns a list of
         # either elements that could be an instance or
@@ -194,6 +203,8 @@ class Converter(object):
         # condition_splitter_replacement = ["::", "."] #TODO CHECK IF REMOVAL OF "." IS CORRECT (needed for floats to prevent removal of the dot)
         condition_splitter_replacement = ["::"]
         string_splitter_replacement = ['"']
+        if expr is None:
+            return None
         for to_be_rep in operator_replacement_dict.keys():
             expr = expr.replace(to_be_rep, operator_replacement_dict[to_be_rep])
         # for element in re.split('(\W+)', expr):  # replacing f**kin 0xffff_ffff with 0xffffffff
@@ -250,23 +261,42 @@ class Converter(object):
             else:
                 return expr
 
-    def chck_flg(self, flag, flag_to_val=False, exclude=None):
+    def chck_flg(self, flag, flag_to_val=False, exclude=None, excluded_values=None):
+        if excluded_values is None:
+            excluded_values = []
+        if self.this_level_keys is None:
+            if flag_to_val:
+                return None
+            else:
+                return False
         try:
-            if flag in self.this_level_keys and (exclude is None or (exclude not in self.this_level_keys)):
+            # print_debug(f'Checking for {flag} in {self.this_level_keys}')
+            if not flag_to_val and flag in self.this_level_keys and (
+                    exclude is None or (exclude not in self.this_level_keys)):
                 return True
             else:
+                # print_debug(self.subtrees)
                 for this_level_key in self.this_level_keys:
                     local_key = remap_keys(this_level_key)
                     if local_key is not None:
-                        if self.subtrees[local_key].chck_flg(flag, flag_to_val, exclude=exclude):
-                            return self.subtrees[local_key].chck_flg(flag, flag_to_val, exclude=exclude)
+                        # print_debug(f'check key {local_key} for {flag} in recursion {self.subtrees[local_key].input}')
+                        hit = self.subtrees[local_key].chck_flg(flag, flag_to_val, exclude=exclude,
+                                                                excluded_values=excluded_values)
+                        if hit:
+                            # print_debug(f'Found {hit} for {flag} in recursion {self.subtrees[local_key].input}')
+                            return hit
                         else:
                             pass
                 if flag_to_val:
+
                     return None
                 else:
+                    #print_debug(f"returning None on {flag} in {local_key}")
                     return False
         except:
+            traceback.print_exc()
+            print_debug(f"exception chck_flg {flag} excl {exclude} in {self.input}")
+            exit(-1)
             return False
 
     def lookup_f_in_typ_pres(self, type, flag, id=None, flag_to_val=False, exclude=None):
@@ -408,6 +438,15 @@ class attribute():
         self.value = value
         self.name = name
 
+    def chck_flg(self, flag, flag_to_val=False, exclude=None, excluded_values=None):
+        if flag_to_val:
+            if flag == self.name:
+                return self.value
+            else:
+                return None
+        else:
+            return flag == self.name
+
     def get_value(self):
         return self.value
 
@@ -524,7 +563,7 @@ class data_point():
             sizeos = self.root.lookup_f_in_typ_pres(cases[case_key], "size-eos")
             repeat = self.root.lookup_f_in_typ_pres(cases[case_key], "repeat")
             # encoding = self.root.lookup_f_in_typ_pres(cases[case_key], "encoding")
-            if (sizeos or repeat):
+            if (sizeos or repeat or self.root.lookup_type(cases[case_key], check_if_param_needed=True)):
                 if "size" in self.input.keys():
                     paramfield = "(" + str(self.input["size"]) + ")"
                 else:
@@ -654,14 +693,16 @@ class data_point():
                 length_addon = ""
                 if "_ENUM" not in self.type and self.root.lookup_type(name=self.type.split("_TYPE")[0],
                                                                       check_if_param_needed=True):
-
                     try:
                         self.gen_instances(self.input["size"])
                     except:
-                        print_debug(self.input)
-
-                    length_addon = "(" + self.root.expr_resolve(self.input["size"], translate_condition_2_c=True) + ")"
-
+                        pass
+                    try:
+                        length_addon = "(" + self.root.expr_resolve(self.input["size"],
+                                                                    translate_condition_2_c=True) + ")"
+                    except:
+                        length_addon = "(length_CONVERTER -(FTell()-struct_start_CONVERTER))"
+                        loc_doc = "//TESTING"
                 if size:
                     length_addon = "[" + size + "]"
                 self.front.append(prepend + str(self.type) + " " + str(self.id) + length_addon + ";" + loc_doc)
@@ -743,10 +784,17 @@ class data_point():
             print_debug("to_hex_list FAILURE\n")
             exit(-1)
 
-    def chck_flg(self, flag, flag_to_val=False, exclude=None):
+    def chck_flg(self, flag, flag_to_val=False, exclude=None, excluded_values=None):
+        if excluded_values is None:
+            excluded_values = []
         if flag_to_val:
             if flag in self.this_level_keys and (exclude is None or exclude not in self.this_level_keys):
-                return self.input[flag]
+
+                if str(self.input[flag]) not in excluded_values:
+                    # print_debug(f"Flag {flag} found : {self.input[flag]} Exclude : {excluded_values}")
+                    return self.input[flag]
+                else:
+                    return None
             else:
                 return None
         return flag in self.this_level_keys and (exclude is None or exclude not in self.this_level_keys)
@@ -816,6 +864,7 @@ class types(Converter):
         Converter.__init__(self, input_js, parent=parent, root=root, name=name)
         #self.pre = {}
         self.pre = []
+        self.output = []
 
     def parse_subtree(self, name=None):
         for this_level_key in self.this_level_keys:
@@ -824,6 +873,61 @@ class types(Converter):
                 self.root.register_type(local_key, self.input[local_key])
                 self.subtrees[local_key] = Converter(self.input[this_level_key], parent=self, root=self.root)
                 self.subtrees[local_key].parse_subtree(name=local_key)
+        self.parse_arguments_main()
+
+    def parse_arguments_main(self):
+        for this_level_key in self.this_level_keys:
+            local_key = remap_keys(this_level_key)
+            if local_key is not None:
+                if self.parse_arguments_recursion(self.subtrees[local_key], origin_type=local_key):
+                    self.root.register_type(name=local_key, param_needed=True)
+
+    def parse_arguments_recursion(self, item, origin_type=None):  # returns True if param is needed in subtree
+        # print_debug(item.this_level_keys)
+        # print_debug(item.subtrees)
+        # print_debug(item.input)
+        param_needed = False
+        for this_level_key in item.this_level_keys:
+            local_key = remap_keys(this_level_key)
+            if local_key is not None:
+                if item.chck_flg("size-eos"):
+                    param_needed = True
+                if item.chck_flg("repeat", flag_to_val=True) == "eos":
+                    param_needed = True
+                if item.chck_flg("process"):
+                    param_needed = True
+            if param_needed:
+                # print_debug(item.name)
+                return param_needed
+
+        # print_debug(f'Entering Recursion for item {item.input}')
+        included_types = []
+        exclusion_list = []
+        hit = item.chck_flg("type", flag_to_val=True, excluded_values=exclusion_list)
+        while hit is not None:
+            # print_debug(f'Hit {hit} Resolved Hits {hit_list} actl {item.chck_flg("type", flag_to_val=True)} from {self.this_level_keys}')
+            exclusion_list.append(str(hit))
+            if type(hit) is dict:
+                hit_list = self.root.resolve_switch(hit)
+            else:
+                hit_list = [self.root.expr_resolve(hit)]
+            for hitter in hit_list:
+                if hitter in self.this_level_keys and not hitter in included_types:
+                    included_types.append(hitter)
+            hit = item.chck_flg("type", flag_to_val=True, excluded_values=exclusion_list)
+
+        # print_debug("Final included types "+str(included_types))
+        # print_debug(item.name)
+        if included_types == []:  # LOWEST LATER // No SUBTYPES
+            return False
+        else:
+            for sub_type in included_types:
+                lower_level_type = self.subtrees[sub_type]
+                # print_debug(lower_level_type)
+                if self.parse_arguments_recursion(lower_level_type, origin_type=origin_type):
+                    param_needed = True
+            # print_debug(param_needed)
+            return param_needed and not item.chck_flg("size")
 
     def generate_code(self, size=None, called_lowlevel=True, containing_type=None):
 
@@ -838,17 +942,22 @@ class types(Converter):
         #     print_debug(self.input)
         #     print_debug(self.input)
         for this_level_key in self.this_level_keys:
+
             lenfield = ""
+            if self.root.lookup_type(this_level_key, check_if_param_needed=True):
+                lenfield = "(uint32 length_CONVERTER)"
+
             item = self.subtrees[this_level_key]
-            # if item.chck_flg("size-eos") and not item.chck_flg("encoding"):
-            if item.chck_flg("size-eos"):
-                lenfield = "(uint32 length_CONVERTER)"
-            if item.chck_flg("repeat", flag_to_val=True) == "eos":
-                lenfield = "(uint32 length_CONVERTER)"
-            if item.chck_flg("process"):
-                lenfield = "(uint32 length_CONVERTER)"
-            if lenfield != "":
-                self.root.register_type(name=this_level_key, param_needed=True)
+            #
+            # # if item.chck_flg("size-eos") and not item.chck_flg("encoding"):
+            # if item.chck_flg("size-eos"):
+            #     lenfield = "(uint32 length_CONVERTER)"
+            # if item.chck_flg("repeat", flag_to_val=True) == "eos":
+            #     lenfield = "(uint32 length_CONVERTER)"
+            # if item.chck_flg("process"):
+            #     lenfield = "(uint32 length_CONVERTER)"
+            # if lenfield != "":
+            #     self.root.register_type(name=this_level_key, param_needed=True)
             if lenfield != "":
                 forward_lenfield = lenfield + "{}"
             else:
@@ -883,9 +992,12 @@ class types(Converter):
         return output
 
 
-def print_debug(string):
+def print_debug(string, pretty=False):
     if DEBUG:
-        print("\nDEBUG: " + str(string).replace("\n", "\n     "))
+        if type(string) is dict and pretty:
+            print("\nDEBUG: " + str(yaml.dump(string, default_flow_style=False)).replace("\n", "\n     "))
+        else:
+            print("\nDEBUG: " + str(string).replace("\n", "\n     "))
 
 
 def remap_keys(key):
