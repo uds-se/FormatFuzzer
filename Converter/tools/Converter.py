@@ -2,6 +2,7 @@ import inspect
 import sys
 import yaml
 import re
+import os
 import traceback
 
 DEBUG = True
@@ -109,7 +110,7 @@ class Converter(object):
             getter = self.root.global_instance_table[containing_type]
         else:
             print_debug(str(type) + " TABLE NOT IMPLEMENTED\n")
-            exit(0)
+            exit(-1)
         getter[str(name)]["IMPLEMENTED"] = value
 
     def parse_subtree(self, name=None):
@@ -291,7 +292,7 @@ class Converter(object):
 
                     return None
                 else:
-                    #print_debug(f"returning None on {flag} in {local_key}")
+                    # print_debug(f"returning None on {flag} in {local_key}")
                     return False
         except:
             traceback.print_exc()
@@ -664,7 +665,8 @@ class data_point():
                 self.front.append(prepend + "char " + str(self.id) + "[" + str(self.size) + "]" + ";" + loc_doc)
             elif "size-eos" in self.input:
                 self.front.append(
-                    prepend + "char " + str(self.id) + "[length_CONVERTER -(FTell()-struct_start_CONVERTER)];" + loc_doc)
+                    prepend + "char " + str(
+                        self.id) + "[length_CONVERTER -(FTell()-struct_start_CONVERTER)];" + loc_doc)
         elif self.type == "strz":
             self.front.append(prepend + "string " + str(self.id) + ";" + loc_doc)
         elif self.type is not None:
@@ -817,7 +819,7 @@ class seq(Converter):
             # self.output.append("    local uint32 UNTIL_CONVERTER = FTell() + length_CONVERTER;") #TODO THIS IS OPTION A FOR EOS
             self.output.append(
                 "    local uint32 UNTIL_CONVERTER = FTell() + length_CONVERTER;//A")  # TODO THIS IS OPTION B FOR EOS
-            #self.output.append('    Warning("LENGTH %hu UNTIL %hu FTell %hu",length_CONVERTER,UNTIL_CONVERTER,FTell());')
+            # self.output.append('    Warning("LENGTH %hu UNTIL %hu FTell %hu",length_CONVERTER,UNTIL_CONVERTER,FTell());')
 
         for this_level_key in self.this_level_keys:
             self.output.extend(
@@ -862,7 +864,7 @@ class instances(seq):
 class types(Converter):
     def __init__(self, input_js, parent, root, name=None):
         Converter.__init__(self, input_js, parent=parent, root=root, name=name)
-        #self.pre = {}
+        # self.pre = {}
         self.pre = []
         self.output = []
 
@@ -981,9 +983,8 @@ class types(Converter):
             output.extend(item.generate_code(sizer, called_lowlevel=True))  # GOING TO CHILD ITEM
             output.append("};\n")
 
-        #TODO IMPLEMENT PARAMETERS FOR FUNCTIONS THAT HAVE A CHILD THAT NEED THE PARAMETER AND GET IT FROM PARENT
+        # TODO IMPLEMENT PARAMETERS FOR FUNCTIONS THAT HAVE A CHILD THAT NEED THE PARAMETER AND GET IT FROM PARENT
         return output
-
 
     def gen_forward_types(self):  # DEPRECATED
         output = []
@@ -1009,6 +1010,47 @@ def remap_keys(key):
     return key
 
 
+def insert_imports(main_input, imports, path):
+    out = main_input
+    for imp in imports:
+        imported_kaitai = None
+        try:
+            with open(f'{path}/{imp}.ksy', "r") as in_file:
+                input_file = in_file.read()
+            imported_kaitai = yaml.load(input_file)
+        except:
+            print_debug(f'{imp} import not found @ {path}/{imp}.ksy')
+            exit(-1)
+        try:
+            imported_types = imported_kaitai["types"]
+            for imp_type in imported_types.keys():
+                out["types"][imp_type] = imported_types[imp_type]
+        except:
+            pass
+
+        try:
+            imported_main_seq = imported_kaitai["seq"]
+            out["types"][imported_kaitai["meta"]["id"]] = imported_main_seq
+        except:
+            pass
+
+        try:
+            imported_enums = imported_kaitai["enums"]
+            for imp_enum in imported_enums.keys():
+                out["enums"][imp_enum] = imported_enums[imp_enum]
+        except:
+            pass
+    return out
+
+
+def kaitai_sorter(input_kaitai, subtree):
+    this_level_keys = subtree.keys()
+    if "types" in this_level_keys:
+        pass
+    if "enums" in this_level_keys:
+        pass
+
+
 def main():
     global converter, DEBUG
 
@@ -1019,7 +1061,20 @@ def main():
     output_file_name = sys.argv[2]
     with open(input_file_name, "r") as in_file:
         input_file = in_file.read()
-    kaitaijs = yaml.load(input_file)
+    kaitaijs_main = yaml.load(input_file)
+
+    try:
+        imports = kaitaijs_main["meta"]["imports"]
+        # print_debug(imports)
+        # print_debug(input_file_name)
+        filepath = os.path.dirname(os.path.abspath(input_file_name))
+        # print_debug(filepath)
+        kaitaijs = insert_imports(kaitaijs_main, imports, filepath)
+    except:
+        kaitaijs = kaitaijs_main
+    # kaitai_sorter(kaitaijs,kaitaijs)
+    # print_debug(kaitaijs, pretty=True)
+
     converter = Converter(kaitaijs, True)
     output = converter.generate_code_toplevel()
     with open(output_file_name, "w+") as out_file:
