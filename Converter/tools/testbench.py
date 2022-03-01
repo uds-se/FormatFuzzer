@@ -197,7 +197,7 @@ def compileParser(templatePath, basePath, logger, test=False):
         logger.info("Compiling template...")
         fmtName = path.basename(templatePath).split('.')[0]
         ffCompCmd = [
-            FFCOMPILE, templatePath, f"{basePath}/output/{flavor}{fmtName}.cpp"
+            FFCOMPILE, templatePath, f"{basePath}/build/{flavor}{fmtName}.cpp"
         ]
         subprocess.run(ffCompCmd, capture_output=True, check=True)
         logger.info("Compiled template")
@@ -206,7 +206,7 @@ def compileParser(templatePath, basePath, logger, test=False):
             'g++', '-c', '-I',
             path.normpath(FFROOT) + "/", '-std=c++17', '-g', '-O3', '-Wall',
             path.normpath(f'{FFROOT}fuzzer.cpp'), '-o',
-            f'{basePath}/output/fuzzer.o'
+            f'{basePath}/build/fuzzer.o'
         ]
         subprocess.run(fuzzerCppCmd, capture_output=True, check=True)
         logger.info("Compiled general fuzzer api")
@@ -214,17 +214,17 @@ def compileParser(templatePath, basePath, logger, test=False):
         compFuzzerCmd = [
             'g++', '-c', '-I',
             path.normpath(FFROOT), '-std=c++17', '-g', '-O3', '-Wall',
-            f'{basePath}/output/{flavor}{fmtName}.cpp', '-o',
-            f'{basePath}/output/{flavor}{fmtName}.o'
+            f'{basePath}/build/{flavor}{fmtName}.cpp', '-o',
+            f'{basePath}/build/{flavor}{fmtName}.o'
         ]
         subprocess.run(compFuzzerCmd, capture_output=True, check=True)
         logger.info("Compiled format code")
         logger.info("Compiling fuzzer binary...")
         binName = f'test-{fmtName}-fuzzer' if test else f'{fmtName}-fuzzer'
         linkCmd = [
-            'g++', '-O3', f'{basePath}/output/{flavor}{fmtName}.o',
-            f'{basePath}/output/fuzzer.o', '-o',
-            f'{basePath}/output/{binName}', '-lz'
+            'g++', '-O3', f'{basePath}/build/{flavor}{fmtName}.o',
+            f'{basePath}/build/fuzzer.o', '-o',
+            f'{basePath}/build/{binName}', '-lz'
         ]
         subprocess.run(linkCmd, capture_output=True, check=True)
         logger.info("Compiled fuzzer binary")
@@ -253,7 +253,7 @@ def runParserOnInput(parser, testInput, basePath, logger):
 def resolveTestInputByFormat(formatName, generator, basePath):
     try:
         cmd = [
-            f'{basePath}/output/{generator}', "fuzz",
+            f'{basePath}/build/{generator}', "fuzz",
             f"{basePath}/input/testinput.{formatName}"
         ]
         subprocess.run(cmd,
