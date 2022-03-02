@@ -163,7 +163,9 @@ class Converter(object):
         if "doc" in self.this_level_keys:
             gen_list.append("doc")
         if "types" in self.this_level_keys:
-            gen_list.append("types")
+            # TODO enable if u want to generate nested structs + fix generation for lowlevel called code_gen
+            pass
+            # gen_list.append("types")
         if "seq" in self.this_level_keys:
             gen_list.append("seq")
         if "instances" in self.this_level_keys:
@@ -179,10 +181,9 @@ class Converter(object):
                 if True:  # SWITCH BETWEEN SUPPRESSION OF "UNIMPLEMENTED" ERRORS
                     try:
                         self.output.extend(self.subtrees[local_key].generate_code(size, called_lowlevel))
-                    except Exception as err:
+                    except Exception:
                         print("\n++++++START Converter codeGEN exception START +++++")
-                        traceback.print_exc()
-                        print_debug(err.args)
+                        print_debug(traceback.format_exc())
                         print_debug(self.this_level_keys)
                         print_debug(self.subtrees.keys())
                         print_debug(self.input)
@@ -301,7 +302,7 @@ class Converter(object):
                 for this_level_key in self.this_level_keys:
                     local_key = remap_keys(this_level_key)
                     if local_key is not None:
-                        #print_debug(f'check key {local_key} for {flag} in recursion {self.subtrees[local_key].input}')
+                        # print_debug(f'check key {local_key} for {flag} in recursion {self.subtrees[local_key].input}')
                         hit = self.subtrees[local_key].chck_flg(flag, flag_to_val, exclude=exclude,
                                                                 excluded_values=excluded_values)
                         if hit:
@@ -633,11 +634,11 @@ class data_point():
             self.front.append(
                 "             ubyte raw_data_CONVERTER[length_CONVERTER -(FTell()-struct_start_CONVERTER)];")
             self.front.append("             break;")
-            print_debug("LENGHT NOT FOUND FOR DEFAULT SWITCH CASE")
         elif default_needed and not switch_over_enum and size:
             self.front.append("         default:")
             self.front.append(f"             ubyte raw_data_CONVERTER[{size}];")
             self.front.append("             break;")
+        else:
             print_debug("LENGHT NOT FOUND FOR DEFAULT SWITCH CASE")
 
         self.front.append("    }")
@@ -900,16 +901,22 @@ class instances(seq):
             instance = self.root.lookup_instance(this_level_key, containing_type=self.name)
             if instance is not None and not self.root.lookup_instance(this_level_key, containing_type=self.name,
                                                                       check_if_implemented=True):
-                temp = " ".join(self.root.expr_resolve(str(instance["value"])))
-                self.front.append("    local double " + str(this_level_key) + " = " + str(temp) + ";" + (
-                    ("   //" + str(instance["doc"])) if "doc" in instance.keys() else ""))
+                # print_debug(instance)
+
+                # TODO IMPLEMENT SIZE,TYPE,POS FLAGS FOR INSTANCES
+                if "value" in instance.keys():
+                    temp = " ".join(self.root.expr_resolve(str(instance["value"])))
+                    self.front.append("    local double " + str(this_level_key) + " = " + str(temp) + ";" + (
+                        ("   //" + str(instance["doc"])) if "doc" in instance.keys() else ""))
+                elif "pos" in instance.keys():
+                    print_debug(f'INSTANCE {this_level_key} in TYPE {self.name} NOT GENERATED : POS MISSING')
+                    pass
+                else:
+                    print_debug(f'INSTANCE {this_level_key} in TYPE {self.name} NOT GENERATED : ELSE MISSING')
+                    pass
         self.output.extend(self.front)
         self.output.extend(self.back)
         return self.output
-        # TODO IMPLEMENT instances as local vars just before they are used
-        # TODO If they are not yet implemented
-        pass
-
 
 class types(Converter):
     def __init__(self, input_js, parent, root, name=None):
@@ -1098,7 +1105,7 @@ def insert_imports(main_input, imports, path):
             for imp_enum in imported_enums.keys():
                 out["enums"][imp_enum] = imported_enums[imp_enum]
         except:
-            traceback.print_exc()
+            print_debug("No Enums Imported")
             pass
     return out
 
@@ -1110,13 +1117,10 @@ def kaitai_sorter_main(input_kaitai):
 
 
 def kaitai_sorter_recursive(input_kaitai, path_list):
+    print_debug(path_list)
+    # print_debug(get_by_path(input_kaitai, path_list[:-2]),pretty=True)
     this_level_keys = list(get_by_path(input_kaitai, path_list).keys())
-    if "types" in this_level_keys:
-        this_level_types = list(get_by_path(input_kaitai, path_list + ["types"]).keys())
-        for this_level_type in this_level_types:
-            kaitai_sorter_recursive(input_kaitai, path_list + ["types", this_level_type])
 
-        pass
     if "enums" in this_level_keys:
         enum_list = list(get_by_path(input_kaitai, path_list + ["enums"]).keys())
         for enum_unit in enum_list:
@@ -1127,11 +1131,91 @@ def kaitai_sorter_recursive(input_kaitai, path_list):
             else:
                 print_debug(f'ERROR DOUBLE ENUMS WITH SAME NAME')
                 exit(-1)
+    # print_debug(get_by_path(input_kaitai, path_list[:-2]), pretty=True)
+    if "types" in this_level_keys:
+        this_level_types = list(get_by_path(input_kaitai, path_list + ["types"]).keys())
+        for this_level_type in this_level_types:
+            kaitai_sorter_recursive(input_kaitai, path_list + ["types", this_level_type])
+            # print_debug(this_level_type)
+            # print_debug(path_list[-1])
+            # print_debug(get_by_path(input_kaitai, path_list + ["types",this_level_type]))
+            new_type_name = f'{path_list[-1]}_{this_level_type}'
+            ##########REPLACE OCCURRENCES##########
+            if "seq" in this_level_keys:
+                list_replace_value(get_by_path(input_kaitai, path_list + ["seq"]), this_level_type, new_type_name)
+                print_debug(get_by_path(input_kaitai, path_list + ["seq"]), pretty=True)
+            else:
+                print_debug(
+                    f'No Seq found for replaceing {this_level_type} with {new_type_name} in {get_by_path(input_kaitai, path_list)}')
+            if "instances" in this_level_keys:
+                dict_replace_value(get_by_path(input_kaitai, path_list + ["instances"]), this_level_type, new_type_name)
+
+            ##########################################
+
+            ######PULL TYPE TOP LEVEL#################
+            if new_type_name not in get_by_path(input_kaitai, ["types"]).keys():
+                set_by_path(input_kaitai, ["types", new_type_name],
+                            get_by_path(input_kaitai, path_list + ["types", this_level_type]))
+                del_by_path(input_kaitai, path_list + ["types", this_level_type])
+
+        del_by_path(input_kaitai, path_list + ["types"])
+        ##########################
+
+        pass
         pass
 
 
 def type_replacer(input_kaitai, from_type, to_type, containing_type_path):
     pass
+
+
+############STACKOVERFLOW-SECTION##################
+def dict_replace_value(d, old, new):
+    x = {}
+    for k, v in d.items():
+        if isinstance(v, dict):
+            v = dict_replace_value(v, old, new)
+        elif isinstance(v, list):
+            v = list_replace_value(v, old, new)
+        elif isinstance(v, str):
+            if v == old:
+                print_debug(f"REPLACING >{old}< with >{new}< in >{v}<")
+                v = v.replace(old, new)
+            elif f' {old} ' in v:
+                # TODO ADD space|old|space and stringstart|old|space
+                print_debug(f"REPLACING > {old} < with > {new} < in >{v}<")
+                v = v.replace(f' {old} ', f' {new} ')
+            elif f'{old} ' in v:
+                print_debug(f"REPLACING >{old} < with >{new} < in >{v}<")
+                v = v.replace(f'{old} ', f'{new} ')
+            else:
+                print_debug(f"Nothing in >{v}< to be replaced with >{new}<")
+        x[k] = v
+    return x
+
+
+def list_replace_value(l, old, new):
+    x = []
+    for e in l:
+        if isinstance(e, list):
+            e = list_replace_value(e, old, new)
+        elif isinstance(e, dict):
+            e = dict_replace_value(e, old, new)
+        elif isinstance(e, str):
+            if e == old:
+                print_debug(f"REPLACING >{old}< with >{new}< in >{e}<")
+                e = e.replace(old, new)
+            elif f' {old} ' in e:
+                # TODO ADD space|old|space and stringstart|old|space
+                print_debug(f"REPLACING > {old} < with > {new} < in >{e}<")
+                e = e.replace(f' {old} ', f' {new} ')
+            elif f'{old} ' in e:
+                print_debug(f"REPLACING >{old} < with >{new} < in >{e}<")
+                e = e.replace(f'{old} ', f'{new} ')
+            else:
+                print_debug(f"Nothing in >{old}< to be replaced with >{new}<")
+        x.append(e)
+    return x
 
 
 def get_by_path(root, items):
@@ -1149,6 +1233,8 @@ def del_by_path(root, items):
     del get_by_path(root, items[:-1])[items[-1]]
 
 
+##########################################################################
+
 def main():
     global converter, DEBUG
 
@@ -1159,7 +1245,7 @@ def main():
     output_file_name = sys.argv[2]
     with open(input_file_name, "r") as in_file:
         input_file = in_file.read()
-    kaitaijs_main = yaml.load(input_file)
+    kaitaijs_main = yaml.safe_load(input_file)
 
     try:
         imports = kaitaijs_main["meta"]["imports"]

@@ -164,23 +164,23 @@ struct PNG_CHUNK_SRGB {
     PNG_SRGB_CHUNK_DATA srgbChunkData;
 };
 
-struct PNG_CHUNK_IEXT (int32 chunkLen) {
-    string iextIdChunkData;
-    byte iextCompressionFlag;
-    PNG_COMPR_METHOD iextComprMethod;
-    string iextLanguageTag;
-    string iextTranslatedKeyword;
-    char iextValChunkData[chunkLen -
-                                   Strlen(iextIdChunkData) -1 -
-                                   Strlen(iextLanguageTag) -1 -
-                                   Strlen(iextTranslatedKeyword) -1 -
+struct PNG_CHUNK_ITXT (int32 chunkLen) {
+    string itxtIdChunkData;
+    byte itxtCompressionFlag;
+    PNG_COMPR_METHOD itxtComprMethod;
+    string itxtLanguageTag;
+    string itxtTranslatedKeyword;
+    char itxtValChunkData[chunkLen -
+                                   Strlen(itxtIdChunkData) -1 -
+                                   Strlen(itxtLanguageTag) -1 -
+                                   Strlen(itxtTranslatedKeyword) -1 -
                                    2];
 };
 
-struct PNG_CHUNK_ZEXT (int32 chunkLen) {
-    string zextIdChunkData;
+struct PNG_CHUNK_ZTXT (int32 chunkLen) {
+    string ztxtIdChunkData;
     PNG_COMPR_METHOD comprMethod;
-    char zextValChunkData[chunkLen - Strlen(zextIdChunkData) -2];
+    char ztxtValChunkData[chunkLen - Strlen(ztxtIdChunkData) -2];
 };
 
 struct PNG_CHUNK_TIME {
@@ -308,10 +308,10 @@ typedef struct {
         PNG_CHUNK_CHRM    chrm;
     else if (type.cname == "sRGB")
         PNG_CHUNK_SRGB    srgb;
-    else if (type.cname == "iEXt")
-        PNG_CHUNK_IEXT    iext(length);
-    else if (type.cname == "zEXt")
-        PNG_CHUNK_ZEXT    zext(length);
+    else if (type.cname == "iTXt")
+        PNG_CHUNK_ITXT    itxt(length);
+    else if (type.cname == "zTXt")
+        PNG_CHUNK_ZTXT    ztxt(length);
     else if (type.cname == "tIME")
         PNG_CHUNK_TIME    time;
     else if (type.cname == "pHYs")

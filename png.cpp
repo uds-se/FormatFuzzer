@@ -819,118 +819,118 @@ public:
 
 
 
-class PNG_CHUNK_IEXT {
-	std::vector<PNG_CHUNK_IEXT*>& instances;
+class PNG_CHUNK_ITXT {
+	std::vector<PNG_CHUNK_ITXT*>& instances;
 
-	std::string iextIdChunkData_var;
-	byte iextCompressionFlag_var;
-	byte iextComprMethod_var;
-	std::string iextLanguageTag_var;
-	std::string iextTranslatedKeyword_var;
-	std::string iextValChunkData_var;
+	std::string itxtIdChunkData_var;
+	byte itxtCompressionFlag_var;
+	byte itxtComprMethod_var;
+	std::string itxtLanguageTag_var;
+	std::string itxtTranslatedKeyword_var;
+	std::string itxtValChunkData_var;
 
 public:
-	bool iextIdChunkData_exists = false;
-	bool iextCompressionFlag_exists = false;
-	bool iextComprMethod_exists = false;
-	bool iextLanguageTag_exists = false;
-	bool iextTranslatedKeyword_exists = false;
-	bool iextValChunkData_exists = false;
+	bool itxtIdChunkData_exists = false;
+	bool itxtCompressionFlag_exists = false;
+	bool itxtComprMethod_exists = false;
+	bool itxtLanguageTag_exists = false;
+	bool itxtTranslatedKeyword_exists = false;
+	bool itxtValChunkData_exists = false;
 
-	std::string& iextIdChunkData() {
-		assert_cond(iextIdChunkData_exists, "struct field iextIdChunkData does not exist");
-		return iextIdChunkData_var;
+	std::string& itxtIdChunkData() {
+		assert_cond(itxtIdChunkData_exists, "struct field itxtIdChunkData does not exist");
+		return itxtIdChunkData_var;
 	}
-	byte& iextCompressionFlag() {
-		assert_cond(iextCompressionFlag_exists, "struct field iextCompressionFlag does not exist");
-		return iextCompressionFlag_var;
+	byte& itxtCompressionFlag() {
+		assert_cond(itxtCompressionFlag_exists, "struct field itxtCompressionFlag does not exist");
+		return itxtCompressionFlag_var;
 	}
-	byte& iextComprMethod() {
-		assert_cond(iextComprMethod_exists, "struct field iextComprMethod does not exist");
-		return iextComprMethod_var;
+	byte& itxtComprMethod() {
+		assert_cond(itxtComprMethod_exists, "struct field itxtComprMethod does not exist");
+		return itxtComprMethod_var;
 	}
-	std::string& iextLanguageTag() {
-		assert_cond(iextLanguageTag_exists, "struct field iextLanguageTag does not exist");
-		return iextLanguageTag_var;
+	std::string& itxtLanguageTag() {
+		assert_cond(itxtLanguageTag_exists, "struct field itxtLanguageTag does not exist");
+		return itxtLanguageTag_var;
 	}
-	std::string& iextTranslatedKeyword() {
-		assert_cond(iextTranslatedKeyword_exists, "struct field iextTranslatedKeyword does not exist");
-		return iextTranslatedKeyword_var;
+	std::string& itxtTranslatedKeyword() {
+		assert_cond(itxtTranslatedKeyword_exists, "struct field itxtTranslatedKeyword does not exist");
+		return itxtTranslatedKeyword_var;
 	}
-	std::string& iextValChunkData() {
-		assert_cond(iextValChunkData_exists, "struct field iextValChunkData does not exist");
-		return iextValChunkData_var;
+	std::string& itxtValChunkData() {
+		assert_cond(itxtValChunkData_exists, "struct field itxtValChunkData does not exist");
+		return itxtValChunkData_var;
 	}
 
 	unsigned char generated = 0;
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
-	PNG_CHUNK_IEXT& operator () () { return *instances.back(); }
-	PNG_CHUNK_IEXT& operator [] (int index) {
+	PNG_CHUNK_ITXT& operator () () { return *instances.back(); }
+	PNG_CHUNK_ITXT& operator [] (int index) {
 		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
 		return *instances[index];
 	}
-	PNG_CHUNK_IEXT(std::vector<PNG_CHUNK_IEXT*>& instances) : instances(instances) { instances.push_back(this); }
-	~PNG_CHUNK_IEXT() {
+	PNG_CHUNK_ITXT(std::vector<PNG_CHUNK_ITXT*>& instances) : instances(instances) { instances.push_back(this); }
+	~PNG_CHUNK_ITXT() {
 		if (generated == 2)
 			return;
 		while (instances.size()) {
-			PNG_CHUNK_IEXT* instance = instances.back();
+			PNG_CHUNK_ITXT* instance = instances.back();
 			instances.pop_back();
 			if (instance->generated == 2)
 				delete instance;
 		}
 	}
-	PNG_CHUNK_IEXT* generate(int32 chunkLen);
+	PNG_CHUNK_ITXT* generate(int32 chunkLen);
 };
 
 
 
-class PNG_CHUNK_ZEXT {
-	std::vector<PNG_CHUNK_ZEXT*>& instances;
+class PNG_CHUNK_ZTXT {
+	std::vector<PNG_CHUNK_ZTXT*>& instances;
 
-	std::string zextIdChunkData_var;
+	std::string ztxtIdChunkData_var;
 	byte comprMethod_var;
-	std::string zextValChunkData_var;
+	std::string ztxtValChunkData_var;
 
 public:
-	bool zextIdChunkData_exists = false;
+	bool ztxtIdChunkData_exists = false;
 	bool comprMethod_exists = false;
-	bool zextValChunkData_exists = false;
+	bool ztxtValChunkData_exists = false;
 
-	std::string& zextIdChunkData() {
-		assert_cond(zextIdChunkData_exists, "struct field zextIdChunkData does not exist");
-		return zextIdChunkData_var;
+	std::string& ztxtIdChunkData() {
+		assert_cond(ztxtIdChunkData_exists, "struct field ztxtIdChunkData does not exist");
+		return ztxtIdChunkData_var;
 	}
 	byte& comprMethod() {
 		assert_cond(comprMethod_exists, "struct field comprMethod does not exist");
 		return comprMethod_var;
 	}
-	std::string& zextValChunkData() {
-		assert_cond(zextValChunkData_exists, "struct field zextValChunkData does not exist");
-		return zextValChunkData_var;
+	std::string& ztxtValChunkData() {
+		assert_cond(ztxtValChunkData_exists, "struct field ztxtValChunkData does not exist");
+		return ztxtValChunkData_var;
 	}
 
 	unsigned char generated = 0;
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
-	PNG_CHUNK_ZEXT& operator () () { return *instances.back(); }
-	PNG_CHUNK_ZEXT& operator [] (int index) {
+	PNG_CHUNK_ZTXT& operator () () { return *instances.back(); }
+	PNG_CHUNK_ZTXT& operator [] (int index) {
 		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
 		return *instances[index];
 	}
-	PNG_CHUNK_ZEXT(std::vector<PNG_CHUNK_ZEXT*>& instances) : instances(instances) { instances.push_back(this); }
-	~PNG_CHUNK_ZEXT() {
+	PNG_CHUNK_ZTXT(std::vector<PNG_CHUNK_ZTXT*>& instances) : instances(instances) { instances.push_back(this); }
+	~PNG_CHUNK_ZTXT() {
 		if (generated == 2)
 			return;
 		while (instances.size()) {
-			PNG_CHUNK_ZEXT* instance = instances.back();
+			PNG_CHUNK_ZTXT* instance = instances.back();
 			instances.pop_back();
 			if (instance->generated == 2)
 				delete instance;
 		}
 	}
-	PNG_CHUNK_ZEXT* generate(int32 chunkLen);
+	PNG_CHUNK_ZTXT* generate(int32 chunkLen);
 };
 
 
@@ -1295,38 +1295,23 @@ public:
 
 class byte_array_class {
 	byte_class& element;
-	std::vector<std::string> known_values;
 	std::unordered_map<int, std::vector<byte>> element_known_values;
-	std::string value;
+	std::vector<byte> value;
 public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
-	std::string operator () () { return value; }
+	std::vector<byte> operator () () { return value; }
 	byte operator [] (int index) {
 		assert_cond((unsigned)index < value.size(), "array index out of bounds");
 		return value[index];
 	}
 	byte_array_class(byte_class& element, std::unordered_map<int, std::vector<byte>> element_known_values = {})
 		: element(element), element_known_values(element_known_values) {}
-	byte_array_class(byte_class& element, std::vector<std::string> known_values)
-		: element(element), known_values(known_values) {}
 
-	std::string generate(unsigned size, std::vector<std::string> possible_values = {}) {
+	std::vector<byte> generate(unsigned size) {
 		check_array_length(size);
 		_startof = FTell();
-		value = "";
-		if (possible_values.size()) {
-			value = file_acc.file_string(possible_values);
-			assert(value.length() == size);
-			_sizeof = size;
-			return value;
-		}
-		if (known_values.size()) {
-			value = file_acc.file_string(known_values);
-			assert(value.length() == size);
-			_sizeof = size;
-			return value;
-		}
+		value = {};
 		for (unsigned i = 0; i < size; ++i) {
 			auto known = element_known_values.find(i);
 			if (known == element_known_values.end()) {
@@ -1348,7 +1333,7 @@ class PNG_CHUNK_SPLT {
 
 	std::string paletteName_var;
 	byte sampleDepth_var;
-	std::string spltData_var;
+	std::vector<byte> spltData_var;
 
 public:
 	bool paletteName_exists = false;
@@ -1363,7 +1348,7 @@ public:
 		assert_cond(sampleDepth_exists, "struct field sampleDepth does not exist");
 		return sampleDepth_var;
 	}
-	std::string& spltData() {
+	std::vector<byte>& spltData() {
 		assert_cond(spltData_exists, "struct field spltData does not exist");
 		return spltData_var;
 	}
@@ -1538,38 +1523,23 @@ public:
 
 class ubyte_array_class {
 	ubyte_class& element;
-	std::vector<std::string> known_values;
 	std::unordered_map<int, std::vector<ubyte>> element_known_values;
-	std::string value;
+	std::vector<ubyte> value;
 public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
-	std::string operator () () { return value; }
+	std::vector<ubyte> operator () () { return value; }
 	ubyte operator [] (int index) {
 		assert_cond((unsigned)index < value.size(), "array index out of bounds");
 		return value[index];
 	}
 	ubyte_array_class(ubyte_class& element, std::unordered_map<int, std::vector<ubyte>> element_known_values = {})
 		: element(element), element_known_values(element_known_values) {}
-	ubyte_array_class(ubyte_class& element, std::vector<std::string> known_values)
-		: element(element), known_values(known_values) {}
 
-	std::string generate(unsigned size, std::vector<std::string> possible_values = {}) {
+	std::vector<ubyte> generate(unsigned size) {
 		check_array_length(size);
 		_startof = FTell();
-		value = "";
-		if (possible_values.size()) {
-			value = file_acc.file_string(possible_values);
-			assert(value.length() == size);
-			_sizeof = size;
-			return value;
-		}
-		if (known_values.size()) {
-			value = file_acc.file_string(known_values);
-			assert(value.length() == size);
-			_sizeof = size;
-			return value;
-		}
+		value = {};
 		for (unsigned i = 0; i < size; ++i) {
 			auto known = element_known_values.find(i);
 			if (known == element_known_values.end()) {
@@ -1590,7 +1560,7 @@ class PNG_CHUNK_FDAT {
 	std::vector<PNG_CHUNK_FDAT*>& instances;
 
 	uint32 sequence_number_var;
-	std::string frame_data_var;
+	std::vector<ubyte> frame_data_var;
 
 public:
 	bool sequence_number_exists = false;
@@ -1600,7 +1570,7 @@ public:
 		assert_cond(sequence_number_exists, "struct field sequence_number does not exist");
 		return sequence_number_var;
 	}
-	std::string& frame_data() {
+	std::vector<ubyte>& frame_data() {
 		assert_cond(frame_data_exists, "struct field frame_data does not exist");
 		return frame_data_var;
 	}
@@ -1639,8 +1609,8 @@ class PNG_CHUNK {
 	PNG_CHUNK_PLTE* plte_var;
 	PNG_CHUNK_CHRM* chrm_var;
 	PNG_CHUNK_SRGB* srgb_var;
-	PNG_CHUNK_IEXT* iext_var;
-	PNG_CHUNK_ZEXT* zext_var;
+	PNG_CHUNK_ITXT* itxt_var;
+	PNG_CHUNK_ZTXT* ztxt_var;
 	PNG_CHUNK_TIME* time_var;
 	PNG_CHUNK_PHYS* phys_var;
 	PNG_CHUNK_BKGD* bkgd_var;
@@ -1649,7 +1619,7 @@ class PNG_CHUNK {
 	PNG_CHUNK_ACTL* actl_var;
 	PNG_CHUNK_FCTL* fctl_var;
 	PNG_CHUNK_FDAT* fdat_var;
-	std::string data_var;
+	std::vector<ubyte> data_var;
 	uint32 crc_var;
 	uint16 pad_var;
 
@@ -1661,8 +1631,8 @@ public:
 	bool plte_exists = false;
 	bool chrm_exists = false;
 	bool srgb_exists = false;
-	bool iext_exists = false;
-	bool zext_exists = false;
+	bool itxt_exists = false;
+	bool ztxt_exists = false;
 	bool time_exists = false;
 	bool phys_exists = false;
 	bool bkgd_exists = false;
@@ -1703,13 +1673,13 @@ public:
 		assert_cond(srgb_exists, "struct field srgb does not exist");
 		return *srgb_var;
 	}
-	PNG_CHUNK_IEXT& iext() {
-		assert_cond(iext_exists, "struct field iext does not exist");
-		return *iext_var;
+	PNG_CHUNK_ITXT& itxt() {
+		assert_cond(itxt_exists, "struct field itxt does not exist");
+		return *itxt_var;
 	}
-	PNG_CHUNK_ZEXT& zext() {
-		assert_cond(zext_exists, "struct field zext does not exist");
-		return *zext_var;
+	PNG_CHUNK_ZTXT& ztxt() {
+		assert_cond(ztxt_exists, "struct field ztxt does not exist");
+		return *ztxt_var;
 	}
 	PNG_CHUNK_TIME& time() {
 		assert_cond(time_exists, "struct field time does not exist");
@@ -1743,7 +1713,7 @@ public:
 		assert_cond(fdat_exists, "struct field fdat does not exist");
 		return *fdat_var;
 	}
-	std::string& data() {
+	std::vector<ubyte>& data() {
 		assert_cond(data_exists, "struct field data does not exist");
 		return data_var;
 	}
@@ -1815,8 +1785,8 @@ std::vector<PNG_POINT*> PNG_POINT_green_instances;
 std::vector<PNG_POINT*> PNG_POINT_blue_instances;
 std::vector<PNG_CHUNK_CHRM*> PNG_CHUNK_CHRM_chrm_instances;
 std::vector<PNG_CHUNK_SRGB*> PNG_CHUNK_SRGB_srgb_instances;
-std::vector<PNG_CHUNK_IEXT*> PNG_CHUNK_IEXT_iext_instances;
-std::vector<PNG_CHUNK_ZEXT*> PNG_CHUNK_ZEXT_zext_instances;
+std::vector<PNG_CHUNK_ITXT*> PNG_CHUNK_ITXT_itxt_instances;
+std::vector<PNG_CHUNK_ZTXT*> PNG_CHUNK_ZTXT_ztxt_instances;
 std::vector<PNG_CHUNK_TIME*> PNG_CHUNK_TIME_time__instances;
 std::vector<PNG_CHUNK_PHYS*> PNG_CHUNK_PHYS_phys_instances;
 std::vector<PNG_CHUNK_BKGD*> PNG_CHUNK_BKGD_bkgd_instances;
@@ -1828,7 +1798,7 @@ std::vector<PNG_CHUNK_FDAT*> PNG_CHUNK_FDAT_fdat_instances;
 std::vector<PNG_CHUNK*> PNG_CHUNK_chunk_instances;
 
 
-std::unordered_map<std::string, std::string> variable_types = { { "btPngSignature", "uint16_array_class" }, { "sig", "PNG_SIGNATURE" }, { "length", "uint32_class" }, { "cname", "char_array_class" }, { "ctype", "uint32_class" }, { "type", "CTYPE" }, { "width", "uint32_class" }, { "height", "uint32_class" }, { "bits", "ubyte_class" }, { "color_type", "PNG_COLOR_SPACE_TYPE" }, { "compr_method", "PNG_COMPR_METHOD" }, { "filter_method", "PNG_FILTER_METHOD" }, { "interlace_method", "PNG_INTERLACE_METHOD" }, { "ihdr", "PNG_CHUNK_IHDR" }, { "label", "string_class" }, { "data", "char_array_class" }, { "text", "PNG_CHUNK_TEXT" }, { "btRed", "byte_class" }, { "btGreen", "byte_class" }, { "btBlue", "byte_class" }, { "plteChunkData", "PNG_PALETTE_PIXEL_array_class" }, { "plte", "PNG_CHUNK_PLTE" }, { "x", "uint32_class" }, { "y", "uint32_class" }, { "white", "PNG_POINT" }, { "red", "PNG_POINT" }, { "green", "PNG_POINT" }, { "blue", "PNG_POINT" }, { "chrm", "PNG_CHUNK_CHRM" }, { "srgbChunkData", "PNG_SRGB_CHUNK_DATA" }, { "srgb", "PNG_CHUNK_SRGB" }, { "iextIdChunkData", "string_class" }, { "iextCompressionFlag", "byte_class" }, { "iextComprMethod", "PNG_COMPR_METHOD" }, { "iextLanguageTag", "string_class" }, { "iextTranslatedKeyword", "string_class" }, { "iextValChunkData", "char_array_class" }, { "iext", "PNG_CHUNK_IEXT" }, { "zextIdChunkData", "string_class" }, { "comprMethod", "PNG_COMPR_METHOD" }, { "zextValChunkData", "char_array_class" }, { "zext", "PNG_CHUNK_ZEXT" }, { "timeYear", "int16_class" }, { "timeMonth", "byte_class" }, { "timeDay", "byte_class" }, { "timeHour", "byte_class" }, { "timeMin", "byte_class" }, { "timeSec", "byte_class" }, { "time_", "PNG_CHUNK_TIME" }, { "physPixelPerUnitX", "uint_class" }, { "physPixelPerUnitY", "uint_class" }, { "physUnitSpec", "physUnitSpec_enum" }, { "phys", "PNG_CHUNK_PHYS" }, { "bgColorPaletteIndex", "ubyte_class" }, { "bgGrayscalePixelValue", "uint16_class" }, { "bgColorPixelRed", "uint16_class" }, { "bgColorPixelGreen", "uint16_class" }, { "bgColorPixelBlue", "uint16_class" }, { "bkgd", "PNG_CHUNK_BKGD" }, { "sbitRed", "byte_class" }, { "sbitGreen", "byte_class" }, { "sbitBlue", "byte_class" }, { "sbitGraySource", "byte_class" }, { "sbitGrayAlphaSource", "byte_class" }, { "sbitGrayAlphaSourceAlpha", "byte_class" }, { "sbitColorRed", "byte_class" }, { "sbitColorGreen", "byte_class" }, { "sbitColorBlue", "byte_class" }, { "sbitColorAlphaRed", "byte_class" }, { "sbitColorAlphaGreen", "byte_class" }, { "sbitColorAlphaBlue", "byte_class" }, { "sbitColorAlphaAlpha", "byte_class" }, { "sbit", "PNG_CHUNK_SBIT" }, { "paletteName", "string_class" }, { "sampleDepth", "byte_class" }, { "spltData", "byte_array_class" }, { "splt", "PNG_CHUNK_SPLT" }, { "num_frames", "uint32_class" }, { "num_plays", "uint32_class" }, { "actl", "PNG_CHUNK_ACTL" }, { "sequence_number", "uint32_class" }, { "x_offset", "uint32_class" }, { "y_offset", "uint32_class" }, { "delay_num", "int16_class" }, { "delay_den", "int16_class" }, { "dispose_op", "APNG_DISPOSE_OP" }, { "blend_op", "APNG_BLEND_OP" }, { "fctl", "PNG_CHUNK_FCTL" }, { "frame_data", "ubyte_array_class" }, { "fdat", "PNG_CHUNK_FDAT" }, { "data_", "ubyte_array_class" }, { "crc", "uint32_class" }, { "pad", "uint16_class" }, { "chunk", "PNG_CHUNK" } };
+std::unordered_map<std::string, std::string> variable_types = { { "btPngSignature", "uint16_array_class" }, { "sig", "PNG_SIGNATURE" }, { "length", "uint32_class" }, { "cname", "char_array_class" }, { "ctype", "uint32_class" }, { "type", "CTYPE" }, { "width", "uint32_class" }, { "height", "uint32_class" }, { "bits", "ubyte_class" }, { "color_type", "PNG_COLOR_SPACE_TYPE" }, { "compr_method", "PNG_COMPR_METHOD" }, { "filter_method", "PNG_FILTER_METHOD" }, { "interlace_method", "PNG_INTERLACE_METHOD" }, { "ihdr", "PNG_CHUNK_IHDR" }, { "label", "string_class" }, { "data", "char_array_class" }, { "text", "PNG_CHUNK_TEXT" }, { "btRed", "byte_class" }, { "btGreen", "byte_class" }, { "btBlue", "byte_class" }, { "plteChunkData", "PNG_PALETTE_PIXEL_array_class" }, { "plte", "PNG_CHUNK_PLTE" }, { "x", "uint32_class" }, { "y", "uint32_class" }, { "white", "PNG_POINT" }, { "red", "PNG_POINT" }, { "green", "PNG_POINT" }, { "blue", "PNG_POINT" }, { "chrm", "PNG_CHUNK_CHRM" }, { "srgbChunkData", "PNG_SRGB_CHUNK_DATA" }, { "srgb", "PNG_CHUNK_SRGB" }, { "itxtIdChunkData", "string_class" }, { "itxtCompressionFlag", "byte_class" }, { "itxtComprMethod", "PNG_COMPR_METHOD" }, { "itxtLanguageTag", "string_class" }, { "itxtTranslatedKeyword", "string_class" }, { "itxtValChunkData", "char_array_class" }, { "itxt", "PNG_CHUNK_ITXT" }, { "ztxtIdChunkData", "string_class" }, { "comprMethod", "PNG_COMPR_METHOD" }, { "ztxtValChunkData", "char_array_class" }, { "ztxt", "PNG_CHUNK_ZTXT" }, { "timeYear", "int16_class" }, { "timeMonth", "byte_class" }, { "timeDay", "byte_class" }, { "timeHour", "byte_class" }, { "timeMin", "byte_class" }, { "timeSec", "byte_class" }, { "time_", "PNG_CHUNK_TIME" }, { "physPixelPerUnitX", "uint_class" }, { "physPixelPerUnitY", "uint_class" }, { "physUnitSpec", "physUnitSpec_enum" }, { "phys", "PNG_CHUNK_PHYS" }, { "bgColorPaletteIndex", "ubyte_class" }, { "bgGrayscalePixelValue", "uint16_class" }, { "bgColorPixelRed", "uint16_class" }, { "bgColorPixelGreen", "uint16_class" }, { "bgColorPixelBlue", "uint16_class" }, { "bkgd", "PNG_CHUNK_BKGD" }, { "sbitRed", "byte_class" }, { "sbitGreen", "byte_class" }, { "sbitBlue", "byte_class" }, { "sbitGraySource", "byte_class" }, { "sbitGrayAlphaSource", "byte_class" }, { "sbitGrayAlphaSourceAlpha", "byte_class" }, { "sbitColorRed", "byte_class" }, { "sbitColorGreen", "byte_class" }, { "sbitColorBlue", "byte_class" }, { "sbitColorAlphaRed", "byte_class" }, { "sbitColorAlphaGreen", "byte_class" }, { "sbitColorAlphaBlue", "byte_class" }, { "sbitColorAlphaAlpha", "byte_class" }, { "sbit", "PNG_CHUNK_SBIT" }, { "paletteName", "string_class" }, { "sampleDepth", "byte_class" }, { "spltData", "byte_array_class" }, { "splt", "PNG_CHUNK_SPLT" }, { "num_frames", "uint32_class" }, { "num_plays", "uint32_class" }, { "actl", "PNG_CHUNK_ACTL" }, { "sequence_number", "uint32_class" }, { "x_offset", "uint32_class" }, { "y_offset", "uint32_class" }, { "delay_num", "int16_class" }, { "delay_den", "int16_class" }, { "dispose_op", "APNG_DISPOSE_OP" }, { "blend_op", "APNG_BLEND_OP" }, { "fctl", "PNG_CHUNK_FCTL" }, { "frame_data", "ubyte_array_class" }, { "fdat", "PNG_CHUNK_FDAT" }, { "data_", "ubyte_array_class" }, { "crc", "uint32_class" }, { "pad", "uint16_class" }, { "chunk", "PNG_CHUNK" } };
 
 std::vector<std::vector<int>> integer_ranges = { { 1, 16 }, { 1, 24 }, { 1, 24 } };
 
@@ -1871,17 +1841,17 @@ public:
 	PNG_POINT blue;
 	PNG_CHUNK_CHRM chrm;
 	PNG_CHUNK_SRGB srgb;
-	string_class iextIdChunkData;
-	byte_class iextCompressionFlag;
-	string_class iextLanguageTag;
-	string_class iextTranslatedKeyword;
-	char_class iextValChunkData_element;
-	char_array_class iextValChunkData;
-	PNG_CHUNK_IEXT iext;
-	string_class zextIdChunkData;
-	char_class zextValChunkData_element;
-	char_array_class zextValChunkData;
-	PNG_CHUNK_ZEXT zext;
+	string_class itxtIdChunkData;
+	byte_class itxtCompressionFlag;
+	string_class itxtLanguageTag;
+	string_class itxtTranslatedKeyword;
+	char_class itxtValChunkData_element;
+	char_array_class itxtValChunkData;
+	PNG_CHUNK_ITXT itxt;
+	string_class ztxtIdChunkData;
+	char_class ztxtValChunkData_element;
+	char_array_class ztxtValChunkData;
+	PNG_CHUNK_ZTXT ztxt;
 	int16_class timeYear;
 	byte_class timeMonth;
 	byte_class timeDay;
@@ -1942,7 +1912,7 @@ public:
 		sig(PNG_SIGNATURE_sig_instances),
 		length(2),
 		cname_element(false),
-		cname(cname_element, { "IHDR", "tEXt", "PLTE", "cHRM", "sRGB", "iEXt", "zEXt", "tIME", "pHYs", "bKGD", "sBIT", "sPLT", "acTL", "fcTL", "fdAT", "IEND", "eXIf", "IHDR", "IEND" }),
+		cname(cname_element, { "IHDR", "tEXt", "PLTE", "cHRM", "sRGB", "iTXt", "zTXt", "tIME", "pHYs", "bKGD", "sBIT", "sPLT", "acTL", "fcTL", "fdAT", "IEND", "eXIf", "IHDR", "IEND" }),
 		ctype(1),
 		type(CTYPE_type_instances),
 		width(3),
@@ -1966,13 +1936,13 @@ public:
 		blue(PNG_POINT_blue_instances),
 		chrm(PNG_CHUNK_CHRM_chrm_instances),
 		srgb(PNG_CHUNK_SRGB_srgb_instances),
-		iextCompressionFlag(1),
-		iextValChunkData_element(false),
-		iextValChunkData(iextValChunkData_element),
-		iext(PNG_CHUNK_IEXT_iext_instances),
-		zextValChunkData_element(false),
-		zextValChunkData(zextValChunkData_element),
-		zext(PNG_CHUNK_ZEXT_zext_instances),
+		itxtCompressionFlag(1),
+		itxtValChunkData_element(false),
+		itxtValChunkData(itxtValChunkData_element),
+		itxt(PNG_CHUNK_ITXT_itxt_instances),
+		ztxtValChunkData_element(false),
+		ztxtValChunkData(ztxtValChunkData_element),
+		ztxt(PNG_CHUNK_ZTXT_ztxt_instances),
 		timeYear(1),
 		timeMonth(1),
 		timeDay(1),
@@ -2220,9 +2190,9 @@ PNG_CHUNK_SRGB* PNG_CHUNK_SRGB::generate() {
 }
 
 
-PNG_CHUNK_IEXT* PNG_CHUNK_IEXT::generate(int32 chunkLen) {
+PNG_CHUNK_ITXT* PNG_CHUNK_ITXT::generate(int32 chunkLen) {
 	if (generated == 1) {
-		PNG_CHUNK_IEXT* new_instance = new PNG_CHUNK_IEXT(instances);
+		PNG_CHUNK_ITXT* new_instance = new PNG_CHUNK_ITXT(instances);
 		new_instance->generated = 2;
 		return new_instance->generate(chunkLen);
 	}
@@ -2230,21 +2200,21 @@ PNG_CHUNK_IEXT* PNG_CHUNK_IEXT::generate(int32 chunkLen) {
 		generated = 1;
 	_startof = FTell();
 
-	GENERATE_VAR(iextIdChunkData, ::g->iextIdChunkData.generate());
-	GENERATE_VAR(iextCompressionFlag, ::g->iextCompressionFlag.generate());
-	GENERATE_VAR(iextComprMethod, PNG_COMPR_METHOD_generate());
-	GENERATE_VAR(iextLanguageTag, ::g->iextLanguageTag.generate());
-	GENERATE_VAR(iextTranslatedKeyword, ::g->iextTranslatedKeyword.generate());
-	GENERATE_VAR(iextValChunkData, ::g->iextValChunkData.generate((((((((chunkLen - Strlen(iextIdChunkData())) - 1) - Strlen(iextLanguageTag())) - 1) - Strlen(iextTranslatedKeyword())) - 1) - 2)));
+	GENERATE_VAR(itxtIdChunkData, ::g->itxtIdChunkData.generate());
+	GENERATE_VAR(itxtCompressionFlag, ::g->itxtCompressionFlag.generate());
+	GENERATE_VAR(itxtComprMethod, PNG_COMPR_METHOD_generate());
+	GENERATE_VAR(itxtLanguageTag, ::g->itxtLanguageTag.generate());
+	GENERATE_VAR(itxtTranslatedKeyword, ::g->itxtTranslatedKeyword.generate());
+	GENERATE_VAR(itxtValChunkData, ::g->itxtValChunkData.generate((((((((chunkLen - Strlen(itxtIdChunkData())) - 1) - Strlen(itxtLanguageTag())) - 1) - Strlen(itxtTranslatedKeyword())) - 1) - 2)));
 
 	_sizeof = FTell() - _startof;
 	return this;
 }
 
 
-PNG_CHUNK_ZEXT* PNG_CHUNK_ZEXT::generate(int32 chunkLen) {
+PNG_CHUNK_ZTXT* PNG_CHUNK_ZTXT::generate(int32 chunkLen) {
 	if (generated == 1) {
-		PNG_CHUNK_ZEXT* new_instance = new PNG_CHUNK_ZEXT(instances);
+		PNG_CHUNK_ZTXT* new_instance = new PNG_CHUNK_ZTXT(instances);
 		new_instance->generated = 2;
 		return new_instance->generate(chunkLen);
 	}
@@ -2252,9 +2222,9 @@ PNG_CHUNK_ZEXT* PNG_CHUNK_ZEXT::generate(int32 chunkLen) {
 		generated = 1;
 	_startof = FTell();
 
-	GENERATE_VAR(zextIdChunkData, ::g->zextIdChunkData.generate());
+	GENERATE_VAR(ztxtIdChunkData, ::g->ztxtIdChunkData.generate());
 	GENERATE_VAR(comprMethod, PNG_COMPR_METHOD_generate());
-	GENERATE_VAR(zextValChunkData, ::g->zextValChunkData.generate(((chunkLen - Strlen(zextIdChunkData())) - 2)));
+	GENERATE_VAR(ztxtValChunkData, ::g->ztxtValChunkData.generate(((chunkLen - Strlen(ztxtIdChunkData())) - 2)));
 
 	_sizeof = FTell() - _startof;
 	return this;
@@ -2648,11 +2618,11 @@ PNG_CHUNK* PNG_CHUNK::generate() {
 	if ((type().cname() == "sRGB")) {
 		GENERATE_VAR(srgb, ::g->srgb.generate());
 	} else {
-	if ((type().cname() == "iEXt")) {
-		GENERATE_VAR(iext, ::g->iext.generate(length()));
+	if ((type().cname() == "iTXt")) {
+		GENERATE_VAR(itxt, ::g->itxt.generate(length()));
 	} else {
-	if ((type().cname() == "zEXt")) {
-		GENERATE_VAR(zext, ::g->zext.generate(length()));
+	if ((type().cname() == "zTXt")) {
+		GENERATE_VAR(ztxt, ::g->ztxt.generate(length()));
 	} else {
 	if ((type().cname() == "tIME")) {
 		GENERATE_VAR(time, ::g->time_.generate());
@@ -2759,16 +2729,16 @@ void generate_file() {
 			switch (::g->chunk().ihdr().color_type()) {
 			case Indexed:
 				::g->preferred_chunks = { "PLTE" };
-				::g->possible_chunks = { "tIME", "zTXt", "tEXt", "iTXt", "pHYs", "sPLT", "iCCP", "sRGB", "sBIT", "gAMA", "cHRM", "iEXt", "zEXt", "acTL", "fcTL", "fdAT", "eXIf", "PLTE" };
+				::g->possible_chunks = { "tIME", "zTXt", "tEXt", "iTXt", "pHYs", "sPLT", "iCCP", "sRGB", "sBIT", "gAMA", "cHRM", "acTL", "fcTL", "fdAT", "eXIf", "PLTE" };
 				break;
 			case GrayScale:
 			case AlphaGrayScale:
 				::g->preferred_chunks = { "IDAT" };
-				::g->possible_chunks = { "tIME", "zTXt", "tEXt", "iTXt", "pHYs", "sPLT", "iCCP", "sRGB", "sBIT", "gAMA", "cHRM", "tRNS", "bKGD", "iEXt", "zEXt", "acTL", "fcTL", "fdAT", "eXIf", "IDAT" };
+				::g->possible_chunks = { "tIME", "zTXt", "tEXt", "iTXt", "pHYs", "sPLT", "iCCP", "sRGB", "sBIT", "gAMA", "cHRM", "tRNS", "bKGD", "acTL", "fcTL", "fdAT", "eXIf", "IDAT" };
 				break;
 			default:
 				::g->preferred_chunks = { "PLTE", "IDAT" };
-				::g->possible_chunks = { "tIME", "zTXt", "tEXt", "iTXt", "pHYs", "sPLT", "iCCP", "sRGB", "sBIT", "gAMA", "cHRM", "PLTE", "tRNS", "bKGD", "iEXt", "zEXt", "acTL", "fcTL", "fdAT", "eXIf", "IDAT" };
+				::g->possible_chunks = { "tIME", "zTXt", "tEXt", "iTXt", "pHYs", "sPLT", "iCCP", "sRGB", "sBIT", "gAMA", "cHRM", "PLTE", "tRNS", "bKGD", "acTL", "fcTL", "fdAT", "eXIf", "IDAT" };
 			};
 			break;
 		case STR2INT("tIME"):
