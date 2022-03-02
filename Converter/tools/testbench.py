@@ -89,6 +89,7 @@ def findFileRecursively(base_path, name, ext, logger, maxDepth=3):
 def runSingleFormatParseTest(formatName, resolveTestInput, logger):
     logger_fmt = logger.getChild(formatName)
     basePath = create_fmt_folder(formatName)
+    print(basePath)
     logfileName = f'{basePath}/output/test-{formatName}-fuzzer.output'
     logger.handlers = [
         log.StreamHandler(),
@@ -114,7 +115,7 @@ def runSingleFormatParseTest(formatName, resolveTestInput, logger):
         referenceParser = compileParser(referenceTemplate,
                                         basePath=basePath,
                                         logger=logger_fmt)
-        testInput = resolveTestInput(formatName, referenceParser)
+        testInput = resolveTestInput(formatName, referenceParser, basePath)
         referencePT = runParserOnInput(referenceParser, testInput, basePath,
                                        logger)
         PTunderTest = runParserOnInput(parserUnderTest, testInput, basePath,
@@ -223,8 +224,8 @@ def compileParser(templatePath, basePath, logger, test=False):
         binName = f'test-{fmtName}-fuzzer' if test else f'{fmtName}-fuzzer'
         linkCmd = [
             'g++', '-O3', f'{basePath}/build/{flavor}{fmtName}.o',
-            f'{basePath}/build/fuzzer.o', '-o',
-            f'{basePath}/build/{binName}', '-lz'
+            f'{basePath}/build/fuzzer.o', '-o', f'{basePath}/build/{binName}',
+            '-lz'
         ]
         subprocess.run(linkCmd, capture_output=True, check=True)
         logger.info("Compiled fuzzer binary")
@@ -235,14 +236,14 @@ def compileParser(templatePath, basePath, logger, test=False):
 
 def runParserOnInput(parser, testInput, basePath, logger):
     try:
-        cmd = [f"{basePath}/output/{parser}", "parse", testInput]
+        cmd = [f"{basePath}/build/{parser}", "parse", testInput]
         parseTree = subprocess.run(cmd, check=True, capture_output=True)
         if (parseTree.returncode != 0):
             raise TestRunException(logger, f"Error ret: {parseTree.stderr}")
         if (len(parseTree.stdout) == 0):
             raise TestRunException(logger, f"Error : {parseTree.stderr}")
         #print(parseTree.stderr.decode())
-        with open(f"{basePath}/output/{parser}.output", "w") as file:
+        with open(f"{basePath}/build/{parser}.output", "w") as file:
             file.write(parseTree.stdout.decode())
 
         return parseTree.stdout.decode()
