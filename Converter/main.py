@@ -8,7 +8,6 @@ import sys
 
 
 def run_tests_on_all():
-    print(log.root)
     filenames = sub.run("basename -s .bt -a $(exa ../templates | grep -v - )",
             shell=True, stdout=sub.PIPE, check=True)
     fns = filenames.stdout.decode().split("\n")[:-1:]
