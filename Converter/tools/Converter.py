@@ -4,6 +4,8 @@ import yaml
 import re
 import os
 import traceback
+from functools import reduce
+import operator
 
 DEBUG = True
 
@@ -115,6 +117,8 @@ class Converter(object):
 
     def parse_subtree(self, name=None):
         self.name = name
+        # print_debug(self.input)
+        # print_debug(type(self.this_level_keys))
 
         for this_level_key in self.this_level_keys:
             local_key = remap_keys(this_level_key)
@@ -127,6 +131,7 @@ class Converter(object):
 
     def generate_code_toplevel(self):
         # print_debug(self.root.global_type_table,True)
+
         if "enums" in self.subtrees.keys():
             self.output_enums.extend(self.subtrees["enums"].generate_code(called_lowlevel=False))
         self.output_types.extend(self.subtrees["types"].generate_code(called_lowlevel=False))
@@ -152,8 +157,24 @@ class Converter(object):
         if "instances" in self.this_level_keys:
             for x in self.input["instances"].keys():
                 self.mark_as_implemented("instance", x, value=False, containing_type=self.name)
-        for this_level_key in self.this_level_keys:
+        gen_list = []
+        if "doc-ref" in self.this_level_keys:
+            gen_list.append("doc-ref")
+        if "doc" in self.this_level_keys:
+            gen_list.append("doc")
+        if "types" in self.this_level_keys:
+            gen_list.append("types")
+        if "seq" in self.this_level_keys:
+            gen_list.append("seq")
+        if "instances" in self.this_level_keys:
+            gen_list.append("instances")
+
+        # print_debug(gen_list)
+        # print_debug(list(self.this_level_keys))
+        # for this_level_key in list(self.this_level_keys)[::-1]:
+        for this_level_key in gen_list:
             local_key = remap_keys(this_level_key)
+
             if local_key is not None:
                 if True:  # SWITCH BETWEEN SUPPRESSION OF "UNIMPLEMENTED" ERRORS
                     try:
@@ -280,7 +301,7 @@ class Converter(object):
                 for this_level_key in self.this_level_keys:
                     local_key = remap_keys(this_level_key)
                     if local_key is not None:
-                        # print_debug(f'check key {local_key} for {flag} in recursion {self.subtrees[local_key].input}')
+                        #print_debug(f'check key {local_key} for {flag} in recursion {self.subtrees[local_key].input}')
                         hit = self.subtrees[local_key].chck_flg(flag, flag_to_val, exclude=exclude,
                                                                 excluded_values=excluded_values)
                         if hit:
@@ -296,7 +317,11 @@ class Converter(object):
                     return False
         except:
             traceback.print_exc()
-            print_debug(f"exception chck_flg {flag} excl {exclude} in {self.input}")
+            # print_debug(f"exception chck_flg {flag} excl {exclude} in {self.input}")
+            print_debug(f"exception chck_flg {flag} excl {exclude}")
+            print_debug(self.parent.subtrees)
+            print_debug(self.subtrees)
+            print_debug(self.this_level_keys)
             exit(-1)
             return False
 
@@ -352,9 +377,24 @@ class meta(Converter):
         Converter.__init__(self, input_js, parent=parent, root=root, name=name)
 
     def parse_subtree(self, name=None):
+
+        # print_debug(self.input)
         if self.root.endian == "":
             self.root.endian = self.input["endian"]
         pass
+
+    def chck_flg(self, flag, flag_to_val=False, exclude=None, excluded_values=None):
+
+        # TODO THIS IS A DIRTY FIX FOR CASES WHERE SUBTYPES(usually imports like exif into jpeg)
+        # HAVE THEIR OWN META SECTION DEFINIGN ENDIAN IN A SWITCH STRUCTURE.
+        # THIS FUNCTIONS OVERRIDES THE CONVERTER LVL FUNCTION IN ORDER TO CIRCUMVENT
+        # THE NEED FOR SOME SUBTREE STRUCTURE UNDER META
+        # THIS MIGHT BE A PROBLEM IF ENDIANESS(JPEG) != ENDIANESS(exif)
+        # IN ORDER TO FIX THIS SOME SORT OF ENDIAN FLIP IS NEEDED AND INFORMATION ROUTING TO THE CORRESPONDING
+        # CODE GEN PARTS
+        if flag_to_val:
+            return None
+        return False
 
 
 class doc(Converter):
@@ -564,12 +604,16 @@ class data_point():
             sizeos = self.root.lookup_f_in_typ_pres(cases[case_key], "size-eos")
             repeat = self.root.lookup_f_in_typ_pres(cases[case_key], "repeat")
             # encoding = self.root.lookup_f_in_typ_pres(cases[case_key], "encoding")
-            if (sizeos or repeat or self.root.lookup_type(cases[case_key], check_if_param_needed=True)):
+            # if (sizeos or repeat or self.root.lookup_type(cases[case_key], check_if_param_needed=True)):
+            if self.root.lookup_type(cases[case_key], check_if_param_needed=True):
                 if "size" in self.input.keys():
                     paramfield = "(" + str(self.input["size"]) + ")"
                 else:
                     # print_debug("ERROR NO SIZE GIVE FOR PARAMETERIZED STRUCT INSTANTIATION (1):\n"+str(self.input))
-                    paramfield = ""
+                    # print_debug(self.root.global_type_table,pretty=True)
+                    # print_debug(self.root.lookup_type(cases[case_key], check_if_param_needed=True))
+                    # exit(-1)
+                    paramfield = "(length_CONVERTER -(FTell()-struct_start_CONVERTER))"
             else:
                 paramfield = ""
             if case_val != "default":
@@ -579,17 +623,23 @@ class data_point():
                 self.front.append("         default:")
             self.front.append("             " + str(cases[case_key]) + "_TYPE " + str(self.id) + paramfield + ";")
             self.front.append("             break;")
-
         if default_needed and "size" in self.input.keys():
             self.front.append("         default:")
             # self.output.append(f'    Warning("LENGTH %hu %hx",{str(self.input["size"])},{str(self.input["size"])});')
             self.front.append("             ubyte raw_data_CONVERTER[" + str(self.input["size"]) + "];")
             self.front.append("             break;")
-        elif default_needed and not switch_over_enum:
+        elif default_needed and not switch_over_enum and not size:
             self.front.append("         default:")
-            self.front.append("             ubyte raw_data_CONVERTER[LENGHT MISSING];")
+            self.front.append(
+                "             ubyte raw_data_CONVERTER[length_CONVERTER -(FTell()-struct_start_CONVERTER)];")
             self.front.append("             break;")
             print_debug("LENGHT NOT FOUND FOR DEFAULT SWITCH CASE")
+        elif default_needed and not switch_over_enum and size:
+            self.front.append("         default:")
+            self.front.append(f"             ubyte raw_data_CONVERTER[{size}];")
+            self.front.append("             break;")
+            print_debug("LENGHT NOT FOUND FOR DEFAULT SWITCH CASE")
+
         self.front.append("    }")
 
     def gen_if(self, containing_type=None):
@@ -869,10 +919,12 @@ class types(Converter):
         self.output = []
 
     def parse_subtree(self, name=None):
+        # print_debug(self.this_level_keys)
         for this_level_key in self.this_level_keys:
             local_key = remap_keys(this_level_key)
             if local_key is not None:
-                self.root.register_type(local_key, self.input[local_key])
+                # self.root.register_type(local_key,self.input[local_key])
+                self.root.register_type(name=local_key, value=self.input[local_key])
                 self.subtrees[local_key] = Converter(self.input[this_level_key], parent=self, root=self.root)
                 self.subtrees[local_key].parse_subtree(name=local_key)
         self.parse_arguments_main()
@@ -881,10 +933,13 @@ class types(Converter):
         for this_level_key in self.this_level_keys:
             local_key = remap_keys(this_level_key)
             if local_key is not None:
-                if self.parse_arguments_recursion(self.subtrees[local_key], origin_type=local_key):
+                if self.parse_arguments_recursion(self.subtrees[local_key], origin_type=local_key, depth=0):
                     self.root.register_type(name=local_key, param_needed=True)
 
-    def parse_arguments_recursion(self, item, origin_type=None):  # returns True if param is needed in subtree
+    def parse_arguments_recursion(self, item, origin_type=None, depth=0):  # returns True if param is needed in subtree
+        if depth > 20:
+            return False
+
         # print_debug(item.this_level_keys)
         # print_debug(item.subtrees)
         # print_debug(item.input)
@@ -914,7 +969,7 @@ class types(Converter):
             else:
                 hit_list = [self.root.expr_resolve(hit)]
             for hitter in hit_list:
-                if hitter in self.this_level_keys and not hitter in included_types:
+                if hitter in list(self.this_level_keys) and not hitter in included_types:
                     included_types.append(hitter)
             hit = item.chck_flg("type", flag_to_val=True, excluded_values=exclusion_list)
 
@@ -926,7 +981,7 @@ class types(Converter):
             for sub_type in included_types:
                 lower_level_type = self.subtrees[sub_type]
                 # print_debug(lower_level_type)
-                if self.parse_arguments_recursion(lower_level_type, origin_type=origin_type):
+                if self.parse_arguments_recursion(lower_level_type, origin_type=origin_type, depth=depth + 1):
                     param_needed = True
             # print_debug(param_needed)
             return param_needed and not item.chck_flg("size")
@@ -1026,12 +1081,16 @@ def insert_imports(main_input, imports, path):
             for imp_type in imported_types.keys():
                 out["types"][imp_type] = imported_types[imp_type]
         except:
+            traceback.print_exc()
+            print_debug("types didnt work")
             pass
 
         try:
             imported_main_seq = imported_kaitai["seq"]
-            out["types"][imported_kaitai["meta"]["id"]] = imported_main_seq
+            out["types"][imported_kaitai["meta"]["id"]] = {"seq": imported_main_seq}
         except:
+            traceback.print_exc()
+            print_debug("main seq didnt work")
             pass
 
         try:
@@ -1039,16 +1098,55 @@ def insert_imports(main_input, imports, path):
             for imp_enum in imported_enums.keys():
                 out["enums"][imp_enum] = imported_enums[imp_enum]
         except:
+            traceback.print_exc()
             pass
     return out
 
 
-def kaitai_sorter(input_kaitai, subtree):
-    this_level_keys = subtree.keys()
+def kaitai_sorter_main(input_kaitai):
+    top_level_types = list(input_kaitai["types"].keys())
+    for top_level_type in top_level_types:
+        kaitai_sorter_recursive(input_kaitai, ["types", top_level_type])
+
+
+def kaitai_sorter_recursive(input_kaitai, path_list):
+    this_level_keys = list(get_by_path(input_kaitai, path_list).keys())
     if "types" in this_level_keys:
+        this_level_types = list(get_by_path(input_kaitai, path_list + ["types"]).keys())
+        for this_level_type in this_level_types:
+            kaitai_sorter_recursive(input_kaitai, path_list + ["types", this_level_type])
+
         pass
     if "enums" in this_level_keys:
+        enum_list = list(get_by_path(input_kaitai, path_list + ["enums"]).keys())
+        for enum_unit in enum_list:
+            if enum_unit not in get_by_path(input_kaitai, ["enums"]).keys():
+                set_by_path(input_kaitai, ["enums", enum_unit],
+                            get_by_path(input_kaitai, path_list + ["enums", enum_unit]))
+                del_by_path(input_kaitai, path_list + ["enums", enum_unit])
+            else:
+                print_debug(f'ERROR DOUBLE ENUMS WITH SAME NAME')
+                exit(-1)
         pass
+
+
+def type_replacer(input_kaitai, from_type, to_type, containing_type_path):
+    pass
+
+
+def get_by_path(root, items):
+    """Access a nested object in root by item sequence."""
+    return reduce(operator.getitem, items, root)
+
+
+def set_by_path(root, items, value):
+    """Set a value in a nested object in root by item sequence."""
+    get_by_path(root, items[:-1])[items[-1]] = value
+
+
+def del_by_path(root, items):
+    """Delete a key-value in a nested object in root by item sequence."""
+    del get_by_path(root, items[:-1])[items[-1]]
 
 
 def main():
@@ -1072,9 +1170,8 @@ def main():
         kaitaijs = insert_imports(kaitaijs_main, imports, filepath)
     except:
         kaitaijs = kaitaijs_main
-    # kaitai_sorter(kaitaijs,kaitaijs)
+    kaitai_sorter_main(kaitaijs)
     # print_debug(kaitaijs, pretty=True)
-
     converter = Converter(kaitaijs, True)
     output = converter.generate_code_toplevel()
     with open(output_file_name, "w+") as out_file:
