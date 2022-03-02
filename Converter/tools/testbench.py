@@ -294,7 +294,7 @@ def main():
     logger.info("===Starting test bench run===")
     if (len(parsedArgs.formats) == 1):
         logger.info("Running test for single format %s", parsedArgs.formats[0])
-        testInputResolver = lambda fmt, parser: parsedArgs.testInput if parsedArgs.testInput else resolveTestInputByFormat(
+        testInputResolver = lambda fmt, parser, basePath: parsedArgs.testInput if parsedArgs.testInput else resolveTestInputByFormat(
             fmt, parser, create_fmt_folder(fmt))
         runSingleFormatParseTest(parsedArgs.formats[0], testInputResolver,
                                  logger)
