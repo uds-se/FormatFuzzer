@@ -89,9 +89,8 @@ def findFileRecursively(base_path, name, ext, logger, maxDepth=3):
 def runSingleFormatParseTest(formatName, resolveTestInput, logger):
     logger_fmt = logger.getChild(formatName)
     basePath = create_fmt_folder(formatName)
-    print(basePath)
-    logfileName = f'{basePath}/output/test-{formatName}-fuzzer.output'
-    logger.handlers = [
+    logfileName = f'{basePath}/output/test-{formatName}-fuzzer.log-output'
+    logger_fmt.handlers = [
         log.StreamHandler(),
         log.FileHandler(logfileName, mode='w')
     ]
@@ -99,9 +98,6 @@ def runSingleFormatParseTest(formatName, resolveTestInput, logger):
         convertedFile = callConverter(
             formatName, basePath,
             logger_fmt)  # contains path to converted file
-
-        logfileName = f'{TESTFOLDER}{formatName}/output/test-{formatName}-fuzzer.output'
-        logger.handlers = [log.StreamHandler(), log.FileHandler(logfileName)]
         parserUnderTest = compileParser(convertedFile,
                                         test=True,
                                         basePath=basePath,
@@ -173,12 +169,12 @@ def diffParseTrees(expected, actual, logger):
     # if expected == actual:
     #    return True
     diff = "\n".join(
-        difflib.unified_diff(expected.split("\n"),
+        difflib.context_diff(expected.split("\n"),
                              actual.split("\n"),
                              fromfile="expected-parse-tree",
                              tofile="actual-parse-tree",
                              n=4))
-    logger.warning(diff)
+    logger.debug(diff)
     return True
 
 
@@ -243,7 +239,7 @@ def runParserOnInput(parser, testInput, basePath, logger):
         if (len(parseTree.stdout) == 0):
             raise TestRunException(logger, f"Error : {parseTree.stderr}")
         #print(parseTree.stderr.decode())
-        with open(f"{basePath}/build/{parser}.output", "w") as file:
+        with open(f"{basePath}/output/{parser}.output", "w") as file:
             file.write(parseTree.stdout.decode())
 
         return parseTree.stdout.decode()
