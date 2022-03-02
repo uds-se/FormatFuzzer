@@ -1117,7 +1117,7 @@ def kaitai_sorter_main(input_kaitai):
 
 
 def kaitai_sorter_recursive(input_kaitai, path_list):
-    print_debug(path_list)
+    # print_debug(path_list)
     # print_debug(get_by_path(input_kaitai, path_list[:-2]),pretty=True)
     this_level_keys = list(get_by_path(input_kaitai, path_list).keys())
 
@@ -1142,13 +1142,18 @@ def kaitai_sorter_recursive(input_kaitai, path_list):
             new_type_name = f'{path_list[-1]}_{this_level_type}'
             ##########REPLACE OCCURRENCES##########
             if "seq" in this_level_keys:
-                list_replace_value(get_by_path(input_kaitai, path_list + ["seq"]), this_level_type, new_type_name)
-                print_debug(get_by_path(input_kaitai, path_list + ["seq"]), pretty=True)
+                # print_debug(get_by_path(input_kaitai, path_list + ["seq"]), pretty=True)
+                get_by_path(input_kaitai, path_list)["seq"] = list_replace_value(
+                    get_by_path(input_kaitai, path_list + ["seq"]), this_level_type, new_type_name)
+                # print_debug(get_by_path(input_kaitai, path_list + ["seq"]), pretty=True)
             else:
                 print_debug(
                     f'No Seq found for replaceing {this_level_type} with {new_type_name} in {get_by_path(input_kaitai, path_list)}')
             if "instances" in this_level_keys:
-                dict_replace_value(get_by_path(input_kaitai, path_list + ["instances"]), this_level_type, new_type_name)
+                get_by_path(input_kaitai, path_list)["instances"] = dict_replace_value(
+                    get_by_path(input_kaitai, path_list + ["instances"]), this_level_type, new_type_name)
+                # print_debug(get_by_path(input_kaitai, path_list + ["instances"]),pretty=True)
+                # print_debug(dict_replace_value(get_by_path(input_kaitai, path_list + ["instances"]), this_level_type, new_type_name),pretty=True)
 
             ##########################################
 
@@ -1160,9 +1165,6 @@ def kaitai_sorter_recursive(input_kaitai, path_list):
 
         del_by_path(input_kaitai, path_list + ["types"])
         ##########################
-
-        pass
-        pass
 
 
 def type_replacer(input_kaitai, from_type, to_type, containing_type_path):
@@ -1183,13 +1185,14 @@ def dict_replace_value(d, old, new):
                 v = v.replace(old, new)
             elif f' {old} ' in v:
                 # TODO ADD space|old|space and stringstart|old|space
-                print_debug(f"REPLACING > {old} < with > {new} < in >{v}<")
+                # print_debug(f"REPLACING > {old} < with > {new} < in >{v}<")
                 v = v.replace(f' {old} ', f' {new} ')
             elif f'{old} ' in v:
-                print_debug(f"REPLACING >{old} < with >{new} < in >{v}<")
+                # print_debug(f"REPLACING >{old} < with >{new} < in >{v}<")
                 v = v.replace(f'{old} ', f'{new} ')
             else:
-                print_debug(f"Nothing in >{v}< to be replaced with >{new}<")
+                # print_debug(f"Nothing in >{v}< to be replaced with >{new}<")
+                pass
         x[k] = v
     return x
 
@@ -1203,17 +1206,18 @@ def list_replace_value(l, old, new):
             e = dict_replace_value(e, old, new)
         elif isinstance(e, str):
             if e == old:
-                print_debug(f"REPLACING >{old}< with >{new}< in >{e}<")
+                # print_debug(f"REPLACING >{old}< with >{new}< in >{e}<")
                 e = e.replace(old, new)
             elif f' {old} ' in e:
                 # TODO ADD space|old|space and stringstart|old|space
-                print_debug(f"REPLACING > {old} < with > {new} < in >{e}<")
+                # print_debug(f"REPLACING > {old} < with > {new} < in >{e}<")
                 e = e.replace(f' {old} ', f' {new} ')
             elif f'{old} ' in e:
-                print_debug(f"REPLACING >{old} < with >{new} < in >{e}<")
+                # print_debug(f"REPLACING >{old} < with >{new} < in >{e}<")
                 e = e.replace(f'{old} ', f'{new} ')
             else:
-                print_debug(f"Nothing in >{old}< to be replaced with >{new}<")
+                # print_debug(f"Nothing in >{old}< to be replaced with >{new}<")
+                pass
         x.append(e)
     return x
 
