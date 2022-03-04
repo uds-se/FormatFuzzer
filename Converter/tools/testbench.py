@@ -116,6 +116,9 @@ def runSingleFormatParseTest(formatName, resolveTestInput, logger):
                                        logger)
         PTunderTest = runParserOnInput(parserUnderTest, testInput, basePath,
                                        logger)
+        if (isinstance(referencePT, int) and isinstance(PTunderTest, int)
+                and referencePT == PTunderTest):
+            return True
         return diffParseTrees(referencePT, PTunderTest, logger_fmt)
     except TestRunException as e:
         e.print()
@@ -233,9 +236,9 @@ def compileParser(templatePath, basePath, logger, test=False):
 def runParserOnInput(parser, testInput, basePath, logger):
     try:
         cmd = [f"{basePath}/build/{parser}", "parse", testInput]
-        parseTree = subprocess.run(cmd, check=True, capture_output=True)
+        parseTree = subprocess.run(cmd, capture_output=True)
         if (parseTree.returncode != 0):
-            raise TestRunException(logger, f"Error ret: {parseTree.stderr}")
+            return parseTree.returncode
         if (len(parseTree.stdout) == 0):
             raise TestRunException(logger, f"Error : {parseTree.stderr}")
         #print(parseTree.stderr.decode())
