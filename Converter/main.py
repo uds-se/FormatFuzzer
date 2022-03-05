@@ -8,8 +8,8 @@ import sys
 
 
 def run_tests_on_all():
-    filenames = sub.run("basename -s .bt -a $(exa ../templates | grep -v - )",
-            shell=True, stdout=sub.PIPE, check=True)
+    filenames = sub.run("basename -s .bt -a $(ls ../templates | grep -v - )",
+                        shell=True, stdout=sub.PIPE, check=True)
     fns = filenames.stdout.decode().split("\n")[:-1:]
     tb.runMultiFromatParseTest(fns, tb.resolveTestInputByFormat, log.root)
 

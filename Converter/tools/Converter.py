@@ -52,11 +52,20 @@ class Converter(object):
         return
 
     def register_type(self, name, value=None,
-                      param_needed=False):  # registers type in "global" table during parsing time
-        if not param_needed:
-            self.root.global_type_table[str(name)] = {"VALUE": value, "IMPLEMENTED": False, "PARAM": param_needed}
-        else:
+                      size_param_needed=False,
+                      custom_param_needed=False):  # registers type in "global" table during parsing time
+
+        if value is not None:
+            self.root.global_type_table[str(name)] = {"VALUE": value, "IMPLEMENTED": False, "PARAM": size_param_needed,
+                                                      "PARAM_CUSTOM": custom_param_needed}
+        elif size_param_needed:
             self.root.global_type_table[str(name)]["PARAM"] = True
+        elif custom_param_needed:
+            self.root.global_type_table[str(name)]["PARAM_CUSTOM"] = custom_param_needed
+        # if not size_param_needed:
+        #     self.root.global_type_table[str(name)] = {"VALUE": value, "IMPLEMENTED": False, "PARAM": size_param_needed, "PARAM_CUSTOM": custom_param_needed}
+        # else:
+        #     self.root.global_type_table[str(name)]["PARAM"] = True
 
     def register_enum(self, name, value):  # registers enum in "global" table during parsing time
         self.root.global_enum_table[str(name)] = {"VALUE": value, "IMPLEMENTED": False}
@@ -74,18 +83,21 @@ class Converter(object):
             return None
 
     def lookup_type(self, name, check_if_implemented=False,
-                    check_if_param_needed=False):  # returns dict of value and possible doc/doc-ref as keys
+                    check_if_size_param_needed=False,
+                    check_if_custom_param_needed=False):  # returns dict of value and possible doc/doc-ref as keys
         if check_if_implemented:
             getter = "IMPLEMENTED"
-        elif check_if_param_needed:
+        elif check_if_size_param_needed:
             getter = "PARAM"
+        elif check_if_custom_param_needed:
+            getter = "PARAM_CUSTOM"
         else:
             getter = "VALUE"
         try:
             return self.root.global_type_table[str(name)][getter]
         except:
-            # traceback.print_exc()
-            print_debug("ERROR TYPE " + str(name) + " NOT FOUND\n")
+            # print_debug(traceback.format_exc())
+            # print_debug("ERROR TYPE " + str(name) + " NOT FOUND \n")
             return None
 
     def lookup_enum(self, name, check_if_implemented=False,
@@ -131,7 +143,6 @@ class Converter(object):
 
     def generate_code_toplevel(self):
         # print_debug(self.root.global_type_table,True)
-
         if "enums" in self.subtrees.keys():
             self.output_enums.extend(self.subtrees["enums"].generate_code(called_lowlevel=False))
         self.output_types.extend(self.subtrees["types"].generate_code(called_lowlevel=False))
@@ -221,13 +232,16 @@ class Converter(object):
         # takes a string and depending on the flags returns a list of
         # either elements that could be an instance or
         # a string that works as condition in c
-        # TODO add CALL to this when implementig
+
         operator_replacement_dict = {"not ": " ! ", " and ": " && ", " or ": " || "}
         # condition_splitter_replacement = ["::", "."] #TODO CHECK IF REMOVAL OF "." IS CORRECT (needed for floats to prevent removal of the dot)
         condition_splitter_replacement = ["::"]
         string_splitter_replacement = ['"']
+        # print_debug(expr)
         if expr is None:
             return None
+        if type(expr) is bool:
+            return expr
         for to_be_rep in operator_replacement_dict.keys():
             expr = expr.replace(to_be_rep, operator_replacement_dict[to_be_rep])
         # for element in re.split('(\W+)', expr):  # replacing f**kin 0xffff_ffff with 0xffffffff
@@ -269,7 +283,7 @@ class Converter(object):
                 for element in expr.split(" "):
                     if "::" in element:
                         expr = expr.replace(str(element), element.split("::")[1])
-
+            # print_debug(expr)
             return expr
         elif False:
             pass
@@ -280,8 +294,10 @@ class Converter(object):
             #     expr = expr.replace(str(splitter), "")
 
             if " " in expr:
+                # print_debug(expr)
                 return expr.split(" ")
             else:
+                # print_debug(expr)
                 return expr
 
     def chck_flg(self, flag, flag_to_val=False, exclude=None, excluded_values=None):
@@ -341,6 +357,11 @@ class Converter(object):
 
     def resolve_datatype(self, kaitype, getsize=False, getendian=False):
         # TODO do something about LE????
+        if kaitype == "bool":
+            return kaitype
+        elif kaitype == "str":
+            return kaitype
+
         match = re.match(r'(?P<parsed_type>[a-zA-Z])(?P<parsed_size>[0-9])(?P<parsed_endian>[a-zA-Z]*)', kaitype)
         if match is None:
             return None
@@ -588,9 +609,11 @@ class data_point():
                 switch_over_enum = True
                 num_of_enum_cases = len(poss_enum_dict.keys())
                 default_needed = (num_of_switch_cases < num_of_enum_cases)
-
         for case_key in cases.keys():
             case = self.root.expr_resolve(case_key)
+            if type(case) is bool:
+                self.front[0] = '     switch(' + str(switch_term) + ' + "_STR" ) {'
+                case = f'"{case}_STR"'
             if case == ["_"] or case == "_":
                 default_needed = False
                 case_val = "default"  # TODO remove case from case default
@@ -601,12 +624,21 @@ class data_point():
 
             else:
                 case_val = case
-            # sizeos = self.root.lookup_f_in_typ_pres(cases[case_key], "size-eos", exclude="encoding")
-            sizeos = self.root.lookup_f_in_typ_pres(cases[case_key], "size-eos")
-            repeat = self.root.lookup_f_in_typ_pres(cases[case_key], "repeat")
-            # encoding = self.root.lookup_f_in_typ_pres(cases[case_key], "encoding")
-            # if (sizeos or repeat or self.root.lookup_type(cases[case_key], check_if_param_needed=True)):
-            if self.root.lookup_type(cases[case_key], check_if_param_needed=True):
+
+            if "(" in cases[case_key]:
+                type_param_list = cases[case_key].replace("(", " ").replace(")", " ").split()
+                cases[case_key] = type_param_list[0]
+                param_addon = str(type_param_list[1::]).replace("'", "")[1:-1]
+                # print_debug(param_addon)
+
+            size_param_needed = self.root.lookup_type(cases[case_key], check_if_size_param_needed=True)
+            custom_param = self.root.lookup_type(cases[case_key], check_if_custom_param_needed=True)
+
+            if custom_param:
+                print_debug("#TODO IMPLEMENT CUSTOM PARAMS FOR SWITCH!")
+                exit(-1)
+
+            if size_param_needed:
                 if "size" in self.input.keys():
                     paramfield = "(" + str(self.input["size"]) + ")"
                 else:
@@ -622,8 +654,14 @@ class data_point():
             else:
                 default_needed = False
                 self.front.append("         default:")
-            self.front.append("             " + str(cases[case_key]) + "_TYPE " + str(self.id) + paramfield + ";")
+            if self.root.resolve_datatype(cases[case_key]):  # BASIC TYPE
+                type_name = self.root.resolve_datatype(cases[case_key])
+            else:  # CUSTOM TYPE
+                type_name = str(cases[case_key]) + "_TYPE "
+
+            self.front.append("             " + type_name + " " + str(self.id) + paramfield + ";")
             self.front.append("             break;")
+
         if default_needed and "size" in self.input.keys():
             self.front.append("         default:")
             # self.output.append(f'    Warning("LENGTH %hu %hx",{str(self.input["size"])},{str(self.input["size"])});')
@@ -638,9 +676,12 @@ class data_point():
             self.front.append("         default:")
             self.front.append(f"             ubyte raw_data_CONVERTER[{size}];")
             self.front.append("             break;")
-        else:
-            print_debug("LENGHT NOT FOUND FOR DEFAULT SWITCH CASE")
-
+        elif default_needed:
+            self.front.append("         default:")
+            self.front.append("             if(!FEof()){")
+            self.front.append(f'                 Warning("UNSUPPLIED DEFAULT CASE FOR SWITCH OVER {switch_term}");')
+            self.front.append("                  return -1;")
+            self.front.append("              }")
         self.front.append("    }")
 
     def gen_if(self, containing_type=None):
@@ -721,7 +762,7 @@ class data_point():
         elif self.type == "strz":
             self.front.append(prepend + "string " + str(self.id) + ";" + loc_doc)
         elif self.type is not None:
-
+            param_addon = ""
             temp_type = self.root.resolve_datatype(self.type)
 
             if (temp_type is not None):  # BASIC TYPES
@@ -742,25 +783,44 @@ class data_point():
 
             else:  # CUSTOM TYPES
                 if type_override is None and "_TYPE" not in self.type:
+                    if "(" in self.type:
+                        type_param_list = self.type.replace("(", " ").replace(")", " ").split()
+                        self.type = type_param_list[0]
+                        param_addon = str(type_param_list[1::]).replace("'", "")[1:-1]
                     self.type = self.type + "_TYPE"
                 length_addon = ""
+
+                # print_debug(f'{self.type}@AAB')
+
                 if "_ENUM" not in self.type and self.root.lookup_type(name=self.type.split("_TYPE")[0],
-                                                                      check_if_param_needed=True):
+                                                                      check_if_size_param_needed=True):
                     try:
                         self.gen_instances(self.input["size"])
                     except:
                         pass
                     try:
-                        length_addon = "(" + self.root.expr_resolve(self.input["size"],
-                                                                    translate_condition_2_c=True) + ")"
+                        length_addon = f'({self.root.expr_resolve(self.input["size"], translate_condition_2_c=True)})'
                     except:
-                        length_addon = "(length_CONVERTER -(FTell()-struct_start_CONVERTER))"
-                        loc_doc = "//TESTING"
+                        if param_addon != "":
+                            param_addon = "," + param_addon
+                        length_addon = f"length_CONVERTER -(FTell()-struct_start_CONVERTER){param_addon}"
+                        # loc_doc = "//TESTING"
                 if size:
                     length_addon = "[" + size + "]"
+                elif length_addon != "" and param_addon != "":
+                    length_addon = f'({length_addon},{param_addon})'
+                elif length_addon != "" or param_addon != "":
+                    length_addon = f'({length_addon}{param_addon})'
+
+                    # print_debug(f'{self.type}|{length_addon}|{param_addon}|')
+
+                # if length_addon
+
                 self.front.append(prepend + str(self.type) + " " + str(self.id) + length_addon + ";" + loc_doc)
+
         elif self.size is not None:  # JUST BYTES
             self.front.append(prepend + "ubyte " + str(self.id) + "[" + str(self.size) + "]" + ";" + loc_doc)
+
         else:
             # self.front.append(prepend + "byte " + str(self.id) + "[UNTIL_CONVERTER - FTell()]" + ";" + loc_doc)#OPTION A
             self.front.append(prepend + "ubyte " + str(self.id) + ";" + loc_doc)  # OPTION B
@@ -925,13 +985,30 @@ class types(Converter):
         self.pre = []
         self.output = []
 
+    def sanitize_custom_params(self, param_list):
+        out = {}
+        for param in param_list:
+            if "type" in param.keys():
+                param_type = param["type"]
+                if param_type in ["struct", "io", "any"]:
+                    print_debug(f'CUSTOM PARAM {param["id"]} TYPE {param_type} NOT SUPPORTED!')
+                    exit(-1)
+                else:
+                    out[param["id"]] = self.root.resolve_datatype(param_type)
+            else:
+                print_debug(f'CUSTOM PARAM {param["id"]} WITHOUT TYPE NOT SUPPORTED!')
+                exit(-1)
+        return out
+
     def parse_subtree(self, name=None):
-        # print_debug(self.this_level_keys)
         for this_level_key in self.this_level_keys:
             local_key = remap_keys(this_level_key)
             if local_key is not None:
-                # self.root.register_type(local_key,self.input[local_key])
-                self.root.register_type(name=local_key, value=self.input[local_key])
+                sanitized_params = None
+                if "params" in self.input[local_key]:
+                    sanitized_params = self.sanitize_custom_params(self.input[local_key]["params"])
+                self.root.register_type(name=local_key, value=self.input[local_key],
+                                        custom_param_needed=sanitized_params)
                 self.subtrees[local_key] = Converter(self.input[this_level_key], parent=self, root=self.root)
                 self.subtrees[local_key].parse_subtree(name=local_key)
         self.parse_arguments_main()
@@ -941,10 +1018,11 @@ class types(Converter):
             local_key = remap_keys(this_level_key)
             if local_key is not None:
                 if self.parse_arguments_recursion(self.subtrees[local_key], origin_type=local_key, depth=0):
-                    self.root.register_type(name=local_key, param_needed=True)
+                    self.root.register_type(name=local_key, size_param_needed=True)
 
     def parse_arguments_recursion(self, item, origin_type=None, depth=0):  # returns True if param is needed in subtree
         if depth > 20:
+            print_debug("Parse_args_rec too deep")
             return False
 
         # print_debug(item.this_level_keys)
@@ -1008,8 +1086,27 @@ class types(Converter):
         for this_level_key in self.this_level_keys:
 
             lenfield = ""
-            if self.root.lookup_type(this_level_key, check_if_param_needed=True):
-                lenfield = "(uint32 length_CONVERTER)"
+            lencontent = ""
+            size_param_needed = self.root.lookup_type(this_level_key, check_if_size_param_needed=True)
+            custom_param = self.root.lookup_type(this_level_key, check_if_custom_param_needed=True)
+
+            if size_param_needed:
+                lenfield = "("
+                lencontent = "uint32 length_CONVERTER"
+            if custom_param:
+                cust_cont = ""
+                for cust_name in custom_param.keys():
+                    cust_type = custom_param[cust_name]
+                    cust_cont += f'{cust_type} {cust_name},'
+                cust_cont = cust_cont[0:-1]
+            if lenfield != "":
+                lenfield += lencontent
+                if custom_param:
+                    lenfield += "," + cust_cont + ")"
+                else:
+                    lenfield += ")"
+            elif custom_param:
+                lenfield = f'({cust_cont})'
 
             item = self.subtrees[this_level_key]
             #
@@ -1046,12 +1143,6 @@ class types(Converter):
             output.append("};\n")
 
         # TODO IMPLEMENT PARAMETERS FOR FUNCTIONS THAT HAVE A CHILD THAT NEED THE PARAMETER AND GET IT FROM PARENT
-        return output
-
-    def gen_forward_types(self):  # DEPRECATED
-        output = []
-        for this_level_key in self.this_level_keys:
-            output.append("struct " + str(this_level_key) + "_TYPE ;")
         return output
 
 
@@ -1113,12 +1204,10 @@ def insert_imports(main_input, imports, path):
 def kaitai_sorter_main(input_kaitai):
     top_level_types = list(input_kaitai["types"].keys())
     for top_level_type in top_level_types:
-        kaitai_sorter_recursive(input_kaitai, ["types", top_level_type])
+        kaitai_sorter_recursive(input_kaitai, ["types", top_level_type], [top_level_type])
 
 
-def kaitai_sorter_recursive(input_kaitai, path_list):
-    # print_debug(path_list)
-    # print_debug(get_by_path(input_kaitai, path_list[:-2]),pretty=True)
+def kaitai_sorter_recursive(input_kaitai, path_list, type_list):
     this_level_keys = list(get_by_path(input_kaitai, path_list).keys())
 
     if "enums" in this_level_keys:
@@ -1134,54 +1223,72 @@ def kaitai_sorter_recursive(input_kaitai, path_list):
     # print_debug(get_by_path(input_kaitai, path_list[:-2]), pretty=True)
     if "types" in this_level_keys:
         this_level_types = list(get_by_path(input_kaitai, path_list + ["types"]).keys())
+
         for this_level_type in this_level_types:
-            kaitai_sorter_recursive(input_kaitai, path_list + ["types", this_level_type])
-            # print_debug(this_level_type)
-            # print_debug(path_list[-1])
-            # print_debug(get_by_path(input_kaitai, path_list + ["types",this_level_type]))
-            new_type_name = f'{path_list[-1]}_{this_level_type}'
-            ##########REPLACE OCCURRENCES##########
+            new_type_name = "_".join(type_list + [this_level_type])
+
             if "seq" in this_level_keys:
-                # print_debug(get_by_path(input_kaitai, path_list + ["seq"]), pretty=True)
-                get_by_path(input_kaitai, path_list)["seq"] = list_replace_value(
-                    get_by_path(input_kaitai, path_list + ["seq"]), this_level_type, new_type_name)
-                # print_debug(get_by_path(input_kaitai, path_list + ["seq"]), pretty=True)
-            else:
-                print_debug(
-                    f'No Seq found for replaceing {this_level_type} with {new_type_name} in {get_by_path(input_kaitai, path_list)}')
+                # set_by_path(input_kaitai, path_list + ["seq"],list_replace_value(get_by_path(input_kaitai, path_list + ["seq"]), this_level_type, new_type_name))
+                lower_path = path_list + ["seq"]
+                lower_list = get_by_path(input_kaitai, lower_path)
+                replacement = list_replace_value(lower_list, this_level_type, new_type_name)
+                set_by_path(input_kaitai, lower_path, replacement)
+
             if "instances" in this_level_keys:
-                get_by_path(input_kaitai, path_list)["instances"] = dict_replace_value(
-                    get_by_path(input_kaitai, path_list + ["instances"]), this_level_type, new_type_name)
-                # print_debug(get_by_path(input_kaitai, path_list + ["instances"]),pretty=True)
-                # print_debug(dict_replace_value(get_by_path(input_kaitai, path_list + ["instances"]), this_level_type, new_type_name),pretty=True)
+                lower_path = path_list + ["instances"]
+                lower_dict = get_by_path(input_kaitai, lower_path)
+                replacement = dict_replace_value(lower_dict, this_level_type, new_type_name)
+                set_by_path(input_kaitai, lower_path, replacement)
 
-            ##########################################
+            for to_be_modded_type in this_level_types:
 
-            ######PULL TYPE TOP LEVEL#################
+                # MODDING LOWER LEVEL SEQ
+                lower_path = path_list + ["types", to_be_modded_type, "seq"]
+                lower_list = get_by_path(input_kaitai, lower_path)
+                replacement = list_replace_value(lower_list, this_level_type, new_type_name)
+                set_by_path(input_kaitai, lower_path, replacement)
+
+                # MODDING LOWER LEVEL INSTANCES
+                lower_lvl_keys = list(get_by_path(input_kaitai, path_list + ["types", to_be_modded_type]).keys())
+                if "instances" in lower_lvl_keys:
+                    lower_path = path_list + ["types", to_be_modded_type, "instances"]
+                    lower_dict = get_by_path(input_kaitai, lower_path)
+                    replacement = dict_replace_value(lower_dict, this_level_type, new_type_name)
+                    set_by_path(input_kaitai, lower_path, replacement)
+
+        #############RECURSION############################
+        for this_level_type in this_level_types:
+            kaitai_sorter_recursive(input_kaitai, path_list + ["types", this_level_type], type_list + [this_level_type])
+        ##################################################
+
+        ###############PULL-UP###########################
+        for this_level_type in this_level_types:
+            new_type_name = "_".join(type_list + [this_level_type])
             if new_type_name not in get_by_path(input_kaitai, ["types"]).keys():
                 set_by_path(input_kaitai, ["types", new_type_name],
                             get_by_path(input_kaitai, path_list + ["types", this_level_type]))
                 del_by_path(input_kaitai, path_list + ["types", this_level_type])
-
+            else:
+                print_debug(f'NEW TYPE{new_type_name} ALREADY IN TOP LEVEL TYPES!')
+                exit(-1)
+        # print_debug(f'deleting {path_list + ["types"]}')
         del_by_path(input_kaitai, path_list + ["types"])
-        ##########################
-
-
-def type_replacer(input_kaitai, from_type, to_type, containing_type_path):
-    pass
+        ##################################################
 
 
 ############STACKOVERFLOW-SECTION##################
 def dict_replace_value(d, old, new):
     x = {}
     for k, v in d.items():
+        # print_debug(type(v))
+        # print_debug(v)
         if isinstance(v, dict):
             v = dict_replace_value(v, old, new)
         elif isinstance(v, list):
             v = list_replace_value(v, old, new)
         elif isinstance(v, str):
             if v == old:
-                print_debug(f"REPLACING >{old}< with >{new}< in >{v}<")
+                # print_debug(f"REPLACING >{old}< with >{new}< in >{v}<")
                 v = v.replace(old, new)
             elif f' {old} ' in v:
                 # TODO ADD space|old|space and stringstart|old|space
@@ -1200,6 +1307,8 @@ def dict_replace_value(d, old, new):
 def list_replace_value(l, old, new):
     x = []
     for e in l:
+        # print_debug(type(e))
+        # print_debug(e)
         if isinstance(e, list):
             e = list_replace_value(e, old, new)
         elif isinstance(e, dict):
