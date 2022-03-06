@@ -8,10 +8,9 @@ from functools import reduce
 import operator
 
 DEBUG = True
-
+imported = {}
 
 class Converter(object):
-    # TODO implement kaitai imports
     # TODO implement size lookup funtion
 
     def __init__(self, input_js, is_master=False, parent=None, root=None, name=None):
@@ -242,6 +241,8 @@ class Converter(object):
             return None
         if type(expr) is bool:
             return expr
+        if type(expr) is int:
+            return expr
         for to_be_rep in operator_replacement_dict.keys():
             expr = expr.replace(to_be_rep, operator_replacement_dict[to_be_rep])
         # for element in re.split('(\W+)', expr):  # replacing f**kin 0xffff_ffff with 0xffffffff
@@ -273,10 +274,10 @@ class Converter(object):
                     expr = expr.replace("_.", "" + str(id_of_obj) + ".")
                 except:
                     pass
-                try:
-                    expr = expr.replace("_io.eof", "FEof()")
-                except:
-                    pass
+            try:
+                expr = expr.replace("_io.eof", "FEof()")
+            except:
+                pass
 
             pass
             if "::" in expr:
@@ -528,6 +529,7 @@ class data_point():
         self.size = None
         self.parent = parent
         self.root = root
+        self.called_lowlevel = True
         if ("size-eos" in self.input.keys()):
             self.size_eos = True
         else:
@@ -550,6 +552,12 @@ class data_point():
             self.id = str(self.subtrees["id"].get_value())
 
     def generate_code(self, size=None, ignore_if=False, called_lowlevel=True, containing_type=None):
+        if not called_lowlevel:
+            self.called_lowlevel = False
+        if not self.called_lowlevel:
+            while_content = "!FEof()"
+        else:
+            while_content = "FTell() < UNTIL_CONVERTER"
 
         # TODO EXTEND TO ALL VARIATIONS
         if "if" in self.this_level_keys and not ignore_if:
@@ -574,7 +582,8 @@ class data_point():
                 self.gen_atomic(type_override=self.input["enum"])
             elif "size-eos" in self.input.keys():
 
-                self.front.append("    while(FTell() < UNTIL_CONVERTER){")
+                # self.front.append("    while(FTell() < UNTIL_CONVERTER){")
+                self.front.append("    while(" + while_content + "){ //AA")
                 self.gen_atomic(indents=2, forwarding=True)
                 self.front.append("    }")
             else:
@@ -586,12 +595,14 @@ class data_point():
         return self.output
 
     def gen_switch(self, size=None):
+        # TODO REWITE TO GENERATE IFs INSTEAD OF SWITCH (c++ cant switch strings)
         switch = self.type["switch-on"]
         cases = self.type["cases"]
         default_needed = True
         switch_over_enum = False
         num_of_enum_cases = 0
         num_of_switch_cases = len(cases.keys())
+
         switch_drop = ["_root", "_parent", "_io"]
         if switch.split(".")[0] in switch_drop:
             switch_term = ".".join(switch.split(".")[1:])
@@ -696,9 +707,12 @@ class data_point():
 
         self.front.append("     }")
 
-        # TODO implement
-
     def gen_repeat(self, size=None):
+        if not self.called_lowlevel:
+            while_content = "!FEof()"
+        else:
+            while_content = "FTell() < UNTIL_CONVERTER"
+
         if "repeat-until" in self.this_level_keys:
             condition_in = self.input["repeat-until"]
             condition = self.root.expr_resolve(condition_in, translate_condition_2_c=True, repeat_condition=True,
@@ -719,7 +733,8 @@ class data_point():
             pass
         elif "eos" == self.input["repeat"]:
             # self.front.append("    local uint32 UNTIL_CONVERTER = length_CONVERTER;") #TODO THIS IS OPTION B FOR EOS
-            self.front.append("    while(FTell() < UNTIL_CONVERTER){")
+            self.front.append("    while(" + while_content + "){ //AB")
+            # self.front.append("    while(FTell() < UNTIL_CONVERTER){")
             self.gen_atomic(indents=2)
             self.front.append("    }")
             # self.front.append("    ")
@@ -734,6 +749,10 @@ class data_point():
         pass
 
     def gen_atomic(self, docu="", size=None, type_override=None, indents=1, forwarding=False):
+        if not self.called_lowlevel:
+            while_content = "!FEof()"
+        else:
+            while_content = "FTell() < UNTIL_CONVERTER"
 
         # elif "size" in self.this_level_keys and self.root.lookup_type(name=self.type, check_if_param_needed=True):
         #     print_debug(self.type)
@@ -747,7 +766,9 @@ class data_point():
             loc_doc = ""
 
         if self.size_eos and not forwarding and "length_CONVERTER" == size:
-            self.front.append("    while(FTell() < UNTIL_CONVERTER){")  # OPTION B
+
+            self.front.append("    while(" + while_content + "){ //AC")
+            # self.front.append("    while(FTell() < UNTIL_CONVERTER){")  # OPTION B
             self.gen_atomic(indents=2, forwarding=True)
             self.front.append("    }")  # OPTION B
 
@@ -776,16 +797,23 @@ class data_point():
                         prepend + str(self.root.resolve_datatype(self.type)) + " " + str(self.id) + "[" + str(
                             self.root.resolve_datatype(self.type, getsize=True)) + "]" + ";" + loc_doc)
 
-            elif " " in str(self.type):
-                self.type = self.root.expr_resolve(self.type, translate_condition_2_c=True)
-                self.front.append(prepend + str(self.type) + " " + str(self.id) + ";" + loc_doc)
-
+            # elif " " in str(self.type):
+            #     print_debug(f"WENT HERE WITH{self.type}")
+            #     self.type = self.root.expr_resolve(self.type, translate_condition_2_c=True)
+            #     self.front.append(prepend + str(self.type) + " " + str(self.id) + ";" + loc_doc)
 
             else:  # CUSTOM TYPES
                 if type_override is None and "_TYPE" not in self.type:
                     if "(" in self.type:
-                        type_param_list = self.type.replace("(", " ").replace(")", " ").split()
+                        type_param_list = self.type.replace("(", "AAACONVERTER").replace(")", "AAACONVERTER").split(
+                            "AAACONVERTER")[:-1]
                         self.type = type_param_list[0]
+                        for i in range(len(type_param_list)):
+                            type_param_list[i] = self.root.expr_resolve(type_param_list[i],
+                                                                        translate_condition_2_c=True)
+
+                        print_debug(type_param_list)
+
                         param_addon = str(type_param_list[1::]).replace("'", "")[1:-1]
                     self.type = self.type + "_TYPE"
                 length_addon = ""
@@ -806,10 +834,12 @@ class data_point():
                         length_addon = f"length_CONVERTER -(FTell()-struct_start_CONVERTER){param_addon}"
                         # loc_doc = "//TESTING"
                 if size:
-                    length_addon = "[" + size + "]"
+                    length_addon = f"[{size}]"
                 elif length_addon != "" and param_addon != "":
+                    # print_debug(f'LENGTH_ADDON {length_addon} PARAM_ADDON {param_addon}')
                     length_addon = f'({length_addon},{param_addon})'
                 elif length_addon != "" or param_addon != "":
+                    # print_debug(f'LENGTH_ADDON {length_addon} PARAM_ADDON {param_addon}')
                     length_addon = f'({length_addon}{param_addon})'
 
                     # print_debug(f'{self.type}|{length_addon}|{param_addon}|')
@@ -845,7 +875,8 @@ class data_point():
             instance = self.root.lookup_instance(element, self.containing_type)
             if instance is not None and not self.root.lookup_instance(element, self.id, check_if_implemented=True):
                 self.root.mark_as_implemented("instance", element, value=True, containing_type=self.containing_type)
-                temp = " ".join(self.root.expr_resolve(str(instance["value"])))
+                # temp = " ".join(self.root.expr_resolve(str(instance["value"])))
+                temp = self.root.expr_resolve(str(instance["value"]), translate_condition_2_c=True)
                 self.front.append("    local int64 " + str(element) + " = " + str(temp) + ";" + (
                     ("   //" + str(instance["doc"])) if "doc" in instance.keys() else ""))
 
@@ -933,8 +964,11 @@ class seq(Converter):
             # self.output.append('    Warning("LENGTH %hu UNTIL %hu FTell %hu",length_CONVERTER,UNTIL_CONVERTER,FTell());')
 
         for this_level_key in self.this_level_keys:
+            # print_debug(f'{self.name} Called LowLevel = {called_lowlevel}')
             self.output.extend(
-                self.subtrees[this_level_key].generate_code(size, called_lowlevel=True, containing_type=self.name))
+                self.subtrees[this_level_key].generate_code(size, called_lowlevel=called_lowlevel,
+                                                            containing_type=self.name))
+            # self.subtrees[this_level_key].generate_code(size, called_lowlevel=True, containing_type=self.name))
         # print("SEQ"+"\n".join(self.output)+str(self.input))
         return self.output
 
@@ -961,22 +995,38 @@ class instances(seq):
             instance = self.root.lookup_instance(this_level_key, containing_type=self.name)
             if instance is not None and not self.root.lookup_instance(this_level_key, containing_type=self.name,
                                                                       check_if_implemented=True):
-                # print_debug(instance)
+                if "if" in instance.keys():
+                    self.front.append(
+                        f'    if({self.root.expr_resolve(instance["if"], translate_condition_2_c=True)})' + "{")
 
-                # TODO IMPLEMENT SIZE,TYPE,POS FLAGS FOR INSTANCES
                 if "value" in instance.keys():
-                    temp = " ".join(self.root.expr_resolve(str(instance["value"])))
+                    temp = self.root.expr_resolve(str(instance["value"]), translate_condition_2_c=True)
                     self.front.append("    local double " + str(this_level_key) + " = " + str(temp) + ";" + (
                         ("   //" + str(instance["doc"])) if "doc" in instance.keys() else ""))
                 elif "pos" in instance.keys():
-                    print_debug(f'INSTANCE {this_level_key} in TYPE {self.name} NOT GENERATED : POS MISSING')
-                    pass
-                else:
-                    print_debug(f'INSTANCE {this_level_key} in TYPE {self.name} NOT GENERATED : ELSE MISSING')
-                    pass
+                    # TODO ADD EVIL BIT HERE?
+
+                    self.front.append(f'        local int64 temp_CONVERTER = FTell();')
+                    self.front.append(f'        FSeek({instance["pos"]});')
+
+                    if "size" in instance.keys() and not "type" in instance.keys():
+                        self.front.append(f'        local ubyte {this_level_key}[{instance["size"]}];')
+
+                    elif "type" in instance.keys() and not "size" in instance.keys():
+                        self.front.append(f'        local {instance["type"]}_TYPE {this_level_key};')
+
+                    else:
+                        print_debug(
+                            f'INSTANCE {this_level_key} in TYPE {self.name} NOT GENERATED : SIZE + TYPE MISSING')
+
+                    self.front.append(f'        FSeek(temp_CONVERTER);')
+
+                if "if" in instance.keys():
+                    self.front.append("    }")
         self.output.extend(self.front)
         self.output.extend(self.back)
         return self.output
+
 
 class types(Converter):
     def __init__(self, input_js, parent, root, name=None):
@@ -1022,7 +1072,9 @@ class types(Converter):
 
     def parse_arguments_recursion(self, item, origin_type=None, depth=0):  # returns True if param is needed in subtree
         if depth > 20:
-            print_debug("Parse_args_rec too deep")
+            print_debug(f"Parse_args_rec too deep in {item.this_level_keys}")
+            print_debug(item.input)
+
             return False
 
         # print_debug(item.this_level_keys)
@@ -1065,8 +1117,8 @@ class types(Converter):
         else:
             for sub_type in included_types:
                 lower_level_type = self.subtrees[sub_type]
-                # print_debug(lower_level_type)
-                if self.parse_arguments_recursion(lower_level_type, origin_type=origin_type, depth=depth + 1):
+                # print_debug(lower_level_type.name)
+                if self.parse_arguments_recursion(lower_level_type, origin_type, depth + 1):
                     param_needed = True
             # print_debug(param_needed)
             return param_needed and not item.chck_flg("size")
@@ -1164,16 +1216,30 @@ def remap_keys(key):
 
 
 def insert_imports(main_input, imports, path):
+    Converter_Loc = os.path.dirname(os.path.abspath(__file__))
+    kaitai_base = f'{Converter_Loc}/../kaitai_struct_formats'
+    print_debug(kaitai_base)
     out = main_input
+    next_imports = []
     for imp in imports:
+        if imp in imported.keys():
+            continue
         imported_kaitai = None
         try:
             with open(f'{path}/{imp}.ksy', "r") as in_file:
                 input_file = in_file.read()
+                print_debug(f"imported {imp}")
             imported_kaitai = yaml.load(input_file)
         except:
-            print_debug(f'{imp} import not found @ {path}/{imp}.ksy')
-            exit(-1)
+            try:
+                with open(f'{kaitai_base}/{imp}.ksy', "r") as in_file:
+                    input_file = in_file.read()
+                    print_debug(f"imported {imp}")
+
+                imported_kaitai = yaml.load(input_file)
+            except:
+                print_debug(f'{imp} import not found @ {path}/{imp}.ksy')
+                exit(-1)
         try:
             imported_types = imported_kaitai["types"]
             for imp_type in imported_types.keys():
@@ -1198,6 +1264,13 @@ def insert_imports(main_input, imports, path):
         except:
             print_debug("No Enums Imported")
             pass
+        if "imports" in imported_kaitai["meta"]:
+            next_imports += imported_kaitai["meta"]["imports"]
+        imported[imp] = True
+
+    if next_imports != []:
+        out = insert_imports(out, next_imports, path)
+
     return out
 
 
@@ -1213,7 +1286,10 @@ def kaitai_sorter_recursive(input_kaitai, path_list, type_list):
     if "enums" in this_level_keys:
         enum_list = list(get_by_path(input_kaitai, path_list + ["enums"]).keys())
         for enum_unit in enum_list:
+            if "enums" not in input_kaitai.keys():
+                input_kaitai["enums"] = {}
             if enum_unit not in get_by_path(input_kaitai, ["enums"]).keys():
+
                 set_by_path(input_kaitai, ["enums", enum_unit],
                             get_by_path(input_kaitai, path_list + ["enums", enum_unit]))
                 del_by_path(input_kaitai, path_list + ["enums", enum_unit])

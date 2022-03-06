@@ -30,7 +30,6 @@ def set_up_logger(level, reset=False):
     else:
         consoleLog = log.StreamHandler()
         logfile = log.FileHandler("testbench.log", mode='w')
-        logfile.setLevel(level)
         log.handlers = [consoleLog, logfile]
 
 
@@ -114,6 +113,8 @@ def runSingleFormatParseTest(formatName, resolveTestInput):
         if (isinstance(referencePT, int) and isinstance(PTunderTest, int)
                 and referencePT == PTunderTest):
             return True
+        elif (isinstance(referencePT, int) or isinstance(PTunderTest, int)):
+            return False
         return diffParseTrees(referencePT, PTunderTest)
     except TestRunException as e:
         e.print()
