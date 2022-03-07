@@ -961,10 +961,13 @@ class PfpInterp(object):
                         name = "std::string"
                     paramtype += name + " "
                 if param.type.__class__ == AST.ArrayDecl:
-                    paramtype = "std::vector<" + paramtype[:-1] + ">& "
+                    if paramtype[:-1] in ["char", "uchar", "unsigned char", "CHAR", "UCHAR"]:
+                        paramtype = "std::string "
+                    else:
+                        paramtype = "std::vector<" + paramtype[:-1] + ">& "
                 param.type.cpp = paramtype[:-1]
                 cpp += param.type.cpp
-                if not hasattr(param, "is_func_param") or not param.is_func_param:
+                if cpp[-1] != "&" and (not hasattr(param, "is_func_param") or not param.is_func_param):
                     cpp += "&"
                 cpp += " " + param.name + ", "
             cpp = cpp[:-2]
