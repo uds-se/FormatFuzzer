@@ -10,8 +10,10 @@ import operator
 DEBUG = True
 imported = {}
 
+
 class Converter(object):
     # TODO implement size lookup funtion
+    # TODO FIX PARAM ERROR FOR PCAP
 
     def __init__(self, input_js, is_master=False, parent=None, root=None, name=None):
         self.output_enums = []
@@ -42,17 +44,20 @@ class Converter(object):
             self.root = root
 
     # TODO MAYBE ADD MORE TABLES HERE FOR MORE DYNAMIC CODE GENERATION
+
+    # registers instance in "global" table during parsing time
     def register_instance(self, name, value,
-                          containing_type):  # registers instance in "global" table during parsing time
+                          containing_type):
         try:
             self.root.global_instance_table[str(containing_type)][str(name)] = {"VALUE": value, "IMPLEMENTED": False}
         except:
             self.root.global_instance_table[str(containing_type)] = {str(name): {"VALUE": value, "IMPLEMENTED": False}}
         return
 
+    # registers type in "global" table during parsing time
     def register_type(self, name, value=None,
                       size_param_needed=False,
-                      custom_param_needed=False):  # registers type in "global" table during parsing time
+                      custom_param_needed=False):
 
         if value is not None:
             self.root.global_type_table[str(name)] = {"VALUE": value, "IMPLEMENTED": False, "PARAM": size_param_needed,
@@ -61,16 +66,14 @@ class Converter(object):
             self.root.global_type_table[str(name)]["PARAM"] = True
         elif custom_param_needed:
             self.root.global_type_table[str(name)]["PARAM_CUSTOM"] = custom_param_needed
-        # if not size_param_needed:
-        #     self.root.global_type_table[str(name)] = {"VALUE": value, "IMPLEMENTED": False, "PARAM": size_param_needed, "PARAM_CUSTOM": custom_param_needed}
-        # else:
-        #     self.root.global_type_table[str(name)]["PARAM"] = True
 
-    def register_enum(self, name, value):  # registers enum in "global" table during parsing time
+    # registers enum in "global" table during parsing time
+    def register_enum(self, name, value):
         self.root.global_enum_table[str(name)] = {"VALUE": value, "IMPLEMENTED": False}
 
+    # returns dict of value and possible doc/doc-ref as keys
     def lookup_instance(self, name, containing_type,
-                        check_if_implemented=False):  # returns dict of value and possible doc/doc-ref as keys
+                        check_if_implemented=False):
         if check_if_implemented:
             getter = "IMPLEMENTED"
         else:
@@ -81,9 +84,10 @@ class Converter(object):
             # print_debug("\nERROR INSTANCE " + str(name) + " NOT FOUND\nCan safely be ignored just for testing if expr_resolve works!\n")
             return None
 
+    # returns dict of value and possible doc/doc-ref as keys
     def lookup_type(self, name, check_if_implemented=False,
                     check_if_size_param_needed=False,
-                    check_if_custom_param_needed=False):  # returns dict of value and possible doc/doc-ref as keys
+                    check_if_custom_param_needed=False):
         if check_if_implemented:
             getter = "IMPLEMENTED"
         elif check_if_size_param_needed:
@@ -99,8 +103,9 @@ class Converter(object):
             # print_debug("ERROR TYPE " + str(name) + " NOT FOUND \n")
             return None
 
+    # returns dict of value and possible doc/doc-ref as keys
     def lookup_enum(self, name, check_if_implemented=False,
-                    error_suppresion=False):  # returns dict of value and possible doc/doc-ref as keys
+                    error_suppresion=False):
         if check_if_implemented:
             getter = "IMPLEMENTED"
         else:
@@ -149,9 +154,7 @@ class Converter(object):
 
         if self.endian == "be":
             self.output.append("BigEndian();")
-        #  print_debug("BigENDIAN")
         elif self.endian == "le":
-            #   print_debug("LittleENDIAN")
             self.output.append("LittleEndian();")
         else:
             print_debug("NO ENDIAN")
@@ -163,19 +166,15 @@ class Converter(object):
         return self.output
 
     def generate_code(self, size=None, called_lowlevel=True, containing_type=None):
-
         if "instances" in self.this_level_keys:
             for x in self.input["instances"].keys():
                 self.mark_as_implemented("instance", x, value=False, containing_type=self.name)
+
         gen_list = []
         if "doc-ref" in self.this_level_keys:
             gen_list.append("doc-ref")
         if "doc" in self.this_level_keys:
             gen_list.append("doc")
-        if "types" in self.this_level_keys:
-            # TODO enable if u want to generate nested structs + fix generation for lowlevel called code_gen
-            pass
-            # gen_list.append("types")
         if "seq" in self.this_level_keys:
             gen_list.append("seq")
         if "instances" in self.this_level_keys:
@@ -214,13 +213,12 @@ class Converter(object):
     def lookup_enum_size(self, enum):
         return self.enum_size[enum]
 
-    def lookup_enum_val_2_key(self, enum, key):
+    def lookup_enum_val_2_key(self, enum, key):  # UNUSED
 
         inv_map = {v: k for k, v in self.enums[enum].items()}
         return inv_map[key]
 
     def resolve_switch(self, switch_dict):
-        type_list = []
         if "switch-on" in switch_dict.keys():
             cases = switch_dict["cases"]
         else:
@@ -246,8 +244,9 @@ class Converter(object):
             return expr
         for to_be_rep in operator_replacement_dict.keys():
             expr = expr.replace(to_be_rep, operator_replacement_dict[to_be_rep])
+
         # for element in re.split('(\W+)', expr):  # replacing f**kin 0xffff_ffff with 0xffffffff
-        for element in re.split('[^a-zA-Z0-9_.]+', expr):  # replacing f**kin 0xffff_ffff with 0xffffffff
+        for element in re.split('[^a-zA-Z0-9_.]+', expr):
             try:
                 try:
                     temp = str(int(element))
@@ -292,8 +291,6 @@ class Converter(object):
         else:  # no flag set
             for splitter in condition_splitter_replacement:
                 expr = expr.replace(str(splitter), " ")
-            # for splitter in string_splitter_replacement:  # TODO UNSURE ABOUT THIS
-            #     expr = expr.replace(str(splitter), "")
 
             if " " in expr:
                 # print_debug(expr)
@@ -302,6 +299,7 @@ class Converter(object):
                 # print_debug(expr)
                 return expr
 
+    #recusively checks for flag or returns the value with optional exclusion list
     def chck_flg(self, flag, flag_to_val=False, exclude=None, excluded_values=None):
         if excluded_values is None:
             excluded_values = []
@@ -316,7 +314,6 @@ class Converter(object):
                     exclude is None or (exclude not in self.this_level_keys)):
                 return True
             else:
-                # print_debug(self.subtrees)
                 for this_level_key in self.this_level_keys:
                     local_key = remap_keys(this_level_key)
                     if local_key is not None:
@@ -329,14 +326,13 @@ class Converter(object):
                         else:
                             pass
                 if flag_to_val:
-
                     return None
                 else:
                     # print_debug(f"returning None on {flag} in {local_key}")
                     return False
         except:
             traceback.print_exc()
-            # print_debug(f"exception chck_flg {flag} excl {exclude} in {self.input}")
+            #print_debug(f"exception chck_flg {flag} excl {exclude} in {self.input}")
             print_debug(f"exception chck_flg {flag} excl {exclude}")
             print_debug(self.parent.subtrees)
             print_debug(self.subtrees)
@@ -344,6 +340,7 @@ class Converter(object):
             exit(-1)
             return False
 
+    # Checks recursively if flag is present in type #UNUSED
     def lookup_f_in_typ_pres(self, type, flag, id=None, flag_to_val=False, exclude=None):
         # print_debug(type)
         # print_debug(flag)
@@ -357,6 +354,7 @@ class Converter(object):
         # print_debug(str(temp)+"\n")
         return temp
 
+    #resolves c-Type from kaitai-type
     def resolve_datatype(self, kaitype, getsize=False, getendian=False):
         # TODO do something about LE????
         if kaitype == "bool":
@@ -368,14 +366,20 @@ class Converter(object):
 
         match = re.match(r'(?P<parsed_type>[a-zA-Z])(?P<parsed_size>[0-9])(?P<parsed_endian>[a-zA-Z]*)', kaitype)
         if match is None:
-            return None
+            if getendian:
+                return self.root.endian
+            else:
+                return None
         parsed_type = match.group('parsed_type')
         parsed_size = match.group('parsed_size')
         parsed_endian = match.group('parsed_endian')
         if getsize:
             return parsed_size
         if getendian:
-            return parsed_endian
+            if parsed_endian == "le" or parsed_endian == "be":
+                return parsed_endian
+            else:
+                return self.root.endian
 
         type_table = {"u": "uint", "s": "int", "b": "byte", "f": "float"}
         endian_table = {"le": "/*LITTLE ENDIAN*/", "be": "/*BIG ENDIAN*/",
@@ -403,8 +407,6 @@ class meta(Converter):
         Converter.__init__(self, input_js, parent=parent, root=root, name=name)
 
     def parse_subtree(self, name=None):
-
-        # print_debug(self.input)
         if self.root.endian == "":
             self.root.endian = self.input["endian"]
         pass
@@ -517,7 +519,7 @@ class attribute():
     def get_value(self):
         return self.value
 
-    def get_name(self):
+    def get_name(self):  # UNUSED
         return self.name
 
 
@@ -535,7 +537,7 @@ class data_point():
         self.root = root
         self.parsed_toplevel = parsed_toplevel
         self.called_lowlevel = True
-        if ("size-eos" in self.input.keys()):
+        if "size-eos" in self.input.keys():
             self.size_eos = True
         else:
             self.size_eos = False
@@ -600,13 +602,12 @@ class data_point():
         return self.output
 
     def gen_switch(self, size=None, is_local=False):
-        # TODO REWITE TO GENERATE IFs INSTEAD OF SWITCH (c++ cant switch strings)
         switch = self.type["switch-on"]
         cases = self.type["cases"]
         default_needed = True
         switch_over_enum = False
-        num_of_enum_cases = 0
         num_of_switch_cases = len(cases.keys())
+        do_endian_switch = False
         if is_local:
             prefix = "local "
         else:
@@ -631,10 +632,6 @@ class data_point():
                 default_needed = (num_of_switch_cases < num_of_enum_cases)
         for case_key in cases.keys():
             case = self.root.expr_resolve(case_key)
-            # TODO THIS IS CASTING BOOL TO STRING
-            # if type(case) is bool or case == "true" or case == "false":
-            #     self.front[first_index_front-1] = '     switch(' + str(switch_term) + ' + "" ) {'
-            #     case = f'"{case}"'
             if type(case) is bool or case == "true" or case == "false":
                 self.front[first_index_front - 1] = '     switch(' + str(switch_term) + ') {'
                 case = f'{case}'
@@ -642,10 +639,7 @@ class data_point():
                 default_needed = False
                 case_val = "default"  # TODO remove case from case default
             elif type(case) is list:
-
                 case_val = case[1]
-                # case_val = str(hex(self.root.lookup_enum_val_2_key(case[0], case[1])))
-
             else:
                 case_val = case
 
@@ -653,7 +647,7 @@ class data_point():
                 type_param_list = cases[case_key].replace("(", " ").replace(")", " ").split()
                 cases[case_key] = type_param_list[0]
                 param_addon = str(type_param_list[1::]).replace("'", "")[1:-1]
-                # print_debug(param_addon)
+                print_debug(param_addon)
 
             size_param_needed = self.root.lookup_type(cases[case_key], check_if_size_param_needed=True)
             custom_param = self.root.lookup_type(cases[case_key], check_if_custom_param_needed=True)
@@ -680,9 +674,14 @@ class data_point():
                 self.front.append("         default:")
             if self.root.resolve_datatype(cases[case_key]):  # BASIC TYPE
                 type_name = self.root.resolve_datatype(cases[case_key])
+                if self.root.endian != self.root.resolve_datatype(cases[case_key], getendian=True):
+                    do_endian_switch = True
             else:  # CUSTOM TYPE
                 type_name = str(cases[case_key]) + "_TYPE "
+
+            self.switch_endian(self.root.resolve_datatype(cases[case_key], getendian=True), do_endian_switch)
             self.front.append("             " + prefix + type_name + " " + str(self.id) + paramfield + ";")
+            self.switch_endian(self.root.endian, do_endian_switch)
             self.front.append("             break;")
 
         if default_needed and "size" in self.input.keys():
@@ -706,6 +705,13 @@ class data_point():
             self.front.append("                  return -1;")
             self.front.append("              }")
         self.front.append("    }")
+
+    def switch_endian(self, endian, do_switch_endian=False):
+        if do_switch_endian and endian is not None:
+            if endian == "be":
+                self.front.append("         BigEndian();")
+            else:
+                self.front.append("         LittleEndian();")
 
     def gen_if(self, containing_type=None):
         condition = self.input["if"]
@@ -785,6 +791,7 @@ class data_point():
             self.gen_atomic(indents=2, forwarding=True)
             self.front.append("    }")  # OPTION B
 
+
         elif self.type == "str":
             if self.size is not None:
                 # TODO Done? IMPLEMENT CASE FOR DIFFERENT THAN ZEROBYTE TERMINATOR
@@ -798,6 +805,8 @@ class data_point():
         elif self.type is not None:
             param_addon = ""
             temp_type = self.root.resolve_datatype(self.type)
+            local_endian = f"{self.root.resolve_datatype(self.type, getendian=True)}"
+            self.switch_endian(local_endian, local_endian != self.root.endian)
 
             if (temp_type is not None):  # BASIC TYPES
                 if temp_type != "byte":
@@ -809,7 +818,7 @@ class data_point():
                     self.front.append(
                         prepend + str(self.root.resolve_datatype(self.type)) + " " + str(self.id) + "[" + str(
                             self.root.resolve_datatype(self.type, getsize=True)) + "]" + ";" + loc_doc)
-
+                self.switch_endian(self.root.endian, local_endian != self.root.endian)
             # elif " " in str(self.type):
             #     print_debug(f"WENT HERE WITH{self.type}")
             #     self.type = self.root.expr_resolve(self.type, translate_condition_2_c=True)
@@ -824,9 +833,7 @@ class data_point():
                         for i in range(len(type_param_list)):
                             type_param_list[i] = self.root.expr_resolve(type_param_list[i],
                                                                         translate_condition_2_c=True)
-
-                        print_debug(type_param_list)
-
+                        #print_debug(type_param_list)
                         param_addon = str(type_param_list[1::]).replace("'", "")[1:-1]
                     self.type = self.type + "_TYPE"
                 length_addon = ""
@@ -1050,7 +1057,6 @@ class instances(data_point):
                     elif type(instance["type"]) is dict:
                         self.type = instance["type"]
                         self.name = this_level_key
-                        print_debug(self.name)
                         self.gen_switch()
                     else:
                         print_debug(
@@ -1114,7 +1120,7 @@ class types(Converter):
 
             return False
 
-        print_debug(item.this_level_keys)
+        # print_debug(item.this_level_keys)
         # print_debug(item.subtrees)
         # print_debug(item.input)
         param_needed = False
@@ -1161,17 +1167,12 @@ class types(Converter):
             return param_needed and not item.chck_flg("size")
 
     def generate_code(self, size=None, called_lowlevel=True, containing_type=None):
-
-        # self.output.extend(self.gen_forward_types())
         self.output.extend(self.gen_complete_types(size))
         self.pre.extend(self.output)
         return self.pre
 
     def gen_complete_types(self, size=None):
         output = []
-        # if "process" in self.input["seq"]:
-        #     print_debug(self.input)
-        #     print_debug(self.input)
         for this_level_key in self.this_level_keys:
 
             lenfield = ""
@@ -1198,40 +1199,23 @@ class types(Converter):
                 lenfield = f'({cust_cont})'
 
             item = self.subtrees[this_level_key]
-            #
-            # # if item.chck_flg("size-eos") and not item.chck_flg("encoding"):
-            # if item.chck_flg("size-eos"):
-            #     lenfield = "(uint32 length_CONVERTER)"
-            # if item.chck_flg("repeat", flag_to_val=True) == "eos":
-            #     lenfield = "(uint32 length_CONVERTER)"
-            # if item.chck_flg("process"):
-            #     lenfield = "(uint32 length_CONVERTER)"
-            # if lenfield != "":
-            #     self.root.register_type(name=this_level_key, param_needed=True)
             if lenfield != "":
                 forward_lenfield = lenfield + "{}"
             else:
                 forward_lenfield = ""
+
             ##############WIP FORWARD DECLARATION RESTRUCTURE################
             self.pre.append("struct " + str(this_level_key) + "_TYPE" + forward_lenfield + ";")
-
-            # self.pre[str(this_level_key)]=("struct " + str(this_level_key) + "_TYPE" + forward_lenfield + ";")
-
             ##############WIP FORWARD DECLARATION RESTRUCTURE################
-
             output.append("struct " + str(this_level_key) + "_TYPE" + lenfield + " {")
             if lenfield != "":
                 output.append("    local uint32 struct_start_CONVERTER = FTell();")
-
-            # TODO IMPLEMENT size Calc locals
             if lenfield != "":
                 sizer = "length_CONVERTER"
             else:
                 sizer = None
             output.extend(item.generate_code(sizer, called_lowlevel=True))  # GOING TO CHILD ITEM
             output.append("};\n")
-
-        # TODO IMPLEMENT PARAMETERS FOR FUNCTIONS THAT HAVE A CHILD THAT NEED THE PARAMETER AND GET IT FROM PARENT
         return output
 
 
@@ -1253,6 +1237,7 @@ def remap_keys(key):
 
 
 def insert_imports(main_input, imports, path):
+    #TODO INCLUDE ENDIANESS IN IMPORTED TYPES
     Converter_Loc = os.path.dirname(os.path.abspath(__file__))
     kaitai_base = f'{Converter_Loc}/../kaitai_struct_formats'
     print_debug(kaitai_base)
