@@ -233,6 +233,7 @@ class Converter(object):
         # a string that works as condition in c
 
         operator_replacement_dict = {"not ": " ! ", " and ": " && ", " or ": " || "}
+
         # condition_splitter_replacement = ["::", "."] #TODO CHECK IF REMOVAL OF "." IS CORRECT (needed for floats to prevent removal of the dot)
         condition_splitter_replacement = ["::"]
         string_splitter_replacement = ['"']
@@ -362,6 +363,8 @@ class Converter(object):
             return kaitype
         elif kaitype == "str":
             return kaitype
+        elif kaitype == "strz":
+            return "string"
 
         match = re.match(r'(?P<parsed_type>[a-zA-Z])(?P<parsed_size>[0-9])(?P<parsed_endian>[a-zA-Z]*)', kaitype)
         if match is None:
@@ -520,7 +523,8 @@ class attribute():
 
 class data_point():
     # Things that start with getting an id assigned/elements of seq
-    def __init__(self, input_js, name=None, parent=None, root: Converter = None, size_eos=False, containing_type=None):
+    def __init__(self, input_js, name=None, parent=None, root: Converter = None, size_eos=False, containing_type=None,
+                 parsed_toplevel=False):
         self.subtrees = dict()
         self.input = input_js
         self.id = name
@@ -529,6 +533,7 @@ class data_point():
         self.size = None
         self.parent = parent
         self.root = root
+        self.parsed_toplevel = parsed_toplevel
         self.called_lowlevel = True
         if ("size-eos" in self.input.keys()):
             self.size_eos = True
@@ -594,7 +599,7 @@ class data_point():
         self.output.extend(self.back)
         return self.output
 
-    def gen_switch(self, size=None):
+    def gen_switch(self, size=None, is_local=False):
         # TODO REWITE TO GENERATE IFs INSTEAD OF SWITCH (c++ cant switch strings)
         switch = self.type["switch-on"]
         cases = self.type["cases"]
@@ -602,6 +607,10 @@ class data_point():
         switch_over_enum = False
         num_of_enum_cases = 0
         num_of_switch_cases = len(cases.keys())
+        if is_local:
+            prefix = "local "
+        else:
+            prefix = ""
 
         switch_drop = ["_root", "_parent", "_io"]
         if switch.split(".")[0] in switch_drop:
@@ -609,9 +618,9 @@ class data_point():
         else:
             switch_term = switch
         ###INJECTION LOCAL VAR FOR START
-
+        switch_term = self.root.expr_resolve(switch_term, translate_condition_2_c=True)
         self.front.append("     switch(" + str(switch_term) + ") {")
-
+        first_index_front = len(self.front)
         # print_debug(self.input)
         if type(switch_term.split(".")) is list:
             poss_enum_dict = self.root.lookup_enum(switch_term.split(".")[::-1][0], error_suppresion=True)
@@ -622,9 +631,13 @@ class data_point():
                 default_needed = (num_of_switch_cases < num_of_enum_cases)
         for case_key in cases.keys():
             case = self.root.expr_resolve(case_key)
-            if type(case) is bool:
-                self.front[0] = '     switch(' + str(switch_term) + ' + "_STR" ) {'
-                case = f'"{case}_STR"'
+            # TODO THIS IS CASTING BOOL TO STRING
+            # if type(case) is bool or case == "true" or case == "false":
+            #     self.front[first_index_front-1] = '     switch(' + str(switch_term) + ' + "" ) {'
+            #     case = f'"{case}"'
+            if type(case) is bool or case == "true" or case == "false":
+                self.front[first_index_front - 1] = '     switch(' + str(switch_term) + ') {'
+                case = f'{case}'
             if case == ["_"] or case == "_":
                 default_needed = False
                 case_val = "default"  # TODO remove case from case default
@@ -669,23 +682,22 @@ class data_point():
                 type_name = self.root.resolve_datatype(cases[case_key])
             else:  # CUSTOM TYPE
                 type_name = str(cases[case_key]) + "_TYPE "
-
-            self.front.append("             " + type_name + " " + str(self.id) + paramfield + ";")
+            self.front.append("             " + prefix + type_name + " " + str(self.id) + paramfield + ";")
             self.front.append("             break;")
 
         if default_needed and "size" in self.input.keys():
             self.front.append("         default:")
             # self.output.append(f'    Warning("LENGTH %hu %hx",{str(self.input["size"])},{str(self.input["size"])});')
-            self.front.append("             ubyte raw_data_CONVERTER[" + str(self.input["size"]) + "];")
+            self.front.append(f"             {prefix}ubyte raw_data_CONVERTER[" + str(self.input["size"]) + "];")
             self.front.append("             break;")
         elif default_needed and not switch_over_enum and not size:
             self.front.append("         default:")
             self.front.append(
-                "             ubyte raw_data_CONVERTER[length_CONVERTER -(FTell()-struct_start_CONVERTER)];")
+                f"             {prefix}ubyte raw_data_CONVERTER[length_CONVERTER -(FTell()-struct_start_CONVERTER)];")
             self.front.append("             break;")
         elif default_needed and not switch_over_enum and size:
             self.front.append("         default:")
-            self.front.append(f"             ubyte raw_data_CONVERTER[{size}];")
+            self.front.append(f"             {prefix}ubyte raw_data_CONVERTER[{size}];")
             self.front.append("             break;")
         elif default_needed:
             self.front.append("         default:")
@@ -701,6 +713,7 @@ class data_point():
             pass
 
         self.gen_instances(condition)
+
         self.front.append("    if (" + self.root.expr_resolve(condition, translate_condition_2_c=True) + ") {")
 
         self.generate_code(ignore_if=True, containing_type=containing_type)
@@ -829,11 +842,18 @@ class data_point():
                     try:
                         length_addon = f'({self.root.expr_resolve(self.input["size"], translate_condition_2_c=True)})'
                     except:
-                        if param_addon != "":
-                            param_addon = "," + param_addon
-                        length_addon = f"length_CONVERTER -(FTell()-struct_start_CONVERTER){param_addon}"
+                        if self.called_lowlevel:
+
+                            if param_addon != "":
+                                param_addon = "," + param_addon
+                            length_addon = f"length_CONVERTER -(FTell()-struct_start_CONVERTER){param_addon}"
+                        else:
+                            if param_addon != "":
+                                param_addon = "," + param_addon
+                            length_addon = f"FileSize()-FTell(){param_addon}"
+                            pass
                         # loc_doc = "//TESTING"
-                if size:
+                if size and param_addon == "":
                     length_addon = f"[{size}]"
                 elif length_addon != "" and param_addon != "":
                     # print_debug(f'LENGTH_ADDON {length_addon} PARAM_ADDON {param_addon}')
@@ -841,12 +861,16 @@ class data_point():
                 elif length_addon != "" or param_addon != "":
                     # print_debug(f'LENGTH_ADDON {length_addon} PARAM_ADDON {param_addon}')
                     length_addon = f'({length_addon}{param_addon})'
+                if size and length_addon != "":
+                    self.front.append("    while(" + size + "){ //AD")
 
                     # print_debug(f'{self.type}|{length_addon}|{param_addon}|')
 
                 # if length_addon
-
                 self.front.append(prepend + str(self.type) + " " + str(self.id) + length_addon + ";" + loc_doc)
+                if size and length_addon != "":
+                    self.front.append("       }")
+
 
         elif self.size is not None:  # JUST BYTES
             self.front.append(prepend + "ubyte " + str(self.id) + "[" + str(self.size) + "]" + ";" + loc_doc)
@@ -948,11 +972,12 @@ class seq(Converter):
     def __init__(self, input_js, parent, root, name=None):
         Converter.__init__(self, input_js, parent=parent, root=root, name=name)
 
-    def parse_subtree(self, name=None):
+    def parse_subtree(self, name=None, parsed_toplevel=False):
         self.this_level_keys = []
         for data_dict in self.input:
             # if this_level_key == "doc-ref":this_level_key="doc"
-            self.subtrees[data_dict["id"]] = data_point(data_dict, containing_type=name, parent=self, root=self.root)
+            self.subtrees[data_dict["id"]] = data_point(data_dict, containing_type=name, parent=self, root=self.root,
+                                                        parsed_toplevel=parsed_toplevel)
             self.subtrees[data_dict["id"]].parse()
             self.this_level_keys.append(data_dict["id"])
 
@@ -973,13 +998,20 @@ class seq(Converter):
         return self.output
 
 
-class instances(seq):
+class instances(data_point):
 
+    # TODO inherit from seq or data_point?
+    # def __init__(self, input_js, parent, root, name=None):
+    #     seq.__init__(self, input_js, parent=parent, root=root, name=name)
+    #     self.output = []
+    #     self.front = []
+    #     self.back = []
     def __init__(self, input_js, parent, root, name=None):
-        seq.__init__(self, input_js, parent=parent, root=root, name=name)
+        data_point.__init__(self, input_js, parent=parent, root=root, name=name)
         self.output = []
         self.front = []
         self.back = []
+        self.name = name
 
     def parse_subtree(self, name=None):
         for this_level_key in self.this_level_keys:
@@ -990,7 +1022,8 @@ class instances(seq):
                                                       root=self.root)
                 self.subtrees[local_key].parse()
 
-    def generate_code(self, size=None, called_lowlevel=True, containing_type=None):
+    # def generate_code(self, size=None, called_lowlevel=True, containing_type=None):
+    def generate_code(self, size=None, ignore_if=False, called_lowlevel=True, containing_type=None):
         for this_level_key in self.this_level_keys:
             instance = self.root.lookup_instance(this_level_key, containing_type=self.name)
             if instance is not None and not self.root.lookup_instance(this_level_key, containing_type=self.name,
@@ -1014,7 +1047,11 @@ class instances(seq):
 
                     elif "type" in instance.keys() and not "size" in instance.keys():
                         self.front.append(f'        local {instance["type"]}_TYPE {this_level_key};')
-
+                    elif type(instance["type"]) is dict:
+                        self.type = instance["type"]
+                        self.name = this_level_key
+                        print_debug(self.name)
+                        self.gen_switch(is_local=True)
                     else:
                         print_debug(
                             f'INSTANCE {this_level_key} in TYPE {self.name} NOT GENERATED : SIZE + TYPE MISSING')
@@ -1077,7 +1114,7 @@ class types(Converter):
 
             return False
 
-        # print_debug(item.this_level_keys)
+        print_debug(item.this_level_keys)
         # print_debug(item.subtrees)
         # print_debug(item.input)
         param_needed = False
