@@ -4053,7 +4053,7 @@ class PfpInterp(object):
             cond = 0
         is_string = False
         try:
-            is_string = "width" in vars(cond)
+            is_string = type(cond) == fields.String or "width" in vars(cond)
         except:
             pass
 
