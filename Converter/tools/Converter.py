@@ -1043,15 +1043,15 @@ class instances(data_point):
                     self.front.append(f'        FSeek({instance["pos"]});')
 
                     if "size" in instance.keys() and not "type" in instance.keys():
-                        self.front.append(f'        local ubyte {this_level_key}[{instance["size"]}];')
+                        self.front.append(f'         ubyte {this_level_key}[{instance["size"]}];')
 
                     elif "type" in instance.keys() and not "size" in instance.keys():
-                        self.front.append(f'        local {instance["type"]}_TYPE {this_level_key};')
+                        self.front.append(f'         {instance["type"]}_TYPE {this_level_key};')
                     elif type(instance["type"]) is dict:
                         self.type = instance["type"]
                         self.name = this_level_key
                         print_debug(self.name)
-                        self.gen_switch(is_local=True)
+                        self.gen_switch()
                     else:
                         print_debug(
                             f'INSTANCE {this_level_key} in TYPE {self.name} NOT GENERATED : SIZE + TYPE MISSING')
