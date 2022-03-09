@@ -691,12 +691,27 @@ class PfpInterp(object):
         else:
             if classname not in self._to_define:
                 self._to_define[classname] = []
-            self._to_define[classname].append((node.name, node, len(self._call_stack) > 1 and not self._call_stack[-1]))
-            node.cpp = "/*TODO field " + node.name + "("
+            is_var = len(self._call_stack) > 1 and not self._call_stack[-1]
+            self._to_define[classname].append((node.name, node, is_var))
+
+            name = node.name
+            if hasattr(node, "originalname"):
+                name = node.originalname
+            node.cpp = "GENERATE"
+            if is_var:
+                node.cpp += "_VAR"
+            self._variable_types[node.name] = classname
+            node.cpp += "(" + name + ", ::g->" + node.name + ".generate("
+            arg_num = 0
             if hasattr(node.type, "args") and node.type.args:
                 for arg in node.type.args.exprs:
+                    arg_num += 1
                     node.cpp += arg.cpp + ", "
-            node.cpp += ")*/"
+            if arg_num > 0:
+                node.cpp = node.cpp[:-2]
+            node.cpp += "/*TODO class " + classname + "*/"
+            node.cpp += "))"
+
             node.type.cpp = classname
             if not self._incomplete:
                 self.add_class(classname, classnode, is_union)
@@ -961,10 +976,13 @@ class PfpInterp(object):
                         name = "std::string"
                     paramtype += name + " "
                 if param.type.__class__ == AST.ArrayDecl:
-                    paramtype = "std::vector<" + paramtype[:-1] + ">& "
+                    if paramtype[:-1] in ["char", "uchar", "unsigned char", "CHAR", "UCHAR"]:
+                        paramtype = "std::string "
+                    else:
+                        paramtype = "std::vector<" + paramtype[:-1] + ">& "
                 param.type.cpp = paramtype[:-1]
                 cpp += param.type.cpp
-                if not hasattr(param, "is_func_param") or not param.is_func_param:
+                if cpp[-1] != "&" and (not hasattr(param, "is_func_param") or not param.is_func_param):
                     cpp += "&"
                 cpp += " " + param.name + ", "
             cpp = cpp[:-2]
@@ -979,33 +997,21 @@ class PfpInterp(object):
                     self._defined[field_name] = classname
                     self._globals.append((field_name, classname + " " + node.name + "(" + classname + "_" + node.name + "_instances);\n"))
                     self._instances += "std::vector<" + classname + "*> " + classname + "_" + node.name + "_instances;\n"
-                name = field_name
-                if hasattr(node, "originalname"):
-                    name = node.originalname
-                node.cpp = "GENERATE"
-                if is_var:
-                    node.cpp += "_VAR"
-                self._variable_types[field_name] = classname
-                node.cpp += "(" + name + ", ::g->" + field_name + ".generate("
+
                 arg_num = 0
-                todofield = "/*TODO field " + field_name + "("
                 if hasattr(node.type, "args") and node.type.args:
-                    for arg in node.type.args.exprs:
-                        arg_num += 1
-                        node.cpp += arg.cpp + ", "
-                        todofield += arg.cpp + ", "
-                todofield += ")*/"
+                    arg_num = len(node.type.args.exprs)
+                todoclass = ", " if arg_num else ""
                 if hasattr(classnode, "args") and classnode.args is not None:
                     for i in range(arg_num, len(classnode.args.params)):
-                        arg_num += 1
-                        node.cpp += classnode.args.params[i].name + ", "
-                if arg_num > 0:
-                    node.cpp = node.cpp[:-2]
-                node.cpp += "))"
+                        todoclass += classnode.args.params[i].name + ", "
+                if todoclass:
+                    todoclass = todoclass[:-2]
+                todo = "/*TODO class " + classname + "*/"
+                node.cpp = node.cpp.replace(todo, todoclass)
                 for decl in classnode.decls:
-                    decl.cpp = decl.cpp.replace(todofield, node.cpp)
-                self._to_replace.append((todofield, node.cpp))
-                node.type.cpp = classname
+                    decl.cpp = decl.cpp.replace(todo, todoclass)
+                self._to_replace.append((todo, todoclass))
 
     def add_class_generate(self, classname, classnode, is_union=False):
         if classname + "::generate" in self._defined:
@@ -3482,7 +3488,7 @@ class PfpInterp(object):
         if node.args:
             node.cpp += ", ".join([arg.cpp for arg in node.args.exprs])
         node.cpp += ")"
-        if node.name.name in ["SetEvilBit", "ChangeArrayLength", "EndChangeArrayLength", "IsParsing"]:
+        if node.name.name in ["SetEvilBit", "ChangeArrayLength", "EndChangeArrayLength", "IsParsing", "FTellBits"]:
             return
         self._locals_stack.append([])
         self._call_stack.append(True)
@@ -4047,7 +4053,7 @@ class PfpInterp(object):
             cond = 0
         is_string = False
         try:
-            is_string = "width" in vars(cond)
+            is_string = type(cond) == fields.String or "width" in vars(cond)
         except:
             pass
 
