@@ -231,7 +231,11 @@ def runParserOnInput(parser, testInput, basePath):
     try:
         cmd = [f"{basePath}/build/{parser}", "parse", testInput]
         parseTree = subprocess.run(cmd, capture_output=True)
+
         if (parseTree.returncode != 0):
+            with open(f"{basePath}/output/{parser}.output", "w") as file:
+                file.write(parseTree.stdout.decode())
+            print(parseTree.stderr)
             return parseTree.returncode
         if (len(parseTree.stdout) == 0):
             raise TestRunException(f"Error : {parseTree.stderr}")

@@ -232,7 +232,7 @@ class Converter(object):
         # either elements that could be an instance or
         # a string that works as condition in c
 
-        operator_replacement_dict = {"not ": " ! ", " and ": " && ", " or ": " || "}
+        operator_replacement_dict = {"not ": " ! ", " and ": " && ", " or ": " || ", "_parent.": ""}
 
         # condition_splitter_replacement = ["::", "."] #TODO CHECK IF REMOVAL OF "." IS CORRECT (needed for floats to prevent removal of the dot)
         condition_splitter_replacement = ["::"]
@@ -861,14 +861,14 @@ class data_point():
                 elif length_addon != "" or param_addon != "":
                     # print_debug(f'LENGTH_ADDON {length_addon} PARAM_ADDON {param_addon}')
                     length_addon = f'({length_addon}{param_addon})'
-                if size and length_addon != "":
+                if size and length_addon != "" and param_addon != "":
                     self.front.append("    while(" + size + "){ //AD")
 
                     # print_debug(f'{self.type}|{length_addon}|{param_addon}|')
 
                 # if length_addon
                 self.front.append(prepend + str(self.type) + " " + str(self.id) + length_addon + ";" + loc_doc)
-                if size and length_addon != "":
+                if size and length_addon != "" and param_addon != "":
                     self.front.append("       }")
 
 
@@ -1355,14 +1355,15 @@ def kaitai_sorter_recursive(input_kaitai, path_list, type_list):
 
             for to_be_modded_type in this_level_types:
 
+                lower_lvl_keys = list(get_by_path(input_kaitai, path_list + ["types", to_be_modded_type]).keys())
                 # MODDING LOWER LEVEL SEQ
-                lower_path = path_list + ["types", to_be_modded_type, "seq"]
-                lower_list = get_by_path(input_kaitai, lower_path)
-                replacement = list_replace_value(lower_list, this_level_type, new_type_name)
-                set_by_path(input_kaitai, lower_path, replacement)
+                if "seq" in lower_lvl_keys:
+                    lower_path = path_list + ["types", to_be_modded_type, "seq"]
+                    lower_list = get_by_path(input_kaitai, lower_path)
+                    replacement = list_replace_value(lower_list, this_level_type, new_type_name)
+                    set_by_path(input_kaitai, lower_path, replacement)
 
                 # MODDING LOWER LEVEL INSTANCES
-                lower_lvl_keys = list(get_by_path(input_kaitai, path_list + ["types", to_be_modded_type]).keys())
                 if "instances" in lower_lvl_keys:
                     lower_path = path_list + ["types", to_be_modded_type, "instances"]
                     lower_dict = get_by_path(input_kaitai, lower_path)
