@@ -92,7 +92,6 @@ class file_accessor {
 	bool allow_evil_values = true;
 	bool dont_be_evil = false;
 	unsigned bitfield_size = 0;
-	unsigned bitfield_bits = 0;
 	bool has_bitmap = false;
 	std::vector<bool> bitmap;
 	std::string string_buf;
@@ -271,6 +270,7 @@ public:
 	bool generate = true;
 	bool lookahead = false;
 	bool is_padding = false;
+	unsigned bitfield_bits = 0;
 
 	file_accessor() : bitmap(MAX_FILE_SIZE) {
 		file_buffer = new unsigned char[MAX_FILE_SIZE];

@@ -3488,7 +3488,7 @@ class PfpInterp(object):
         if node.args:
             node.cpp += ", ".join([arg.cpp for arg in node.args.exprs])
         node.cpp += ")"
-        if node.name.name in ["SetEvilBit", "ChangeArrayLength", "EndChangeArrayLength", "IsParsing"]:
+        if node.name.name in ["SetEvilBit", "ChangeArrayLength", "EndChangeArrayLength", "IsParsing", "FTellBits"]:
             return
         self._locals_stack.append([])
         self._call_stack.append(True)

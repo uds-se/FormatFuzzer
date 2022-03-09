@@ -627,6 +627,8 @@ int FEof(double p = 0.125) { return file_acc.feof(p); }
 
 int64 FTell() { return file_acc.file_pos; }
 
+int64 FTellBits() {return file_acc.file_pos * 8 + file_acc.bitfield_bits;}
+
 int FSeek(int64 pos, bool print = true) {
 	assert_cond(0 <= pos && pos <= MAX_FILE_SIZE, "FSeek/FSkip: invalid position");
 	if (print && debug_print && file_acc.file_pos != pos)
