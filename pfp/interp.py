@@ -662,11 +662,11 @@ class PfpInterp(object):
 
 
     def add_decl(self, classname, classnode, node, is_union):
+        if node.name not in self._defined:
+            self._defined[node.name] = classname
+            self._globals.append((node.name, classname + " " + node.name + "(" + classname + "_" + node.name + "_instances);\n"))
+            self._instances += "std::vector<" + classname + "*> " + classname + "_" + node.name + "_instances;\n"
         if classname in self._defined:
-            if node.name not in self._defined:
-                self._defined[node.name] = classname
-                self._globals.append((node.name, classname + " " + node.name + "(" + classname + "_" + node.name + "_instances);\n"))
-                self._instances += "std::vector<" + classname + "*> " + classname + "_" + node.name + "_instances;\n"
             name = node.name
             if hasattr(node, "originalname"):
                 name = node.originalname
@@ -993,10 +993,6 @@ class PfpInterp(object):
                 if "::" in field_name:
                     self._cpp.append((classname + "_to_define", field_name))
                     continue
-                if field_name not in self._defined:
-                    self._defined[field_name] = classname
-                    self._globals.append((field_name, classname + " " + node.name + "(" + classname + "_" + node.name + "_instances);\n"))
-                    self._instances += "std::vector<" + classname + "*> " + classname + "_" + node.name + "_instances;\n"
 
                 arg_num = 0
                 if hasattr(node.type, "args") and node.type.args:
