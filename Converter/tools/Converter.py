@@ -15,7 +15,7 @@ class Converter(object):
     # TODO implement size lookup funtion
     # TODO FIX PARAM ERROR FOR PCAP
     # TODO FIX INSTANCES ERROR
-    # TODO FIX ENUM SIZE
+    # TODO FIX ENUM SIZE (DoNe!)
 
     def __init__(self, input_js, is_master=False, parent=None, root=None, name=None):
         self.enum_size = {}
@@ -377,7 +377,8 @@ class Converter(object):
     def resolve_datatype(self, kaitype, getsize=False, getendian=False):
         # TODO do something about LE????
         if kaitype == "bool":
-            return kaitype
+            return "int"
+            # return kaitype
         elif kaitype == "str":
             return kaitype
         elif kaitype == "strz":
@@ -639,6 +640,8 @@ class data_point():
             switch_term = switch
         ###INJECTION LOCAL VAR FOR START
         switch_term = self.root.expr_resolve(switch_term, translate_condition_2_c=True)
+        self.gen_instances(switch_term)
+
         self.front.append("     switch(" + str(switch_term) + ") {")
         first_index_front = len(self.front)
         # print_debug(self.input)
@@ -654,6 +657,7 @@ class data_point():
             if type(case) is bool or case == "true" or case == "false":
                 self.front[first_index_front - 1] = '     switch(' + str(switch_term) + ') {'
                 case = f'{case}'
+                default_needed = False
             if case == ["_"] or case == "_":
                 default_needed = False
                 case_val = "default"  # TODO remove case from case default
@@ -844,6 +848,22 @@ class data_point():
             #     self.front.append(prepend + str(self.type) + " " + str(self.id) + ";" + loc_doc)
 
             else:  # CUSTOM TYPES
+
+                if "instances" in self.parent.parent.input.keys():
+                    if "(" in self.type:
+                        child_type = self.type.split("(")[0]
+                    else:
+                        child_type = self.type
+                    if "_ENUM" not in self.type:
+                        # print_debug(f'container {self.containing_type} child {child_type}')
+                        this_lvl_instances = self.parent.parent.input["instances"].keys()
+                        lower_lvl_instances = self.get_lower_lvl_instances(child_name=child_type,
+                                                                           parent_name=self.containing_type,
+                                                                           parent_instances=this_lvl_instances)
+                        if lower_lvl_instances:
+                            print_debug(f'Lower Level instances {lower_lvl_instances}')
+                            self.gen_instances(lower_lvl_instances, from_list=True)
+
                 if type_override is None and "_TYPE" not in self.type:
                     if "(" in self.type:
                         type_param_list = self.type.replace("(", "AAACONVERTER").replace(")", "AAACONVERTER").split(
@@ -852,7 +872,7 @@ class data_point():
                         for i in range(len(type_param_list)):
                             type_param_list[i] = self.root.expr_resolve(type_param_list[i],
                                                                         translate_condition_2_c=True)
-                        #print_debug(type_param_list)
+                        # print_debug(type_param_list)
                         param_addon = str(type_param_list[1::]).replace("'", "")[1:-1]
                     self.type = self.type + "_TYPE"
                 length_addon = ""
@@ -915,15 +935,35 @@ class data_point():
             # self.front.append("//STUFF MISSING HERE @ NO MAGIC " + str(self.id) + "----" + str(self.input))
             # print_debug(self.front)
 
-    def gen_instances(self, condition):
+    def get_lower_lvl_instances(self, child_name="", parent_name="", parent_instances=[]):
+        needed_instances = []
+        for instance in parent_instances:
+            child_type_str = str(self.root.input["types"][child_name])
+            if f"_parent.{instance}" in child_type_str and not self.root.lookup_instance(instance, parent_name,
+                                                                                         check_if_implemented=True):
+                print_debug(f'FOUND _parent.{instance} in {child_type_str}!')
+                needed_instances.append(instance)
+        return needed_instances
+
+    # Generates Instances from a condition string or from a list of instance names
+    def gen_instances(self, condition, from_list=False):
         # TODO CHECK FOR SPECIAL POSITION DEPENDENT INSTANCES
         # condition_list = condition.split(".")
-        condition_list = self.root.expr_resolve(condition)
+        # print_debug(f'Before {condition}')
+        if not from_list:
+            condition_list = self.root.expr_resolve(condition)
+        else:
+            condition_list = condition
         if type(condition_list) is not type([]):
             condition_list = [condition_list]
+
+        # print_debug(f'After {condition_list}')
         for element in condition_list:
             instance = self.root.lookup_instance(element, self.containing_type)
-            if instance is not None and not self.root.lookup_instance(element, self.id, check_if_implemented=True):
+            # print_debug(f'ID {self.id} Element {element} container {self.containing_type}')
+            # if instance is not None and not self.root.lookup_instance(element, self.id, check_if_implemented=True):
+            if instance is not None and not self.root.lookup_instance(element, self.containing_type,
+                                                                      check_if_implemented=True):
                 self.root.mark_as_implemented("instance", element, value=True, containing_type=self.containing_type)
                 # temp = " ".join(self.root.expr_resolve(str(instance["value"])))
                 temp = self.root.expr_resolve(str(instance["value"]), translate_condition_2_c=True)
@@ -1009,6 +1049,8 @@ class seq(Converter):
 
     def generate_code(self, size=None, called_lowlevel=True, containing_type=None):
         if "length_CONVERTER" == size:
+            print_debug(size)
+
             # self.output.append("    local uint32 UNTIL_CONVERTER = FTell() + length_CONVERTER;") #TODO THIS IS OPTION A FOR EOS
             self.output.append(
                 "    local uint32 UNTIL_CONVERTER = FTell() + length_CONVERTER;//A")  # TODO THIS IS OPTION B FOR EOS
@@ -1054,14 +1096,18 @@ class instances(data_point):
             instance = self.root.lookup_instance(this_level_key, containing_type=self.name)
             if instance is not None and not self.root.lookup_instance(this_level_key, containing_type=self.name,
                                                                       check_if_implemented=True):
+
+                if_used = False
                 if "if" in instance.keys():
                     self.front.append(
                         f'    if({self.root.expr_resolve(instance["if"], translate_condition_2_c=True)})' + "{")
+                    if_used = True
 
                 if "value" in instance.keys():
                     temp = self.root.expr_resolve(str(instance["value"]), translate_condition_2_c=True)
                     self.front.append("    local double " + str(this_level_key) + " = " + str(temp) + ";" + (
                         ("   //" + str(instance["doc"])) if "doc" in instance.keys() else ""))
+
                 elif "pos" in instance.keys():
                     # TODO ADD EVIL BIT HERE?
 
@@ -1084,7 +1130,7 @@ class instances(data_point):
                     self.front.append(f'        FSeek(temp_CONVERTER);')
 
                 if "if" in instance.keys():
-                    self.front.append("    }")
+                    self.front.append("    };")
         self.output.extend(self.front)
         self.output.extend(self.back)
         return self.output
