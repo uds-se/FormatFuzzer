@@ -137,7 +137,7 @@ class file_accessor {
 
 			return value;
 		}
-		unsigned start_pos = bitfield_bits ? bitfield_size : 0;
+		unsigned start_pos = bitfield_bits ? is_padded_bitfield ? bitfield_size : bitfield_bits / 8 : 0;
 		if (is_big_endian) {
 			unsigned char* dest = (unsigned char*) &value;
 			for (unsigned i = 0; i < size; ++i)
@@ -218,9 +218,16 @@ class file_accessor {
 
 	void write_file(const void *buf, size_t size) {
 		if (bitfield_bits) {
-			is_padding = true;
-			file_integer(bitfield_size, 8 * bitfield_size - bitfield_bits, 0);
-			is_padding = false;
+			if (is_padded_bitfield) {
+				is_padding = true;
+				file_integer(bitfield_size, 8 * bitfield_size - bitfield_bits, 0);
+				is_padding = false;
+			} else {
+				assert_cond(bitfield_bits % 8 == 0, "starting non-bitfield variable outside a byte boundary (bitfield padding disabled)");
+				file_pos += bitfield_bits / 8;
+				bitfield_bits = 0;
+				bitfield_size = 0;
+			}
 		}
 		unsigned start_pos = file_pos;
 		file_pos += size;
@@ -361,9 +368,20 @@ public:
 
 	void finish() {
 		if (bitfield_bits) {
-			is_padding = true;
-			file_integer(bitfield_size, 8 * bitfield_size - bitfield_bits, 0);
-			is_padding = false;
+			if (is_padded_bitfield) {
+				is_padding = true;
+				file_integer(bitfield_size, 8 * bitfield_size - bitfield_bits, 0);
+				is_padding = false;
+			} else {
+				assert_cond(bitfield_bits % 8 == 0, "finishing file outside a byte boundary (bitfield padding disabled)");
+				file_pos += bitfield_bits / 8;
+				if (file_size < file_pos)
+					file_size = file_pos;
+				if (!generate && parsed_file_size < file_pos)
+					parsed_file_size = file_pos;
+				bitfield_bits = 0;
+				bitfield_size = 0;
+			}
 		}
 		if (!generate) {
 			assert_cond(file_size == final_file_size, "unparsed bytes left at the end of file");
