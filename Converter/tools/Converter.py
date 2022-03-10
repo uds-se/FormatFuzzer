@@ -14,8 +14,11 @@ imported = {}
 class Converter(object):
     # TODO implement size lookup funtion
     # TODO FIX PARAM ERROR FOR PCAP
+    # TODO FIX INSTANCES ERROR
+    # TODO FIX ENUM SIZE
 
     def __init__(self, input_js, is_master=False, parent=None, root=None, name=None):
+        self.enum_size = {}
         self.output_enums = []
         self.output_types = []
         self.output_seqs = []
@@ -208,7 +211,23 @@ class Converter(object):
         self.resolve_enum_sizes()
 
     def resolve_enum_sizes(self):
-        self.enum_size = {"standard": "<ubyte>"}
+        for e in self.input["enums"]:
+            enum_name = e
+            enum_content = self.input["enums"][enum_name]
+            local_values = list(enum_content.keys())
+            last = local_values[-1]
+            bit_len = len(hex(last)[2::]) * 4
+            if bit_len <= 8:
+                self.enum_size[enum_name] = f"<ubyte>"
+            elif bit_len <= 16:
+                self.enum_size[enum_name] = f"<uint16>"
+            elif bit_len <= 32:
+                self.enum_size[enum_name] = f"<uint32>"
+            elif bit_len <= 64:
+                self.enum_size[enum_name] = f"<uint64>"
+            else:
+
+                print_debug(f"UNHANDLED ENUM SIZE {bit_len} OF ENUM {enum_name}")
 
     def lookup_enum_size(self, enum):
         return self.enum_size[enum]
@@ -463,7 +482,7 @@ class enums(Converter):
         self.output = []
         for enum in self.subtrees.keys():
             self.output.extend(
-                self.gen_single_enum(enum, self.subtrees[enum], type=converter.lookup_enum_size("standard")))
+                self.gen_single_enum(enum, self.subtrees[enum], type=converter.lookup_enum_size(enum)))
             self.output.append("\n")
 
         if called_lowlevel:
