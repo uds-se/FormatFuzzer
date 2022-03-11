@@ -81,11 +81,14 @@ class TestRunException(Exception):
 
 
 def try_file_exts(base_path, names, ext, max_depth=3):
+    log.info(f'Names {names}')
+    if type(names) is not list:
+        names = [names]
     for name in names:
         temp_path = findFileRecursively(base_path, name, ext, max_depth)
         if temp_path:
-            return (temp_path, name)
-    return False
+            return temp_path, name
+    return False, None
 
 
 # should return file path or false in not found
