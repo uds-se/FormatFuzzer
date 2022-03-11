@@ -561,22 +561,33 @@ void Warning(const std::string fmt, ...) {
 	fprintf(stderr, "\n");
 }
 
-void Printf(const std::string fmt, ...) {
+int Printf(const std::string fmt, ...) {
 	if (!debug_print)
-		return;
+		return 0;
 	va_list args;
 	va_start(args,fmt);
-	vprintf(fmt.c_str(),args);
+	int result = vprintf(fmt.c_str(), args);
 	va_end(args);
+	return result;
 }
 
-void SPrintf(std::string& s, const char* fmt, ...) {
+int SPrintf(std::string& s, const char* fmt, ...) {
+	char res[4096];
+	va_list args;
+	va_start(args,fmt);
+	int result = vsnprintf(res, 4096, fmt, args);
+	va_end(args);
+	s = res;
+	return result;
+}
+
+std::string Str(const char* fmt, ...) {
 	char res[4096];
 	va_list args;
 	va_start(args,fmt);
 	vsnprintf(res, 4096, fmt, args);
 	va_end(args);
-	s = res;
+	return res;
 }
 
 int Atoi(std::string s) {
