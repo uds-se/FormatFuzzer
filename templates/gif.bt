@@ -59,7 +59,7 @@ typedef struct {
 			local UBYTE values[] = { 0, 255 };
 		}
 	}
-	UBYTE	BlockTerminator;
+	UBYTE	BlockTerminator = { 0 };
 } DATASUBBLOCKS;
 
 typedef struct {
@@ -178,7 +178,7 @@ struct DATA {
 					ushort	DelayTime;
 					UBYTE	TransparentColorIndex;
 				} GraphicControlSubBlock;
-				UBYTE	BlockTerminator;
+				UBYTE	BlockTerminator = { 0 };
 			} GraphicControlExtension;
 		} else if (ReadUShort(FTell()) == 0xFE21) {
 			SetBackColor( 0xFFFFC0 );
