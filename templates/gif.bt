@@ -168,7 +168,7 @@ struct DATA {
 				UBYTE ExtensionIntroducer; // 0x21
 				UBYTE GraphicControlLabel; // 0xF9
 				struct GRAPHICCONTROLSUBBLOCK {
-					UBYTE	BlockSize;
+					UBYTE	BlockSize = { 4 };
 					struct GRAPHICCONTROLEXTENSION_DATASUBBLOCK_PACKEDFIELDS {
 						UBYTE	Reserved : 3;
 						UBYTE	DisposalMethod : 3;
