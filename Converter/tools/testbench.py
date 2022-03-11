@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import os.path as path
 from os import listdir
+import os
 import subprocess
 import logging as log
 import difflib
@@ -25,7 +26,10 @@ def find_alt_format_names(fmt):
     with open(kaitiai_file, 'r') as kt_file:
         input_stream = kt_file.read()
     kt_structure = yaml.safe_load(input_stream)
-    alt_file_ext = kt_structure["meta"]["file-extension"]
+    if "file-extension" in kt_structure["meta"].keys():
+        alt_file_ext = kt_structure["meta"]["file-extension"]
+    else:
+        alt_file_ext = [fmt]
     return alt_file_ext
 
 
@@ -77,8 +81,8 @@ class TestRunException(Exception):
 
 
 def try_file_exts(base_path, names, ext, max_depth=3):
-    for name in name:
-        temp_path = findFileRecursively(base_path, name, ext, maxDepth)
+    for name in names:
+        temp_path = findFileRecursively(base_path, name, ext, max_depth)
         if temp_path:
             return (temp_path, name)
     return False
@@ -127,7 +131,7 @@ def runSingleFormatParseTest(formatName, resolveTestInput):
         if not referenceTemplate:
             raise TestRunException("Reference template file not found")
         referenceParser = compileParser(referenceTemplate, basePath=basePath)
-        testInputs = resolveTesInput(formatName, referenceParser, basePath)
+        testInputs = resolveTestInput(formatName, referenceParser, basePath)
         for ti in testInputs:
             log.info(f"running test on input {path.basename(ti)}")
             referencePT = runParserOnInput(referenceParser, ti, basePath)
