@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 import os.path as path
+from os import listdir
 import subprocess
 import logging as log
 import difflib
 import sys
 import argparse
 import re
-import os
+import yaml
 
 # NOTE change these as needed
 TestBenchLoc = os.path.dirname(os.path.abspath(__file__))
@@ -16,6 +17,16 @@ FFCOMPILE = TestBenchLoc + "/../../ffcompile"
 FFROOT = TestBenchLoc + "/../../"
 CONVERTER = TestBenchLoc + "/Converter.py"
 TESTFOLDER = TestBenchLoc + "/../test/"
+TESTFILEROOT = TestBenchLoc + "/../test-files"
+
+
+def find_alt_format_names(fmt):
+    kaitiai_file = findFileRecursively(KAITAI_BASE_PATH, fmt, "ksy")
+    with open(kaitiai_file, 'r') as kt_file:
+        input_stream = kt_file.read()
+    kt_structure = yaml.safe_load(input_stream)
+    alt_file_ext = kt_structure["meta"]["file-extension"]
+    return alt_file_ext
 
 
 def set_up_logger(level, reset=False):
@@ -65,6 +76,14 @@ class TestRunException(Exception):
             log.error(self.cause.args)
 
 
+def try_file_exts(base_path, names, ext, max_depth=3):
+    for name in name:
+        temp_path = findFileRecursively(base_path, name, ext, maxDepth)
+        if temp_path:
+            return (temp_path, name)
+    return False
+
+
 # should return file path or false in not found
 def findFileRecursively(base_path, name, ext, maxDepth=3):
     cmd = [
@@ -96,38 +115,46 @@ def runSingleFormatParseTest(formatName, resolveTestInput):
         log.FileHandler(logfileName, mode='w')
     ]
     try:
-        convertedFile = callConverter(
-            formatName, basePath)  # contains path to converted file
+        exts = find_alt_format_names(formatName)
+        # contains path to converted file
+        convertedFile = callConverter(exts, basePath)
         parserUnderTest = compileParser(convertedFile,
                                         test=True,
                                         basePath=basePath)
         # contains path to reference template
-        referenceTemplate = findFileRecursively(BT_TEMPLATE_BASE_PATH,
-                                                formatName, 'bt')
+        (referenceTemplate,
+         formatName) = try_file_exts(BT_TEMPLATE_BASE_PATH, exts, "bt")
         if not referenceTemplate:
             raise TestRunException("Reference template file not found")
         referenceParser = compileParser(referenceTemplate, basePath=basePath)
-        testInput = resolveTestInput(formatName, referenceParser, basePath)
-        referencePT = runParserOnInput(referenceParser, testInput, basePath)
-        PTunderTest = runParserOnInput(parserUnderTest, testInput, basePath)
-        if (isinstance(referencePT, int) and isinstance(PTunderTest, int)
-                and referencePT == PTunderTest):
-            return True
-        elif (isinstance(referencePT, int) or isinstance(PTunderTest, int)):
-            return False
-        return diffParseTrees(referencePT, PTunderTest)
+        testInputs = resolveTesInput(formatName, referenceParser, basePath)
+        for ti in testInputs:
+            log.info(f"running test on input {path.basename(ti)}")
+            referencePT = runParserOnInput(referenceParser, ti, basePath)
+            PTunderTest = runParserOnInput(parserUnderTest, ti, basePath)
+            if (isinstance(referencePT, int) and isinstance(PTunderTest, int)
+                    and referencePT == PTunderTest):
+                return True
+            elif (isinstance(referencePT, int)
+                  or isinstance(PTunderTest, int)):
+                return False
+            log.info(f"diff of parse trees for {path.basename(ti)}")
+            diff = diffParseTrees(referencePT, PTunderTest)
+        set_up_logger(None, True)
+        return diff
     except TestRunException as e:
         e.print()
         set_up_logger(None, True)
         return False
 
 
-def callConverter(formatName, basePath):
+def callConverter(formatNames, basePath):
     # resolve kaitai struct path and feed to our converter
     if (not path.isdir(KAITAI_BASE_PATH)):
         raise Exception("kaitai base path is no directory")
 
-    filePath = findFileRecursively(KAITAI_BASE_PATH, formatName, "ksy")
+    (filePath, formatName) = try_file_exts(KAITAI_BASE_PATH, formatNames,
+                                           "ksy")
     if (not filePath):
         raise TestRunException(
             f"Kaitai struct file not found, path: {path.join(KAITAI_BASE_PATH, formatName)}.ksy"
@@ -233,14 +260,17 @@ def runParserOnInput(parser, testInput, basePath):
         parseTree = subprocess.run(cmd, capture_output=True)
 
         if (parseTree.returncode != 0):
-            with open(f"{basePath}/output/{parser}.output", "w") as file:
+            with open(
+                    f"{basePath}/output/{parser}-{path.basename(testInput)}.output",
+                    "w") as file:
                 file.write(parseTree.stdout.decode())
-            print(parseTree.stderr)
+            log.error(parseTree.stderr)
             return parseTree.returncode
         if (len(parseTree.stdout) == 0):
             raise TestRunException(f"Error : {parseTree.stderr}")
-        #print(parseTree.stderr.decode())
-        with open(f"{basePath}/output/{parser}.output", "w") as file:
+        with open(
+                f"{basePath}/output/{parser}-{path.basename(testInput)}.output",
+                "w") as file:
             file.write(parseTree.stdout.decode())
 
         return parseTree.stdout.decode()
@@ -248,7 +278,19 @@ def runParserOnInput(parser, testInput, basePath):
         raise TestRunException(f"failed to run parser", err)
 
 
-def resolveTestInputByFormat(formatName, generator, basePath):
+def provideWildFiles(formatName, generator, basePath, multiple=True):
+    formatPath = path.join(TESTFILEROOT, formatName)
+    files = [
+        path.join(formatPath, f) for f in listdir(formatPath)
+        if path.isfile(path.join(formatPath, ))
+    ]
+    if multiple:
+        return files
+    else:
+        return files[1:1]
+
+
+def resolveTestInputByFormat(formatName, generator, basePath, multiple=False):
     try:
         cmd = [
             f'{basePath}/build/{generator}', "fuzz",
@@ -259,7 +301,7 @@ def resolveTestInputByFormat(formatName, generator, basePath):
                        stdout=subprocess.PIPE,
                        stderr=subprocess.PIPE,
                        env={"DONT_BE_EVIL": "1"})
-        return f"{basePath}/input/testinput.{formatName}"
+        return [f"{basePath}/input/testinput.{formatName}"]
     except Exception as err:
         raise TestRunException("Creating input failed!", err)
 
@@ -283,6 +325,13 @@ def main():
                         default='INFO',
                         nargs='?',
                         type=str)
+    parser.add_argument('--use-test-files',
+                        dest='resolver',
+                        action='store',
+                        nargs='?',
+                        const=provideWildFiles,
+                        default=resolveTestInputByFormat,
+                        help="do only conversion")
     parsedArgs = parser.parse_args(sys.argv[1::])
     numeric_level = getattr(log, parsedArgs.log_lvl.upper(), log.INFO)
     if not isinstance(numeric_level, int):
@@ -291,12 +340,12 @@ def main():
     log.info("===Starting test bench run===")
     if (len(parsedArgs.formats) == 1):
         log.info("Running test for single format %s", parsedArgs.formats[0])
-        testInputResolver = lambda fmt, parser, basePath: parsedArgs.testInput if parsedArgs.testInput else resolveTestInputByFormat(
+        testInputResolver = lambda fmt, parser, basePath: parsedArgs.testInput if parsedArgs.testInput else parsedArgs.resolver(
             fmt, parser, create_fmt_folder(fmt))
         runSingleFormatParseTest(parsedArgs.formats[0], testInputResolver)
         return
     log.info("Runing test for multiple formats")
-    runMultiFromatParseTest(parsedArgs.formats, resolveTestInputByFormat)
+    runMultiFromatParseTest(parsedArgs.formats, parsedArgs.resolver)
 
 
 if __name__ == "__main__":
