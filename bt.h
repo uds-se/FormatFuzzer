@@ -241,6 +241,11 @@ void end_generation() {
 			else
 				printf("\n");
 		}
+		printf("%u,%u,", back.min, back.max);
+		printf("Contents: ");
+               for (unsigned i = back.min; i <= back.max; ++i)
+                       printf("%02x ", file_acc.file_buffer[i]);
+               printf("\n");
 	}
 
 	if (get_chunk && back.min == chunk_start && back.max == chunk_end) {

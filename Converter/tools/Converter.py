@@ -1128,6 +1128,7 @@ class instances(data_point):
                         f'    if({self.root.expr_resolve(instance["if"], translate_condition_2_c=True)})' + "{")
                     if_used = True
                 # print_debug(instance.keys())
+                # TODO USE ACTUAL TYPE INSTEAD OF double if it is a struct
                 if "value" in instance.keys():
                     temp = self.root.expr_resolve(str(instance["value"]), translate_condition_2_c=True)
                     self.front.append("    local double " + str(this_level_key) + " = " + str(temp) + ";" + (
@@ -1552,6 +1553,50 @@ def del_by_path(root, items):
 
 
 ##########################################################################
+class Preprocessor():
+    def __init__(self, input_string, kaitaijs):
+        self.input = input_string
+        self.kaitai = kaitaijs
+        self.types = kaitaijs["types"].keys()
+        self.enums = kaitaijs["enums"].keys()
+        # self.types = kaitaijs["types"].keys()
+
+    def preproccess(self):
+        pattern_types = r"(?=(" + '|'.join(self.types) + r"))"
+        pattern_enums = r"(?=(" + '|'.join(self.enums) + r"))"
+        pattern_enum_sub = r"(?P<parsed_enum>(" + '|'.join(self.enums) + r"))[:]{2}(?P<subenum>[\w]+)"
+        pattern_type_sub = r"(?P<parsed_type>(" + '|'.join(self.types) + r"))[:]{2}(?P<subtype>(" + '|'.join(
+            self.types) + r"))"
+        # pattern_enum_access=
+        lines = self.input.split("\n")
+        alpha_num_char = "[a-zA-Z0-9]"
+        var_name = "^[_a-zA-Z0-9]\w+"
+        var_name = "^(?![0-9]+)(?!0b[0-9]+)[_a-zA-Z0-9]\w+"
+        # var_name=fr'[a-zA-Z0-9]+|\w+'
+
+        for index in range(len(lines)):
+            line = lines[index]
+            words = line.split()
+            for word in words:
+
+                # HANDLING enum_ENUM::monday
+                match = re.match(pattern_enum_sub, word)
+                if match is not None:
+                    subenum = match.group('subenum')
+                    parsed_enum = match.group('parsed_enum')
+                    lines[index].replace(f'{parsed_enum}::{subenum}', f'{subenum}')
+                    print(f'Found ENUM {parsed_enum} with {subenum} in {word}')
+
+                # HANDLING imported_type::subtype
+                match = re.match(pattern_type_sub, word)
+                if match is not None:
+                    subtype = match.group('subtype')
+                    parsed_type = match.group('parsed_type')
+                    print(f'Found TYPE {parsed_type} with {subtype} in {word}')
+                    lines[index].replace(f'{parsed_type}::{subtype}', f'{subtype}')
+                    # print(match)
+
+        return "\n".join(lines)
 
 def main():
     global converter, DEBUG
@@ -1563,6 +1608,7 @@ def main():
     output_file_name = sys.argv[2]
     with open(input_file_name, "r") as in_file:
         input_file = in_file.read()
+
     kaitaijs_main = yaml.safe_load(input_file)
 
     try:
@@ -1575,7 +1621,13 @@ def main():
     except:
         kaitaijs = kaitaijs_main
     kaitai_sorter_main(kaitaijs)
-    # print_debug(kaitaijs, pretty=True)
+
+    sorted_string = yaml.dump(kaitaijs)
+    preproc = Preprocessor(sorted_string, kaitaijs)
+    kaitaijs_proc = yaml.safe_load(preproc.preproccess())
+    # exit(-1)
+
+    # converter = Converter(kaitaijs_proc, True)
     converter = Converter(kaitaijs, True)
     output = converter.generate_code_toplevel()
     with open(output_file_name, "w+") as out_file:
