@@ -1,43 +1,51 @@
 #! /usr/bin/env python3
-import tools.testbench  as tb
+import tools.testbench as tb
 import argparse
 import logging as log
 import subprocess as sub
 import sys
-
+import re
 
 
 def run_tests_on_all():
     filenames = sub.run("basename -s .bt -a $(ls ../templates | grep -v - )",
-                        shell=True, stdout=sub.PIPE, check=True)
+                        shell=True,
+                        stdout=sub.PIPE,
+                        check=True)
     fns = filenames.stdout.decode().split("\n")[:-1:]
+    p = re.compile(r'(\S+)_.*', re.VERBOSE)
+    fns = [p.sub(r'\1', x) for x in fns]
     tb.runMultiFromatParseTest(fns, tb.resolveTestInputByFormat)
+
 
 def convert_all():
     fmts = sub.run(
-            'basename -s .ksy -a $(find kaitai_struct_formats -name "*.ksy")', 
-            shell=True, check=True, stdout=sub.PIPE)
+        'basename -s .ksy -a $(find kaitai_struct_formats -name "*.ksy")',
+        shell=True,
+        check=True,
+        stdout=sub.PIPE)
     for fmt in fmts.stdout.decode().split("\n"):
         bp = tb.create_fmt_folder(fmt),
-        conv = tb.callConverter(fmt, bp, log.root) 
+        conv = tb.callConverter(fmt, bp, log.root)
         tb.compileParser(conv, bp, log.root)
         #TODO refine this
+
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--convert-only',
-            dest='run', 
-            action='store', 
-            nargs='?',
-            const=convert_all, 
-            default=run_tests_on_all,
-            help="do only conversion")
+                        dest='run',
+                        action='store',
+                        nargs='?',
+                        const=convert_all,
+                        default=run_tests_on_all,
+                        help="do only conversion")
     parser.add_argument('--log',
-            metavar='loglevel',
-            dest='log_lvl',
-            default='INFO',
-            nargs='?',
-            type=str)
+                        metavar='loglevel',
+                        dest='log_lvl',
+                        default='INFO',
+                        nargs='?',
+                        type=str)
     args = parser.parse_args(sys.argv[1:])
     numeric_level = getattr(log, args.log_lvl.upper(), 'INFO')
     if not isinstance(numeric_level, int):
