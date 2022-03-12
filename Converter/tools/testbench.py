@@ -338,7 +338,7 @@ def main():
                         nargs='?',
                         const=provideWildFiles,
                         default=resolveTestInputByFormat,
-                        help="do only conversion")
+                        help="use real world files")
     parsedArgs = parser.parse_args(sys.argv[1::])
     numeric_level = getattr(log, parsedArgs.log_lvl.upper(), log.INFO)
     if not isinstance(numeric_level, int):
