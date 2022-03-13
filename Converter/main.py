@@ -15,7 +15,7 @@ def run_tests_on_all():
     fns = filenames.stdout.decode().split("\n")[:-1:]
     p = re.compile(r'(\S+)_.*', re.VERBOSE)
     fns = [p.sub(r'\1', x) for x in fns]
-    tb.runMultiFromatParseTest(fns, tb.resolveTestInputByFormat)
+    tb.run_multi_format_parse_test(fns, tb.resolve_test_input_by_format)
 
 
 def convert_all():
@@ -26,9 +26,9 @@ def convert_all():
         stdout=sub.PIPE)
     for fmt in fmts.stdout.decode().split("\n"):
         bp = tb.create_fmt_folder(fmt),
-        conv = tb.callConverter(fmt, bp, log.root)
-        tb.compileParser(conv, bp, log.root)
-        #TODO refine this
+        conv = tb.call_converter(fmt, bp)
+        tb.compile_parser(conv, bp, log.root)
+        # TODO refine this
 
 
 def main():
