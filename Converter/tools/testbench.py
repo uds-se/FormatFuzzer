@@ -93,22 +93,17 @@ def find_templates(base_path, name, ext):
     matching = []
     for (root, dirs, files) in os.walk(base_path):
         for file in filter(lambda fn: fn.endswith(ext), files):
+            matches = re.match(rf".*{name}.*\.{ext}", file)
             if ext == "ksy":
                 alt_names = grab_alt_fmt_names(path.join(root, file))
                 if name in alt_names:
                     matching.append((path.join(root, file), file.rsplit(".", 1)[0]))
-                elif re.match(rf".*{name}.*\.{ext}", file) is not None:
+                elif matches is not None:
                     matching.append((path.join(root, file), file.rsplit(".", 1)[0]))
             else:
-                if re.match(rf".*{name}.*\.{ext}", file) is not None:
+                if matches is not None and 'orig' not in file:
                     matching.append((path.join(root, f"{name}.{ext}"), name))
-    # TODO FIX
-    deduplicated_list = []
-    for entry in matching:
-        if entry not in deduplicated_list:
-            deduplicated_list.append(entry)
-
-    return deduplicated_list
+    return matching
 
 
 def call_converter(template, name, base_path, logger):
@@ -191,7 +186,7 @@ def run_parser_on_input(parser, test_input, base_path):
         cmd = [f"{base_path}/build/{parser}", "parse", test_input]
         parse_tree = sub.run(cmd, capture_output=True)
         with open(
-                f"{base_path}/output/{path.basename(test_input).rsplit(',',1)[0]}-{parser}.output",
+                f"{base_path}/output/{path.basename(test_input).rsplit(',', 1)[0]}-{parser}.output",
                 "w") as file:
             file.write(parse_tree.stdout.decode())
 
@@ -212,6 +207,33 @@ def diff_parse_trees(expected: str, actual: str, logger) -> str:
                              n=4))
     logger.debug(diff)
     return diff
+
+
+def generate_test_results_for_test_files(ref_parse_trees, test_parse_trees, format_name):
+    if len(ref_parse_trees) != len(test_parse_trees):
+        print("ERROR: count of parse trees do not match")
+        exit(-1)
+    runs = len(ref_parse_trees)
+    log.info(f"Format: {format_name}:")
+    for run_index in range(runs):
+        (ref_name, ref_fn, ref_ret_code, ref_tree, ref_stderr) = ref_parse_trees[run_index]
+        (test_name, test_fn, test_ret_code, test_tree, test_stderr) = test_parse_trees[run_index]
+        ref_ll = ref_tree.split("\n")[-2]
+        test_ll = test_tree.split("\n")[-2]
+        parsed_end = ref_ll == test_ll
+        ret_code_comp = ref_ret_code == test_ret_code
+        ret_code_good = ref_ret_code == 0
+        status = parsed_end and ret_code_good
+        test_err_msg = test_stderr.split("\n")[0]
+        ref_err_msg = ref_stderr.split("\n")[0]
+        if not status:
+            error_msg = f"    Test_ret {test_ret_code} Ref_ret {ref_ret_code}\n"
+            error_msg += f"    Test {test_err_msg}\n"
+            error_msg += f"    Ref {ref_err_msg}\n"
+        else:
+            error_msg = ""
+        log.info(f"\n\n    Result for Testfile {test_fn}:\n"
+                 f"    Status: {'PASSED' if status else 'FAILED'}\n{error_msg}")
 
 
 def run_single_format_parse_test(format_name, resolve_test_input, filter_diffs, logger):
@@ -252,31 +274,11 @@ def run_single_format_parse_test(format_name, resolve_test_input, filter_diffs, 
                 ref_parse_trees.append(run_parser_on_input(parser, ti, base_path))
 
         # compare outputs
-        diff_results = []
-        ref_name: str
-        test_name: str
-        generate_test_results_for_testfiles(ref_parse_trees, test_parse_trees, format_name, logger)
-        for (ref_name, ref_fn, ref_ret_code, ref_tree, ref_stderr) in ref_parse_trees:
-            for (test_name, test_fn, test_ret_code, test_tree, test_stderr) in test_parse_trees:
-                if ref_fn != test_fn:
-                    continue
-                if filter_diffs:
-                    if f"test-{ref_name}" != test_name:  # TODO make this less strict if wanted
-                        continue
-                if ref_ret_code != 0 or test_ret_code != 0:
-                    diff_results.append(
-                        (ref_name, test_name, ref_fn, ref_ret_code == test_ret_code, None, ref_stderr,
-                         test_stderr))
-                else:
-                    diff = diff_parse_trees(ref_tree, test_tree, logger)
-                    diff_results.append((ref_name, test_name, ref_fn, True, diff, ref_stderr, test_stderr))
-
+        generate_test_results_for_test_files(ref_parse_trees, test_parse_trees, format_name)
         reset_logger(logger)
-        return diff_results
     except TestRunException as e:
         e.print()
         reset_logger(logger)
-        return diff_results if 'diff_results' in locals() else []
 
 
 def run_multi_format_parse_test(formats, test_input_resolver, filter_diffs, logger):
@@ -284,18 +286,6 @@ def run_multi_format_parse_test(formats, test_input_resolver, filter_diffs, logg
     for fmt in formats:
         logger.info("Current format: %s", fmt)
         passed.append((fmt, run_single_format_parse_test(fmt, test_input_resolver, filter_diffs, logger)))
-
-    logger.info("Passed status of formats: \n")
-    for (fmt, results) in passed:
-        logger.info(f"== Format: {fmt}")
-        for (ref_name, test_name, test_file, status, diff, ref_stderr, test_stderr) in results:
-            logger.info(
-                f"Format: {fmt}: Binary Names: ref: {ref_name}, test: {test_name} ;" +
-                f"Test file name: Ref: {test_file} ;" +
-                f" Status: {'Passed' if status else 'Failed'}")
-            logger.debug(f"Diff: {diff}")
-            logger.debug(f"Ref stderr: {ref_stderr}")
-            logger.debug(f"test std err: {test_stderr}")
 
 
 def provide_wild_files(file_root, logger):
@@ -313,33 +303,6 @@ def provide_wild_files(file_root, logger):
             return files[1:1]
 
     return load_wild_files
-
-
-def generate_test_results_for_testfiles(ref_parse_trees, test_parse_trees, format_name, logger):
-    if len(ref_parse_trees) != len(test_parse_trees):
-        print("ERROR")
-        exit(-1)
-    runs = len(ref_parse_trees)
-    logger.info(f"Format: {format_name}:")
-    for run_index in range(runs):
-        (ref_name, ref_fn, ref_ret_code, ref_tree, ref_stderr) = ref_parse_trees[run_index]
-        (test_name, test_fn, test_ret_code, test_tree, test_stderr) = test_parse_trees[run_index]
-        ref_ll = ref_tree.split("\n")[-2]
-        test_ll = test_tree.split("\n")[-2]
-        parsed_end = ref_ll == test_ll
-        ret_code_comp = ref_ret_code == test_ret_code
-        ret_code_good = ref_ret_code == 0
-        status = parsed_end and ret_code_good
-        test_err_msg = test_stderr.split("\n")[0]
-        ref_err_msg = ref_stderr.split("\n")[0]
-        if not status:
-            error_msg = f"    Test_ret {test_ret_code} Ref_ret {ref_ret_code}\n"
-            error_msg += f"    Test {test_err_msg}\n"
-            error_msg += f"    Ref {ref_err_msg}\n"
-        else:
-            error_msg = ""
-        logger.info(f"\n\n    Result for Testfile {test_fn}:\n"
-                    f"    Status: {'PASSED' if status else 'FAILED'}\n{error_msg}")
 
 
 def main():
@@ -380,18 +343,10 @@ def main():
     provide_files = provide_wild_files(parsed_args.test_folder, logger)
     if len(parsed_args.formats) == 1:
         logger.info("Running test for single format %s", parsed_args.formats[0])
-        results = run_single_format_parse_test(
+        run_single_format_parse_test(
             parsed_args.formats[0],
             lambda fmt: parsed_args.testInput if parsed_args.testInput else provide_files(fmt),
             parsed_args.filter_diffs, logger)
-        for (ref_name, test_name, test_file, status, diff, ref_stderr, test_stderr) in results:
-            logger.info(
-                f"Format: {parsed_args.formats[0]}: Binary Names: ref: {ref_name}, test: {test_name} ;" +
-                f"Test file name: Ref: {test_file} ;" +
-                f" Status: {'Passed' if status else 'Failed'}")
-            logger.debug(f"Diff: {diff}")
-            logger.debug(f"Ref stderr: {ref_stderr}")
-            logger.debug(f"test std err: {test_stderr}")
     else:
         logger.info("Running test for multiple formats")
         run_multi_format_parse_test(parsed_args.formats, provide_files, parsed_args.filter_diffs, logger)
