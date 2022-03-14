@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# needs python 3.9
 import os.path as path
 from os import listdir
 import os
@@ -279,18 +278,20 @@ def run_multi_format_parse_test(formats, test_input_resolver, filter_diffs):
             log.debug(f"test std err: {test_stderr}")
 
 
-def provide_wild_files(format_name, multiple=True):
-    format_path = path.join(TEST_FILE_ROOT, format_name)
-    files = [
-        path.join(format_path, f) for f in listdir(format_path)
-        if path.isfile(path.join(format_path, f))
-    ]
-    if len(files) == 0:
-        raise TestRunException("No test files found")
-    if multiple:
-        return files
-    else:
-        return files[1:1]
+def provide_wild_files(file_root):
+    def load_wild_files(format_name, multiple=True):
+        format_path = path.join(file_root, format_name)
+        files = [
+            path.join(format_path, f) for f in listdir(format_path)
+            if path.isfile(path.join(format_path, f))
+        ]
+        if len(files) == 0:
+            raise TestRunException("No test files found")
+        if multiple:
+            return files
+        else:
+            return files[1:1]
+    return load_wild_files
 
 
 def main():
@@ -316,21 +317,31 @@ def main():
                         action=parse.BooleanOptionalAction,
                         dest="filter_diffs",
                         help='filter "useless" diffs')
+    parser.add_argument('--test-folder',
+                        metavar='folder',
+                        dest='test_folder',
+                        nargs='?',
+                        type=str,
+                        default=TEST_FILE_ROOT)
+    parser.add_argument('--feature', action='store_true')
+    parser.add_argument('--no-feature', action='store_false')
+    parser.set_defaults(feature=True)
     parsed_args = parser.parse_args(sys.argv[1::])
     numeric_level = getattr(log, parsed_args.log_lvl.upper(), log.INFO)
     if not isinstance(numeric_level, int):
         raise ValueError('Invalid log level: %s' % numeric_level)
     set_up_logger(numeric_level)
     log.info("===Starting test bench run===")
+    provide_files = provide_wild_files(parsed_args.test_folder)
     if len(parsed_args.formats) == 1:
         log.info("Running test for single format %s", parsed_args.formats[0])
         run_single_format_parse_test(
             parsed_args.formats[0],
-            lambda fmt, bt_parser, base_path: parsed_args.testInput if parsed_args.testInput else provide_wild_files,
+            lambda fmt, bt_parser, base_path: parsed_args.testInput if parsed_args.testInput else provide_files,
             parsed_args.filter_diffs)
     else:
         log.info("Running test for multiple formats")
-        run_multi_format_parse_test(parsed_args.formats, provide_wild_files, parsed_args.filter_diffs)
+        run_multi_format_parse_test(parsed_args.formats, provide_files, parsed_args.filter_diffs)
 
 
 if __name__ == "__main__":
