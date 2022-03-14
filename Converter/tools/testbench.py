@@ -102,7 +102,13 @@ def find_templates(base_path, name, ext):
             else:
                 if re.match(rf".*{name}.*\.{ext}", file) is not None:
                     matching.append((path.join(root, f"{name}.{ext}"), name))
-    return matching
+    # TODO FIX
+    deduplicated_list = []
+    for entry in matching:
+        if entry not in deduplicated_list:
+            deduplicated_list.append(entry)
+
+    return deduplicated_list
 
 
 def call_converter(template, name, base_path, logger):
@@ -249,6 +255,7 @@ def run_single_format_parse_test(format_name, resolve_test_input, filter_diffs, 
         diff_results = []
         ref_name: str
         test_name: str
+        generate_test_results_for_testfiles(ref_parse_trees, test_parse_trees, format_name, logger)
         for (ref_name, ref_fn, ref_ret_code, ref_tree, ref_stderr) in ref_parse_trees:
             for (test_name, test_fn, test_ret_code, test_tree, test_stderr) in test_parse_trees:
                 if ref_fn != test_fn:
@@ -306,6 +313,33 @@ def provide_wild_files(file_root, logger):
             return files[1:1]
 
     return load_wild_files
+
+
+def generate_test_results_for_testfiles(ref_parse_trees, test_parse_trees, format_name, logger):
+    if len(ref_parse_trees) != len(test_parse_trees):
+        print("ERROR")
+        exit(-1)
+    runs = len(ref_parse_trees)
+    logger.info(f"Format: {format_name}:")
+    for run_index in range(runs):
+        (ref_name, ref_fn, ref_ret_code, ref_tree, ref_stderr) = ref_parse_trees[run_index]
+        (test_name, test_fn, test_ret_code, test_tree, test_stderr) = test_parse_trees[run_index]
+        ref_ll = ref_tree.split("\n")[-2]
+        test_ll = test_tree.split("\n")[-2]
+        parsed_end = ref_ll == test_ll
+        ret_code_comp = ref_ret_code == test_ret_code
+        ret_code_good = ref_ret_code == 0
+        status = parsed_end and ret_code_good
+        test_err_msg = test_stderr.split("\n")[0]
+        ref_err_msg = ref_stderr.split("\n")[0]
+        if not status:
+            error_msg = f"    Test_ret {test_ret_code} Ref_ret {ref_ret_code}\n"
+            error_msg += f"    Test {test_err_msg}\n"
+            error_msg += f"    Ref {ref_err_msg}\n"
+        else:
+            error_msg = ""
+        logger.info(f"\n\n    Result for Testfile {test_fn}:\n"
+                    f"    Status: {'PASSED' if status else 'FAILED'}\n{error_msg}")
 
 
 def main():
