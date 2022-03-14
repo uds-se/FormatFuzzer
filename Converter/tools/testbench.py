@@ -171,6 +171,7 @@ def compile_parser(template_path, base_path, test=False):
         raise TestRunException(f"failed to compile", err)
 
 
+# TODO parsetree : <inputname without .format>_<fuzzername>.output   logfile:  <inputname without .format>.log
 def run_parser_on_input(parser, test_input, base_path):
     try:
         cmd = [f"{base_path}/build/{parser}", "parse", test_input]

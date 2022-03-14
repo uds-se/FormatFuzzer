@@ -6,8 +6,10 @@ import os
 import traceback
 from functools import reduce
 import operator
+from inspect import getframeinfo, stack
 
 DEBUG = True
+GENERATION_MARKER = True
 imported = {}
 
 
@@ -156,9 +158,9 @@ class Converter(object):
         self.output_seqs.extend(self.subtrees["seq"].generate_code(called_lowlevel=False))
 
         if self.endian == "be":
-            self.output.append("BigEndian();")
+            self.output.append(f"BigEndian();{gen_marker()}")
         elif self.endian == "le":
-            self.output.append("LittleEndian();")
+            self.output.append(f"LittleEndian();{gen_marker()}")
         else:
             print_debug("NO ENDIAN")
         # self.output.append("SetEvilBit(false);")
@@ -717,29 +719,32 @@ class data_point():
                 type_name = str(cases[case_key]) + "_TYPE "
 
             self.switch_endian(self.root.resolve_datatype(cases[case_key], getendian=True), do_endian_switch)
-            self.front.append("             " + prefix + type_name + " " + str(self.id) + paramfield + ";")
+            self.front.append(
+                "             " + prefix + type_name + " " + str(self.id) + paramfield + f";{gen_marker()}")
             self.switch_endian(self.root.endian, do_endian_switch)
             self.front.append("             break;")
 
         if default_needed and "size" in self.input.keys():
             self.front.append("         default:")
             # self.output.append(f'    Warning("LENGTH %hu %hx",{str(self.input["size"])},{str(self.input["size"])});')
-            self.front.append(f"             {prefix}ubyte raw_data_CONVERTER[" + str(self.input["size"]) + "];")
+            self.front.append(
+                f"             {prefix}ubyte raw_data_CONVERTER[" + str(self.input["size"]) + f"];{gen_marker()}")
             self.front.append("             break;")
         elif default_needed and not switch_over_enum and not size:
             self.front.append("         default:")
             self.front.append(
-                f"             {prefix}ubyte raw_data_CONVERTER[length_CONVERTER -(FTell()-struct_start_CONVERTER)];")
+                f"             {prefix}ubyte raw_data_CONVERTER[length_CONVERTER -(FTell()-struct_start_CONVERTER)];{gen_marker()}")
             self.front.append("             break;")
         elif default_needed and not switch_over_enum and size:
             self.front.append("         default:")
-            self.front.append(f"             {prefix}ubyte raw_data_CONVERTER[{size}];")
+            self.front.append(f"             {prefix}ubyte raw_data_CONVERTER[{size}];{gen_marker()}")
             self.front.append("             break;")
         elif default_needed:
             self.front.append("         default:")
             self.front.append("             break;")
             self.front.append("             if(!FEof()){")
-            self.front.append(f'                 Warning("UNSUPPLIED DEFAULT CASE FOR SWITCH OVER {switch_term}");')
+            self.front.append(
+                f'                 Warning("UNSUPPLIED DEFAULT CASE FOR SWITCH OVER {switch_term}");{gen_marker()}')
             self.front.append("                  return -1;")
             self.front.append("              }")
         self.front.append("    }")
@@ -747,9 +752,9 @@ class data_point():
     def switch_endian(self, endian, do_switch_endian=False):
         if do_switch_endian and endian is not None:
             if endian == "be":
-                self.front.append("         BigEndian();")
+                self.front.append(f"         BigEndian();{gen_marker()}")
             else:
-                self.front.append("         LittleEndian();")
+                self.front.append(f"         LittleEndian();{gen_marker()}")
 
     def gen_if(self, containing_type=None):
         condition = self.input["if"]
@@ -790,7 +795,7 @@ class data_point():
             pass
         elif "eos" == self.input["repeat"]:
             # self.front.append("    local uint32 UNTIL_CONVERTER = length_CONVERTER;") #TODO THIS IS OPTION B FOR EOS
-            self.front.append("    while(" + while_content + "){ //AB")
+            self.front.append("    while(" + while_content + "){ //AB" + f"{gen_marker()}")
             # self.front.append("    while(FTell() < UNTIL_CONVERTER){")
             self.gen_atomic(indents=2)
             self.front.append("    }")
@@ -825,7 +830,7 @@ class data_point():
 
         if self.size_eos and not forwarding and "length_CONVERTER" == size:
 
-            self.front.append("    while(" + while_content + "){ //AC")
+            self.front.append("    while(" + while_content + "){ //AC" + f"{gen_marker()}")
             # self.front.append("    while(FTell() < UNTIL_CONVERTER){")  # OPTION B
             self.gen_atomic(indents=2, forwarding=True)
             self.front.append("    }")  # OPTION B
@@ -836,13 +841,14 @@ class data_point():
         elif self.type == "str":
             if self.size is not None:
                 # TODO Done? IMPLEMENT CASE FOR DIFFERENT THAN ZEROBYTE TERMINATOR
-                self.front.append(prepend + "char " + str(self.id) + "[" + str(self.size) + "]" + ";" + loc_doc)
+                self.front.append(
+                    prepend + "char " + str(self.id) + "[" + str(self.size) + "]" + f";{gen_marker()}" + loc_doc)
             elif "size-eos" in self.input:
                 self.front.append(
                     prepend + "char " + str(
-                        self.id) + "[length_CONVERTER -(FTell()-struct_start_CONVERTER)];" + loc_doc)
+                        self.id) + f"[length_CONVERTER -(FTell()-struct_start_CONVERTER)];{gen_marker()}" + loc_doc)
         elif self.type == "strz":
-            self.front.append(prepend + "string " + str(self.id) + ";" + loc_doc)
+            self.front.append(prepend + "string " + str(self.id) + f";{gen_marker()}" + loc_doc)
         elif self.type is not None:
             param_addon = ""
             temp_type = self.root.resolve_datatype(self.type)
@@ -854,11 +860,12 @@ class data_point():
                     # print_debug(self.type)
                     # print_debug(temp_type)
                     self.front.append(
-                        prepend + str(self.root.resolve_datatype(self.type)) + " " + str(self.id) + ";" + loc_doc)
+                        prepend + str(self.root.resolve_datatype(self.type)) + " " + str(
+                            self.id) + f";{gen_marker()}" + loc_doc)
                 else:
                     self.front.append(
                         prepend + str(self.root.resolve_datatype(self.type)) + " " + str(self.id) + "[" + str(
-                            self.root.resolve_datatype(self.type, getsize=True)) + "]" + ";" + loc_doc)
+                            self.root.resolve_datatype(self.type, getsize=True)) + "]" + f";{gen_marker()}" + loc_doc)
                 self.switch_endian(self.root.endian, local_endian != self.root.endian)
             # elif " " in str(self.type):
             #     print_debug(f"WENT HERE WITH{self.type}")
@@ -937,22 +944,24 @@ class data_point():
                     # print_debug(f'LENGTH_ADDON {length_addon} PARAM_ADDON {param_addon}')
                     length_addon = f'({length_addon}{param_addon})'
                 if size and length_addon != "" and param_addon != "":
-                    self.front.append("    while(" + size + "){ //AD")
+                    self.front.append("    while(" + size + "){ //AD" + f"{gen_marker()}")
 
                     # print_debug(f'{self.type}|{length_addon}|{param_addon}|')
 
                 # if length_addon
-                self.front.append(prepend + str(self.type) + " " + str(self.id) + length_addon + ";" + loc_doc)
+                self.front.append(
+                    prepend + str(self.type) + " " + str(self.id) + length_addon + f";{gen_marker()}" + loc_doc)
                 if size and length_addon != "" and param_addon != "":
                     self.front.append("       }")
 
 
         elif self.size is not None:  # JUST BYTES
-            self.front.append(prepend + "ubyte " + str(self.id) + "[" + str(self.size) + "]" + ";" + loc_doc)
+            self.front.append(
+                prepend + "ubyte " + str(self.id) + "[" + str(self.size) + "]" + f";{gen_marker()}" + loc_doc)
 
         else:
             # self.front.append(prepend + "byte " + str(self.id) + "[UNTIL_CONVERTER - FTell()]" + ";" + loc_doc)#OPTION A
-            self.front.append(prepend + "ubyte " + str(self.id) + ";" + loc_doc)  # OPTION B
+            self.front.append(prepend + "ubyte " + str(self.id) + f";{gen_marker()}" + loc_doc)  # OPTION B
 
             # self.gen_repeat()
             # self.front.append("    local int64 UNTIL_CONVERTER = FTell() + length_CONVERTER;")
@@ -1000,7 +1009,7 @@ class data_point():
                 self.root.mark_as_implemented("instance", element, value=True, containing_type=container)
                 # temp = " ".join(self.root.expr_resolve(str(instance["value"])))
                 temp = self.root.expr_resolve(str(instance["value"]), translate_condition_2_c=True)
-                self.front.append("    local int64 " + str(element) + " = " + str(temp) + ";" + (
+                self.front.append("    local int64 " + str(element) + " = " + str(temp) + f";{gen_marker()}" + (
                     ("   //" + str(instance["doc"])) if "doc" in instance.keys() else ""))
 
     def gen_str(self):
@@ -1014,16 +1023,16 @@ class data_point():
         # self.front.append("    ubyte " + str(self.id) + "[" + str(self.magic_len) + "];")
         # TODO HERE POSSIBLE SET_EVIL_BIT
         if self.magic_len > 1:
-            self.front.append("    ubyte " + str(self.id) + "[" + str(self.magic_len) + "];")
-            self.front.append("    if (" + self.id + "[0] != " + self.magic[0] + " ||")
+            self.front.append("    ubyte " + str(self.id) + "[" + str(self.magic_len) + f"];{gen_marker()}")
+            self.front.append("    if (" + self.id + "[0] != " + self.magic[0] + f" ||{gen_marker()}")
             for x in range(1, self.magic_len - 1):
                 self.front.append("        " + self.id + "[" + str(x) + "] != " + self.magic[x] + " ||")
             self.front.append(
                 "        " + self.id + "[" + str(self.magic_len - 1) + "] != " + self.magic[self.magic_len - 1] + ") {")
         else:
-            self.front.append("    ubyte " + str(self.id) + ";")
+            self.front.append("    ubyte " + str(self.id) + f";{gen_marker()}")
             self.front.append("    if (" + self.id + " != " + self.magic[0] + ") {")
-        self.front.append('         Warning("Magic Bytes of ' + self.id + ' not matching!");')
+        self.front.append('         Warning("Magic Bytes of ' + self.id + f' not matching!");{gen_marker()}')
         self.front.append("         return -1;\n    };")
 
     def to_hex_list(self, input):
@@ -1084,7 +1093,7 @@ class seq(Converter):
         if "length_CONVERTER" == size:
             # self.output.append("    local uint32 UNTIL_CONVERTER = FTell() + length_CONVERTER;") #TODO THIS IS OPTION A FOR EOS
             self.output.append(
-                "    local uint32 UNTIL_CONVERTER = FTell() + length_CONVERTER;//A")  # TODO THIS IS OPTION B FOR EOS
+                f"    local uint32 UNTIL_CONVERTER = FTell() + length_CONVERTER;//A {gen_marker()}")  # TODO THIS IS OPTION B FOR EOS
             # self.output.append('    Warning("LENGTH %hu UNTIL %hu FTell %hu",length_CONVERTER,UNTIL_CONVERTER,FTell());')
 
         for this_level_key in self.this_level_keys:
@@ -1125,23 +1134,24 @@ class instances(data_point):
                 if_used = False
                 if "if" in instance.keys():
                     self.front.append(
-                        f'    if({self.root.expr_resolve(instance["if"], translate_condition_2_c=True)})' + "{")
+                        f'    if({self.root.expr_resolve(instance["if"], translate_condition_2_c=True)})' + "{" + f"{gen_marker()}")
                     if_used = True
                 # print_debug(instance.keys())
                 # TODO USE ACTUAL TYPE INSTEAD OF double if it is a struct
                 if "value" in instance.keys():
                     temp = self.root.expr_resolve(str(instance["value"]), translate_condition_2_c=True)
-                    self.front.append("    local double " + str(this_level_key) + " = " + str(temp) + ";" + (
-                        ("   //" + str(instance["doc"])) if "doc" in instance.keys() else ""))
+                    self.front.append(
+                        "    local double " + str(this_level_key) + " = " + str(temp) + f";{gen_marker()}" + (
+                            ("   //" + str(instance["doc"])) if "doc" in instance.keys() else ""))
 
                 elif "pos" in instance.keys():
                     # TODO ADD EVIL BIT HERE?
 
-                    self.front.append(f'        local int64 temp_CONVERTER = FTell();')
-                    self.front.append(f'        FSeek({instance["pos"]});')
+                    self.front.append(f'        local int64 temp_CONVERTER = FTell();{gen_marker()}')
+                    self.front.append(f'        FSeek({instance["pos"]});{gen_marker()}')
 
                     if "size" in instance.keys() and not "type" in instance.keys():
-                        self.front.append(f'         ubyte {this_level_key}[{instance["size"]}];')
+                        self.front.append(f'         ubyte {this_level_key}[{instance["size"]}];{gen_marker()}')
                     elif type(instance["type"]) is dict:
                         self.type = instance["type"]
                         self.name = this_level_key
@@ -1154,13 +1164,13 @@ class instances(data_point):
                         else:
                             local_type = f'{instance["type"]}_TYPE'
 
-                        self.front.append(f'         {local_type} {this_level_key};//AAA')
+                        self.front.append(f'         {local_type} {this_level_key};//AAA {gen_marker()}')
                     else:
                         # self.gen_atomic(docu="AAAAAAAAAAAAAAAAAAa")
                         print_debug(
                             f'INSTANCE {this_level_key} in TYPE {self.name} NOT GENERATED : SIZE + TYPE MISSING')
 
-                    self.front.append(f'        FSeek(temp_CONVERTER);')
+                    self.front.append(f'        FSeek(temp_CONVERTER); {gen_marker()}')
 
                 if "if" in instance.keys():
                     self.front.append("    }")
@@ -1305,11 +1315,11 @@ class types(Converter):
                 forward_lenfield = ""
 
             ##############WIP FORWARD DECLARATION RESTRUCTURE################
-            self.pre.append("struct " + str(this_level_key) + "_TYPE" + forward_lenfield + ";")
+            self.pre.append("struct " + str(this_level_key) + "_TYPE" + forward_lenfield + f";{gen_marker()}")
             ##############WIP FORWARD DECLARATION RESTRUCTURE################
             output.append("struct " + str(this_level_key) + "_TYPE" + lenfield + " {")
             if lenfield != "":
-                output.append("    local uint32 struct_start_CONVERTER = FTell();")
+                output.append(f"    local uint32 struct_start_CONVERTER = FTell();{gen_marker()}")
             if lenfield != "":
                 sizer = "length_CONVERTER"
             else:
@@ -1550,6 +1560,14 @@ def set_by_path(root, items, value):
 def del_by_path(root, items):
     """Delete a key-value in a nested object in root by item sequence."""
     del get_by_path(root, items[:-1])[items[-1]]
+
+
+def gen_marker():
+    if GENERATION_MARKER:
+        caller = getframeinfo(stack()[1][0])
+        return f'//{caller.lineno}'
+    else:
+        return ""
 
 
 ##########################################################################
