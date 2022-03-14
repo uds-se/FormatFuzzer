@@ -24,40 +24,48 @@ TEST_FILE_ROOT = TestBenchLoc + "/../test-files"
 class TestRunException(Exception):
     """thrown if any part of a test run fails"""
 
-    def __init__(self, msg, cause: Exception = None):
+    def __init__(self, logger, msg, cause: Exception = None):
         self.msg = msg
         self.cause = cause
+        self.logger = logger
 
     def print(self):
-        log.error(self.msg)
+        self.logger.error(self.msg)
         if isinstance(self.cause, sub.CalledProcessError):
-            log.error(self.cause.cmd)
-            log.error(self.cause.returncode)
-            log.error(f"Stderr: {self.cause.stderr.decode()}")
+            self.logger.error(self.cause.cmd)
+            self.logger.error(self.cause.returncode)
+            self.logger.error(f"Stderr: {self.cause.stderr.decode()}")
             linefinder = r"(Compile|Parse)Error.*:(\d+):(\d+):"
             lines = re.finditer(linefinder, self.cause.stderr.decode())
             for _, ma in enumerate(lines, 1):
                 _, ln, cl = ma.groups()
-                log.error("Error occurred on line: %s, column: %s", ln, cl)
-            log.error(f"Stdout: {self.cause.output.decode()}")
+                self.logger.error("Error occurred on line: %s, column: %s", ln, cl)
+            self.logger.error(f"Stdout: {self.cause.output.decode()}")
         elif self.cause is not None:
-            log.error(self.cause)
-            log.error(self.cause.args)
+            self.logger.error(self.cause)
+            self.logger.error(self.cause.args)
 
 
-def set_up_logger(level, reset=False):
-    if not reset:
-        console_log = log.StreamHandler()
-        logfile = log.FileHandler("testbench.log", mode='w')
-        logfile.setLevel(level)
-        log.basicConfig(format='%(asctime)s::%(levelname)s:%(message)s',
-                        level=level,
-                        handlers=[console_log, logfile],
-                        datefmt="%Y-%m-%d %H:%M:%S")
-    else:
-        console_log = log.StreamHandler()
-        logfile = log.FileHandler("testbench.log", mode='w')
-        log.handlers = [console_log, logfile]
+def set_up_logger(level):
+    console_log = log.StreamHandler()
+    logfile = log.FileHandler("testbench.log", mode='w')
+    logfile.setLevel(level)
+    log.basicConfig(format='%(asctime)s::%(levelname)s:%(message)s',
+                    level=level,
+                    handlers=[console_log, logfile],
+                    datefmt="%Y-%m-%d %H:%M:%S")
+    return log.getLogger()
+
+
+def reset_logger(logger: log.Logger):
+    formatter = logger.handlers[0].formatter
+    [logger.removeHandler(h) for h in logger.handlers]
+    console_log = log.StreamHandler()
+    console_log.setFormatter(formatter)
+    log_file = log.FileHandler("testbench.log", mode="w")
+    log_file.setFormatter(formatter)
+    logger.addHandler(console_log)
+    logger.addHandler(log_file)
 
 
 def create_fmt_folder(format_name):
@@ -97,49 +105,49 @@ def find_templates(base_path, name, ext):
     return matching
 
 
-def call_converter(template, name, base_path):
+def call_converter(template, name, base_path, logger):
     # resolve kaitai struct path and feed to our converter
     if not template:
         raise TestRunException(
-            f"Kaitai struct file not found, path: {path.join(KAITAI_BASE_PATH, template)}.ksy"
+            logger, f"Kaitai struct file not found, path: {path.join(KAITAI_BASE_PATH, template)}.ksy"
         )
     working_dir = base_path + "/build"
 
-    log.info(f"found file to convert: {template}. converting...")
+    logger.info(f"found file to convert: {template}. converting...")
     try:
         convert = sub.run(
             ["python3", CONVERTER, template, f"{working_dir}/{name}.bt"],
             check=True,
             capture_output=True)
-        log.info(convert.stdout.decode())
+        logger.info(convert.stdout.decode())
     except Exception as err:
         raise TestRunException("Conversion Failed", err)
     if convert.returncode != 0:
-        raise TestRunException(f"Error: {convert.stderr}")
-    log.info(f"Converted file successfully. Result saved in {working_dir}/{name}.bt")
+        raise TestRunException(logger, f"Error: {convert.stderr}")
+    logger.info(f"Converted file successfully. Result saved in {working_dir}/{name}.bt")
     return f"{working_dir}/{name}.bt"
 
 
-def compile_parser(template_path, base_path, test=False):
+def compile_parser(template_path, base_path, logger, test=False):
     try:
         # ./ffcompile templates/gif.bt gif.cpp
         # g++ -c -I . -std=c++17 -g -O3 -Wall fuzzer.cpp
         # g++ -c -I . -std=c++17 -g -O3 -Wall gif.cpp
         # g++ -O3 gif.o fuzzer.o -o gif-fuzzer -lz
         if test:
-            log.info("Compiling parser under test")
+            logger.info("Compiling parser under test")
             flavor = "test_"
         else:
-            log.info("Compiling reference parser")
+            logger.info("Compiling reference parser")
             flavor = "reference_"
-        log.info("Compiling template...")
+        logger.info("Compiling template...")
         fmt_name = path.basename(template_path).split('.')[0]
         ff_comp_cmd = [
             FFCOMPILE, template_path, f"{base_path}/build/{flavor}{fmt_name}.cpp"
         ]
         sub.run(ff_comp_cmd, capture_output=True, check=True)
-        log.info("Compiled template")
-        log.info("Compiling general fuzzer api...")
+        logger.info("Compiled template")
+        logger.info("Compiling general fuzzer api...")
         fuzzer_cpp_cmd = [
             'g++', '-c', '-I',
             path.normpath(FF_ROOT) + "/", '-std=c++17', '-g', '-O3', '-Wall',
@@ -147,8 +155,8 @@ def compile_parser(template_path, base_path, test=False):
             f'{base_path}/build/fuzzer.o'
         ]
         sub.run(fuzzer_cpp_cmd, capture_output=True, check=True)
-        log.info("Compiled general fuzzer api")
-        log.info("Compiling format code...")
+        logger.info("Compiled general fuzzer api")
+        logger.info("Compiling format code...")
         comp_fuzzer_cmd = [
             'g++', '-c', '-I',
             path.normpath(FF_ROOT), '-std=c++17', '-g', '-O3', '-Wall',
@@ -156,8 +164,8 @@ def compile_parser(template_path, base_path, test=False):
             f'{base_path}/build/{flavor}{fmt_name}.o'
         ]
         sub.run(comp_fuzzer_cmd, capture_output=True, check=True)
-        log.info("Compiled format code")
-        log.info("Compiling fuzzer binary...")
+        logger.info("Compiled format code")
+        logger.info("Compiling fuzzer binary...")
         bin_name = f'test-{fmt_name}-fuzzer' if test else f'{fmt_name}-fuzzer'
         link_cmd = [
             'g++', '-O3', f'{base_path}/build/{flavor}{fmt_name}.o',
@@ -165,19 +173,19 @@ def compile_parser(template_path, base_path, test=False):
             '-lz'
         ]
         sub.run(link_cmd, capture_output=True, check=True)
-        log.info("Compiled fuzzer binary")
+        logger.info("Compiled fuzzer binary")
         return bin_name
     except Exception as err:
         raise TestRunException(f"failed to compile", err)
 
 
-# TODO parsetree : <inputname without .format>_<fuzzername>.output   logfile:  <inputname without .format>.log
+# TODO  logfile:  <inputname without .format>.log i will keep this at one log file for now
 def run_parser_on_input(parser, test_input, base_path):
     try:
         cmd = [f"{base_path}/build/{parser}", "parse", test_input]
         parse_tree = sub.run(cmd, capture_output=True)
         with open(
-                f"{base_path}/output/{parser}-{path.basename(test_input)}.output",
+                f"{base_path}/output/{path.basename(test_input).rsplit(',',1)[0]}-{parser}.output",
                 "w") as file:
             file.write(parse_tree.stdout.decode())
 
@@ -187,7 +195,7 @@ def run_parser_on_input(parser, test_input, base_path):
         raise TestRunException(f"failed to run parser", err)
 
 
-def diff_parse_trees(expected: str, actual: str) -> str:
+def diff_parse_trees(expected: str, actual: str, logger) -> str:
     # if expected == actual:
     #    return True
     diff = "\n".join(
@@ -196,17 +204,21 @@ def diff_parse_trees(expected: str, actual: str) -> str:
                              fromfile="expected-parse-tree",
                              tofile="actual-parse-tree",
                              n=4))
-    log.debug(diff)
+    logger.debug(diff)
     return diff
 
 
-def run_single_format_parse_test(format_name, resolve_test_input, filter_diffs):
+def run_single_format_parse_test(format_name, resolve_test_input, filter_diffs, logger):
     base_path = create_fmt_folder(format_name)
     logfile = f'{base_path}/output/test-{format_name}-fuzzer.log-output'
-    log.handlers = [
-        log.StreamHandler(),
-        log.FileHandler(logfile, mode='w')
-    ]
+    formatter = logger.handlers[0].formatter
+    [logger.removeHandler(h) for h in logger.handlers]
+    console_log = log.StreamHandler()
+    console_log.setFormatter(formatter)
+    log_file = log.FileHandler(logfile, mode="w")
+    log_file.setFormatter(formatter)
+    logger.addHandler(console_log)
+    logger.addHandler(log_file)
     try:
         if not path.isdir(KAITAI_BASE_PATH):
             raise Exception("kaitai base path is no directory")
@@ -218,19 +230,19 @@ def run_single_format_parse_test(format_name, resolve_test_input, filter_diffs):
         ref_parse_trees = []
         # run parsers under test on test inputs
         for (file_path, name) in ksy_files:
-            log.info(f"Converting template {name} at location {file_path}")
-            converted_file = call_converter(file_path, name, base_path)
-            parser = compile_parser(converted_file, base_path, True)
+            logger.info(f"Converting template {name} at location {file_path}")
+            converted_file = call_converter(file_path, name, base_path, logger)
+            parser = compile_parser(converted_file, base_path, logger, True)
             for ti in test_inputs:
-                log.info(f"running {name} on test file {path.basename(ti)}")
+                logger.info(f"running {name} on test file {path.basename(ti)}")
                 test_parse_trees.append(run_parser_on_input(parser, ti, base_path))
 
         # run reference parser on test inputs
         for (file_path, name) in ff_templates:
-            log.info(f"Compiling reference template {name} at location {file_path}")
-            parser = compile_parser(file_path, base_path)
+            logger.info(f"Compiling reference template {name} at location {file_path}")
+            parser = compile_parser(file_path, base_path, logger)
             for ti in test_inputs:
-                log.info(f"running {name} on test file {path.basename(ti)}")
+                logger.info(f"running {name} on test file {path.basename(ti)}")
                 ref_parse_trees.append(run_parser_on_input(parser, ti, base_path))
 
         # compare outputs
@@ -242,44 +254,44 @@ def run_single_format_parse_test(format_name, resolve_test_input, filter_diffs):
                 if ref_fn != test_fn:
                     continue
                 if filter_diffs:
-                    if test_fn != ref_name:  # TODO make this less strict if wanted
+                    if f"test-{ref_name}" != test_name:  # TODO make this less strict if wanted
                         continue
                 if ref_ret_code != 0 or test_ret_code != 0:
                     diff_results.append(
                         (ref_name, test_name, ref_fn, ref_ret_code == test_ret_code, None, ref_stderr,
                          test_stderr))
                 else:
-                    diff = diff_parse_trees(ref_tree, test_tree)
+                    diff = diff_parse_trees(ref_tree, test_tree, logger)
                     diff_results.append((ref_name, test_name, ref_fn, True, diff, ref_stderr, test_stderr))
 
-        set_up_logger(None, True)
+        reset_logger(logger)
         return diff_results
     except TestRunException as e:
         e.print()
-        set_up_logger(None, True)
+        reset_logger(logger)
         return diff_results if 'diff_results' in locals() else []
 
 
-def run_multi_format_parse_test(formats, test_input_resolver, filter_diffs):
+def run_multi_format_parse_test(formats, test_input_resolver, filter_diffs, logger):
     passed = []
     for fmt in formats:
-        log.info("Current format: %s", fmt)
-        passed.append((fmt, run_single_format_parse_test(fmt, test_input_resolver, filter_diffs)))
+        logger.info("Current format: %s", fmt)
+        passed.append((fmt, run_single_format_parse_test(fmt, test_input_resolver, filter_diffs, logger)))
 
-    log.info("Passed status of formats: \n")
+    logger.info("Passed status of formats: \n")
     for (fmt, results) in passed:
-        log.info(f"== Format: {fmt}")
+        logger.info(f"== Format: {fmt}")
         for (ref_name, test_name, test_file, status, diff, ref_stderr, test_stderr) in results:
-            log.info(
+            logger.info(
                 f"Format: {fmt}: Binary Names: ref: {ref_name}, test: {test_name} ;" +
                 f"Test file name: Ref: {test_file} ;" +
                 f" Status: {'Passed' if status else 'Failed'}")
-            log.debug(f"Diff: {diff}")
-            log.debug(f"Ref stderr: {ref_stderr}")
-            log.debug(f"test std err: {test_stderr}")
+            logger.debug(f"Diff: {diff}")
+            logger.debug(f"Ref stderr: {ref_stderr}")
+            logger.debug(f"test std err: {test_stderr}")
 
 
-def provide_wild_files(file_root):
+def provide_wild_files(file_root, logger):
     def load_wild_files(format_name, multiple=True):
         format_path = path.join(file_root, format_name)
         files = [
@@ -287,17 +299,17 @@ def provide_wild_files(file_root):
             if path.isfile(path.join(format_path, f))
         ]
         if len(files) == 0:
-            raise TestRunException("No test files found")
+            raise TestRunException(logger, "No test files found")
         if multiple:
             return files
         else:
             return files[1:1]
+
     return load_wild_files
 
 
 def main():
-    parser = parse.ArgumentParser(
-        description="Run tests on converted templates")
+    parser = parse.ArgumentParser(description="Run tests on converted templates")
     parser.add_argument('formats',
                         metavar='fmt',
                         type=str,
@@ -322,25 +334,33 @@ def main():
                         default=TEST_FILE_ROOT)
     parser.add_argument('--filter-diffs', action='store_true', dest="filter_diffs",
                         help='filter "useless" diffs')
-    parser.add_argument('--no-filter-diffs', action='store_false',dest="filter_diffs",
+    parser.add_argument('--no-filter-diffs', action='store_false', dest="filter_diffs",
                         help='do not filter "useless" diffs')
     parser.set_defaults(filter_diffs=True)
     parsed_args = parser.parse_args(sys.argv[1::])
     numeric_level = getattr(log, parsed_args.log_lvl.upper(), log.INFO)
     if not isinstance(numeric_level, int):
         raise ValueError('Invalid log level: %s' % numeric_level)
-    set_up_logger(numeric_level)
-    log.info("===Starting test bench run===")
-    provide_files = provide_wild_files(parsed_args.test_folder)
+    logger = set_up_logger(numeric_level)
+    logger.info("===Starting test bench run===")
+    provide_files = provide_wild_files(parsed_args.test_folder, logger)
     if len(parsed_args.formats) == 1:
-        log.info("Running test for single format %s", parsed_args.formats[0])
-        run_single_format_parse_test(
+        logger.info("Running test for single format %s", parsed_args.formats[0])
+        results = run_single_format_parse_test(
             parsed_args.formats[0],
             lambda fmt: parsed_args.testInput if parsed_args.testInput else provide_files(fmt),
-            parsed_args.filter_diffs)
+            parsed_args.filter_diffs, logger)
+        for (ref_name, test_name, test_file, status, diff, ref_stderr, test_stderr) in results:
+            logger.info(
+                f"Format: {parsed_args.formats[0]}: Binary Names: ref: {ref_name}, test: {test_name} ;" +
+                f"Test file name: Ref: {test_file} ;" +
+                f" Status: {'Passed' if status else 'Failed'}")
+            logger.debug(f"Diff: {diff}")
+            logger.debug(f"Ref stderr: {ref_stderr}")
+            logger.debug(f"test std err: {test_stderr}")
     else:
-        log.info("Running test for multiple formats")
-        run_multi_format_parse_test(parsed_args.formats, provide_files, parsed_args.filter_diffs)
+        logger.info("Running test for multiple formats")
+        run_multi_format_parse_test(parsed_args.formats, provide_files, parsed_args.filter_diffs, logger)
 
 
 if __name__ == "__main__":
