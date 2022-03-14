@@ -313,19 +313,17 @@ def main():
                         default='INFO',
                         nargs='?',
                         type=str)
-    parser.add_argument('--filter-diffs',
-                        action=parse.BooleanOptionalAction,
-                        dest="filter_diffs",
-                        help='filter "useless" diffs')
     parser.add_argument('--test-folder',
                         metavar='folder',
                         dest='test_folder',
                         nargs='?',
                         type=str,
                         default=TEST_FILE_ROOT)
-    parser.add_argument('--feature', action='store_true')
-    parser.add_argument('--no-feature', action='store_false')
-    parser.set_defaults(feature=True)
+    parser.add_argument('--filter-diffs', action='store_true', dest="filter_diffs",
+                        help='filter "useless" diffs')
+    parser.add_argument('--no-filter-diffs', action='store_false',dest="filter_diffs",
+                        help='do not filter "useless" diffs')
+    parser.set_defaults(filter_diffs=True)
     parsed_args = parser.parse_args(sys.argv[1::])
     numeric_level = getattr(log, parsed_args.log_lvl.upper(), log.INFO)
     if not isinstance(numeric_level, int):
@@ -337,7 +335,7 @@ def main():
         log.info("Running test for single format %s", parsed_args.formats[0])
         run_single_format_parse_test(
             parsed_args.formats[0],
-            lambda fmt, bt_parser, base_path: parsed_args.testInput if parsed_args.testInput else provide_files,
+            lambda fmt: parsed_args.testInput if parsed_args.testInput else provide_files(fmt),
             parsed_args.filter_diffs)
     else:
         log.info("Running test for multiple formats")
