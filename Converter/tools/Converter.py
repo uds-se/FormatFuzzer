@@ -1603,14 +1603,14 @@ class Preprocessor():
                     subenum = match.group('subenum')
                     parsed_enum = match.group('parsed_enum')
                     lines[index].replace(f'{parsed_enum}::{subenum}', f'{subenum}')
-                    print(f'Found ENUM {parsed_enum} with {subenum} in {word}')
+                    # print(f'Found ENUM {parsed_enum} with {subenum} in {word}')
 
                 # HANDLING imported_type::subtype
                 match = re.match(pattern_type_sub, word)
                 if match is not None:
                     subtype = match.group('subtype')
                     parsed_type = match.group('parsed_type')
-                    print(f'Found TYPE {parsed_type} with {subtype} in {word}')
+                    # print(f'Found TYPE {parsed_type} with {subtype} in {word}')
                     lines[index].replace(f'{parsed_type}::{subtype}', f'{subtype}')
                     # print(match)
 

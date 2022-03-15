@@ -124,6 +124,7 @@ def find_templates(base_path, name, ext):
 
 def call_converter(template, name, base_path, logger):
     # resolve kaitai struct path and feed to our converter
+    name = name if "." not in name else name.split(".")[0]
     if not template:
         raise TestRunException(
             logger, f"Kaitai struct file not found, path: {path.join(KAITAI_BASE_PATH, template)}.ksy"
@@ -201,8 +202,9 @@ def run_parser_on_input(parser, test_input, base_path, logger):
     try:
         cmd = [f"{base_path}/build/{parser}", "parse", test_input]
         parse_tree = sub.run(cmd, capture_output=True)
+        parser_version = "reference" if "test" not in parser else "converted"
         with open(
-                f"{base_path}/output/{path.basename(test_input).rsplit(',', 1)[0]}-{parser}.output",
+                f"{base_path}/output/{path.basename(test_input).rsplit('.', 1)[0]}-{parser_version}.output",
                 "w") as file:
             file.write(parse_tree.stdout.decode())
 
