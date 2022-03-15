@@ -50,6 +50,7 @@ def set_up_logger(level):
     console_log = log.StreamHandler()
     logfile = log.FileHandler("testbench.log", mode='w')
     logfile.setLevel(level)
+    console_log.setLevel(level)
     log.basicConfig(format='%(asctime)s::%(levelname)s:%(message)s',
                     level=level,
                     handlers=[console_log, logfile],
@@ -57,13 +58,16 @@ def set_up_logger(level):
     return log.getLogger()
 
 
-def reset_logger(logger: log.Logger):
+def reset_logger(logger: log.Logger, file_path="testbench.log", mode="w", console_stream=sys.stderr):
     formatter = logger.handlers[0].formatter
-    [logger.removeHandler(h) for h in logger.handlers]
-    console_log = log.StreamHandler()
+    level = logger.handlers[0].level
+    [logger.removeHandler(h) for h in logger.handlers[:]]
+    console_log = log.StreamHandler(console_stream)
     console_log.setFormatter(formatter)
-    log_file = log.FileHandler("testbench.log", mode="w")
+    console_log.setLevel(level)
+    log_file = log.FileHandler(file_path, mode=mode)
     log_file.setFormatter(formatter)
+    log_file.setLevel(level)
     logger.addHandler(console_log)
     logger.addHandler(log_file)
 
@@ -250,20 +254,14 @@ def generate_test_results_for_test_files(ref_parse_trees, test_parse_trees, form
 def run_single_format_parse_test(format_name, resolve_test_input, logger):
     base_path = create_fmt_folder(format_name)
     logfile = f'{base_path}/output/test-{format_name}-fuzzer.log'
-    formatter = logger.handlers[0].formatter
-    [logger.removeHandler(h) for h in logger.handlers]
-    console_log = log.StreamHandler()
-    console_log.setFormatter(formatter)
-    log_file = log.FileHandler(logfile, mode="w")
-    log_file.setFormatter(formatter)
-    logger.addHandler(console_log)
-    logger.addHandler(log_file)
+    reset_logger(logger, file_path=logfile)
+
     try:
         if not path.isdir(KAITAI_BASE_PATH):
             raise Exception("kaitai base path is no directory")
         ksy_files = find_templates(KAITAI_BASE_PATH, format_name, "ksy")
         ff_templates = find_templates(BT_TEMPLATE_BASE_PATH, format_name, "bt")
-        test_inputs = resolve_test_input(format_name)
+        test_inputs = resolve_test_input(format_name, logger)
 
         test_parse_trees = []
         ref_parse_trees = []
@@ -302,8 +300,8 @@ def run_multi_format_parse_test(formats, test_input_resolver, logger):
         passed.append((fmt, run_single_format_parse_test(fmt, test_input_resolver, logger)))
 
 
-def provide_wild_files(file_root, logger):
-    def load_wild_files(format_name, multiple=True):
+def provide_wild_files(file_root):
+    def load_wild_files(format_name, logger, multiple=True):
         format_path = path.join(file_root, format_name)
         files = [
             path.join(format_path, f) for f in listdir(format_path)
@@ -354,12 +352,12 @@ def main():
         raise ValueError('Invalid log level: %s' % numeric_level)
     logger = set_up_logger(numeric_level)
     logger.info("===Starting test bench run===")
-    provide_files = provide_wild_files(parsed_args.test_folder, logger)
+    provide_files = provide_wild_files(parsed_args.test_folder,)
     if len(parsed_args.formats) == 1:
         logger.info("Running test for single format %s", parsed_args.formats[0])
         run_single_format_parse_test(
             parsed_args.formats[0],
-            lambda fmt: parsed_args.testInput if parsed_args.testInput else provide_files(fmt),
+            lambda fmt, curr_log: parsed_args.testInput if parsed_args.testInput else provide_files(fmt, curr_log),
             logger)
     else:
         logger.info("Running test for multiple formats")

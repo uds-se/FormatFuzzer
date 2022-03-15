@@ -12,11 +12,11 @@ def run_tests_on_all(logger, file_path, file_names=None):
     if file_names is not None:
         log.info(f"formats to be run: {file_names}")
         file_path = file_path if file_path is not None else tb.TEST_FILE_ROOT
-        tb.run_multi_format_parse_test(file_names, tb.provide_wild_files(file_path, logger), logger)
+        tb.run_multi_format_parse_test(file_names, tb.provide_wild_files(file_path), logger)
     else:
         files = listdir(file_path)
         log.info(f"formats to be run: {files}")
-        tb.run_multi_format_parse_test(files, tb.provide_wild_files(file_path, logger), logger)
+        tb.run_multi_format_parse_test(files, tb.provide_wild_files(file_path), logger)
 
 
 def convert_all(logger, file_path, file_names=None):
@@ -68,6 +68,7 @@ def main():
     if not isinstance(numeric_level, int):
         raise ValueError('Invalid log level: %s' % numeric_level)
     logger = tb.set_up_logger(numeric_level)
+    print(logger.handlers)
     args.run(logger, args.file_path, args.formats)
 
 
