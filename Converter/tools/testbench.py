@@ -288,6 +288,8 @@ def run_single_format_parse_test(format_name, resolve_test_input, logger):
         # compare outputs
         generate_test_results_for_test_files(ref_parse_trees, test_parse_trees, format_name)
         reset_logger(logger)
+    except FileNotFoundError:
+        log.error(f"No test files for {format_name} found, skipping!!")
     except TestRunException as e:
         e.print()
         reset_logger(logger)
