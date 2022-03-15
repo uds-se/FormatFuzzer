@@ -77,15 +77,15 @@ def create_fmt_folder(format_name):
     return TEST_FOLDER + format_name
 
 
-def grab_alt_fmt_names(file: str):
+def has_wanted_ext(file: str, ext: str) -> bool:
     with open(file, 'r') as kt_file:
         input_stream = kt_file.read()
     kt_structure = yaml.full_load(input_stream)
     if "file-extension" in kt_structure["meta"].keys():
         alt_file_ext = kt_structure["meta"]["file-extension"]
     else:
-        alt_file_ext = [file.rsplit('.', 1)[0]]
-    return alt_file_ext
+        return True
+    return ext in alt_file_ext
 
 
 # should return file path or false in not found
@@ -95,15 +95,27 @@ def find_templates(base_path, name, ext):
         for file in filter(lambda fn: fn.endswith(ext), files):
             matches = re.match(rf".*{name}.*\.{ext}", file)
             if ext == "ksy":
-                alt_names = grab_alt_fmt_names(path.join(root, file))
-                if name in alt_names:
-                    matching.append((path.join(root, file), file.rsplit(".", 1)[0]))
-                elif matches is not None:
-                    matching.append((path.join(root, file), file.rsplit(".", 1)[0]))
+                if matches is not None:
+                    matching.append((path.join(root, file), file.rsplit(".", 0)[0]))
             else:
                 if matches is not None and 'orig' not in file:
                     matching.append((path.join(root, f"{name}.{ext}"), name))
-    return matching
+
+    to_test = []
+    if ext == "ksy":
+        file_name: str
+        for file_name, n in matching:
+            if path.basename(file_name) == f"{name}.ksy" and has_wanted_ext(file_name, name):
+                return [(file_name, n)]
+            if path.basename(file_name).endswith(f"{name}.ksy"):
+                to_test.append((file_name, n))
+        if len(to_test) != 0:
+            return filter(lambda e: has_wanted_ext(e[0], name), to_test)
+        else:
+            return filter(lambda e: has_wanted_ext(e[0], name), matching)
+    else:
+        to_test = matching
+    return to_test
 
 
 def call_converter(template, name, base_path, logger):
@@ -122,7 +134,7 @@ def call_converter(template, name, base_path, logger):
             capture_output=True)
         logger.info(convert.stdout.decode())
     except Exception as err:
-        raise TestRunException("Conversion Failed", err)
+        raise TestRunException(logger, "Conversion Failed", err)
     if convert.returncode != 0:
         raise TestRunException(logger, f"Error: {convert.stderr}")
     logger.info(f"Converted file successfully. Result saved in {working_dir}/{name}.bt")
@@ -177,11 +189,11 @@ def compile_parser(template_path, base_path, logger, test=False):
         logger.info("Compiled fuzzer binary")
         return bin_name
     except Exception as err:
-        raise TestRunException(f"failed to compile", err)
+        raise TestRunException(logger, f"failed to compile", err)
 
 
 # TODO  logfile:  <inputname without .format>.log i will keep this at one log file for now
-def run_parser_on_input(parser, test_input, base_path):
+def run_parser_on_input(parser, test_input, base_path, logger):
     try:
         cmd = [f"{base_path}/build/{parser}", "parse", test_input]
         parse_tree = sub.run(cmd, capture_output=True)
@@ -193,7 +205,7 @@ def run_parser_on_input(parser, test_input, base_path):
         return parser, path.basename(
             test_input), parse_tree.returncode, parse_tree.stdout.decode(), parse_tree.stderr.decode()
     except Exception as err:
-        raise TestRunException(f"failed to run parser", err)
+        raise TestRunException(logger, f"failed to run parser", err)
 
 
 def diff_parse_trees(expected: str, actual: str, logger) -> str:
@@ -221,7 +233,6 @@ def generate_test_results_for_test_files(ref_parse_trees, test_parse_trees, form
         ref_ll = ref_tree.split("\n")[-2]
         test_ll = test_tree.split("\n")[-2]
         parsed_end = ref_ll == test_ll
-        ret_code_comp = ref_ret_code == test_ret_code
         ret_code_good = ref_ret_code == 0
         status = parsed_end and ret_code_good
         test_err_msg = test_stderr.split("\n")[0]
@@ -236,7 +247,7 @@ def generate_test_results_for_test_files(ref_parse_trees, test_parse_trees, form
                  f"    Status: {'PASSED' if status else 'FAILED'}\n{error_msg}")
 
 
-def run_single_format_parse_test(format_name, resolve_test_input, filter_diffs, logger):
+def run_single_format_parse_test(format_name, resolve_test_input, logger):
     base_path = create_fmt_folder(format_name)
     logfile = f'{base_path}/output/test-{format_name}-fuzzer.log'
     formatter = logger.handlers[0].formatter
@@ -256,6 +267,7 @@ def run_single_format_parse_test(format_name, resolve_test_input, filter_diffs, 
 
         test_parse_trees = []
         ref_parse_trees = []
+
         # run parsers under test on test inputs
         for (file_path, name) in ksy_files:
             logger.info(f"Converting template {name} at location {file_path}")
@@ -263,7 +275,7 @@ def run_single_format_parse_test(format_name, resolve_test_input, filter_diffs, 
             parser = compile_parser(converted_file, base_path, logger, True)
             for ti in test_inputs:
                 logger.info(f"running {name} on test file {path.basename(ti)}")
-                test_parse_trees.append(run_parser_on_input(parser, ti, base_path))
+                test_parse_trees.append(run_parser_on_input(parser, ti, base_path, logger))
 
         # run reference parser on test inputs
         for (file_path, name) in ff_templates:
@@ -271,7 +283,7 @@ def run_single_format_parse_test(format_name, resolve_test_input, filter_diffs, 
             parser = compile_parser(file_path, base_path, logger)
             for ti in test_inputs:
                 logger.info(f"running {name} on test file {path.basename(ti)}")
-                ref_parse_trees.append(run_parser_on_input(parser, ti, base_path))
+                ref_parse_trees.append(run_parser_on_input(parser, ti, base_path, logger))
 
         # compare outputs
         generate_test_results_for_test_files(ref_parse_trees, test_parse_trees, format_name)
@@ -281,11 +293,11 @@ def run_single_format_parse_test(format_name, resolve_test_input, filter_diffs, 
         reset_logger(logger)
 
 
-def run_multi_format_parse_test(formats, test_input_resolver, filter_diffs, logger):
+def run_multi_format_parse_test(formats, test_input_resolver, logger):
     passed = []
     for fmt in formats:
         logger.info("Current format: %s", fmt)
-        passed.append((fmt, run_single_format_parse_test(fmt, test_input_resolver, filter_diffs, logger)))
+        passed.append((fmt, run_single_format_parse_test(fmt, test_input_resolver, logger)))
 
 
 def provide_wild_files(file_root, logger):
@@ -346,10 +358,10 @@ def main():
         run_single_format_parse_test(
             parsed_args.formats[0],
             lambda fmt: parsed_args.testInput if parsed_args.testInput else provide_files(fmt),
-            parsed_args.filter_diffs, logger)
+            logger)
     else:
         logger.info("Running test for multiple formats")
-        run_multi_format_parse_test(parsed_args.formats, provide_files, parsed_args.filter_diffs, logger)
+        run_multi_format_parse_test(parsed_args.formats, provide_files, logger)
 
 
 if __name__ == "__main__":
