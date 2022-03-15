@@ -228,8 +228,8 @@ def generate_test_results_for_test_files(ref_parse_trees, test_parse_trees, form
         ref_err_msg = ref_stderr.split("\n")[0]
         if not status:
             error_msg = f"    Test_ret {test_ret_code} Ref_ret {ref_ret_code}\n"
-            error_msg += f"    Test {test_err_msg}\n"
-            error_msg += f"    Ref {ref_err_msg}\n"
+            error_msg += "" if not test_ret_code else f"    Test {test_err_msg}\n"
+            error_msg += "" if not ref_ret_code else f"    Ref {ref_err_msg}\n"
         else:
             error_msg = ""
         log.info(f"\n\n    Result for Testfile {test_fn}:\n"
@@ -238,7 +238,7 @@ def generate_test_results_for_test_files(ref_parse_trees, test_parse_trees, form
 
 def run_single_format_parse_test(format_name, resolve_test_input, filter_diffs, logger):
     base_path = create_fmt_folder(format_name)
-    logfile = f'{base_path}/output/test-{format_name}-fuzzer.log-output'
+    logfile = f'{base_path}/output/test-{format_name}-fuzzer.log'
     formatter = logger.handlers[0].formatter
     [logger.removeHandler(h) for h in logger.handlers]
     console_log = log.StreamHandler()
