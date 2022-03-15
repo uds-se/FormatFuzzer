@@ -88,7 +88,7 @@ def has_wanted_ext(file: str, ext: str) -> bool:
     if "file-extension" in kt_structure["meta"].keys():
         alt_file_ext = kt_structure["meta"]["file-extension"]
     else:
-        return True
+        return False
     return ext in alt_file_ext
 
 
@@ -104,12 +104,18 @@ def find_templates(base_path, name, ext):
             else:
                 if matches is not None and 'orig' not in file:
                     matching.append((path.join(root, f"{name}.{ext}"), name))
+    if matching == []:
+        for (root, dirs, files) in os.walk(base_path):
+            for file in filter(lambda fn: fn.endswith(ext), files):
+                matches = has_wanted_ext(path.join(root, file), name)
+                if matches:
+                    matching.append((path.join(root, file), file.rsplit(".", 0)[0]))
 
     to_test = []
     if ext == "ksy":
         file_name: str
         for file_name, n in matching:
-            if path.basename(file_name) == f"{name}.ksy" and has_wanted_ext(file_name, name):
+            if path.basename(file_name) == f"{name}.ksy":
                 return [(file_name, n)]
             if path.basename(file_name).endswith(f"{name}.ksy"):
                 to_test.append((file_name, n))
@@ -229,7 +235,7 @@ def diff_parse_trees(expected: str, actual: str, logger) -> str:
 
 def generate_test_results_for_test_files(ref_parse_trees, test_parse_trees, format_name):
     if len(ref_parse_trees) != len(test_parse_trees):
-        print("ERROR: count of parse trees do not match")
+        print(f"ERROR: count of parse trees do not match REF {len(ref_parse_trees)} TEST {len(test_parse_trees)}")
         exit(-1)
     runs = len(ref_parse_trees)
     log.info(f"Format: {format_name}:")
@@ -274,7 +280,7 @@ def run_single_format_parse_test(format_name, resolve_test_input, logger):
             converted_file = call_converter(file_path, name, base_path, logger)
             parser = compile_parser(converted_file, base_path, logger, True)
             for ti in test_inputs:
-                logger.info(f"running {name} on test file {path.basename(ti)}")
+                logger.info(f"running Test-Parser on test file {path.basename(ti)}")
                 test_parse_trees.append(run_parser_on_input(parser, ti, base_path, logger))
 
         # run reference parser on test inputs
@@ -282,7 +288,7 @@ def run_single_format_parse_test(format_name, resolve_test_input, logger):
             logger.info(f"Compiling reference template {name} at location {file_path}")
             parser = compile_parser(file_path, base_path, logger)
             for ti in test_inputs:
-                logger.info(f"running {name} on test file {path.basename(ti)}")
+                logger.info(f"running Reference-Parser on test file {path.basename(ti)}")
                 ref_parse_trees.append(run_parser_on_input(parser, ti, base_path, logger))
 
         # compare outputs
