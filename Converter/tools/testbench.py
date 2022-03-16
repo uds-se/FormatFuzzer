@@ -125,7 +125,11 @@ def find_templates(base_path, name, ext):
             return filter(lambda e: has_wanted_ext(e[0], name), matching)
     else:
         to_test = matching
-    return to_test
+    out = []
+    for x in to_test:
+        if x not in out:
+            out.append(x)
+    return out
 
 
 def call_converter(template, name, base_path, logger):
