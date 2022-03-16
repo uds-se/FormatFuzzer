@@ -111,6 +111,8 @@ def find_templates(base_path, name, template_ext):
         for file in filter(lambda fn: fn.endswith(template_ext), files):
             if template_ext == "ksy":
                 file_path = path.join(root, file)
+                if file == f"{name}.{template_ext}":
+                    return [(file_path, file.rsplit(".", 0)[0])]
                 name_match = name in file
                 has_no_header = has_no_ext_header(file_path)
                 ext_in_header = has_wanted_ext(file_path, name)
