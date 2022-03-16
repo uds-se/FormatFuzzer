@@ -92,44 +92,35 @@ def has_wanted_ext(file: str, ext: str) -> bool:
     return ext in alt_file_ext
 
 
+def has_no_ext_header(file: str) -> bool:
+    with open(file, 'r') as kt_file:
+        input_stream = kt_file.read()
+    kt_structure = yaml.full_load(input_stream)
+    return "file-extension" not in kt_structure["meta"].keys() or len(kt_structure["meta"]["file-extension"]) == 0
+
+
 # should return file path or false in not found
+# 1. name match + header nonext / empty -> MATCH
+# 2. name match + ext in header -> MATCH
+# 3. name match + header exists but ext not int header -> NO MATCH
+# 4. no name mach + ext in header -> MATCH
+# 5. no match at all -> NO MATCH
 def find_templates(base_path, name, ext):
     matching = []
     for (root, dirs, files) in os.walk(base_path):
         for file in filter(lambda fn: fn.endswith(ext), files):
-            matches = re.match(rf".*{name}.*\.{ext}", file)
             if ext == "ksy":
-                if matches is not None:
-                    matching.append((path.join(root, file), file.rsplit(".", 0)[0]))
+                file_path = path.join(root, file)
+                name_match = name in file
+                has_no_header = has_no_ext_header(file_path)
+                ext_in_header = has_wanted_ext(file_path, ext)
+                if (name_match and ext_in_header) or (name_match and has_no_header) or (
+                        not name_match and ext_in_header):
+                    matching.append((file_path, file.rsplit(".", 0)[0]))
             else:
-                if matches is not None and 'orig' not in file:
+                if name in file and 'orig' not in file:
                     matching.append((path.join(root, f"{name}.{ext}"), name))
-    if matching == []:
-        for (root, dirs, files) in os.walk(base_path):
-            for file in filter(lambda fn: fn.endswith(ext), files):
-                matches = has_wanted_ext(path.join(root, file), name)
-                if matches:
-                    matching.append((path.join(root, file), file.rsplit(".", 0)[0]))
-
-    to_test = []
-    if ext == "ksy":
-        file_name: str
-        for file_name, n in matching:
-            if path.basename(file_name) == f"{name}.ksy":
-                return [(file_name, n)]
-            if path.basename(file_name).endswith(f"{name}.ksy"):
-                to_test.append((file_name, n))
-        if len(to_test) != 0:
-            return filter(lambda e: has_wanted_ext(e[0], name), to_test)
-        else:
-            return filter(lambda e: has_wanted_ext(e[0], name), matching)
-    else:
-        to_test = matching
-    out = []
-    for x in to_test:
-        if x not in out:
-            out.append(x)
-    return out
+        return matching
 
 
 def call_converter(template, name, base_path, logger):
@@ -241,8 +232,8 @@ def generate_test_results_for_test_files(ref_parse_trees, test_parse_trees, form
     garbage_overwrite = True  # if True : status = passed if garbage in both trees
 
     if len(ref_parse_trees) != len(test_parse_trees):
-        print(f"ERROR: count of parse trees do not match REF {len(ref_parse_trees)} TEST {len(test_parse_trees)}")
-        exit(-1)
+        log.error(f"ERROR: count of parse trees do not match REF {len(ref_parse_trees)} TEST {len(test_parse_trees)}")
+
     runs = len(ref_parse_trees)
     log.info(f"Format: {format_name}:")
     for run_index in range(runs):
@@ -253,8 +244,8 @@ def generate_test_results_for_test_files(ref_parse_trees, test_parse_trees, form
         test_last_lines = test_tree.split("\n")[-10:-2]
         ref_largest_offset = max([int(i.split(",")[1]) for i in ref_last_lines])
         test_largest_offset = max([int(i.split(",")[1]) for i in test_last_lines])
-        filesize = int(test_tree.split('\n')[0].split("SIZE ")[1]) - 1
-        correct_parsed_sizes = ref_largest_offset == test_largest_offset == filesize
+        file_size = int(test_tree.split('\n')[0].split("SIZE ")[1]) - 1
+        correct_parsed_sizes = ref_largest_offset == test_largest_offset == file_size
         ret_codes_good = ref_ret_code == test_ret_code == 0
         garbage_in_test = "garbage_after_end_of_parsed_file_CONVERTER" in "".join(test_last_lines)
         garbage_in_ref = "garbage" in "".join(ref_last_lines)
@@ -291,9 +282,18 @@ def run_single_format_parse_test(format_name, resolve_test_input, logger):
         ksy_files = find_templates(KAITAI_BASE_PATH, format_name, "ksy")
         ff_templates = find_templates(BT_TEMPLATE_BASE_PATH, format_name, "bt")
         test_inputs = resolve_test_input(format_name, logger)
-
+        if not ff_templates or not test_inputs:
+            raise FileNotFoundError()
         test_parse_trees = []
         ref_parse_trees = []
+
+        # run reference parser on test inputs
+        for (file_path, name) in ff_templates:
+            logger.info(f"Compiling reference template {name} at location {file_path}")
+            parser = compile_parser(file_path, base_path, logger)
+            for ti in test_inputs:
+                logger.info(f"running Reference-Parser on test file {path.basename(ti)}")
+                ref_parse_trees.append(run_parser_on_input(parser, ti, base_path, logger))
 
         # run parsers under test on test inputs
         for (file_path, name) in ksy_files:
@@ -304,16 +304,8 @@ def run_single_format_parse_test(format_name, resolve_test_input, logger):
                 logger.info(f"running Test-Parser on test file {path.basename(ti)}")
                 test_parse_trees.append(run_parser_on_input(parser, ti, base_path, logger))
 
-        # run reference parser on test inputs
-        for (file_path, name) in ff_templates:
-            logger.info(f"Compiling reference template {name} at location {file_path}")
-            parser = compile_parser(file_path, base_path, logger)
-            for ti in test_inputs:
-                logger.info(f"running Reference-Parser on test file {path.basename(ti)}")
-                ref_parse_trees.append(run_parser_on_input(parser, ti, base_path, logger))
-
-        # compare outputs
-        generate_test_results_for_test_files(ref_parse_trees, test_parse_trees, format_name)
+            # compare outputs
+            generate_test_results_for_test_files(ref_parse_trees, test_parse_trees, format_name)
         reset_logger(logger)
     except FileNotFoundError:
         log.error(f"No test files for {format_name} found, skipping!!")
@@ -381,7 +373,7 @@ def main():
         raise ValueError('Invalid log level: %s' % numeric_level)
     logger = set_up_logger(numeric_level)
     logger.info("===Starting test bench run===")
-    provide_files = provide_wild_files(parsed_args.test_folder,)
+    provide_files = provide_wild_files(parsed_args.test_folder, )
     if len(parsed_args.formats) == 1:
         logger.info("Running test for single format %s", parsed_args.formats[0])
         run_single_format_parse_test(

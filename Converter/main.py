@@ -68,7 +68,6 @@ def main():
     if not isinstance(numeric_level, int):
         raise ValueError('Invalid log level: %s' % numeric_level)
     logger = tb.set_up_logger(numeric_level)
-    print(logger.handlers)
     args.run(logger, args.file_path, args.formats)
 
 
