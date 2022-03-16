@@ -238,29 +238,46 @@ def diff_parse_trees(expected: str, actual: str, logger) -> str:
 
 
 def generate_test_results_for_test_files(ref_parse_trees, test_parse_trees, format_name):
+    garbage_overwrite = True  # if True : status = passed if garbage in both trees
+
     if len(ref_parse_trees) != len(test_parse_trees):
         print(f"ERROR: count of parse trees do not match REF {len(ref_parse_trees)} TEST {len(test_parse_trees)}")
         exit(-1)
     runs = len(ref_parse_trees)
     log.info(f"Format: {format_name}:")
     for run_index in range(runs):
+        error_msg = []
         (ref_name, ref_fn, ref_ret_code, ref_tree, ref_stderr) = ref_parse_trees[run_index]
         (test_name, test_fn, test_ret_code, test_tree, test_stderr) = test_parse_trees[run_index]
-        ref_ll = ref_tree.split("\n")[-2]
-        test_ll = test_tree.split("\n")[-2]
-        parsed_end = ref_ll == test_ll
-        ret_code_good = ref_ret_code == 0
-        status = parsed_end and ret_code_good
-        test_err_msg = test_stderr.split("\n")[0]
-        ref_err_msg = ref_stderr.split("\n")[0]
-        if not status:
-            error_msg = f"    Test_ret {test_ret_code} Ref_ret {ref_ret_code}\n"
-            error_msg += "" if not test_ret_code else f"    Test {test_err_msg}\n"
-            error_msg += "" if not ref_ret_code else f"    Ref {ref_err_msg}\n"
+        ref_last_lines = ref_tree.split("\n")[-10:-2]
+        test_last_lines = test_tree.split("\n")[-10:-2]
+        ref_largest_offset = max([int(i.split(",")[1]) for i in ref_last_lines])
+        test_largest_offset = max([int(i.split(",")[1]) for i in test_last_lines])
+        filesize = int(test_tree.split('\n')[0].split("SIZE ")[1]) - 1
+        correct_parsed_sizes = ref_largest_offset == test_largest_offset == filesize
+        ret_codes_good = ref_ret_code == test_ret_code == 0
+        garbage_in_test = "garbage_after_end_of_parsed_file_CONVERTER" in "".join(test_last_lines)
+        garbage_in_ref = "garbage" in "".join(ref_last_lines)
+        garbage_flag = not (garbage_in_ref and garbage_overwrite)
+        test_err_msg = test_stderr.split("\n")
+        ref_err_msg = ref_stderr.split("\n")
+        if garbage_in_test and ret_codes_good and garbage_flag:
+            error_msg.append(f'    Found potential Garbage-Data at end of {test_fn}')
+            error_msg.append(f'    Check in Ref-Parse-Tree!')
+            status = "TBD"
+        elif correct_parsed_sizes and ret_codes_good:
+            status = "PASSED"
         else:
-            error_msg = ""
-        log.info(f"\n\n    Result for Testfile {test_fn}:\n"
-                 f"    Status: {'PASSED' if status else 'FAILED'}\n{error_msg}")
+            status = "FAILED"
+            error_msg.append(f"    Test_ret {test_ret_code} Ref_ret {ref_ret_code}\n")
+            error_msg.append(f"++++Test Parser Log:\n")
+            error_msg.extend(["    " + s for s in test_err_msg[0:-2]])
+            error_msg.append(f"\n----Reference Parser Log:\n")
+            error_msg.extend(["    " + s for s in ref_err_msg[0:-2]])
+
+        error_msg = "\n".join(error_msg)
+        log.info(f"\n\n====Result for Testfile {test_fn}:\n"
+                 f'\n    Status: {status}\n{error_msg}\n')
 
 
 def run_single_format_parse_test(format_name, resolve_test_input, logger):

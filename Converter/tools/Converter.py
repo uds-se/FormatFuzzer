@@ -163,10 +163,17 @@ class Converter(object):
             self.output.append(f"LittleEndian();{gen_marker()}")
         else:
             print_debug("NO ENDIAN")
+        self.output.append('Printf("SIZE %d\\n",FileSize());')
+
         # self.output.append("SetEvilBit(false);")
         self.output.extend(self.output_enums)
         self.output.extend(self.output_types)
         self.output.extend(self.output_seqs)
+        #####GARBAGE COLLECTION####
+        self.output.append("     if(FTell()<(FileSize()-1)){")
+        self.output.append("          ubyte garbage_after_end_of_parsed_file_CONVERTER[(FileSize()-1)-FTell()];")
+        self.output.append('          Warning("Found possible Garbage-Data!");')
+        self.output.append("     }")
 
         return self.output
 
