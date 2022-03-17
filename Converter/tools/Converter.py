@@ -52,8 +52,8 @@ class Converter(object):
     # TODO MAYBE ADD MORE TABLES HERE FOR MORE DYNAMIC CODE GENERATION
 
     # registers instance in "global" table during parsing time
-    def register_instance(self, name, value,
-                          containing_type):
+    def register_instance(self, name, value, containing_type):
+        # print_debug(f"registering Instance {name} in {containing_type} with {value}")
         try:
             self.root.global_instance_table[str(containing_type)][str(name)] = {"VALUE": value, "IMPLEMENTED": False}
         except:
@@ -329,12 +329,25 @@ class Converter(object):
             pass
         else:  # no flag set
             for splitter in condition_splitter_replacement:
-                expr = expr.replace(str(splitter), " ")
+                expr = expr.replace(str(splitter), " ")  # TODO rep AAAA with " " maybe
             if " " in expr:
                 # print_debug(expr)
                 return expr.split(" ")
+            elif "." in expr:
+                # print_debug(f'FOUND >.< in {expr}!')
+                return expr.split(".")
             else:
                 return expr
+
+    def infer_type_top(self, input_str, containing_type=None):
+        # print_debug(f'Inferring Type of {input_str} in {containing_type}')
+        type_ret = self.infer_type(input_str, containing_type)
+        # print_debug(f'=> Inferred Type {type_ret}')
+        if type_ret:
+            return type_ret
+        else:
+            print_debug(f'Inferring Type of {input_str} in {containing_type}')
+            print_debug(f'ERROR => Inferred Type {type_ret}')
 
     def infer_type(self, input_str, containing_type=None):
         # is_color_mask_given ? color_mask_given.red_mask : header.bits_per_pixel == 16 ? 0b11111_00000_00000 : header.bits_per_pixel == 24 or header.bits_per_pixel == 32 ? 0xff0000 : 0
@@ -351,6 +364,16 @@ class Converter(object):
         if type(input_str) is dict:
             print_debug("IMPLEMENT TYPE SWITCHING")
             return "TEST"
+        if type(input_str) is not str:
+            print_debug(f"TRYING TO INFER TYPE OF {input_str} WHICH HAS TYPE {type(input_str)}")
+
+        known_replacements = {"_io.pos": "double", "to_s": "string"}
+        for element in known_replacements.keys():
+            if input_str == element:
+                return known_replacements[element]
+            elif len(input_str.split(".")) == 2:
+                if input_str.split(".")[1] == element:
+                    return known_replacements[element]
 
         patter_brackets = r"^(?P<pre>[\w\W]*?)\((?P<content>[\w\W]*)\)(?P<back>[\w\W]*)$"
         match = re.match(patter_brackets, input_str)
@@ -426,7 +449,7 @@ class Converter(object):
             if next_container:
                 return self.infer_type(".".join(input_str.split(".")[1::]), next_container)
             else:
-                print_debug(f'Couldnt find type of {input_str.split(".")[0]}')
+                # print_debug(f'Couldnt find type of {input_str.split(".")[0]}')
                 return None
         else:
             # print_debug(f'B+Trying to get type of {input_str} in {containing_type}')
@@ -437,7 +460,7 @@ class Converter(object):
                 return "double"
 
         print_debug(f'AAHHH couldnt infer type of {input_str} in {containing_type}')
-        return "uint32"
+        return "uint32AAA"
 
     def find_type_off_id(self, id_name, containing_type):
 
@@ -455,7 +478,7 @@ class Converter(object):
             if datapoint["id"] == id_name:
                 # print_debug(f'FOUND {id_name} OFF TYPE {datapoint["type"]}')
                 if type(datapoint["type"]) is dict:
-                    return self.infer_type(datapoint["type"], containing_type)
+                    return self.infer_type_top(datapoint["type"], containing_type)
                 return datapoint["type"].split("(")[0]
         for inst_name in tt_instances.keys():
             if inst_name == id_name:
@@ -464,7 +487,7 @@ class Converter(object):
                     return tt_instances[inst_name]["type"]
                 elif "value" in tt_instances[inst_name].keys():
                     # print_debug(f"calling infer_type with {containing_type}")
-                    return self.infer_type(tt_instances[inst_name]["value"], containing_type)
+                    return self.infer_type_top(tt_instances[inst_name]["value"], containing_type)
                 else:
                     print_debug(f"OH FML")
         return None
@@ -532,10 +555,12 @@ class Converter(object):
             return "int"
             # return kaitype
         elif kaitype == "str":
-            return kaitype
+            return "char"
         elif kaitype == "strz":
             return "string"
-
+        if type(kaitype) is not str:
+            print_debug(f"Trying to Resolve Datatype of{kaitype} of type {type(kaitype)}")
+            return None
         match = re.match(r'(?P<parsed_type>[a-zA-Z])(?P<parsed_size>[0-9])(?P<parsed_endian>[a-zA-Z]*)', kaitype)
         if match is None:
             if getendian:
@@ -720,6 +745,7 @@ class data_point():
 
     def parse(self):
         # if "type" in self.input.keys(): self.type = self.input["type"]
+        # print_debug(f"INPUT TYPE {type(self.input)} cont {self.input}")
         if "type" in self.input.keys():
             local_type = self.input["type"]
             if "(" in local_type and False:
@@ -783,16 +809,18 @@ class data_point():
         return self.output
 
     def gen_switch(self, size=None, is_local=False):
+        if is_local:
+            prefix = "local "
+            # print_debug(f'subtrees {self.subtrees} self.type {self.type} front {self.front}')
+        else:
+            prefix = ""
+
         switch = self.type["switch-on"]
         cases = self.type["cases"]
         default_needed = True
         switch_over_enum = False
         num_of_switch_cases = len(cases.keys())
         do_endian_switch = False
-        if is_local:
-            prefix = "local "
-        else:
-            prefix = ""
 
         switch_drop = ["_root", "_parent", "_io"]
         if switch.split(".")[0] in switch_drop:
@@ -982,8 +1010,9 @@ class data_point():
 
 
 
-
-        elif self.type == "str":
+        # TODO SWITCH BACK IF IT BREAKS
+        # elif self.type == "str":
+        elif self.type == "char" or self.type == "str":
             if self.size is not None:
                 # TODO Done? IMPLEMENT CASE FOR DIFFERENT THAN ZEROBYTE TERMINATOR
                 self.front.append(
@@ -1129,7 +1158,7 @@ class data_point():
         return needed_instances
 
     # Generates Instances from a condition string or from a list of instance names
-    def gen_instances(self, condition, from_list=False):
+    def gen_instances(self, condition, from_list=False, containing_type=None):
         # TODO CHECK FOR SPECIAL POSITION DEPENDENT INSTANCES
         # condition_list = condition.split(".")
         # print_debug(f'Before {condition}')
@@ -1141,12 +1170,18 @@ class data_point():
             condition_list = [condition_list]
 
         for element in condition_list:
-            instance = self.root.lookup_instance(element, self.containing_type)
-            if self.containing_type is None:
+            if containing_type:
+                container = containing_type
+            elif self.containing_type is None:
                 container = self.id
             else:
                 container = self.containing_type
-            if instance is not None and not self.root.lookup_instance(element, container, check_if_implemented=True):
+
+            instance = self.root.lookup_instance(element, container)
+            is_implemented = self.root.lookup_instance(element, container, check_if_implemented=True)
+            # print_debug(f"Condition Instance {element} is implemented : {is_implemented} with {instance} in {self.id} or {container}")
+            if instance is not None and not is_implemented:
+                # print_debug(f"Generating Instance {element}")
                 self.gen_instance_full(instance, element, containing_type=container)
                 self.root.mark_as_implemented("instance", element, value=True, containing_type=container)
 
@@ -1174,30 +1209,62 @@ class data_point():
         # type_field=""
 
         if inst_if:
+            condition = self.root.expr_resolve(inst_if)
+            # print_debug(f"condition {condition}")
+            self.gen_instances(condition, type(condition) is list)
+
             self.front.append(
                 f'    if({self.root.expr_resolve(inst_if, True)})' + "{" + f"{gen_marker()}")
         if inst_pos:
             self.front.append(f'        local int64 temp_CONVERTER = FTell();{gen_marker()}')
             self.front.append(f'        FSeek({inst_pos});{gen_marker()}')
         if inst_type:
-            if type(inst_type) is dict: print_debug(f"HELP Instance {name} has switch Type {inst_type}")
-            if self.root.resolve_datatype(instance_dict["type"]) is not None:
-                local_type = self.root.resolve_datatype(instance_dict["type"])
+            if type(inst_type) is dict:
+                # print_debug(f"HELP Instance {name} has switch Type {inst_type}")
+                # print_debug(f"My Subtree contains {self.subtrees.keys()}")
+                # print_debug(f'Front Before{len(self.front)}')
+                temp_front = self.subtrees[name].front
+                self.subtrees[name].front = self.front
+                self.subtrees[name].gen_switch(is_local=True)
+                self.subtrees[name].front = temp_front
+                # print_debug(f'Front After {len(self.front)}')
+
+
             else:
-                local_type = f'{instance_dict["type"]}_TYPE'
+                temp_type = self.root.resolve_datatype(instance_dict["type"])
+                type_field = temp_type if temp_type else f'{instance_dict["type"]}_TYPE'
+
+        if inst_size:
+            if "_TYPE" in type_field:
+                # print_debug(f'Setting SIZE FIELD to ({inst_size})')
+                size_field = f"({inst_size})"
+            else:
+                # print_debug(f'Setting SIZE FIELD to [{inst_size}]')
+                size_field = f"[{inst_size}]"
 
         if inst_value:
             c_value = self.root.expr_resolve(str(inst_value), translate_condition_2_c=True)
-            prefix_field = "local"
+            possible_instances = self.root.expr_resolve(inst_value)
+            print_debug(f"Possible Instances {possible_instances}")
+            self.gen_instances(possible_instances, type(possible_instances) is list)
+            prefix_field = "local "
 
             if not inst_type:
-                type_field = self.root.infer_type(inst_value, containing_type)
-                if self.root.lookup_type(type_field):
+                type_field = self.root.infer_type_top(inst_value, containing_type)
+                resolved_datatype = self.root.resolve_datatype(type_field)
+                if resolved_datatype:
+                    type_field = resolved_datatype
+                elif self.root.lookup_type(type_field):
                     prefix_field = ""
                     type_field = f'{type_field}_TYPE'
-                # print_debug(f'Inferred Type {type_field} form {inst_value}')
+                print_debug(f'Inferred Type {type_field} form {inst_value}')
                 self.front.append(
                     f"    {prefix_field} {type_field} {name} = ({c_value});{gen_marker()}{doc_field}")
+        elif type(inst_type) is not dict:
+            self.front.append(
+                f"    {prefix_field}{type_field} {name}{size_field};{gen_marker()}{doc_field}")
+        else:
+            self.front.append(f"//PLACEHOLDER 1 ")
 
         if inst_pos:
             self.front.append(f'        FSeek(temp_CONVERTER); {gen_marker()}')
@@ -1308,7 +1375,7 @@ class instances(data_point):
         self.name = name
 
     def parse_subtree(self, name=None):
-        print_debug(self.this_level_keys)
+        # print_debug(self.this_level_keys)
         for this_level_key in self.this_level_keys:
             local_key = remap_keys(this_level_key)
             if local_key is not None:

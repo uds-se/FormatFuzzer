@@ -242,8 +242,11 @@ def generate_test_results_for_test_files(ref_parse_trees, test_parse_trees, form
         error_msg = []
         (ref_name, ref_fn, ref_ret_code, ref_tree, ref_stderr) = ref_parse_trees[run_index]
         (test_name, test_fn, test_ret_code, test_tree, test_stderr) = test_parse_trees[run_index]
-        ref_last_lines = ref_tree.split("\n")[-10:-2]
-        test_last_lines = test_tree.split("\n")[-10:-2]
+        min_lines = min(len(ref_tree.split("\n")), len(test_tree.split("\n")))
+        line_num = 10 if min_lines > 12 else min_lines - 2
+
+        ref_last_lines = ref_tree.split("\n")[-line_num:-2]
+        test_last_lines = test_tree.split("\n")[-line_num:-2]
         ref_largest_offset = max([int(i.split(",")[1]) for i in ref_last_lines])
         test_largest_offset = max([int(i.split(",")[1]) for i in test_last_lines])
         file_size = int(test_tree.split('\n')[0].split("SIZE ")[1]) - 1
@@ -342,7 +345,6 @@ def provide_wild_files(file_root):
             return files
         else:
             return files[1:1]
-
     return load_wild_files
 
 
