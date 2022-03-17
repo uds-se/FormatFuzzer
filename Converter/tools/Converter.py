@@ -19,7 +19,7 @@ class Converter(object):
     # TODO FIX INSTANCES ERROR
     # TODO FIX ENUM SIZE (DoNe!)
 
-    def __init__(self, input_js, is_master=False, parent=None, root=None, name=None):
+    def __init__(self, input_js, is_master=False, parent=None, root=None, name=None, preprocessor=None):
         self.enum_size = {}
         self.output_enums = []
         self.output_types = []
@@ -40,6 +40,7 @@ class Converter(object):
             self.global_type_table = {}
             self.global_enum_table = {}
             self.global_init()
+            self.preprocessor = preprocessor
 
             self.endian = ""
 
@@ -101,6 +102,9 @@ class Converter(object):
             getter = "PARAM_CUSTOM"
         else:
             getter = "VALUE"
+        if name and "(" in name:
+            name = name.split("(")[0]
+
         try:
             return self.root.global_type_table[str(name)][getter]
         except:
@@ -171,7 +175,7 @@ class Converter(object):
         self.output.extend(self.output_seqs)
         #####GARBAGE COLLECTION####
         self.output.append("     if(FTell()<(FileSize()-1)){")
-        self.output.append("          ubyte garbage_after_end_of_parsed_file_CONVERTER[(FileSize()-1)-FTell()];")
+        self.output.append("          ubyte garbage_after_end_of_parsed_file_CONVERTER[(FileSize())-FTell()];")
         self.output.append('          Warning("Found possible Garbage-Data!");')
         self.output.append("     }")
 
@@ -331,6 +335,140 @@ class Converter(object):
                 return expr.split(" ")
             else:
                 return expr
+
+    def infer_type(self, input_str, containing_type=None):
+        # is_color_mask_given ? color_mask_given.red_mask : header.bits_per_pixel == 16 ? 0b11111_00000_00000 : header.bits_per_pixel == 24 or header.bits_per_pixel == 32 ? 0xff0000 : 0
+        try:
+            input_str = input_str.strip()
+        except:
+            pass
+        if input_str is None or input_str == "":
+            return None  # TODO u Sure?
+        condition_list = ["and", "or", "&&", "||", "==", ">", "<", "<=", ">="]
+        for cond in condition_list:
+            if input_str == cond:
+                return "double"
+        if type(input_str) is dict:
+            print_debug("IMPLEMENT TYPE SWITCHING")
+            return "TEST"
+
+        patter_brackets = r"^(?P<pre>[\w\W]*?)\((?P<content>[\w\W]*)\)(?P<back>[\w\W]*)$"
+        match = re.match(patter_brackets, input_str)
+        if match is not None:
+            pre = match.group('pre')
+            content = match.group('content')
+            back = match.group('back')
+            # print_debug(f" PRE {pre} CONT {content} back {back}")
+            pre_type = self.infer_type(pre, containing_type)
+            content_type = self.infer_type(content, containing_type)
+            back_type = self.infer_type(back, containing_type)
+            if pre_type:
+                return pre_type
+            elif content_type:
+                return content_type
+            elif back_type:
+                return back_type
+            else:
+                return None
+
+        if "?" in input_str and ":" in input_str:
+            condition = input_str.split("?")[0]
+            else_case = "".join(input_str.split(":")[-1])
+            then_case = input_str.split(":" + else_case)[0].split("?")[1]
+            condition_type = self.infer_type(condition, containing_type)
+            then_case_type = self.infer_type(then_case, containing_type)
+            else_case_type = self.infer_type(else_case, containing_type)
+            if then_case_type == else_case_type and then_case_type:
+                return then_case_type
+            elif then_case_type and not else_case_type:
+                return then_case_type
+            elif else_case_type and not then_case_type:
+                return else_case_type
+            else:
+                if then_case_type == "double" or else_case_type == "double":
+                    return "double"
+                # print_debug(f"ERROR then_type {then_case_type} else_type {else_case_type}!!!")
+            # print_debug(f"Parsing value with if {input_str}")
+            # print_debug(f" IF {condition} THEN {then_case} ELSE {else_case} containing type {containing_type}")
+
+        arithmetic_ops = ["\\", "+", "-", "*", "|", "&"]
+        for op in arithmetic_ops:
+            if op in input_str:
+                return "double"
+
+        condition_list = [" and ", " or ", " && ", " || ", " == ", " > ", " < ", " <= ", " >= "]
+        for cond in condition_list:
+            if cond in input_str:
+                # print_debug(f"returning Double cause {input_str}")
+                return "double"
+
+        if " " in input_str.strip():
+            units = input_str.strip().split(" ")
+            if len(units) > 2:
+                pass
+                # print_debug(f"EDGECASE {units}")
+            first_type = self.infer_type(units[0], containing_type)
+            second_type = self.infer_type(units[1], containing_type)
+            if first_type == second_type and first_type:
+                return first_type
+            elif second_type and not first_type:
+                return second_type
+            elif first_type and not second_type:
+                return first_type
+            else:
+                # print_debug(f" SPACE SEPERATED TYPES missmatch {first_type} {second_type}")
+                if first_type == "double" or second_type == "double":
+                    return "double"
+
+        if "." in input_str:
+            # print_debug(f'A+Trying to get type of {input_str} in {containing_type}')
+            next_container = self.find_type_off_id(input_str.split(".")[0], containing_type)
+            if next_container:
+                return self.infer_type(".".join(input_str.split(".")[1::]), next_container)
+            else:
+                print_debug(f'Couldnt find type of {input_str.split(".")[0]}')
+                return None
+        else:
+            # print_debug(f'B+Trying to get type of {input_str} in {containing_type}')
+            pos_type = self.find_type_off_id(input_str, containing_type)
+            if pos_type:
+                return pos_type
+            else:
+                return "double"
+
+        print_debug(f'AAHHH couldnt infer type of {input_str} in {containing_type}')
+        return "uint32"
+
+    def find_type_off_id(self, id_name, containing_type):
+
+        this_type_objects = self.root.lookup_type(containing_type)
+        # print_debug(type(this_type_objects))
+        # print_debug(id_name)
+        tt_instances = this_type_objects["instances"] if "instances" in this_type_objects.keys() else []
+        tt_seqs = this_type_objects["seq"] if "seq" in this_type_objects.keys() else []
+        # print_debug(tt_instances.keys())
+        # print_debug(tt_seqs)
+
+        for datapoint in tt_seqs:
+            local_id = datapoint["id"]
+            # print_debug(f'Comparing {local_id} and {id_name}')
+            if datapoint["id"] == id_name:
+                # print_debug(f'FOUND {id_name} OFF TYPE {datapoint["type"]}')
+                if type(datapoint["type"]) is dict:
+                    return self.infer_type(datapoint["type"], containing_type)
+                return datapoint["type"].split("(")[0]
+        for inst_name in tt_instances.keys():
+            if inst_name == id_name:
+                # print_debug(f'FOUND {id_name} OFF TYPE {tt_instances[inst_name]}')
+                if "type" in tt_instances[inst_name].keys():
+                    return tt_instances[inst_name]["type"]
+                elif "value" in tt_instances[inst_name].keys():
+                    # print_debug(f"calling infer_type with {containing_type}")
+                    return self.infer_type(tt_instances[inst_name]["value"], containing_type)
+                else:
+                    print_debug(f"OH FML")
+        return None
+        print_debug(f'DID NOT FIND {id_name} in TYPE {containing_type}')
 
     # recusively checks for flag or returns the value with optional exclusion list
     def chck_flg(self, flag, flag_to_val=False, exclude=None, excluded_values=None):
@@ -999,25 +1137,73 @@ class data_point():
             condition_list = self.root.expr_resolve(condition)
         else:
             condition_list = condition
-        if type(condition_list) is not type([]):
+        if type(condition_list) is not list:
             condition_list = [condition_list]
 
-        # print_debug(f'After {condition_list}')
         for element in condition_list:
             instance = self.root.lookup_instance(element, self.containing_type)
-            # print_debug(f'ID {self.id} Element {element} container {self.containing_type}')
-            # if instance is not None and not self.root.lookup_instance(element, self.id, check_if_implemented=True):
             if self.containing_type is None:
                 container = self.id
             else:
                 container = self.containing_type
-            if instance is not None and not self.root.lookup_instance(element, container,
-                                                                      check_if_implemented=True):
+            if instance is not None and not self.root.lookup_instance(element, container, check_if_implemented=True):
+                self.gen_instance_full(instance, element, containing_type=container)
                 self.root.mark_as_implemented("instance", element, value=True, containing_type=container)
-                # temp = " ".join(self.root.expr_resolve(str(instance["value"])))
-                temp = self.root.expr_resolve(str(instance["value"]), translate_condition_2_c=True)
-                self.front.append("    local int64 " + str(element) + " = " + str(temp) + f";{gen_marker()}" + (
-                    ("   //" + str(instance["doc"])) if "doc" in instance.keys() else ""))
+
+    def gen_instance_full(self, instance_dict, name, containing_type=None):
+
+        num_occurences = self.root.preprocessor.search_num_occurences(name)
+        # print_debug(f"Instance {name} occurs {num_occurences} Times")
+        if num_occurences <= 1:
+            return
+
+        if not (instance_dict is not None and not self.root.lookup_instance(name, containing_type,
+                                                                            check_if_implemented=True)):
+            return
+        inst_keys = instance_dict.keys()
+        inst_if = instance_dict["if"] if "if" in inst_keys else None
+        inst_pos = instance_dict["pos"] if "pos" in inst_keys else None
+        inst_type = instance_dict["type"] if "type" in inst_keys else None
+        inst_value = instance_dict["value"] if "value" in inst_keys else None
+        inst_doc = instance_dict["doc"] if "doc" in inst_keys else None
+        inst_size = instance_dict["size"] if "size" in inst_keys else None
+        type_field = ""
+        size_field = ""
+        prefix_field = ""
+        doc_field = ("   //" + str(inst_doc)) if "doc" in inst_keys else ""
+        # type_field=""
+
+        if inst_if:
+            self.front.append(
+                f'    if({self.root.expr_resolve(inst_if, True)})' + "{" + f"{gen_marker()}")
+        if inst_pos:
+            self.front.append(f'        local int64 temp_CONVERTER = FTell();{gen_marker()}')
+            self.front.append(f'        FSeek({inst_pos});{gen_marker()}')
+        if inst_type:
+            if type(inst_type) is dict: print_debug(f"HELP Instance {name} has switch Type {inst_type}")
+            if self.root.resolve_datatype(instance_dict["type"]) is not None:
+                local_type = self.root.resolve_datatype(instance_dict["type"])
+            else:
+                local_type = f'{instance_dict["type"]}_TYPE'
+
+        if inst_value:
+            c_value = self.root.expr_resolve(str(inst_value), translate_condition_2_c=True)
+            prefix_field = "local"
+
+            if not inst_type:
+                type_field = self.root.infer_type(inst_value, containing_type)
+                if self.root.lookup_type(type_field):
+                    prefix_field = ""
+                    type_field = f'{type_field}_TYPE'
+                # print_debug(f'Inferred Type {type_field} form {inst_value}')
+                self.front.append(
+                    f"    {prefix_field} {type_field} {name} = ({c_value});{gen_marker()}{doc_field}")
+
+        if inst_pos:
+            self.front.append(f'        FSeek(temp_CONVERTER); {gen_marker()}')
+        if inst_if:
+            self.front.append("    }")
+        return
 
     def gen_str(self):
         self.gen_atomic()
@@ -1108,8 +1294,7 @@ class seq(Converter):
             self.output.extend(
                 self.subtrees[this_level_key].generate_code(size, called_lowlevel=called_lowlevel,
                                                             containing_type=self.name))
-            # self.subtrees[this_level_key].generate_code(size, called_lowlevel=True, containing_type=self.name))
-        # print("SEQ"+"\n".join(self.output)+str(self.input))
+
         return self.output
 
 
@@ -1123,6 +1308,7 @@ class instances(data_point):
         self.name = name
 
     def parse_subtree(self, name=None):
+        print_debug(self.this_level_keys)
         for this_level_key in self.this_level_keys:
             local_key = remap_keys(this_level_key)
             if local_key is not None:
@@ -1133,54 +1319,17 @@ class instances(data_point):
 
     # def generate_code(self, size=None, called_lowlevel=True, containing_type=None):
     def generate_code(self, size=None, ignore_if=False, called_lowlevel=True, containing_type=None):
+
+        # print_debug(f"Generating Instance {self.name}")
         for this_level_key in self.this_level_keys:
             instance = self.root.lookup_instance(this_level_key, containing_type=self.name)
             if instance is not None and not self.root.lookup_instance(this_level_key, containing_type=self.name,
                                                                       check_if_implemented=True):
+                num_occurences = self.root.preprocessor.search_num_occurences(self.name)
+                # print_debug(f"Instance {self.name} occurs {num_occurences} Times")
+                if num_occurences > 1:
+                    self.gen_instance_full(instance, this_level_key, self.name)
 
-                if_used = False
-                if "if" in instance.keys():
-                    self.front.append(
-                        f'    if({self.root.expr_resolve(instance["if"], translate_condition_2_c=True)})' + "{" + f"{gen_marker()}")
-                    if_used = True
-                # print_debug(instance.keys())
-                # TODO USE ACTUAL TYPE INSTEAD OF double if it is a struct
-                if "value" in instance.keys():
-                    temp = self.root.expr_resolve(str(instance["value"]), translate_condition_2_c=True)
-                    self.front.append(
-                        "    local double " + str(this_level_key) + " = " + str(temp) + f";{gen_marker()}" + (
-                            ("   //" + str(instance["doc"])) if "doc" in instance.keys() else ""))
-
-                elif "pos" in instance.keys():
-                    # TODO ADD EVIL BIT HERE?
-
-                    self.front.append(f'        local int64 temp_CONVERTER = FTell();{gen_marker()}')
-                    self.front.append(f'        FSeek({instance["pos"]});{gen_marker()}')
-
-                    if "size" in instance.keys() and not "type" in instance.keys():
-                        self.front.append(f'         ubyte {this_level_key}[{instance["size"]}];{gen_marker()}')
-                    elif type(instance["type"]) is dict:
-                        self.type = instance["type"]
-                        self.name = this_level_key
-                        self.gen_switch()
-
-                    elif "type" in instance.keys() and not "size" in instance.keys():
-                        print_debug(f'Datatype {self.root.resolve_datatype(instance["type"])}')
-                        if self.root.resolve_datatype(instance["type"]) is not None:
-                            local_type = self.root.resolve_datatype(instance["type"])
-                        else:
-                            local_type = f'{instance["type"]}_TYPE'
-
-                        self.front.append(f'         {local_type} {this_level_key};//AAA {gen_marker()}')
-                    else:
-                        # self.gen_atomic(docu="AAAAAAAAAAAAAAAAAAa")
-                        print_debug(
-                            f'INSTANCE {this_level_key} in TYPE {self.name} NOT GENERATED : SIZE + TYPE MISSING')
-
-                    self.front.append(f'        FSeek(temp_CONVERTER); {gen_marker()}')
-
-                if "if" in instance.keys():
-                    self.front.append("    }")
         self.output.extend(self.front)
         self.output.extend(self.back)
         return self.output
@@ -1578,6 +1727,9 @@ def gen_marker():
 
 
 ##########################################################################
+
+# TODO HANDLE 0b0012.... (bmp.ksy)
+
 class Preprocessor():
     def __init__(self, input_string, kaitaijs):
         self.input = input_string
@@ -1585,6 +1737,11 @@ class Preprocessor():
         self.types = kaitaijs["types"].keys()
         self.enums = kaitaijs["enums"].keys()
         # self.types = kaitaijs["types"].keys()
+
+    def search_num_occurences(self, target, area=None):
+        if not area:
+            area = self.input
+        return area.count(target)
 
     def preproccess(self):
         pattern_types = r"(?=(" + '|'.join(self.types) + r"))"
@@ -1597,19 +1754,19 @@ class Preprocessor():
         alpha_num_char = "[a-zA-Z0-9]"
         var_name = "^[_a-zA-Z0-9]\w+"
         var_name = "^(?![0-9]+)(?!0b[0-9]+)[_a-zA-Z0-9]\w+"
+        pattern_bitstring = "(?P<bitstring>0b[01_]+)"
         # var_name=fr'[a-zA-Z0-9]+|\w+'
 
         for index in range(len(lines)):
             line = lines[index]
             words = line.split()
             for word in words:
-
                 # HANDLING enum_ENUM::monday
                 match = re.match(pattern_enum_sub, word)
                 if match is not None:
                     subenum = match.group('subenum')
                     parsed_enum = match.group('parsed_enum')
-                    lines[index].replace(f'{parsed_enum}::{subenum}', f'{subenum}')
+                    lines[index] = lines[index].replace(f'{parsed_enum}::{subenum}', f'{subenum}')
                     # print(f'Found ENUM {parsed_enum} with {subenum} in {word}')
 
                 # HANDLING imported_type::subtype
@@ -1618,10 +1775,28 @@ class Preprocessor():
                     subtype = match.group('subtype')
                     parsed_type = match.group('parsed_type')
                     # print(f'Found TYPE {parsed_type} with {subtype} in {word}')
-                    lines[index].replace(f'{parsed_type}::{subtype}', f'{subtype}')
+                    lines[index] = lines[index].replace(f'{parsed_type}::{subtype}', f'{subtype}')
                     # print(match)
 
+                # HANDLING .to_i
+                if ".to_i" in word:
+                    # print(f'Found .to_i in {lines[index]}')
+                    lines[index] = lines[index].replace(".to_i", "")
+                    # lines[index]=lines[index].replace(".to_i", "")
+                    # print(f"changes to {lines[index]}")
+
+                # HANDLING 0b0000...
+                match = re.match(pattern_bitstring, word)
+                if match is not None:
+                    bitstring = match.group('bitstring')
+                    bits = bitstring[2::].replace("_", "")
+                    bit_len = len(bits)
+                    bit_value = int(bits, 2)
+                    lines[index] = lines[index].replace(bitstring, str(hex(bit_value)))
+                    print(f"changes to {lines[index]}")
+
         return "\n".join(lines)
+
 
 def main():
     global converter, DEBUG
@@ -1652,8 +1827,8 @@ def main():
     kaitaijs_proc = yaml.safe_load(preproc.preproccess())
     # exit(-1)
 
-    # converter = Converter(kaitaijs_proc, True)
-    converter = Converter(kaitaijs, True)
+    converter = Converter(kaitaijs_proc, True, preprocessor=preproc)
+    # converter = Converter(kaitaijs, True,preprocessor = preproc)
     output = converter.generate_code_toplevel()
     with open(output_file_name, "w+") as out_file:
         out_file.write('\n'.join(output))
