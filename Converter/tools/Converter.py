@@ -155,7 +155,7 @@ class Converter(object):
                 self.subtrees[local_key].parse_subtree(name=name)
 
     def generate_code_toplevel(self):
-        #print_debug(self.root.global_instance_table,True)
+        # print_debug(self.root.global_type_table, True)
         if "enums" in self.subtrees.keys():
             self.output_enums.extend(self.subtrees["enums"].generate_code(called_lowlevel=False))
         self.output_types.extend(self.subtrees["types"].generate_code(called_lowlevel=False))
@@ -339,9 +339,9 @@ class Converter(object):
             else:
                 return expr
 
-    def infer_type_top(self, input_str, containing_type=None):
+    def infer_type_top(self, input_str, containing_type=None, check_if=False):
         # print_debug(f'Inferring Type of {input_str} in {containing_type}')
-        type_ret = self.infer_type(input_str, containing_type)
+        type_ret = self.infer_type(input_str, containing_type, check_if)
         # print_debug(f'=> Inferred Type {type_ret}')
         if type_ret:
             return type_ret
@@ -349,7 +349,7 @@ class Converter(object):
             print_debug(f'Inferring Type of {input_str} in {containing_type}')
             print_debug(f'ERROR => Inferred Type {type_ret}')
 
-    def infer_type(self, input_str, containing_type=None):
+    def infer_type(self, input_str, containing_type=None, check_if=False):
         # is_color_mask_given ? color_mask_given.red_mask : header.bits_per_pixel == 16 ? 0b11111_00000_00000 : header.bits_per_pixel == 24 or header.bits_per_pixel == 32 ? 0xff0000 : 0
         try:
             input_str = input_str.strip()
@@ -360,14 +360,15 @@ class Converter(object):
         condition_list = ["and", "or", "&&", "||", "==", ">", "<", "<=", ">="]
         for cond in condition_list:
             if input_str == cond:
-                return "double"
+                return "int"
         if type(input_str) is dict:
-            print_debug("IMPLEMENT TYPE SWITCHING")
+            # print_debug(f"IMPLEMENT TYPE SWITCHING!!!! {input_str}")
             return "TEST"
+
         if type(input_str) is not str:
             print_debug(f"TRYING TO INFER TYPE OF {input_str} WHICH HAS TYPE {type(input_str)}")
 
-        known_replacements = {"_io.pos": "double", "to_s": "string"}
+        known_replacements = {"_io.pos": "double", "to_s": "string", "Str": "string"}
         for element in known_replacements.keys():
             if input_str == element:
                 return known_replacements[element]
@@ -382,9 +383,9 @@ class Converter(object):
             content = match.group('content')
             back = match.group('back')
             # print_debug(f" PRE {pre} CONT {content} back {back}")
-            pre_type = self.infer_type(pre, containing_type)
-            content_type = self.infer_type(content, containing_type)
-            back_type = self.infer_type(back, containing_type)
+            pre_type = self.infer_type(pre, containing_type, check_if)
+            content_type = self.infer_type(content, containing_type, check_if)
+            back_type = self.infer_type(back, containing_type, check_if)
             if pre_type:
                 return pre_type
             elif content_type:
@@ -395,12 +396,15 @@ class Converter(object):
                 return None
 
         if "?" in input_str and ":" in input_str:
+            if check_if:
+                return True
+
             condition = input_str.split("?")[0]
             else_case = "".join(input_str.split(":")[-1])
             then_case = input_str.split(":" + else_case)[0].split("?")[1]
-            condition_type = self.infer_type(condition, containing_type)
-            then_case_type = self.infer_type(then_case, containing_type)
-            else_case_type = self.infer_type(else_case, containing_type)
+            condition_type = self.infer_type(condition, containing_type, check_if)
+            then_case_type = self.infer_type(then_case, containing_type, check_if)
+            else_case_type = self.infer_type(else_case, containing_type, check_if)
             if then_case_type == else_case_type and then_case_type:
                 return then_case_type
             elif then_case_type and not else_case_type:
@@ -413,25 +417,30 @@ class Converter(object):
                 # print_debug(f"ERROR then_type {then_case_type} else_type {else_case_type}!!!")
             # print_debug(f"Parsing value with if {input_str}")
             # print_debug(f" IF {condition} THEN {then_case} ELSE {else_case} containing type {containing_type}")
-
-        arithmetic_ops = ["\\", "+", "-", "*", "|", "&"]
+        if check_if:
+            return False
+        arithmetic_ops = ["\\"]
         for op in arithmetic_ops:
             if op in input_str:
                 return "double"
+        arithmetic_ops = ["\\", "+", "-", "*", "|", "&"]
+        for op in arithmetic_ops:
+            if op in input_str:
+                return "int"
 
         condition_list = [" and ", " or ", " && ", " || ", " == ", " > ", " < ", " <= ", " >= "]
         for cond in condition_list:
             if cond in input_str:
                 # print_debug(f"returning Double cause {input_str}")
-                return "double"
+                return "int"
 
         if " " in input_str.strip():
             units = input_str.strip().split(" ")
             if len(units) > 2:
                 pass
                 # print_debug(f"EDGECASE {units}")
-            first_type = self.infer_type(units[0], containing_type)
-            second_type = self.infer_type(units[1], containing_type)
+            first_type = self.infer_type(units[0], containing_type, check_if)
+            second_type = self.infer_type(units[1], containing_type, check_if)
             if first_type == second_type and first_type:
                 return first_type
             elif second_type and not first_type:
@@ -447,7 +456,7 @@ class Converter(object):
             # print_debug(f'A+Trying to get type of {input_str} in {containing_type}')
             next_container = self.find_type_off_id(input_str.split(".")[0], containing_type)
             if next_container:
-                return self.infer_type(".".join(input_str.split(".")[1::]), next_container)
+                return self.infer_type(".".join(input_str.split(".")[1::]), next_container, check_if)
             else:
                 # print_debug(f'Couldnt find type of {input_str.split(".")[0]}')
                 return None
@@ -462,8 +471,8 @@ class Converter(object):
         print_debug(f'AAHHH couldnt infer type of {input_str} in {containing_type}')
         return "uint32AAA"
 
-    def find_type_off_id(self, id_name, containing_type):
-
+    def find_type_off_id(self, id_name, containing_type, get_whole_type=False):
+        id_name = id_name.strip()
         this_type_objects = self.root.lookup_type(containing_type)
         # print_debug(type(this_type_objects))
         # print_debug(id_name)
@@ -479,7 +488,10 @@ class Converter(object):
                 # print_debug(f'FOUND {id_name} OFF TYPE {datapoint["type"]}')
                 if type(datapoint["type"]) is dict:
                     return self.infer_type_top(datapoint["type"], containing_type)
-                return datapoint["type"].split("(")[0]
+                if get_whole_type:
+                    return datapoint["type"]
+                else:
+                    return datapoint["type"].split("(")[0]
         for inst_name in tt_instances.keys():
             if inst_name == id_name:
                 # print_debug(f'FOUND {id_name} OFF TYPE {tt_instances[inst_name]}')
@@ -490,8 +502,12 @@ class Converter(object):
                     return self.infer_type_top(tt_instances[inst_name]["value"], containing_type)
                 else:
                     print_debug(f"OH FML")
+        type_params = self.root.lookup_type(containing_type, check_if_custom_param_needed=True)
+        if type_params:
+            if id_name in type_params.keys():
+                return type_params[id_name]
+        # print_debug(f'DID NOT FIND {id_name} in TYPE {containing_type}')
         return None
-        print_debug(f'DID NOT FIND {id_name} in TYPE {containing_type}')
 
     # recusively checks for flag or returns the value with optional exclusion list
     def chck_flg(self, flag, flag_to_val=False, exclude=None, excluded_values=None):
@@ -553,9 +569,13 @@ class Converter(object):
         # TODO do something about LE????
         if kaitype == "bool":
             return "int"
+        elif kaitype == "int":
+            return "int"
             # return kaitype
         elif kaitype == "str":
             return "char"
+        elif kaitype == "double":
+            return "double"
         elif kaitype == "strz":
             return "string"
         if type(kaitype) is not str:
@@ -830,8 +850,8 @@ class data_point():
         ###INJECTION LOCAL VAR FOR START
         switch_term = self.root.expr_resolve(switch_term, translate_condition_2_c=True)
         self.gen_instances(switch_term)
-
-        self.front.append("     switch(" + str(switch_term) + ") {")
+        # TODO CAST SWITCHTERM TO INT OR MAKE SURE ALL LOCALS USED IN SWITCHES ARE int
+        self.front.append("     switch(" + str(switch_term) + ") {" + gen_marker())
         first_index_front = len(self.front)
         # print_debug(self.input)
         if type(switch_term.split(".")) is list:
@@ -844,7 +864,7 @@ class data_point():
         for case_key in cases.keys():
             case = self.root.expr_resolve(case_key)
             if type(case) is bool or case == "true" or case == "false":
-                self.front[first_index_front - 1] = '     switch(' + str(switch_term) + ') {'
+                self.front[first_index_front - 1] = '     switch(' + str(switch_term) + ') {' + gen_marker()
                 case = f'{case}'
                 default_needed = False
             if case == ["_"] or case == "_":
@@ -903,7 +923,7 @@ class data_point():
             self.front.append(
                 f"             {prefix}ubyte raw_data_CONVERTER[" + str(self.input["size"]) + f"];{gen_marker()}")
             self.front.append("             break;")
-        elif default_needed and not switch_over_enum and not size:
+        elif default_needed and not switch_over_enum and not size and size_param_needed:
             self.front.append("         default:")
             self.front.append(
                 f"             {prefix}ubyte raw_data_CONVERTER[length_CONVERTER -(FTell()-struct_start_CONVERTER)];{gen_marker()}")
@@ -1068,7 +1088,7 @@ class data_point():
                                                                            parent_name=self.containing_type,
                                                                            parent_instances=this_lvl_instances)
                         if lower_lvl_instances:
-                            print_debug(f'Lower Level instances {lower_lvl_instances}')
+                            # print_debug(f'Lower Level instances {lower_lvl_instances}')
                             self.gen_instances(lower_lvl_instances, from_list=True)
 
                 if type_override is None and "_TYPE" not in self.type:
@@ -1094,7 +1114,7 @@ class data_point():
                     except:
                         pass
                     try:
-                        length_addon = f'({self.root.expr_resolve(self.input["size"], translate_condition_2_c=True)})'
+                        length_addon = f'{self.root.expr_resolve(self.input["size"], translate_condition_2_c=True)}'
                     except:
                         if self.called_lowlevel:
 
@@ -1153,7 +1173,7 @@ class data_point():
             child_type_str = str(self.root.input["types"][child_name])
             if f"_parent.{instance}" in child_type_str and not self.root.lookup_instance(instance, parent_name,
                                                                                          check_if_implemented=True):
-                print_debug(f'FOUND _parent.{instance} in {child_type_str}!')
+                # print_debug(f'FOUND _parent.{instance} in {child_type_str}!')
                 needed_instances.append(instance)
         return needed_instances
 
@@ -1179,7 +1199,7 @@ class data_point():
 
             instance = self.root.lookup_instance(element, container)
             is_implemented = self.root.lookup_instance(element, container, check_if_implemented=True)
-            #print_debug(f"Condition Instance {element} is implemented : {is_implemented} with {instance} in {self.id} or {container}")
+            # print_debug(f"Condition Instance {element} is implemented : {is_implemented} with {instance} in {self.id} or {container}")
             if instance is not None and not is_implemented:
                 # print_debug(f"Generating Instance {element}")
                 self.gen_instance_full(instance, element, containing_type=container)
@@ -1250,18 +1270,25 @@ class data_point():
             prefix_field = "local "
             # TODO implement FIX for if in value BZW for parameterized constructor call:
             # to do this always save parameters als locals so they can be accessed later!!!!!!!!!!!!!
-
             if not inst_type and not self.root.lookup_instance(name, containing_type, check_if_implemented=True):
                 type_field = self.root.infer_type_top(inst_value, containing_type)
                 resolved_datatype = self.root.resolve_datatype(type_field)
+                if_switch = False
+                #########BASIC#TYPES###############
                 if resolved_datatype:
                     type_field = resolved_datatype
+                #########CUSTOM#TYPES#############
                 elif self.root.lookup_type(type_field):
                     prefix_field = ""
+                    if self.root.infer_type_top(inst_value, containing_type, check_if=True):
+                        if_switch = True
+                        self.front.extend(self.gen_instance_value_if(name, type_field, inst_value, containing_type))
                     type_field = f'{type_field}_TYPE'
+
                 # print_debug(f'Inferred Type {type_field} form {inst_value}')
-                self.front.append(
-                    f"    {prefix_field}{type_field} {name} = ({c_value});{gen_marker()}{doc_field}")
+                if not if_switch:
+                    self.front.append(
+                        f"    {prefix_field}{type_field} {name} = ({c_value});{gen_marker()}{doc_field}")
         elif type(inst_type) is not dict:
             self.front.append(
                 f"    {prefix_field}{type_field} {name}{size_field};{gen_marker()}{doc_field}")
@@ -1274,6 +1301,57 @@ class data_point():
             self.front.append("    }")
         self.root.mark_as_implemented("instance", name, containing_type, True)
         return
+
+    def gen_instance_value_if(self, name, inst_type, value, containing_type, indent_index=2):  # RETURNS A LIST OF LINES
+        output = []
+        indents = indent_index * "    "
+        LL_postfix = indent_index * "_L"
+        if "?" in value and ":" in value:
+            condition = value.split("?")[0]
+            else_case = "".join(value.split(":")[-1])
+            then_case = value.split(":" + else_case)[0].split("?")[1]
+
+            condition_str = "\n".join(
+                self.gen_instance_value_if(name, inst_type, condition, containing_type, indent_index + 1))[:-3]
+            print_debug(condition_str)
+            then_str = "\n".join(
+                self.gen_instance_value_if(name, inst_type, then_case, containing_type, indent_index + 1))
+            else_str = "\n".join(
+                self.gen_instance_value_if(name, inst_type, else_case, containing_type, indent_index + 1))
+            output.append(f'{indents}if({condition_str}) ' + "{")
+            output.append(then_str)
+            output.append(indents + "} else {")
+            output.append(else_str)
+            output.append(indents + "}")
+        else:
+            # print_debug(value)
+            type_field = self.root.infer_type_top(value, containing_type)
+            resolved_datatype = self.root.resolve_datatype(type_field)
+            # print_debug(f'GOT RESOLVED DATATYPE {resolved_datatype} from {type_field}')
+            if resolved_datatype:
+                output.append(value)
+            else:
+                param_field = ""
+                recursion_level_type = containing_type
+                if "." in value:
+                    for element in value.split(".")[:-1]:
+                        # print_debug(f'AAAAA{recursion_level_type}')
+                        recursion_level_type = self.root.find_type_off_id(element.strip(), recursion_level_type)
+
+                    ###THIS WILL BREAK IF THE PARAMS INCLUDE _parent or
+                    # the data should be something like _parent.bla.blub
+                    full_type = self.root.find_type_off_id(value.split(".")[-1], recursion_level_type, True)
+                else:
+                    full_type = self.root.find_type_off_id(value.strip(), recursion_level_type, True)
+                # print_debug(f'Full Type {full_type}')
+                param_field = "(" + full_type.split("(", 1)[1] if full_type else ""
+
+                output.append(f'{indents}local int64 temp_CONVERTER{LL_postfix} = FTell();{gen_marker()}')
+                output.append(f'{indents}FSeek(startof({value.strip()}));')
+                output.append(f'{indents}{inst_type}_TYPE {name}{param_field};{gen_marker()}')
+                output.append(f'{indents}FSeek(temp_CONVERTER{LL_postfix});')
+
+        return output
 
     def gen_str(self):
         self.gen_atomic()
@@ -1510,7 +1588,7 @@ class types(Converter):
     def gen_complete_types(self, size=None):
         output = []
         for this_level_key in self.this_level_keys:
-
+            custom_local_params = []
             lenfield = ""
             lencontent = ""
             size_param_needed = self.root.lookup_type(this_level_key, check_if_size_param_needed=True)
@@ -1524,7 +1602,12 @@ class types(Converter):
                 for cust_name in custom_param.keys():
                     cust_type = custom_param[cust_name]
                     cust_cont += f'{cust_type} {cust_name},'
+                    custom_local_params.append(
+                        # f'    local {cust_type} {cust_name} = ({cust_type}){cust_name};{gen_marker()}')  this should work but doesnt
+                        f'    local {cust_type} {cust_name}_CONVERTER = ({cust_type}){cust_name};{gen_marker()}')
+                    # custom_local_params.append(f'    local {cust_type} {cust_name}_CONVERTER = {cust_type}({cust_name});{gen_marker()}')
                 cust_cont = cust_cont[0:-1]
+                # print_debug(custom_local_params)
             if lenfield != "":
                 lenfield += lencontent
                 if custom_param:
@@ -1550,6 +1633,11 @@ class types(Converter):
                 sizer = "length_CONVERTER"
             else:
                 sizer = None
+            for custom_local_param in custom_local_params:
+                pass
+                # TODO UNCOMMENT IN ORDER TO GENERATE local vars of parameters
+                # output.append(custom_local_param)
+
             output.extend(item.generate_code(sizer, called_lowlevel=True))  # GOING TO CHILD ITEM
             output.append("};\n")
         return output
@@ -1826,6 +1914,7 @@ class Preprocessor():
         alpha_num_char = "[a-zA-Z0-9]"
         var_name = "^[_a-zA-Z0-9]\w+"
         var_name = "^(?![0-9]+)(?!0b[0-9]+)[_a-zA-Z0-9]\w+"
+        pattern_to_s = r"(?P<object>((?![0-9]+)(?!0b[0-9]+)[_a-zA-Z0-9]\w+\.)*)to_s"
         pattern_bitstring = "(?P<bitstring>0b[01_]+)"
         # var_name=fr'[a-zA-Z0-9]+|\w+'
 
@@ -1857,6 +1946,13 @@ class Preprocessor():
                     # lines[index]=lines[index].replace(".to_i", "")
                     # print(f"changes to {lines[index]}")
 
+                # HANDLING .to_s
+                match = re.match(pattern_to_s, word)
+                if match is not None:
+                    object_ = match.group('object')
+                    # print(f'Found TYPE {parsed_type} with {subtype} in {word}')
+                    lines[index] = lines[index].replace(f'{object_}to_s', f'Str({object_[:-1]})')
+
                 # HANDLING 0b0000...
                 match = re.match(pattern_bitstring, word)
                 if match is not None:
@@ -1865,7 +1961,7 @@ class Preprocessor():
                     bit_len = len(bits)
                     bit_value = int(bits, 2)
                     lines[index] = lines[index].replace(bitstring, str(hex(bit_value)))
-                    print(f"changes to {lines[index]}")
+                    # print(f"changes to {lines[index]}")
 
         return "\n".join(lines)
 
