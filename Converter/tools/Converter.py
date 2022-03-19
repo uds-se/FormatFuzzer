@@ -88,7 +88,7 @@ class Converter(object):
             return self.root.global_instance_table[str(containing_type)][str(name)][getter]
         except:
             # print_debug("\nERROR INSTANCE " + str(name) + " NOT FOUND\nCan safely be ignored just for testing if expr_resolve works!\n")
-            return None
+            return False if check_if_implemented else None
 
     # returns dict of value and possible doc/doc-ref as keys
     def lookup_type(self, name, check_if_implemented=False,
@@ -155,7 +155,7 @@ class Converter(object):
                 self.subtrees[local_key].parse_subtree(name=name)
 
     def generate_code_toplevel(self):
-        # print_debug(self.root.global_type_table,True)
+        #print_debug(self.root.global_instance_table,True)
         if "enums" in self.subtrees.keys():
             self.output_enums.extend(self.subtrees["enums"].generate_code(called_lowlevel=False))
         self.output_types.extend(self.subtrees["types"].generate_code(called_lowlevel=False))
@@ -1179,7 +1179,7 @@ class data_point():
 
             instance = self.root.lookup_instance(element, container)
             is_implemented = self.root.lookup_instance(element, container, check_if_implemented=True)
-            # print_debug(f"Condition Instance {element} is implemented : {is_implemented} with {instance} in {self.id} or {container}")
+            #print_debug(f"Condition Instance {element} is implemented : {is_implemented} with {instance} in {self.id} or {container}")
             if instance is not None and not is_implemented:
                 # print_debug(f"Generating Instance {element}")
                 self.gen_instance_full(instance, element, containing_type=container)
@@ -1187,7 +1187,7 @@ class data_point():
 
     def gen_instance_full(self, instance_dict, name, containing_type=None):
 
-        num_occurences = self.root.preprocessor.search_num_occurences(name)
+        num_occurences = self.root.preprocessor.search_num_occurences(f'{name}')
         # print_debug(f"Instance {name} occurs {num_occurences} Times")
         if num_occurences <= 1:
             return
@@ -1202,7 +1202,7 @@ class data_point():
         inst_value = instance_dict["value"] if "value" in inst_keys else None
         inst_doc = instance_dict["doc"] if "doc" in inst_keys else None
         inst_size = instance_dict["size"] if "size" in inst_keys else None
-        type_field = ""
+        type_field = "ubyte"
         size_field = ""
         prefix_field = ""
         doc_field = ("   //" + str(inst_doc)) if "doc" in inst_keys else ""
@@ -1245,11 +1245,13 @@ class data_point():
         if inst_value:
             c_value = self.root.expr_resolve(str(inst_value), translate_condition_2_c=True)
             possible_instances = self.root.expr_resolve(inst_value)
-            print_debug(f"Possible Instances {possible_instances}")
+            # print_debug(f"Possible Instances {possible_instances}")
             self.gen_instances(possible_instances, type(possible_instances) is list)
             prefix_field = "local "
+            # TODO implement FIX for if in value BZW for parameterized constructor call:
+            # to do this always save parameters als locals so they can be accessed later!!!!!!!!!!!!!
 
-            if not inst_type:
+            if not inst_type and not self.root.lookup_instance(name, containing_type, check_if_implemented=True):
                 type_field = self.root.infer_type_top(inst_value, containing_type)
                 resolved_datatype = self.root.resolve_datatype(type_field)
                 if resolved_datatype:
@@ -1257,9 +1259,9 @@ class data_point():
                 elif self.root.lookup_type(type_field):
                     prefix_field = ""
                     type_field = f'{type_field}_TYPE'
-                print_debug(f'Inferred Type {type_field} form {inst_value}')
+                # print_debug(f'Inferred Type {type_field} form {inst_value}')
                 self.front.append(
-                    f"    {prefix_field} {type_field} {name} = ({c_value});{gen_marker()}{doc_field}")
+                    f"    {prefix_field}{type_field} {name} = ({c_value});{gen_marker()}{doc_field}")
         elif type(inst_type) is not dict:
             self.front.append(
                 f"    {prefix_field}{type_field} {name}{size_field};{gen_marker()}{doc_field}")
@@ -1270,6 +1272,7 @@ class data_point():
             self.front.append(f'        FSeek(temp_CONVERTER); {gen_marker()}')
         if inst_if:
             self.front.append("    }")
+        self.root.mark_as_implemented("instance", name, containing_type, True)
         return
 
     def gen_str(self):
@@ -1808,7 +1811,9 @@ class Preprocessor():
     def search_num_occurences(self, target, area=None):
         if not area:
             area = self.input
-        return area.count(target)
+        pattern = fr'\W{target}'
+        times = len(re.findall(pattern, area))
+        return times
 
     def preproccess(self):
         pattern_types = r"(?=(" + '|'.join(self.types) + r"))"
