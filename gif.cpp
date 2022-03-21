@@ -1883,7 +1883,7 @@ GRAPHICCONTROLSUBBLOCK* GRAPHICCONTROLSUBBLOCK::generate() {
 		generated = 1;
 	_startof = FTell();
 
-	GENERATE_VAR(BlockSize, ::g->BlockSize.generate());
+	GENERATE_VAR(BlockSize, ::g->BlockSize.generate({ 4 }));
 	GENERATE_VAR(PackedFields, ::g->PackedFields__.generate());
 	GENERATE_VAR(DelayTime, ::g->DelayTime.generate());
 	GENERATE_VAR(TransparentColorIndex, ::g->TransparentColorIndex.generate());

@@ -3152,8 +3152,10 @@ class PfpInterp(object):
         elif node.op == "startof":
             if node.expr.name == "this":
                 node.cpp = "_startof"
-            else:
+            elif isinstance(node.expr.name, str):
                 node.cpp = "::g->" + node.expr.name + "._startof"
+            else:
+                node.cpp = node.expr.cpp + "._startof"
         else:
             node.cpp = node.op + node.expr.cpp
         if type(field) is type:
