@@ -2347,10 +2347,7 @@ class PfpInterp(object):
                         classname = "_".join(node.type.type.names) + "_class"
                     if not hasattr(node, "originalname"):
                         node.originalname = node.name
-                    classnamebits = classname
-                    if is_bitfield:
-                        classnamebits += node.bitsize.cpp
-                    while node.name in self._defined and self._defined[node.name] != classnamebits:
+                    while node.name in self._defined and self._defined[node.name] != classname:
                         node.name += "_"
                     node.type.cpp = " ".join(node.type.type.names)
                     if node.type.cpp == "long":
@@ -2369,7 +2366,7 @@ class PfpInterp(object):
                     else:
                         self.add_native_class(classname, node.type.cpp, is_bitfield)
                     if node.name not in self._defined:
-                        self._defined[node.name] = classnamebits
+                        self._defined[node.name] = classname
                         if is_string:
                             self._globals.append((node.name, classname + " " + node.name + ";\n"))
                         elif node.metadata is not None and "arraylength" in node.metadata.keyvals:
@@ -2393,7 +2390,7 @@ class PfpInterp(object):
                     node.cpp = "GENERATE"
                     if len(self._call_stack) > 1 and not self._call_stack[-1]:
                         node.cpp += "_VAR"
-                    self._variable_types[node.name] = classnamebits
+                    self._variable_types[node.name] = classname
                     node.cpp += "(" + node.originalname + ", ::g->" + node.name + ".generate("
                     if is_bitfield:
                         node.cpp += node.bitsize.cpp
