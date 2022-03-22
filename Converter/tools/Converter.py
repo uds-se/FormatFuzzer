@@ -152,7 +152,7 @@ class Converter(object):
                 self.subtrees[local_key].parse_subtree(name=name)
 
     def generate_code_toplevel(self):
-        print_debug(self.root.global_instance_table, True)
+        # print_debug(self.root.global_instance_table, True)
         if "enums" in self.subtrees.keys():
             self.output_enums.extend(self.subtrees["enums"].generate_code(called_lowlevel=False))
         self.output_types.extend(self.subtrees["types"].generate_code(called_lowlevel=False))
@@ -171,10 +171,10 @@ class Converter(object):
         self.output.extend(self.output_types)
         self.output.extend(self.output_seqs)
         #####GARBAGE COLLECTION####
-        self.output.append("     if(FTell()<(FileSize()-1)){")
-        self.output.append("          ubyte garbage_after_end_of_parsed_file_CONVERTER[(FileSize())-FTell()];")
-        self.output.append('          Warning("Found possible Garbage-Data!");')
-        self.output.append("     }")
+        self.output.append("    if(FTell()<(FileSize()-1)){")
+        self.output.append("        ubyte garbage_after_end_of_parsed_file_CONVERTER[(FileSize())-FTell()];")
+        self.output.append('        Warning("Found possible Garbage-Data!");')
+        self.output.append("    }")
 
         return self.output
 
@@ -306,6 +306,9 @@ class Converter(object):
                     expr = expr.replace("_.", "" + str(id_of_obj) + ".")
                 except:
                     pass
+            if expr == "_root._io":
+                return None
+
             try:
                 expr = expr.replace("_io.eof", "FEof()")
             except:
@@ -321,6 +324,7 @@ class Converter(object):
                 expr = expr.replace("_io.pos", "FTell()")
             except:
                 pass
+
 
             pass
             if "::" in expr:
@@ -606,8 +610,8 @@ class Converter(object):
                 return self.root.endian
 
         type_table = {"u": "uint", "s": "int", "b": "byte", "f": "float"}
-        endian_table = {"le": "/*LITTLE ENDIAN*/", "be": "/*BIG ENDIAN*/",
-                        "": ""}  # TODO No Clue how to handle right Now
+        endian_table = {"le": "", "be": "", "": ""}  # TODO No Clue how to handle right Now
+        # endian_table = {"le": "/*LITTLE ENDIAN*/", "be": "/*BIG ENDIAN*/", "": ""}  # TODO No Clue how to handle right Now
         to_be_size = int(parsed_size) * 8
         if parsed_endian == self.root.endian:
             to_be_endian = ""
@@ -711,9 +715,9 @@ class enums(Converter):
             except:
                 addin_doc = ""
             if f'_{key}_ENUM' in addin:
-                lines.append(f"  {addin} = {str(hex(k))},{addin_doc}")
+                lines.append(f"    {addin} = {str(hex(k))},{addin_doc}")
             else:
-                lines.append(f"  {addin}_{key}_ENUM = {str(hex(k))},{addin_doc}")
+                lines.append(f"    {addin}_{key}_ENUM = {str(hex(k))},{addin_doc}")
         try:
             addin = values[keys[-1]]["id"]
         except:
@@ -723,9 +727,9 @@ class enums(Converter):
         except:
             addin_doc = ""
         if f'_{key}_ENUM' in addin:
-            lines.append(f"  {addin} = {str(hex(keys[-1]))},{addin_doc}")
+            lines.append(f"    {addin} = {str(hex(keys[-1]))},{addin_doc}")
         else:
-            lines.append(f"  {addin}_{key}_ENUM = {str(hex(keys[-1]))},{addin_doc}")
+            lines.append(f"    {addin}_{key}_ENUM = {str(hex(keys[-1]))},{addin_doc}")
         lines.append("};")
         return lines
 
@@ -866,7 +870,7 @@ class data_point():
         # print_debug(f" INSTANCES {switch_term_instances} in {self.containing_type} or {self.id}")
         self.gen_instances(switch_term_instances, containing_type=self.containing_type, from_list=True)
         # TODO CAST SWITCHTERM TO INT OR MAKE SURE ALL LOCALS USED IN SWITCHES ARE int
-        self.front.append("     switch(" + str(switch_term) + ") {" + gen_marker())
+        self.front.append("    switch(" + str(switch_term) + ") {" + gen_marker())
         first_index_front = len(self.front)
         # print_debug(self.input)
         if type(switch_term.split(".")) is list:
@@ -879,7 +883,7 @@ class data_point():
         for case_key in cases.keys():
             case = self.root.expr_resolve(case_key)
             if type(case) is bool or case == "true" or case == "false":
-                self.front[first_index_front - 1] = '     switch(' + str(switch_term) + ') {' + gen_marker()
+                self.front[first_index_front - 1] = '    switch(' + str(switch_term) + ') {' + gen_marker()
                 case = f'{case}'
                 default_needed = False
             if case == ["_"] or case == "_":
@@ -915,10 +919,10 @@ class data_point():
             else:
                 paramfield = ""
             if case_val != "default":
-                self.front.append("         case " + str(case_val) + ":")
+                self.front.append("        case " + str(case_val) + ":")
             else:
                 default_needed = False
-                self.front.append("         default:")
+                self.front.append("        default:")
             if self.root.resolve_datatype(cases[case_key]):  # BASIC TYPE
                 type_name = self.root.resolve_datatype(cases[case_key])
                 if self.root.endian != self.root.resolve_datatype(cases[case_key], getendian=True):
@@ -928,54 +932,58 @@ class data_point():
 
             self.switch_endian(self.root.resolve_datatype(cases[case_key], getendian=True), do_endian_switch)
             self.front.append(
-                "             " + prefix + type_name + " " + str(self.id) + paramfield + f";{gen_marker()}")
+                "            " + prefix + type_name + " " + str(self.id) + paramfield + f";{gen_marker()}")
             self.switch_endian(self.root.endian, do_endian_switch)
-            self.front.append("             break;")
+            self.front.append("            break;")
 
         if default_needed and "size" in self.input.keys():
-            self.front.append("         default:")
+            self.front.append("        default:")
             # self.output.append(f'    Warning("LENGTH %hu %hx",{str(self.input["size"])},{str(self.input["size"])});')
             self.front.append(
-                f"             {prefix}ubyte raw_data_CONVERTER[" + str(self.input["size"]) + f"];{gen_marker()}")
-            self.front.append("             break;")
+                f"            {prefix}ubyte raw_data_CONVERTER[" + str(self.input["size"]) + f"];{gen_marker()}")
+            self.front.append("            break;")
         elif default_needed and not switch_over_enum and not size and size_param_needed:
-            self.front.append("         default:")
+            self.front.append("        default:")
             self.front.append(
-                f"             {prefix}ubyte raw_data_CONVERTER[length_CONVERTER -(FTell()-struct_start_CONVERTER)];{gen_marker()}")
-            self.front.append("             break;")
+                f"            {prefix}ubyte raw_data_CONVERTER[length_CONVERTER -(FTell()-struct_start_CONVERTER)];{gen_marker()}")
+            self.front.append("            break;")
         elif default_needed and not switch_over_enum and size:
-            self.front.append("         default:")
-            self.front.append(f"             {prefix}ubyte raw_data_CONVERTER[{size}];{gen_marker()}")
-            self.front.append("             break;")
+            self.front.append("        default:")
+            self.front.append(f"            {prefix}ubyte raw_data_CONVERTER[{size}];{gen_marker()}")
+            self.front.append("            break;")
         elif default_needed:
-            self.front.append("         default:")
-            self.front.append("             break;")
-            self.front.append("             if(!FEof()){")
+            self.front.append("        default:")
+            self.front.append("            break;")
+            self.front.append("            if(!FEof()){")
             self.front.append(
-                f'                 Warning("UNSUPPLIED DEFAULT CASE FOR SWITCH OVER {switch_term}");{gen_marker()}')
-            self.front.append("                  return -1;")
-            self.front.append("              }")
+                f'                Warning("UNSUPPLIED DEFAULT CASE FOR SWITCH OVER {switch_term}");{gen_marker()}')
+            self.front.append("                return -1;")
+            self.front.append("            }")
         self.front.append("    }")
 
     def switch_endian(self, endian, do_switch_endian=False):
         if do_switch_endian and endian is not None:
             if endian == "be":
-                self.front.append(f"         BigEndian();{gen_marker()}")
+                self.front.append(f"    BigEndian();{gen_marker()}")
             else:
-                self.front.append(f"         LittleEndian();{gen_marker()}")
+                self.front.append(f"    LittleEndian();{gen_marker()}")
 
     def gen_if(self, containing_type=None):
         condition = self.input["if"]
         if "instances" in self.parent.parent.input.keys():
             pass
+        possible_instances = self.root.expr_resolve(condition)
+        if type(possible_instances) is not list:
+            possible_instances = [possible_instances]
+        # print_debug(f'Found possible {possible_instances} in {containing_type}')
+        self.gen_instances(possible_instances, from_list=True, containing_type=containing_type)
 
-        self.gen_instances(condition)
-
-        self.front.append("    if (" + self.root.expr_resolve(condition, translate_condition_2_c=True) + ") {")
+        self.front.append(
+            "    if (" + self.root.expr_resolve(condition, translate_condition_2_c=True) + ") {" + gen_marker())
 
         self.generate_code(ignore_if=True, containing_type=containing_type)
 
-        self.front.append("     }")
+        self.front.append("    }")
 
     def gen_repeat(self, size=None):
         if not self.called_lowlevel:
@@ -1099,9 +1107,10 @@ class data_point():
                             child_type = temp_child[-1]
                         else:
                             child_type = temp_child
-                        lower_lvl_instances = self.get_lower_lvl_instances(child_name=child_type,
-                                                                           parent_name=self.containing_type,
-                                                                           parent_instances=this_lvl_instances)
+                        lower_lvl_instances = self.get_lower_lvl_instances(
+                            child_name=self.sanitize_type_name(child_type),
+                            parent_name=self.containing_type,
+                            parent_instances=this_lvl_instances)
                         if lower_lvl_instances:
                             # print_debug(f'Lower Level instances {lower_lvl_instances}')
                             self.gen_instances(lower_lvl_instances, from_list=True)
@@ -1124,6 +1133,7 @@ class data_point():
 
                 if "_ENUM" not in self.type and self.root.lookup_type(name=self.type.split("_TYPE")[0],
                                                                       check_if_size_param_needed=True):
+
                     try:
                         self.gen_instances(self.input["size"])
                     except:
@@ -1161,7 +1171,7 @@ class data_point():
                 self.front.append(
                     prepend + str(self.type) + " " + str(self.id) + length_addon + f";{gen_marker()}" + loc_doc)
                 if size and length_addon != "" and param_addon != "":
-                    self.front.append("       }")
+                    self.front.append("        }")
 
 
         elif self.size is not None:  # JUST BYTES
@@ -1181,6 +1191,11 @@ class data_point():
             # print_debug(self.input)
             # self.front.append("//STUFF MISSING HERE @ NO MAGIC " + str(self.id) + "----" + str(self.input))
             # print_debug(self.front)
+
+    def sanitize_type_name(self, type_name):
+        out = type_name.split("_TYPE")[0]
+        print_debug(out)
+        return out
 
     def get_lower_lvl_instances(self, child_name="", parent_name="", parent_instances=[]):
         needed_instances = []
@@ -1232,10 +1247,13 @@ class data_point():
 
         if not (instance_dict is not None and not self.root.lookup_instance(name, containing_type,
                                                                             check_if_implemented=True)):
+            print_debug(f"{name} already done")
             return
         inst_keys = instance_dict.keys()
+        # print_debug(inst_keys)
         inst_if = instance_dict["if"] if "if" in inst_keys else None
         inst_pos = instance_dict["pos"] if "pos" in inst_keys else None
+        inst_io = instance_dict["io"] if "io" in inst_keys else None
         inst_type = instance_dict["type"] if "type" in inst_keys else None
         inst_value = instance_dict["value"] if "value" in inst_keys else None
         inst_doc = instance_dict["doc"] if "doc" in inst_keys else None
@@ -1243,20 +1261,32 @@ class data_point():
         type_field = "ubyte"
         size_field = ""
         prefix_field = ""
-        doc_field = ("   //" + str(inst_doc)) if "doc" in inst_keys else ""
+        doc_field = "\n   //".join(inst_doc.split("\n")) if "doc" in inst_keys else ""
         # type_field=""
 
-        if inst_if:
+        if inst_if is not None:
             condition = self.root.expr_resolve(inst_if)
-            # print_debug(f"condition {condition}")
+            print_debug(f"condition {condition}")
             self.gen_instances(condition, type(condition) is list)
 
             self.front.append(
                 f'    if({self.root.expr_resolve(inst_if, True)})' + "{" + f"{gen_marker()}")
-        if inst_pos:
+        if inst_pos is not None:
             self.front.append(f'        local int64 temp_CONVERTER = FTell();{gen_marker()}')
-            self.front.append(f'        FSeek({inst_pos});{gen_marker()}')
-        if inst_type:
+            if inst_io is not None:
+                print_debug(inst_io)
+                start_of = self.root.expr_resolve(inst_io, translate_condition_2_c=True)
+                if start_of:
+                    start_point = f'startof({start_of}) + '
+                else:
+                    start_point = ""
+            else:
+                start_point = ""
+            self.front.append(f'        FSeek({start_point}{inst_pos});{gen_marker()}')
+        #     print_debug(f'Found {name}')
+        # else:
+        #     print_debug(f'Found not {name} {inst_pos}')
+        if inst_type is not None:
             if type(inst_type) is dict:
                 # print_debug(f"HELP Instance {name} has switch Type {inst_type}")
                 # print_debug(f"My Subtree contains {self.subtrees.keys()}")
@@ -1272,15 +1302,17 @@ class data_point():
                 temp_type = self.root.resolve_datatype(instance_dict["type"])
                 type_field = temp_type if temp_type else f'{instance_dict["type"]}_TYPE'
 
-        if inst_size:
+        if inst_size is not None:
             if "_TYPE" in type_field:
                 # print_debug(f'Setting SIZE FIELD to ({inst_size})')
                 size_field = f"({inst_size})"
             else:
                 # print_debug(f'Setting SIZE FIELD to [{inst_size}]')
                 size_field = f"[{inst_size}]"
+        elif inst_type and self.root.lookup_type(instance_dict["type"], check_if_size_param_needed=True):
+            size_field = f"(length_CONVERTER -(FTell()-struct_start_CONVERTER))"
 
-        if inst_value:
+        if inst_value is not None:
             c_value = self.root.expr_resolve(str(inst_value), translate_condition_2_c=True)
             possible_instances_pre = self.root.expr_resolve(inst_value)
             possible_instances = []
@@ -1316,9 +1348,9 @@ class data_point():
         else:
             self.front.append(f"//PLACEHOLDER 1 ")
 
-        if inst_pos:
+        if inst_pos is not None:
             self.front.append(f'        FSeek(temp_CONVERTER); {gen_marker()}')
-        if inst_if:
+        if inst_if is not None:
             self.front.append("    }")
         self.root.mark_as_implemented("instance", name, containing_type, True)
         return
@@ -1394,8 +1426,8 @@ class data_point():
         else:
             self.front.append("    ubyte " + str(self.id) + f";{gen_marker()}")
             self.front.append("    if (" + self.id + " != " + self.magic[0] + ") {")
-        self.front.append('         Warning("Magic Bytes of ' + self.id + f' not matching!");{gen_marker()}')
-        self.front.append("         return -1;\n    };")
+        self.front.append('        Warning("Magic Bytes of ' + self.id + f' not matching!");{gen_marker()}')
+        self.front.append("        return -1;\n    };")
 
     def to_hex_list(self, input):
         if type(input) is list:
@@ -1538,7 +1570,8 @@ class types(Converter):
                 # print_debug(f'NAME {local_key} VALUE {self.input[local_key]} ')
                 self.root.register_type(name=local_key, value=self.input[local_key],
                                         custom_param_needed=sanitized_params)
-                self.subtrees[local_key] = Converter(self.input[this_level_key], parent=self, root=self.root)
+                self.subtrees[local_key] = Converter(self.input[this_level_key], parent=self, root=self.root,
+                                                     name=local_key)
                 self.subtrees[local_key].parse_subtree(name=local_key)
         self.parse_arguments_main()
 
@@ -1546,16 +1579,26 @@ class types(Converter):
         for this_level_key in self.this_level_keys:
             local_key = remap_keys(this_level_key)
             if local_key is not None:
+                # print_debug(f'>>>>Checking {local_key}')
                 if self.parse_arguments_recursion(self.subtrees[local_key], origin_type=local_key, depth=0):
-                    # print_debug(local_key)
+                    # print_debug(f'<<<<{local_key} got PARAM')
                     self.root.register_type(name=local_key, size_param_needed=True)
 
-    def parse_arguments_recursion(self, item, origin_type=None, depth=0):  # returns True if param is needed in subtree
-        if depth > 20:
-            print_debug(f"Parse_args_rec too deep in {item.this_level_keys}")
-            print_debug(item.input)
+    def parse_arguments_recursion(self, item, origin_type=None, depth=0,
+                                  exclusion_list=[]):  # returns True if param is needed in subtree
+        # print_debug(f'ITEM {item.name} Origin Type {origin_type} Depth {depth}')
+        if depth > 5:
+            print_debug(f"Parse_args_rec ITEM {item.name} Origin Type {origin_type}")
+            # print_debug(item.input)
+            already_known = self.root.lookup_type(origin_type, check_if_size_param_needed=True)
+            if already_known:
+                print_debug(f'===={origin_type} already known to need SIZE')
+            return True
 
-            return False
+        already_known = self.root.lookup_type(origin_type, check_if_size_param_needed=True)
+        if already_known:
+            return True
+            # print_debug(f'====={origin_type} already known to need SIZE')
 
         # print_debug(item.this_level_keys)
         # print_debug(item.subtrees)
@@ -1570,17 +1613,22 @@ class types(Converter):
                     param_needed = True
                 if item.chck_flg("process"):
                     param_needed = True
-            if param_needed:
-                # print_debug(item.name)
-                return param_needed
-
+        if param_needed:
+            # print_debug(f"THIS {item.name} needs param!")
+            return param_needed
+        primer = False
         # print_debug(f'Entering Recursion for item {item.input}')
         included_types = []
         exclusion_list = []
         hit = item.chck_flg("type", flag_to_val=True, excluded_values=exclusion_list)
         while hit is not None:
-            # print_debug(f'Hit {hit} Resolved Hits {hit_list} actl {item.chck_flg("type", flag_to_val=True)} from {self.this_level_keys}')
+            # print_debug(f'Hit {hit} Exclude {exclusion_list}')
             exclusion_list.append(str(hit))
+            if "(" in hit:
+                hit = hit.split("(")[0]
+                # print_debug(hit)
+                # primer = True
+            # print_debug(f'Hit {hit} Resolved Hits {hit_list} actl {item.chck_flg("type", flag_to_val=True)} from {self.this_level_keys}')
             if type(hit) is dict:
                 hit_list = self.root.resolve_switch(hit)
             else:
@@ -1590,18 +1638,39 @@ class types(Converter):
                     included_types.append(hitter)
             hit = item.chck_flg("type", flag_to_val=True, excluded_values=exclusion_list)
 
-        # print_debug("Final included types "+str(included_types))
-        # print_debug(item.name)
+        order_switch = depth / 2 == 0  # IMPORTANT PERFORMANCE INCREASE
+
         if included_types == []:  # LOWEST LATER // No SUBTYPES
             return False
         else:
-            for sub_type in included_types:
+            for sub_type in (included_types if order_switch else included_types[::-1]):
                 lower_level_type = self.subtrees[sub_type]
-                # print_debug(lower_level_type.name)
-                if self.parse_arguments_recursion(lower_level_type, origin_type, depth + 1):
-                    param_needed = True
-            # print_debug(param_needed)
-            return param_needed and not item.chck_flg("size")
+                # print_debug(f'LLTYPE {lower_level_type.name} orig {origin_type}')
+                if self.root.lookup_type(sub_type, check_if_size_param_needed=True):
+                    if not self.check_if_flag_present(sub_type, item.input["seq"]):
+                        param_needed = True
+                        # print_debug(f'Type {sub_type} needs {param_needed}')
+                        break
+                elif self.parse_arguments_recursion(lower_level_type, item.name, depth + 1):
+                    if not self.check_if_flag_present(sub_type, item.input["seq"]):
+                        param_needed = True
+                        break
+            return param_needed
+
+    # RETURNS TRUE IF flag isnt within every occurrence of type
+    def check_if_flag_present(self, type_name, kaitai):
+        for id_obj in kaitai:
+            if "type" in id_obj.keys():
+                if id_obj["type"] == type_name:
+                    if "size" in id_obj.keys():
+                        if id_obj["size"] != "eos":
+                            return True
+                    elif "repeat" in id_obj.keys():
+                        if id_obj["repeat"] != "eos":
+                            return True
+                    else:
+                        return False
+        return False
 
     def generate_code(self, size=None, called_lowlevel=True, containing_type=None):
         self.output.extend(self.gen_complete_types(size))
@@ -1616,7 +1685,6 @@ class types(Converter):
             lencontent = ""
             size_param_needed = self.root.lookup_type(this_level_key, check_if_size_param_needed=True)
             custom_param = self.root.lookup_type(this_level_key, check_if_custom_param_needed=True)
-
 
             if size_param_needed:
                 lenfield = "("
@@ -1721,8 +1789,12 @@ def insert_imports(main_input, imports, path):
             pass
 
         try:
-            imported_main_seq = imported_kaitai["seq"]
-            out["types"][imported_kaitai["meta"]["id"]] = {"seq": imported_main_seq}
+            import_dict = {}
+            import_dict["seq"] = imported_kaitai["seq"]
+            if "instances" in imported_kaitai.keys():
+                import_dict["instances"] = imported_kaitai["instances"]
+            # imported_main_seq = imported_kaitai["seq"]
+            out["types"][imported_kaitai["meta"]["id"]] = import_dict
         except:
             # print_debug(traceback.format_exc())
             # print_debug("main seq didnt work")
@@ -1940,6 +2012,9 @@ class Preprocessor():
         pattern_types = r"(?=(" + '|'.join(self.types) + r"))"
         pattern_enums = r"(?=(" + '|'.join(self.enums) + r"))"
         pattern_enum_sub = r"(?P<parsed_enum>(" + '|'.join(self.enums) + r"))[:]{2}(?P<subenum>[\w]+)"
+        pattern_enum_sub_stupid = r"[\W]+(?P<parsed_enum>(" + '|'.join(
+            self.enums) + r"))[:]{2}(?P<subenum>[\w]+): (?P<subenum2>[\w]+)"
+
         pattern_type_sub = r"(?P<parsed_type>(" + '|'.join(self.types) + r"))[:]{2}(?P<subtype>(" + '|'.join(
             self.types) + r"))"
         # pattern_enum_access=
@@ -1949,6 +2024,7 @@ class Preprocessor():
         var_name = "^(?![0-9]+)(?!0b[0-9]+)[_a-zA-Z0-9]\w+"
         pattern_to_s = r"(?P<object>((?![0-9]+)(?!0b[0-9]+)[_a-zA-Z0-9]\w+\.)*)to_s"
         pattern_sizeof = r"(?P<object>((?![0-9]+)(?!0b[0-9]+)[_a-zA-Z0-9]\w+\.)*)_sizeof"
+        pattern_size = r"(?P<object>((?![0-9]+)(?!0b[0-9]+)[_a-zA-Z0-9]\w+\.)*)size"
         pattern_bitstring = "(?P<bitstring>0b[01_]+)"
         # var_name=fr'[a-zA-Z0-9]+|\w+'
 
@@ -1970,17 +2046,22 @@ class Preprocessor():
                     # print_debug(f'AAAHHHHH {entry} in {enum_name} but already {replacement_dict[entry]}')
 
         # REPLACEMENT PHASE
-        for index in range(len(lines)):
-            line = lines[index]
+        for index_l in range(len(lines)):
+            line = lines[index_l]
             words = line.split()
-            for word in words:
+            words_before = line.split()
+            # print_debug(f'Proc LINE >{line}<')
+            for index in range(len(words)):
+                # for word in words:
+                word = words[index]
                 # print(word)
+
                 # HANDLING enum_ENUM::monday
                 match = re.match(pattern_enum_sub, word)
                 if match is not None:
                     subenum = match.group('subenum')
                     parsed_enum = match.group('parsed_enum')
-                    lines[index] = lines[index].replace(f'{parsed_enum}::{subenum}',
+                    words[index] = words[index].replace(f'{parsed_enum}::{subenum}',
                                                         f'{subenum}_{parsed_enum}_ENUM')  # ENUM REPLACEMENT
                     # lines[index] = lines[index].replace(f'{parsed_enum}::{subenum}', f'{subenum}')
                     # print(f'Found ENUM {parsed_enum} with {subenum} in {word}')
@@ -1996,7 +2077,21 @@ class Preprocessor():
                         # print_debug(f"OH No")
                         # print_debug(f'Found possible enum {word} in line {line}')
                     else:
-                        lines[index] = lines[index].replace(f' {word}', f' {rep}')
+                        # Handling stupid cases of          block_type::extension: extension
+
+                        match = re.match(pattern_enum_sub_stupid, line)
+                        if match is not None:
+                            subenum = match.group('subenum')
+                            subenum2 = match.group('subenum2')
+                            parsed_enum = match.group('parsed_enum')
+
+                            if subenum == subenum2:
+                                pass
+                            else:
+                                print_debug(f'Found possible enum {word} in line {line}')
+                                words[index] = words[index].replace(f'{word}', f'{rep}')
+                        else:
+                            words[index] = words[index].replace(f'{word}', f'{rep}')
 
                 # HANDLING imported_type::subtype
                 match = re.match(pattern_type_sub, word)
@@ -2004,23 +2099,29 @@ class Preprocessor():
                     subtype = match.group('subtype')
                     parsed_type = match.group('parsed_type')
                     # print(f'Found TYPE {parsed_type} with {subtype} in {word}')
-                    lines[index] = lines[index].replace(f'{parsed_type}::{subtype}', f'{subtype}')
+                    words[index] = words[index].replace(f'{parsed_type}::{subtype}', f'{subtype}')
 
                 # HANDLING .to_i
                 if ".to_i" in word:
-                    lines[index] = lines[index].replace(".to_i", "")
+                    words[index] = words[index].replace(".to_i", "")
 
                 # HANDLING .to_s
                 match = re.match(pattern_to_s, word)
                 if match is not None:
                     object_ = match.group('object')
-                    lines[index] = lines[index].replace(f'{object_}to_s', f'Str({object_[:-1]})')
+                    words[index] = words[index].replace(f'{object_}to_s', f'Str({object_[:-1]})')
 
                 # HANDLING _sizeof
                 match = re.match(pattern_sizeof, word)
                 if match is not None:
                     object_ = match.group('object')
-                    lines[index] = lines[index].replace(f'{object_}_sizeof', f'sizeof({object_[:-1]})')
+                    words[index] = words[index].replace(f'{object_}_sizeof', f'sizeof({object_[:-1]})')
+
+                # HANDLING size
+                match = re.match(pattern_size, word)
+                if match is not None:
+                    object_ = match.group('object')
+                    words[index] = words[index].replace(f'{object_}size', f'sizeof({object_[:-1]})')
 
                 # HANDLING 0b0000...
                 match = re.match(pattern_bitstring, word)
@@ -2029,9 +2130,11 @@ class Preprocessor():
                     bits = bitstring[2::].replace("_", "")
                     bit_len = len(bits)
                     bit_value = int(bits, 2)
-                    lines[index] = lines[index].replace(bitstring, str(hex(bit_value)))
+                    words[index] = words[index].replace(bitstring, str(hex(bit_value)))
                     # print(f"changes to {lines[index]}")
-
+            # print_debug(f'Replacing >{" ".join(words_before)}< with >{" ".join(words)}<')
+            lines[index_l] = lines[index_l].replace(" ".join(words_before), " ".join(words))
+            # print_debug(f'Changed To>{lines[index_l]}<')
         return "\n".join(lines)
 
 
