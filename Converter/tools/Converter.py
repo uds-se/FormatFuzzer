@@ -347,9 +347,9 @@ class Converter(object):
                 return expr
 
     def infer_type_top(self, input_str, containing_type=None, check_if=False):
-        # print_debug(f'Inferring Type of {input_str} in {containing_type}')
+        print_debug(f'Inferring Type of {input_str} in {containing_type}')
         type_ret = self.infer_type(input_str, containing_type, check_if)
-        # print_debug(f'=> Inferred Type {type_ret}')
+        print_debug(f'=> Inferred Type {type_ret}')
         if type_ret:
             return type_ret
         else:
@@ -364,9 +364,10 @@ class Converter(object):
             pass
         if input_str is None or input_str == "":
             return None
-        condition_list = ["and", "or", "&&", "||", "==", ">", "<", "<=", ">="]
+        condition_list = ["and", "or", "&&", "||", "==", ">", "<", "<=", ">=", "!="]
         for cond in condition_list:
             if input_str == cond:
+                print_debug(f"returning int cause {input_str}")
                 return "int"
         if type(input_str) is dict:
             # print_debug(f"IMPLEMENT TYPE SWITCHING!!!! {input_str}")
@@ -412,13 +413,16 @@ class Converter(object):
             if "string" in present_types:
                 return "string"
             elif "double" in present_types:
+                print_debug(f"returning double cause {input_str}" + gen_marker())
                 return "double"
             elif "int" in present_types:
                 return "int"
+            elif "int64" in present_types:
+                return "int64"
             else:
 
                 print_debug(f'OUUPSII got types | {pre_type} | {content_type} | {back_type} | in {input_str}')
-
+                print_debug(f"PRESENT TYPES {present_types}")
         if "?" in input_str and ":" in input_str:
             if check_if:
                 return True
@@ -443,11 +447,12 @@ class Converter(object):
             # print_debug(f" IF {condition} THEN {then_case} ELSE {else_case} containing type {containing_type}")
         if check_if:
             return False
-        arithmetic_ops = ["\\"]
+        arithmetic_ops = ["/"]
         for op in arithmetic_ops:
             if op in input_str:
+                print_debug(f"returning double cause {input_str}" + gen_marker())
                 return "double"
-        arithmetic_ops = ["\\", "+", "-", "*", "|", "&"]
+        arithmetic_ops = ["/", "+", "-", "*", "|", "&"]
         for op in arithmetic_ops:
             if op in input_str:
                 return "int64"
@@ -455,7 +460,7 @@ class Converter(object):
         condition_list = [" and ", " or ", " && ", " || ", " == ", " > ", " < ", " <= ", " >= ", " >> ", " << "]
         for cond in condition_list:
             if cond in input_str:
-                # print_debug(f"returning Double cause {input_str}")
+                print_debug(f"returning int cause {input_str}" + gen_marker())
                 return "int"
 
         if " " in input_str.strip():
@@ -473,17 +478,22 @@ class Converter(object):
                 return first_type
             else:
                 # print_debug(f" SPACE SEPERATED TYPES missmatch {first_type} {second_type}")
+                if first_type == "int64" or second_type == "int64":
+                    print_debug(f"ERROR {input_str} first_type {first_type} second_type {second_type}!!!")
+                    return "int64"
                 if first_type == "double" or second_type == "double":
-                    print_debug(f"ERROR first_type {first_type} second_type {second_type}!!!")
+                    print_debug(f"ERROR {input_str} first_type {first_type} second_type {second_type}!!!")
                     return "double"
         can_conv_int = False
         can_conv_float = False
         try:
             val = int(input_str)
-            return "int"
+            print_debug(f"returning int64 cause {input_str}" + gen_marker())
+            return "int64"
         except:
             try:
                 val = float(input_str)
+                print_debug(f"returning double cause {input_str}" + gen_marker())
                 return "double"
             except:
                 pass

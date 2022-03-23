@@ -499,6 +499,10 @@ void check_array_length(unsigned& size) {
 			fprintf(stderr, "Array length too large: %d, replaced with %u\n", (signed)size, new_size);
 		size = new_size;
 	}
+	if (!(size <= MAX_FILE_SIZE - file_acc.file_pos)){
+	    if (debug_print)
+			fprintf(stderr, "Array length too large: %d\n", (signed)size);
+	}
 	assert_cond(size <= MAX_FILE_SIZE - file_acc.file_pos, "Array length too large");
 }
 
