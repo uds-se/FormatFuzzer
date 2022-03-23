@@ -325,7 +325,6 @@ class Converter(object):
             except:
                 pass
 
-
             pass
             if "::" in expr:
                 for element in expr.split(" "):
@@ -391,17 +390,34 @@ class Converter(object):
             content = match.group('content')
             back = match.group('back')
             # print_debug(f" PRE {pre} CONT {content} back {back}")
+
+            if pre and pre.strip() == "sizeof":
+                return "int"
+
             pre_type = self.infer_type(pre, containing_type, check_if)
             content_type = self.infer_type(content, containing_type, check_if)
             back_type = self.infer_type(back, containing_type, check_if)
+            present_types_pre = []
+            present_types = []
             if pre_type:
-                return pre_type
-            elif content_type:
-                return content_type
-            elif back_type:
-                return back_type
+                present_types_pre.append(pre_type)
+            if content_type:
+                present_types_pre.append(content_type)
+            if back_type:
+                present_types_pre.append(back_type)
+            for x in present_types_pre:
+                if x not in present_types:
+                    present_types.append(x)
+
+            if "string" in present_types:
+                return "string"
+            elif "double" in present_types:
+                return "double"
+            elif "int" in present_types:
+                return "int"
             else:
-                return None
+
+                print_debug(f'OUUPSII got types | {pre_type} | {content_type} | {back_type} | in {input_str}')
 
         if "?" in input_str and ":" in input_str:
             if check_if:
@@ -421,8 +437,8 @@ class Converter(object):
                 return else_case_type
             else:
                 if then_case_type == "double" or else_case_type == "double":
+                    # print_debug(f"ERROR then_type {then_case_type} else_type {else_case_type}!!!")
                     return "double"
-                # print_debug(f"ERROR then_type {then_case_type} else_type {else_case_type}!!!")
             # print_debug(f"Parsing value with if {input_str}")
             # print_debug(f" IF {condition} THEN {then_case} ELSE {else_case} containing type {containing_type}")
         if check_if:
@@ -436,7 +452,7 @@ class Converter(object):
             if op in input_str:
                 return "int"
 
-        condition_list = [" and ", " or ", " && ", " || ", " == ", " > ", " < ", " <= ", " >= "]
+        condition_list = [" and ", " or ", " && ", " || ", " == ", " > ", " < ", " <= ", " >= ", " >> ", " << "]
         for cond in condition_list:
             if cond in input_str:
                 # print_debug(f"returning Double cause {input_str}")
@@ -458,7 +474,19 @@ class Converter(object):
             else:
                 # print_debug(f" SPACE SEPERATED TYPES missmatch {first_type} {second_type}")
                 if first_type == "double" or second_type == "double":
+                    # print_debug(f"ERROR first_type {first_type} second_type {second_type}!!!")
                     return "double"
+        can_conv_int = False
+        can_conv_float = False
+        try:
+            val = int(input_str)
+            return "int"
+        except:
+            try:
+                val = float(input_str)
+                return "double"
+            except:
+                pass
 
         if "." in input_str:
             # print_debug(f'A+Trying to get type of {input_str} in {containing_type}')
@@ -474,6 +502,7 @@ class Converter(object):
             if pos_type:
                 return pos_type
             else:
+                # print_debug(f'RETURNING DOUBLE {input_str}')
                 return "double"
 
         print_debug(f'AAHHH couldnt infer type of {input_str} in {containing_type}')
@@ -845,6 +874,13 @@ class data_point():
         self.output.extend(self.back)
         return self.output
 
+    def get_biggest_from_str_list(self, input):
+        biggest = 0
+        for entry in input:
+            if int(entry) > biggest:
+                biggest = int(entry)
+        return biggest
+
     def gen_switch(self, size=None, is_local=False):
         if is_local:
             prefix = "local "
@@ -869,6 +905,27 @@ class data_point():
         switch_term = self.root.expr_resolve(switch_term, translate_condition_2_c=True)
         # print_debug(f" INSTANCES {switch_term_instances} in {self.containing_type} or {self.id}")
         self.gen_instances(switch_term_instances, containing_type=self.containing_type, from_list=True)
+        bitfield_primer = False
+        sizes = []
+        type_prefix = ""
+        for case_key in cases.keys():
+            case = self.root.expr_resolve(case_key)
+            if self.root.resolve_datatype(cases[case_key]):
+                local_size = self.root.resolve_datatype(cases[case_key], getsize=True)
+                if "int" in self.root.resolve_datatype(cases[case_key]) and sizes == []:
+                    sizes.append(self.root.resolve_datatype(cases[case_key], getsize=True))
+                elif "int" in self.root.resolve_datatype(cases[case_key]) and local_size not in sizes:
+                    sizes.append(local_size)
+                    bitfield_primer = True
+                else:
+                    pass
+        # print_debug(f'Bitfield {cases}')
+        if self.get_biggest_from_str_list(sizes) != 0:
+            size_biggest = str(self.get_biggest_from_str_list(sizes) * 8)
+            # print_debug(f"HHHHHHHHAAAAAAAA {size_biggest}")
+        if bitfield_primer:
+            self.front.append("    BitfieldDisablePadding();" + gen_marker())
+
         # TODO CAST SWITCHTERM TO INT OR MAKE SURE ALL LOCALS USED IN SWITCHES ARE int
         self.front.append("    switch(" + str(switch_term) + ") {" + gen_marker())
         first_index_front = len(self.front)
@@ -930,9 +987,19 @@ class data_point():
             else:  # CUSTOM TYPE
                 type_name = str(cases[case_key]) + "_TYPE "
 
+            bitfiel_pad = ""
+            if bitfield_primer:
+                if "u" in type_name:
+                    bitfiel_pad = f' : {type_name.replace("uint", "")}'
+                    type_name = f'uint{size_biggest}'
+                else:
+                    bitfiel_pad = f' : {type_name.replace("int", "")}'
+                    type_name = f'int{size_biggest}'
+
             self.switch_endian(self.root.resolve_datatype(cases[case_key], getendian=True), do_endian_switch)
             self.front.append(
-                "            " + prefix + type_name + " " + str(self.id) + paramfield + f";{gen_marker()}")
+                "            " + prefix + type_name + " " + str(self.id) + paramfield + f"{bitfiel_pad};{gen_marker()}")
+
             self.switch_endian(self.root.endian, do_endian_switch)
             self.front.append("            break;")
 
@@ -959,6 +1026,9 @@ class data_point():
                 f'                Warning("UNSUPPLIED DEFAULT CASE FOR SWITCH OVER {switch_term}");{gen_marker()}')
             self.front.append("                return -1;")
             self.front.append("            }")
+        if bitfield_primer:
+            self.front.append("    BitfieldEnablePadding();" + gen_marker())
+
         self.front.append("    }")
 
     def switch_endian(self, endian, do_switch_endian=False):
@@ -1007,7 +1077,17 @@ class data_point():
             expr_in = self.input["repeat-expr"]
             expr = self.root.expr_resolve(expr_in, translate_condition_2_c=True)
             self.gen_instances(expr)
-            self.gen_atomic(size=expr)
+            for_length_needed = self.root.lookup_type(self.type, check_if_size_param_needed=True)
+            for_custom_needed = self.root.lookup_type(self.type, check_if_custom_param_needed=True)
+            if for_custom_needed or for_length_needed:
+                self.front.append(f'    local int TILL_CONVERTER = ({expr});')
+                self.front.append(f'    local int x_CONVERTER = 0;')
+                self.front.append(f'    for(;x_CONVERTER < TILL_CONVERTER ;x_CONVERTER++)' + "{")
+                # self.front.append(f'    for(int x_CONVERTER = 0;x_CONVERTER < TILL_CONVERTER ;x_CONVERTER++)' + "{")
+                self.gen_atomic(indents=2)
+                self.front.append('    }')
+            else:
+                self.gen_atomic(size=expr)
             pass
         elif "eos" == self.input["repeat"]:
             # self.front.append("    local uint32 UNTIL_CONVERTER = length_CONVERTER;") #TODO THIS IS OPTION B FOR EOS
@@ -1162,10 +1242,10 @@ class data_point():
                 elif length_addon != "" or param_addon != "":
                     # print_debug(f'LENGTH_ADDON {length_addon} PARAM_ADDON {param_addon}')
                     length_addon = f'({length_addon}{param_addon})'
+
+                # print_debug(f'{self.type}|{length_addon}|{param_addon}|')
                 if size and length_addon != "" and param_addon != "":
                     self.front.append("    while(" + size + "){ //AD" + f"{gen_marker()}")
-
-                    # print_debug(f'{self.type}|{length_addon}|{param_addon}|')
 
                 # if length_addon
                 self.front.append(
@@ -1194,7 +1274,7 @@ class data_point():
 
     def sanitize_type_name(self, type_name):
         out = type_name.split("_TYPE")[0]
-        print_debug(out)
+        # print_debug(out)
         return out
 
     def get_lower_lvl_instances(self, child_name="", parent_name="", parent_instances=[]):
@@ -1266,7 +1346,7 @@ class data_point():
 
         if inst_if is not None:
             condition = self.root.expr_resolve(inst_if)
-            print_debug(f"condition {condition}")
+            # print_debug(f"condition {condition}")
             self.gen_instances(condition, type(condition) is list)
 
             self.front.append(
@@ -1274,7 +1354,7 @@ class data_point():
         if inst_pos is not None:
             self.front.append(f'        local int64 temp_CONVERTER = FTell();{gen_marker()}')
             if inst_io is not None:
-                print_debug(inst_io)
+                # print_debug(inst_io)
                 start_of = self.root.expr_resolve(inst_io, translate_condition_2_c=True)
                 if start_of:
                     start_point = f'startof({start_of}) + '
@@ -1685,7 +1765,7 @@ class types(Converter):
             lencontent = ""
             size_param_needed = self.root.lookup_type(this_level_key, check_if_size_param_needed=True)
             custom_param = self.root.lookup_type(this_level_key, check_if_custom_param_needed=True)
-
+            # print_debug(f'{this_level_key}   {size_param_needed}  {custom_param}')
             if size_param_needed:
                 lenfield = "("
                 lencontent = "uint32 length_CONVERTER"
@@ -2024,7 +2104,7 @@ class Preprocessor():
         var_name = "^(?![0-9]+)(?!0b[0-9]+)[_a-zA-Z0-9]\w+"
         pattern_to_s = r"(?P<object>((?![0-9]+)(?!0b[0-9]+)[_a-zA-Z0-9]\w+\.)*)to_s"
         pattern_sizeof = r"(?P<object>((?![0-9]+)(?!0b[0-9]+)[_a-zA-Z0-9]\w+\.)*)_sizeof"
-        pattern_size = r"(?P<object>((?![0-9]+)(?!0b[0-9]+)[_a-zA-Z0-9]\w+\.)*)size"
+        pattern_size = r"(?P<object>((?![0-9]+)(?!0b[0-9]+)[_a-zA-Z0-9]\w+\.)+)size"
         pattern_bitstring = "(?P<bitstring>0b[01_]+)"
         # var_name=fr'[a-zA-Z0-9]+|\w+'
 
@@ -2121,7 +2201,8 @@ class Preprocessor():
                 match = re.match(pattern_size, word)
                 if match is not None:
                     object_ = match.group('object')
-                    words[index] = words[index].replace(f'{object_}size', f'sizeof({object_[:-1]})')
+                    lines[index_l] = lines[index_l].replace(f'{object_}size ', f'sizeof({object_[:-1]}) ')
+                    # words[index] = words[index].replace(f'{object_}size ', f'sizeof({object_[:-1]}) ')
 
                 # HANDLING 0b0000...
                 match = re.match(pattern_bitstring, word)
