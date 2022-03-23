@@ -14,7 +14,7 @@ imported = {}
 
 
 class Converter(object):
-    # TODO FIX MISSING INSTANCE PULL_UP FOR IMPORTED MAIN TYPES LIKE ETHERNET FRAME!!!!!!!!!!!!!!
+    # TODO CHECK IF DO WHILE ALWAYS WORKS IN CASE OF NO OBJECT GENERATED AT ALL
 
     def __init__(self, input_js, is_master=False, parent=None, root=None, name=None, preprocessor=None):
         self.enum_size = {}
@@ -363,7 +363,7 @@ class Converter(object):
         except:
             pass
         if input_str is None or input_str == "":
-            return None  # TODO u Sure?
+            return None
         condition_list = ["and", "or", "&&", "||", "==", ">", "<", "<=", ">="]
         for cond in condition_list:
             if input_str == cond:
@@ -437,7 +437,7 @@ class Converter(object):
                 return else_case_type
             else:
                 if then_case_type == "double" or else_case_type == "double":
-                    # print_debug(f"ERROR then_type {then_case_type} else_type {else_case_type}!!!")
+                    print_debug(f"ERROR then_type {then_case_type} else_type {else_case_type}!!!")
                     return "double"
             # print_debug(f"Parsing value with if {input_str}")
             # print_debug(f" IF {condition} THEN {then_case} ELSE {else_case} containing type {containing_type}")
@@ -450,7 +450,7 @@ class Converter(object):
         arithmetic_ops = ["\\", "+", "-", "*", "|", "&"]
         for op in arithmetic_ops:
             if op in input_str:
-                return "int"
+                return "int64"
 
         condition_list = [" and ", " or ", " && ", " || ", " == ", " > ", " < ", " <= ", " >= ", " >> ", " << "]
         for cond in condition_list:
@@ -474,7 +474,7 @@ class Converter(object):
             else:
                 # print_debug(f" SPACE SEPERATED TYPES missmatch {first_type} {second_type}")
                 if first_type == "double" or second_type == "double":
-                    # print_debug(f"ERROR first_type {first_type} second_type {second_type}!!!")
+                    print_debug(f"ERROR first_type {first_type} second_type {second_type}!!!")
                     return "double"
         can_conv_int = False
         can_conv_float = False
@@ -504,9 +504,6 @@ class Converter(object):
             else:
                 # print_debug(f'RETURNING DOUBLE {input_str}')
                 return "double"
-
-        print_debug(f'AAHHH couldnt infer type of {input_str} in {containing_type}')
-        return "uint32AAA"
 
     def find_type_off_id(self, id_name, containing_type, get_whole_type=False):
         id_name = id_name.strip()
@@ -1067,10 +1064,10 @@ class data_point():
                                                id_of_obj=self.id)
             # print_debug(condition)
             self.gen_instances(condition)
-            self.gen_atomic()
-            self.front.append("    while (!(" + condition + ")) {")
+            # self.gen_atomic()
+            self.front.append("    do{")
             self.gen_atomic(indents=2)
-            self.front.append("    }")
+            self.front.append("    }while (!(" + condition + ")); " + gen_marker())
             # TODO CHECK IF DONE
 
         elif "repeat-expr" in self.this_level_keys:
@@ -1126,10 +1123,12 @@ class data_point():
 
         if self.size_eos and not forwarding and "length_CONVERTER" == size:
 
-            self.front.append("    while(" + while_content + "){ //AC" + f"{gen_marker()}")
+            # self.front.append("    while(" + while_content + "){ //AC" + f"{gen_marker()}")
+            self.front.append("    do{")  # OPTION B
             # self.front.append("    while(FTell() < UNTIL_CONVERTER){")  # OPTION B
             self.gen_atomic(indents=2, forwarding=True)
-            self.front.append("    }")  # OPTION B
+            self.front.append("    }while(" + while_content + ");" + f"{gen_marker()}")
+            # self.front.append("    }")  # OPTION B
 
 
 
@@ -1243,15 +1242,20 @@ class data_point():
                     # print_debug(f'LENGTH_ADDON {length_addon} PARAM_ADDON {param_addon}')
                     length_addon = f'({length_addon}{param_addon})'
 
-                # print_debug(f'{self.type}|{length_addon}|{param_addon}|')
+                # print_debug(f'{self.type}|{length_addon}|{param_addon}|{self.size}')
                 if size and length_addon != "" and param_addon != "":
-                    self.front.append("    while(" + size + "){ //AD" + f"{gen_marker()}")
+                    self.front.append("    do{" + f"{gen_marker()}")
+                    # self.front.append("    while(" + size + "){ //AD" + f"{gen_marker()}")
 
                 # if length_addon
                 self.front.append(
                     prepend + str(self.type) + " " + str(self.id) + length_addon + f";{gen_marker()}" + loc_doc)
+                if self.size and self.root.input["types"][self.sanitize_type_name(self.type)] == {}:
+                    self.front.append(f'    FSkip({self.size});' + gen_marker())
+
                 if size and length_addon != "" and param_addon != "":
-                    self.front.append("        }")
+                    self.front.append("    }while(" + size + ")" + f"{gen_marker()}")
+                    # self.front.append("        }")
 
 
         elif self.size is not None:  # JUST BYTES
@@ -2201,7 +2205,8 @@ class Preprocessor():
                 match = re.match(pattern_size, word)
                 if match is not None:
                     object_ = match.group('object')
-                    lines[index_l] = lines[index_l].replace(f'{object_}size ', f'sizeof({object_[:-1]}) ')
+                    lines[index_l] = lines[index_l].replace(f'{object_}size ', f'{object_[:-1]}.array_size ')
+                    # lines[index_l] = lines[index_l].replace(f'{object_}size ', f'sizeof({object_[:-1]}) ')
                     # words[index] = words[index].replace(f'{object_}size ', f'sizeof({object_[:-1]}) ')
 
                 # HANDLING 0b0000...
