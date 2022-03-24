@@ -945,15 +945,17 @@ class PfpInterp(object):
                 classnode.args = AST.ParamList([])
             classnode.args.params.append(local)
         cpp += "\n\tunsigned char generated = 0;\n"
+        cpp += "\tstatic int _parent_id;\n"
+        cpp += "\tstatic int _index_start;\n"
         cpp += "\tint64 _startof = 0;\n"
         cpp += "\tstd::size_t _sizeof = 0;\n"
         cpp += "\t" + classname + "& operator () () { return *instances.back(); }\n"
         cpp += "\t" + classname + "& operator [] (int index) {\n"
-        cpp += "\t\tassert_cond((unsigned)index < instances.size(), \"instance index out of bounds\");\n"
-        cpp += "\t\treturn *instances[index];\n"
+        cpp += "\t\tassert_cond((unsigned)(_index_start + index) < instances.size(), \"instance index out of bounds\");\n"
+        cpp += "\t\treturn *instances[_index_start + index];\n"
         cpp += "\t}\n"
         cpp += "\tstd::size_t array_size() {\n"
-        cpp += "\t\treturn instances.size();\n"
+        cpp += "\t\treturn instances.size() - _index_start;\n"
         cpp += "\t}\n"
         cpp += "\t" + classname + "(std::vector<" + classname + "*>& instances) : instances(instances) { instances.push_back(this); }\n"
         cpp += "\t~" + classname + "() {\n"
@@ -990,6 +992,8 @@ class PfpInterp(object):
                 cpp += " " + param.name + ", "
             cpp = cpp[:-2]
         cpp += ");\n};\n\n"
+        cpp += "int " + classname + "::_parent_id = 0;\n"
+        cpp += "int " + classname + "::_index_start = 0;\n\n"
         self._cpp.append((classname, cpp))
         if classname in self._to_define:
             for field_name, node, is_var in self._to_define[classname]:
@@ -1044,7 +1048,12 @@ class PfpInterp(object):
         body += "\t}\n"
         body += "\tif (!generated)\n"
         body += "\t\tgenerated = 1;\n"
-        body += "\t_startof = FTell();\n\n"
+        body += "\t_startof = FTell();\n"
+        body += "\tif (_parent_id != ::g->_struct_id && !global_indexing_of_arrays) {\n"
+        body += "\t\t_index_start = instances.size() - 1;\n"
+        body += "\t}\n"
+        body += "\t_parent_id = ::g->_struct_id;\n"
+        body += "\t::g->_struct_id = ++::g->_struct_id_counter;\n\n"
         first = True
         for decl in classnode.decls:
             for local in self._struct_locals + params:
@@ -1061,7 +1070,8 @@ class PfpInterp(object):
         if "break;" in body and (classname[-7:] == "_struct" or not ("switch (" in body or "do {" in body or "while (" in body or "for (" in body)):
             body = "do {\n" + body + "} while (false);\n"
         cpp += body
-        cpp += "\n\t_sizeof = FTell() - _startof;\n"
+        cpp += "\n\t::g->_struct_id = _parent_id;\n"
+        cpp += "\t_sizeof = FTell() - _startof;\n"
         cpp += "\treturn this;\n"
         cpp += "}\n\n"
         self._generates_cpp += cpp
@@ -1692,7 +1702,7 @@ class PfpInterp(object):
         for (a, b) in self._integer_ranges:
             node.cpp += '{ ' + a + ', ' + b + ' }, '
         node.cpp = node.cpp[:-2] + " };"
-        node.cpp += "\n\nclass globals_class {\npublic:\n"
+        node.cpp += "\n\nclass globals_class {\npublic:\n\tint _struct_id = 0;\n\tint _struct_id_counter = 0;\n"
         for n, c in self._globals:
             #node.cpp += "/*" + n + "*/\n"
             if c:
@@ -3486,7 +3496,7 @@ class PfpInterp(object):
         if node.args:
             node.cpp += ", ".join([arg.cpp for arg in node.args.exprs])
         node.cpp += ")"
-        if node.name.name in ["SetEvilBit", "ChangeArrayLength", "EndChangeArrayLength", "IsParsing", "FTellBits"]:
+        if node.name.name in ["SetEvilBit", "ChangeArrayLength", "EndChangeArrayLength", "GlobalIndexingOfArrays", "IsParsing", "FTellBits"]:
             return
         self._locals_stack.append([])
         self._call_stack.append(True)

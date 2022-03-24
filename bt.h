@@ -505,6 +505,12 @@ void EndChangeArrayLength() {
 	change_array_length = false;
 }
 
+bool global_indexing_of_arrays = false;
+
+void GlobalIndexingOfArrays() {
+	global_indexing_of_arrays = true;
+}
+
 void BigEndian() { is_big_endian = true; }
 void LittleEndian() { is_big_endian = false; }
 int IsBigEndian() { return is_big_endian; }

@@ -151,12 +151,17 @@ public:
 	}
 
 	unsigned char generated = 0;
+	static int _parent_id;
+	static int _index_start;
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	PNG_SIGNATURE& operator () () { return *instances.back(); }
 	PNG_SIGNATURE& operator [] (int index) {
-		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return *instances[index];
+		assert_cond((unsigned)(_index_start + index) < instances.size(), "instance index out of bounds");
+		return *instances[_index_start + index];
+	}
+	std::size_t array_size() {
+		return instances.size() - _index_start;
 	}
 	PNG_SIGNATURE(std::vector<PNG_SIGNATURE*>& instances) : instances(instances) { instances.push_back(this); }
 	~PNG_SIGNATURE() {
@@ -171,6 +176,9 @@ public:
 	}
 	PNG_SIGNATURE* generate();
 };
+
+int PNG_SIGNATURE::_parent_id = 0;
+int PNG_SIGNATURE::_index_start = 0;
 
 
 
@@ -311,12 +319,17 @@ public:
 	}
 
 	unsigned char generated = 0;
+	static int _parent_id;
+	static int _index_start;
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	CTYPE& operator () () { return *instances.back(); }
 	CTYPE& operator [] (int index) {
-		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return *instances[index];
+		assert_cond((unsigned)(_index_start + index) < instances.size(), "instance index out of bounds");
+		return *instances[_index_start + index];
+	}
+	std::size_t array_size() {
+		return instances.size() - _index_start;
 	}
 	CTYPE(std::vector<CTYPE*>& instances) : instances(instances) { instances.push_back(this); }
 	~CTYPE() {
@@ -331,6 +344,9 @@ public:
 	}
 	CTYPE* generate();
 };
+
+int CTYPE::_parent_id = 0;
+int CTYPE::_index_start = 0;
 
 const std::vector<byte> color_types = { GrayScale, TrueColor, Indexed, AlphaGrayScale, AlphaTrueColor };
 
@@ -445,12 +461,17 @@ public:
 	}
 
 	unsigned char generated = 0;
+	static int _parent_id;
+	static int _index_start;
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	PNG_CHUNK_IHDR& operator () () { return *instances.back(); }
 	PNG_CHUNK_IHDR& operator [] (int index) {
-		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return *instances[index];
+		assert_cond((unsigned)(_index_start + index) < instances.size(), "instance index out of bounds");
+		return *instances[_index_start + index];
+	}
+	std::size_t array_size() {
+		return instances.size() - _index_start;
 	}
 	PNG_CHUNK_IHDR(std::vector<PNG_CHUNK_IHDR*>& instances) : instances(instances) { instances.push_back(this); }
 	~PNG_CHUNK_IHDR() {
@@ -465,6 +486,9 @@ public:
 	}
 	PNG_CHUNK_IHDR* generate();
 };
+
+int PNG_CHUNK_IHDR::_parent_id = 0;
+int PNG_CHUNK_IHDR::_index_start = 0;
 
 
 
@@ -511,12 +535,17 @@ public:
 	}
 
 	unsigned char generated = 0;
+	static int _parent_id;
+	static int _index_start;
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	PNG_CHUNK_TEXT& operator () () { return *instances.back(); }
 	PNG_CHUNK_TEXT& operator [] (int index) {
-		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return *instances[index];
+		assert_cond((unsigned)(_index_start + index) < instances.size(), "instance index out of bounds");
+		return *instances[_index_start + index];
+	}
+	std::size_t array_size() {
+		return instances.size() - _index_start;
 	}
 	PNG_CHUNK_TEXT(std::vector<PNG_CHUNK_TEXT*>& instances) : instances(instances) { instances.push_back(this); }
 	~PNG_CHUNK_TEXT() {
@@ -531,6 +560,9 @@ public:
 	}
 	PNG_CHUNK_TEXT* generate();
 };
+
+int PNG_CHUNK_TEXT::_parent_id = 0;
+int PNG_CHUNK_TEXT::_index_start = 0;
 
 
 
@@ -589,12 +621,17 @@ public:
 	}
 
 	unsigned char generated = 0;
+	static int _parent_id;
+	static int _index_start;
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	PNG_PALETTE_PIXEL& operator () () { return *instances.back(); }
 	PNG_PALETTE_PIXEL& operator [] (int index) {
-		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return *instances[index];
+		assert_cond((unsigned)(_index_start + index) < instances.size(), "instance index out of bounds");
+		return *instances[_index_start + index];
+	}
+	std::size_t array_size() {
+		return instances.size() - _index_start;
 	}
 	PNG_PALETTE_PIXEL(std::vector<PNG_PALETTE_PIXEL*>& instances) : instances(instances) { instances.push_back(this); }
 	~PNG_PALETTE_PIXEL() {
@@ -609,6 +646,9 @@ public:
 	}
 	PNG_PALETTE_PIXEL* generate();
 };
+
+int PNG_PALETTE_PIXEL::_parent_id = 0;
+int PNG_PALETTE_PIXEL::_index_start = 0;
 
 
 
@@ -653,12 +693,17 @@ public:
 	}
 
 	unsigned char generated = 0;
+	static int _parent_id;
+	static int _index_start;
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	PNG_CHUNK_PLTE& operator () () { return *instances.back(); }
 	PNG_CHUNK_PLTE& operator [] (int index) {
-		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return *instances[index];
+		assert_cond((unsigned)(_index_start + index) < instances.size(), "instance index out of bounds");
+		return *instances[_index_start + index];
+	}
+	std::size_t array_size() {
+		return instances.size() - _index_start;
 	}
 	PNG_CHUNK_PLTE(std::vector<PNG_CHUNK_PLTE*>& instances) : instances(instances) { instances.push_back(this); }
 	~PNG_CHUNK_PLTE() {
@@ -673,6 +718,9 @@ public:
 	}
 	PNG_CHUNK_PLTE* generate(int32 chunkLen);
 };
+
+int PNG_CHUNK_PLTE::_parent_id = 0;
+int PNG_CHUNK_PLTE::_index_start = 0;
 
 
 
@@ -696,12 +744,17 @@ public:
 	}
 
 	unsigned char generated = 0;
+	static int _parent_id;
+	static int _index_start;
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	PNG_POINT& operator () () { return *instances.back(); }
 	PNG_POINT& operator [] (int index) {
-		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return *instances[index];
+		assert_cond((unsigned)(_index_start + index) < instances.size(), "instance index out of bounds");
+		return *instances[_index_start + index];
+	}
+	std::size_t array_size() {
+		return instances.size() - _index_start;
 	}
 	PNG_POINT(std::vector<PNG_POINT*>& instances) : instances(instances) { instances.push_back(this); }
 	~PNG_POINT() {
@@ -716,6 +769,9 @@ public:
 	}
 	PNG_POINT* generate();
 };
+
+int PNG_POINT::_parent_id = 0;
+int PNG_POINT::_index_start = 0;
 
 
 
@@ -751,12 +807,17 @@ public:
 	}
 
 	unsigned char generated = 0;
+	static int _parent_id;
+	static int _index_start;
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	PNG_CHUNK_CHRM& operator () () { return *instances.back(); }
 	PNG_CHUNK_CHRM& operator [] (int index) {
-		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return *instances[index];
+		assert_cond((unsigned)(_index_start + index) < instances.size(), "instance index out of bounds");
+		return *instances[_index_start + index];
+	}
+	std::size_t array_size() {
+		return instances.size() - _index_start;
 	}
 	PNG_CHUNK_CHRM(std::vector<PNG_CHUNK_CHRM*>& instances) : instances(instances) { instances.push_back(this); }
 	~PNG_CHUNK_CHRM() {
@@ -771,6 +832,9 @@ public:
 	}
 	PNG_CHUNK_CHRM* generate();
 };
+
+int PNG_CHUNK_CHRM::_parent_id = 0;
+int PNG_CHUNK_CHRM::_index_start = 0;
 
 
 PNG_SRGB_CHUNK_DATA PNG_SRGB_CHUNK_DATA_generate() {
@@ -796,12 +860,17 @@ public:
 	}
 
 	unsigned char generated = 0;
+	static int _parent_id;
+	static int _index_start;
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	PNG_CHUNK_SRGB& operator () () { return *instances.back(); }
 	PNG_CHUNK_SRGB& operator [] (int index) {
-		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return *instances[index];
+		assert_cond((unsigned)(_index_start + index) < instances.size(), "instance index out of bounds");
+		return *instances[_index_start + index];
+	}
+	std::size_t array_size() {
+		return instances.size() - _index_start;
 	}
 	PNG_CHUNK_SRGB(std::vector<PNG_CHUNK_SRGB*>& instances) : instances(instances) { instances.push_back(this); }
 	~PNG_CHUNK_SRGB() {
@@ -816,6 +885,9 @@ public:
 	}
 	PNG_CHUNK_SRGB* generate();
 };
+
+int PNG_CHUNK_SRGB::_parent_id = 0;
+int PNG_CHUNK_SRGB::_index_start = 0;
 
 
 
@@ -863,12 +935,17 @@ public:
 	}
 
 	unsigned char generated = 0;
+	static int _parent_id;
+	static int _index_start;
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	PNG_CHUNK_ITXT& operator () () { return *instances.back(); }
 	PNG_CHUNK_ITXT& operator [] (int index) {
-		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return *instances[index];
+		assert_cond((unsigned)(_index_start + index) < instances.size(), "instance index out of bounds");
+		return *instances[_index_start + index];
+	}
+	std::size_t array_size() {
+		return instances.size() - _index_start;
 	}
 	PNG_CHUNK_ITXT(std::vector<PNG_CHUNK_ITXT*>& instances) : instances(instances) { instances.push_back(this); }
 	~PNG_CHUNK_ITXT() {
@@ -883,6 +960,9 @@ public:
 	}
 	PNG_CHUNK_ITXT* generate(int32 chunkLen);
 };
+
+int PNG_CHUNK_ITXT::_parent_id = 0;
+int PNG_CHUNK_ITXT::_index_start = 0;
 
 
 
@@ -912,12 +992,17 @@ public:
 	}
 
 	unsigned char generated = 0;
+	static int _parent_id;
+	static int _index_start;
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	PNG_CHUNK_ZTXT& operator () () { return *instances.back(); }
 	PNG_CHUNK_ZTXT& operator [] (int index) {
-		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return *instances[index];
+		assert_cond((unsigned)(_index_start + index) < instances.size(), "instance index out of bounds");
+		return *instances[_index_start + index];
+	}
+	std::size_t array_size() {
+		return instances.size() - _index_start;
 	}
 	PNG_CHUNK_ZTXT(std::vector<PNG_CHUNK_ZTXT*>& instances) : instances(instances) { instances.push_back(this); }
 	~PNG_CHUNK_ZTXT() {
@@ -932,6 +1017,9 @@ public:
 	}
 	PNG_CHUNK_ZTXT* generate(int32 chunkLen);
 };
+
+int PNG_CHUNK_ZTXT::_parent_id = 0;
+int PNG_CHUNK_ZTXT::_index_start = 0;
 
 
 
@@ -1008,12 +1096,17 @@ public:
 	}
 
 	unsigned char generated = 0;
+	static int _parent_id;
+	static int _index_start;
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	PNG_CHUNK_TIME& operator () () { return *instances.back(); }
 	PNG_CHUNK_TIME& operator [] (int index) {
-		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return *instances[index];
+		assert_cond((unsigned)(_index_start + index) < instances.size(), "instance index out of bounds");
+		return *instances[_index_start + index];
+	}
+	std::size_t array_size() {
+		return instances.size() - _index_start;
 	}
 	PNG_CHUNK_TIME(std::vector<PNG_CHUNK_TIME*>& instances) : instances(instances) { instances.push_back(this); }
 	~PNG_CHUNK_TIME() {
@@ -1028,6 +1121,9 @@ public:
 	}
 	PNG_CHUNK_TIME* generate();
 };
+
+int PNG_CHUNK_TIME::_parent_id = 0;
+int PNG_CHUNK_TIME::_index_start = 0;
 
 
 
@@ -1100,12 +1196,17 @@ public:
 	}
 
 	unsigned char generated = 0;
+	static int _parent_id;
+	static int _index_start;
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	PNG_CHUNK_PHYS& operator () () { return *instances.back(); }
 	PNG_CHUNK_PHYS& operator [] (int index) {
-		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return *instances[index];
+		assert_cond((unsigned)(_index_start + index) < instances.size(), "instance index out of bounds");
+		return *instances[_index_start + index];
+	}
+	std::size_t array_size() {
+		return instances.size() - _index_start;
 	}
 	PNG_CHUNK_PHYS(std::vector<PNG_CHUNK_PHYS*>& instances) : instances(instances) { instances.push_back(this); }
 	~PNG_CHUNK_PHYS() {
@@ -1120,6 +1221,9 @@ public:
 	}
 	PNG_CHUNK_PHYS* generate();
 };
+
+int PNG_CHUNK_PHYS::_parent_id = 0;
+int PNG_CHUNK_PHYS::_index_start = 0;
 
 
 
@@ -1161,12 +1265,17 @@ public:
 	}
 
 	unsigned char generated = 0;
+	static int _parent_id;
+	static int _index_start;
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	PNG_CHUNK_BKGD& operator () () { return *instances.back(); }
 	PNG_CHUNK_BKGD& operator [] (int index) {
-		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return *instances[index];
+		assert_cond((unsigned)(_index_start + index) < instances.size(), "instance index out of bounds");
+		return *instances[_index_start + index];
+	}
+	std::size_t array_size() {
+		return instances.size() - _index_start;
 	}
 	PNG_CHUNK_BKGD(std::vector<PNG_CHUNK_BKGD*>& instances) : instances(instances) { instances.push_back(this); }
 	~PNG_CHUNK_BKGD() {
@@ -1181,6 +1290,9 @@ public:
 	}
 	PNG_CHUNK_BKGD* generate(int32 colorType);
 };
+
+int PNG_CHUNK_BKGD::_parent_id = 0;
+int PNG_CHUNK_BKGD::_index_start = 0;
 
 
 
@@ -1270,12 +1382,17 @@ public:
 	}
 
 	unsigned char generated = 0;
+	static int _parent_id;
+	static int _index_start;
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	PNG_CHUNK_SBIT& operator () () { return *instances.back(); }
 	PNG_CHUNK_SBIT& operator [] (int index) {
-		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return *instances[index];
+		assert_cond((unsigned)(_index_start + index) < instances.size(), "instance index out of bounds");
+		return *instances[_index_start + index];
+	}
+	std::size_t array_size() {
+		return instances.size() - _index_start;
 	}
 	PNG_CHUNK_SBIT(std::vector<PNG_CHUNK_SBIT*>& instances) : instances(instances) { instances.push_back(this); }
 	~PNG_CHUNK_SBIT() {
@@ -1290,6 +1407,9 @@ public:
 	}
 	PNG_CHUNK_SBIT* generate(int32 colorType);
 };
+
+int PNG_CHUNK_SBIT::_parent_id = 0;
+int PNG_CHUNK_SBIT::_index_start = 0;
 
 
 
@@ -1354,12 +1474,17 @@ public:
 	}
 
 	unsigned char generated = 0;
+	static int _parent_id;
+	static int _index_start;
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	PNG_CHUNK_SPLT& operator () () { return *instances.back(); }
 	PNG_CHUNK_SPLT& operator [] (int index) {
-		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return *instances[index];
+		assert_cond((unsigned)(_index_start + index) < instances.size(), "instance index out of bounds");
+		return *instances[_index_start + index];
+	}
+	std::size_t array_size() {
+		return instances.size() - _index_start;
 	}
 	PNG_CHUNK_SPLT(std::vector<PNG_CHUNK_SPLT*>& instances) : instances(instances) { instances.push_back(this); }
 	~PNG_CHUNK_SPLT() {
@@ -1374,6 +1499,9 @@ public:
 	}
 	PNG_CHUNK_SPLT* generate(int32 chunkLen);
 };
+
+int PNG_CHUNK_SPLT::_parent_id = 0;
+int PNG_CHUNK_SPLT::_index_start = 0;
 
 
 
@@ -1397,12 +1525,17 @@ public:
 	}
 
 	unsigned char generated = 0;
+	static int _parent_id;
+	static int _index_start;
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	PNG_CHUNK_ACTL& operator () () { return *instances.back(); }
 	PNG_CHUNK_ACTL& operator [] (int index) {
-		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return *instances[index];
+		assert_cond((unsigned)(_index_start + index) < instances.size(), "instance index out of bounds");
+		return *instances[_index_start + index];
+	}
+	std::size_t array_size() {
+		return instances.size() - _index_start;
 	}
 	PNG_CHUNK_ACTL(std::vector<PNG_CHUNK_ACTL*>& instances) : instances(instances) { instances.push_back(this); }
 	~PNG_CHUNK_ACTL() {
@@ -1417,6 +1550,9 @@ public:
 	}
 	PNG_CHUNK_ACTL* generate();
 };
+
+int PNG_CHUNK_ACTL::_parent_id = 0;
+int PNG_CHUNK_ACTL::_index_start = 0;
 
 
 APNG_DISPOSE_OP APNG_DISPOSE_OP_generate() {
@@ -1498,12 +1634,17 @@ public:
 	}
 
 	unsigned char generated = 0;
+	static int _parent_id;
+	static int _index_start;
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	PNG_CHUNK_FCTL& operator () () { return *instances.back(); }
 	PNG_CHUNK_FCTL& operator [] (int index) {
-		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return *instances[index];
+		assert_cond((unsigned)(_index_start + index) < instances.size(), "instance index out of bounds");
+		return *instances[_index_start + index];
+	}
+	std::size_t array_size() {
+		return instances.size() - _index_start;
 	}
 	PNG_CHUNK_FCTL(std::vector<PNG_CHUNK_FCTL*>& instances) : instances(instances) { instances.push_back(this); }
 	~PNG_CHUNK_FCTL() {
@@ -1518,6 +1659,9 @@ public:
 	}
 	PNG_CHUNK_FCTL* generate();
 };
+
+int PNG_CHUNK_FCTL::_parent_id = 0;
+int PNG_CHUNK_FCTL::_index_start = 0;
 
 
 
@@ -1576,12 +1720,17 @@ public:
 	}
 
 	unsigned char generated = 0;
+	static int _parent_id;
+	static int _index_start;
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	PNG_CHUNK_FDAT& operator () () { return *instances.back(); }
 	PNG_CHUNK_FDAT& operator [] (int index) {
-		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return *instances[index];
+		assert_cond((unsigned)(_index_start + index) < instances.size(), "instance index out of bounds");
+		return *instances[_index_start + index];
+	}
+	std::size_t array_size() {
+		return instances.size() - _index_start;
 	}
 	PNG_CHUNK_FDAT(std::vector<PNG_CHUNK_FDAT*>& instances) : instances(instances) { instances.push_back(this); }
 	~PNG_CHUNK_FDAT() {
@@ -1596,6 +1745,9 @@ public:
 	}
 	PNG_CHUNK_FDAT* generate();
 };
+
+int PNG_CHUNK_FDAT::_parent_id = 0;
+int PNG_CHUNK_FDAT::_index_start = 0;
 
 
 
@@ -1736,12 +1888,17 @@ public:
 	std::string msg;
 
 	unsigned char generated = 0;
+	static int _parent_id;
+	static int _index_start;
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	PNG_CHUNK& operator () () { return *instances.back(); }
 	PNG_CHUNK& operator [] (int index) {
-		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return *instances[index];
+		assert_cond((unsigned)(_index_start + index) < instances.size(), "instance index out of bounds");
+		return *instances[_index_start + index];
+	}
+	std::size_t array_size() {
+		return instances.size() - _index_start;
 	}
 	PNG_CHUNK(std::vector<PNG_CHUNK*>& instances) : instances(instances) { instances.push_back(this); }
 	~PNG_CHUNK() {
@@ -1756,6 +1913,9 @@ public:
 	}
 	PNG_CHUNK* generate();
 };
+
+int PNG_CHUNK::_parent_id = 0;
+int PNG_CHUNK::_index_start = 0;
 
 std::vector<byte> ReadByteInitValues;
 std::vector<ubyte> ReadUByteInitValues;
@@ -1804,6 +1964,8 @@ std::vector<std::vector<int>> integer_ranges = { { 1, 16 }, { 1, 24 }, { 1, 24 }
 
 class globals_class {
 public:
+	int _struct_id = 0;
+	int _struct_id_counter = 0;
 	/*local*/ uint32 sec_num;
 	/*local*/ uint32 CHUNK_CNT;
 	/*local*/ int evil;
@@ -2013,9 +2175,15 @@ PNG_SIGNATURE* PNG_SIGNATURE::generate() {
 	if (!generated)
 		generated = 1;
 	_startof = FTell();
+	if (_parent_id != ::g->_struct_id && !global_indexing_of_arrays) {
+		_index_start = instances.size() - 1;
+	}
+	_parent_id = ::g->_struct_id;
+	::g->_struct_id = ++::g->_struct_id_counter;
 
 	GENERATE_VAR(btPngSignature, ::g->btPngSignature.generate(4));
 
+	::g->_struct_id = _parent_id;
 	_sizeof = FTell() - _startof;
 	return this;
 }
@@ -2030,10 +2198,16 @@ CTYPE* CTYPE::generate() {
 	if (!generated)
 		generated = 1;
 	_startof = FTell();
+	if (_parent_id != ::g->_struct_id && !global_indexing_of_arrays) {
+		_index_start = instances.size() - 1;
+	}
+	_parent_id = ::g->_struct_id;
+	::g->_struct_id = ++::g->_struct_id_counter;
 
 	GENERATE_VAR(cname, ::g->cname.generate(4));
 	GENERATE_EXISTS(ctype, ::g->ctype.generate());
 
+	::g->_struct_id = _parent_id;
 	_sizeof = FTell() - _startof;
 	return this;
 }
@@ -2048,6 +2222,11 @@ PNG_CHUNK_IHDR* PNG_CHUNK_IHDR::generate() {
 	if (!generated)
 		generated = 1;
 	_startof = FTell();
+	if (_parent_id != ::g->_struct_id && !global_indexing_of_arrays) {
+		_index_start = instances.size() - 1;
+	}
+	_parent_id = ::g->_struct_id;
+	::g->_struct_id = ++::g->_struct_id_counter;
 
 	GENERATE_VAR(width, ::g->width.generate());
 	GENERATE_VAR(height, ::g->height.generate());
@@ -2076,6 +2255,7 @@ PNG_CHUNK_IHDR* PNG_CHUNK_IHDR::generate() {
 	GENERATE_VAR(filter_method, PNG_FILTER_METHOD_generate());
 	GENERATE_VAR(interlace_method, PNG_INTERLACE_METHOD_generate());
 
+	::g->_struct_id = _parent_id;
 	_sizeof = FTell() - _startof;
 	return this;
 }
@@ -2090,10 +2270,16 @@ PNG_CHUNK_TEXT* PNG_CHUNK_TEXT::generate() {
 	if (!generated)
 		generated = 1;
 	_startof = FTell();
+	if (_parent_id != ::g->_struct_id && !global_indexing_of_arrays) {
+		_index_start = instances.size() - 1;
+	}
+	_parent_id = ::g->_struct_id;
+	::g->_struct_id = ++::g->_struct_id_counter;
 
 	GENERATE_VAR(label, ::g->label.generate());
 	GENERATE_VAR(data, ::g->data.generate(((::g->length() - Strlen(label())) - 1)));
 
+	::g->_struct_id = _parent_id;
 	_sizeof = FTell() - _startof;
 	return this;
 }
@@ -2108,11 +2294,17 @@ PNG_PALETTE_PIXEL* PNG_PALETTE_PIXEL::generate() {
 	if (!generated)
 		generated = 1;
 	_startof = FTell();
+	if (_parent_id != ::g->_struct_id && !global_indexing_of_arrays) {
+		_index_start = instances.size() - 1;
+	}
+	_parent_id = ::g->_struct_id;
+	::g->_struct_id = ++::g->_struct_id_counter;
 
 	GENERATE_VAR(btRed, ::g->btRed.generate());
 	GENERATE_VAR(btGreen, ::g->btGreen.generate());
 	GENERATE_VAR(btBlue, ::g->btBlue.generate());
 
+	::g->_struct_id = _parent_id;
 	_sizeof = FTell() - _startof;
 	return this;
 }
@@ -2127,9 +2319,15 @@ PNG_CHUNK_PLTE* PNG_CHUNK_PLTE::generate(int32 chunkLen) {
 	if (!generated)
 		generated = 1;
 	_startof = FTell();
+	if (_parent_id != ::g->_struct_id && !global_indexing_of_arrays) {
+		_index_start = instances.size() - 1;
+	}
+	_parent_id = ::g->_struct_id;
+	::g->_struct_id = ++::g->_struct_id_counter;
 
 	GENERATE_VAR(plteChunkData, ::g->plteChunkData.generate((chunkLen / 3)));
 
+	::g->_struct_id = _parent_id;
 	_sizeof = FTell() - _startof;
 	return this;
 }
@@ -2144,10 +2342,16 @@ PNG_POINT* PNG_POINT::generate() {
 	if (!generated)
 		generated = 1;
 	_startof = FTell();
+	if (_parent_id != ::g->_struct_id && !global_indexing_of_arrays) {
+		_index_start = instances.size() - 1;
+	}
+	_parent_id = ::g->_struct_id;
+	::g->_struct_id = ++::g->_struct_id_counter;
 
 	GENERATE_VAR(x, ::g->x.generate());
 	GENERATE_VAR(y, ::g->y.generate());
 
+	::g->_struct_id = _parent_id;
 	_sizeof = FTell() - _startof;
 	return this;
 }
@@ -2162,12 +2366,18 @@ PNG_CHUNK_CHRM* PNG_CHUNK_CHRM::generate() {
 	if (!generated)
 		generated = 1;
 	_startof = FTell();
+	if (_parent_id != ::g->_struct_id && !global_indexing_of_arrays) {
+		_index_start = instances.size() - 1;
+	}
+	_parent_id = ::g->_struct_id;
+	::g->_struct_id = ++::g->_struct_id_counter;
 
 	GENERATE_VAR(white, ::g->white.generate());
 	GENERATE_VAR(red, ::g->red.generate());
 	GENERATE_VAR(green, ::g->green.generate());
 	GENERATE_VAR(blue, ::g->blue.generate());
 
+	::g->_struct_id = _parent_id;
 	_sizeof = FTell() - _startof;
 	return this;
 }
@@ -2182,9 +2392,15 @@ PNG_CHUNK_SRGB* PNG_CHUNK_SRGB::generate() {
 	if (!generated)
 		generated = 1;
 	_startof = FTell();
+	if (_parent_id != ::g->_struct_id && !global_indexing_of_arrays) {
+		_index_start = instances.size() - 1;
+	}
+	_parent_id = ::g->_struct_id;
+	::g->_struct_id = ++::g->_struct_id_counter;
 
 	GENERATE_VAR(srgbChunkData, PNG_SRGB_CHUNK_DATA_generate());
 
+	::g->_struct_id = _parent_id;
 	_sizeof = FTell() - _startof;
 	return this;
 }
@@ -2199,6 +2415,11 @@ PNG_CHUNK_ITXT* PNG_CHUNK_ITXT::generate(int32 chunkLen) {
 	if (!generated)
 		generated = 1;
 	_startof = FTell();
+	if (_parent_id != ::g->_struct_id && !global_indexing_of_arrays) {
+		_index_start = instances.size() - 1;
+	}
+	_parent_id = ::g->_struct_id;
+	::g->_struct_id = ++::g->_struct_id_counter;
 
 	GENERATE_VAR(itxtIdChunkData, ::g->itxtIdChunkData.generate());
 	GENERATE_VAR(itxtCompressionFlag, ::g->itxtCompressionFlag.generate());
@@ -2207,6 +2428,7 @@ PNG_CHUNK_ITXT* PNG_CHUNK_ITXT::generate(int32 chunkLen) {
 	GENERATE_VAR(itxtTranslatedKeyword, ::g->itxtTranslatedKeyword.generate());
 	GENERATE_VAR(itxtValChunkData, ::g->itxtValChunkData.generate((((((((chunkLen - Strlen(itxtIdChunkData())) - 1) - Strlen(itxtLanguageTag())) - 1) - Strlen(itxtTranslatedKeyword())) - 1) - 2)));
 
+	::g->_struct_id = _parent_id;
 	_sizeof = FTell() - _startof;
 	return this;
 }
@@ -2221,11 +2443,17 @@ PNG_CHUNK_ZTXT* PNG_CHUNK_ZTXT::generate(int32 chunkLen) {
 	if (!generated)
 		generated = 1;
 	_startof = FTell();
+	if (_parent_id != ::g->_struct_id && !global_indexing_of_arrays) {
+		_index_start = instances.size() - 1;
+	}
+	_parent_id = ::g->_struct_id;
+	::g->_struct_id = ++::g->_struct_id_counter;
 
 	GENERATE_VAR(ztxtIdChunkData, ::g->ztxtIdChunkData.generate());
 	GENERATE_VAR(comprMethod, PNG_COMPR_METHOD_generate());
 	GENERATE_VAR(ztxtValChunkData, ::g->ztxtValChunkData.generate(((chunkLen - Strlen(ztxtIdChunkData())) - 2)));
 
+	::g->_struct_id = _parent_id;
 	_sizeof = FTell() - _startof;
 	return this;
 }
@@ -2240,6 +2468,11 @@ PNG_CHUNK_TIME* PNG_CHUNK_TIME::generate() {
 	if (!generated)
 		generated = 1;
 	_startof = FTell();
+	if (_parent_id != ::g->_struct_id && !global_indexing_of_arrays) {
+		_index_start = instances.size() - 1;
+	}
+	_parent_id = ::g->_struct_id;
+	::g->_struct_id = ++::g->_struct_id_counter;
 
 	GENERATE_VAR(timeYear, ::g->timeYear.generate());
 	GENERATE_VAR(timeMonth, ::g->timeMonth.generate());
@@ -2248,6 +2481,7 @@ PNG_CHUNK_TIME* PNG_CHUNK_TIME::generate() {
 	GENERATE_VAR(timeMin, ::g->timeMin.generate());
 	GENERATE_VAR(timeSec, ::g->timeSec.generate());
 
+	::g->_struct_id = _parent_id;
 	_sizeof = FTell() - _startof;
 	return this;
 }
@@ -2262,11 +2496,17 @@ PNG_CHUNK_PHYS* PNG_CHUNK_PHYS::generate() {
 	if (!generated)
 		generated = 1;
 	_startof = FTell();
+	if (_parent_id != ::g->_struct_id && !global_indexing_of_arrays) {
+		_index_start = instances.size() - 1;
+	}
+	_parent_id = ::g->_struct_id;
+	::g->_struct_id = ++::g->_struct_id_counter;
 
 	GENERATE_VAR(physPixelPerUnitX, ::g->physPixelPerUnitX.generate());
 	GENERATE_VAR(physPixelPerUnitY, ::g->physPixelPerUnitY.generate());
 	GENERATE_VAR(physUnitSpec, physUnitSpec_enum_generate());
 
+	::g->_struct_id = _parent_id;
 	_sizeof = FTell() - _startof;
 	return this;
 }
@@ -2281,6 +2521,11 @@ PNG_CHUNK_BKGD* PNG_CHUNK_BKGD::generate(int32 colorType) {
 	if (!generated)
 		generated = 1;
 	_startof = FTell();
+	if (_parent_id != ::g->_struct_id && !global_indexing_of_arrays) {
+		_index_start = instances.size() - 1;
+	}
+	_parent_id = ::g->_struct_id;
+	::g->_struct_id = ++::g->_struct_id_counter;
 
 	switch (colorType) {
 	case 3:
@@ -2301,6 +2546,7 @@ PNG_CHUNK_BKGD* PNG_CHUNK_BKGD::generate(int32 colorType) {
 		exit_template(-4);
 	};
 
+	::g->_struct_id = _parent_id;
 	_sizeof = FTell() - _startof;
 	return this;
 }
@@ -2315,6 +2561,11 @@ PNG_CHUNK_SBIT* PNG_CHUNK_SBIT::generate(int32 colorType) {
 	if (!generated)
 		generated = 1;
 	_startof = FTell();
+	if (_parent_id != ::g->_struct_id && !global_indexing_of_arrays) {
+		_index_start = instances.size() - 1;
+	}
+	_parent_id = ::g->_struct_id;
+	::g->_struct_id = ++::g->_struct_id_counter;
 
 	switch (colorType) {
 	case 3:
@@ -2345,6 +2596,7 @@ PNG_CHUNK_SBIT* PNG_CHUNK_SBIT::generate(int32 colorType) {
 		exit_template(-4);
 	};
 
+	::g->_struct_id = _parent_id;
 	_sizeof = FTell() - _startof;
 	return this;
 }
@@ -2359,11 +2611,17 @@ PNG_CHUNK_SPLT* PNG_CHUNK_SPLT::generate(int32 chunkLen) {
 	if (!generated)
 		generated = 1;
 	_startof = FTell();
+	if (_parent_id != ::g->_struct_id && !global_indexing_of_arrays) {
+		_index_start = instances.size() - 1;
+	}
+	_parent_id = ::g->_struct_id;
+	::g->_struct_id = ++::g->_struct_id_counter;
 
 	GENERATE_VAR(paletteName, ::g->paletteName.generate());
 	GENERATE_VAR(sampleDepth, ::g->sampleDepth.generate());
 	GENERATE_VAR(spltData, ::g->spltData.generate(((chunkLen - Strlen(paletteName())) - 2)));
 
+	::g->_struct_id = _parent_id;
 	_sizeof = FTell() - _startof;
 	return this;
 }
@@ -2378,10 +2636,16 @@ PNG_CHUNK_ACTL* PNG_CHUNK_ACTL::generate() {
 	if (!generated)
 		generated = 1;
 	_startof = FTell();
+	if (_parent_id != ::g->_struct_id && !global_indexing_of_arrays) {
+		_index_start = instances.size() - 1;
+	}
+	_parent_id = ::g->_struct_id;
+	::g->_struct_id = ++::g->_struct_id_counter;
 
 	GENERATE_VAR(num_frames, ::g->num_frames.generate());
 	GENERATE_VAR(num_plays, ::g->num_plays.generate());
 
+	::g->_struct_id = _parent_id;
 	_sizeof = FTell() - _startof;
 	return this;
 }
@@ -2396,6 +2660,11 @@ PNG_CHUNK_FCTL* PNG_CHUNK_FCTL::generate() {
 	if (!generated)
 		generated = 1;
 	_startof = FTell();
+	if (_parent_id != ::g->_struct_id && !global_indexing_of_arrays) {
+		_index_start = instances.size() - 1;
+	}
+	_parent_id = ::g->_struct_id;
+	::g->_struct_id = ++::g->_struct_id_counter;
 
 	GENERATE_VAR(sequence_number, ::g->sequence_number.generate({ ::g->sec_num++ }));
 	GENERATE_VAR(width, ::g->width.generate());
@@ -2407,6 +2676,7 @@ PNG_CHUNK_FCTL* PNG_CHUNK_FCTL::generate() {
 	GENERATE_VAR(dispose_op, APNG_DISPOSE_OP_generate());
 	GENERATE_VAR(blend_op, APNG_BLEND_OP_generate());
 
+	::g->_struct_id = _parent_id;
 	_sizeof = FTell() - _startof;
 	return this;
 }
@@ -2421,10 +2691,16 @@ PNG_CHUNK_FDAT* PNG_CHUNK_FDAT::generate() {
 	if (!generated)
 		generated = 1;
 	_startof = FTell();
+	if (_parent_id != ::g->_struct_id && !global_indexing_of_arrays) {
+		_index_start = instances.size() - 1;
+	}
+	_parent_id = ::g->_struct_id;
+	::g->_struct_id = ++::g->_struct_id_counter;
 
 	GENERATE_VAR(sequence_number, ::g->sequence_number.generate({ ::g->sec_num++ }));
 	GENERATE_VAR(frame_data, ::g->frame_data.generate((::g->length() - 4)));
 
+	::g->_struct_id = _parent_id;
 	_sizeof = FTell() - _startof;
 	return this;
 }
@@ -2599,6 +2875,11 @@ PNG_CHUNK* PNG_CHUNK::generate() {
 	if (!generated)
 		generated = 1;
 	_startof = FTell();
+	if (_parent_id != ::g->_struct_id && !global_indexing_of_arrays) {
+		_index_start = instances.size() - 1;
+	}
+	_parent_id = ::g->_struct_id;
+	::g->_struct_id = ++::g->_struct_id_counter;
 
 	GENERATE_VAR(length, ::g->length.generate());
 	pos_start = FTell();
@@ -2697,6 +2978,7 @@ PNG_CHUNK* PNG_CHUNK::generate() {
 		GENERATE_VAR(pad, ::g->pad.generate());
 	};
 
+	::g->_struct_id = _parent_id;
 	_sizeof = FTell() - _startof;
 	return this;
 }
