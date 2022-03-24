@@ -115,12 +115,17 @@ public:
 	int evil;
 
 	unsigned char generated = 0;
+	static int _parent_id;
+	static int _index_start;
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	GIFHEADER& operator () () { return *instances.back(); }
 	GIFHEADER& operator [] (int index) {
-		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return *instances[index];
+		assert_cond((unsigned)(_index_start + index) < instances.size(), "instance index out of bounds");
+		return *instances[_index_start + index];
+	}
+	std::size_t array_size() {
+		return instances.size() - _index_start;
 	}
 	GIFHEADER(std::vector<GIFHEADER*>& instances) : instances(instances) { instances.push_back(this); }
 	~GIFHEADER() {
@@ -135,6 +140,9 @@ public:
 	}
 	GIFHEADER* generate();
 };
+
+int GIFHEADER::_parent_id = 0;
+int GIFHEADER::_index_start = 0;
 
 
 
@@ -228,12 +236,17 @@ public:
 	}
 
 	unsigned char generated = 0;
+	static int _parent_id;
+	static int _index_start;
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	LOGICALSCREENDESCRIPTOR_PACKEDFIELDS& operator () () { return *instances.back(); }
 	LOGICALSCREENDESCRIPTOR_PACKEDFIELDS& operator [] (int index) {
-		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return *instances[index];
+		assert_cond((unsigned)(_index_start + index) < instances.size(), "instance index out of bounds");
+		return *instances[_index_start + index];
+	}
+	std::size_t array_size() {
+		return instances.size() - _index_start;
 	}
 	LOGICALSCREENDESCRIPTOR_PACKEDFIELDS(std::vector<LOGICALSCREENDESCRIPTOR_PACKEDFIELDS*>& instances) : instances(instances) { instances.push_back(this); }
 	~LOGICALSCREENDESCRIPTOR_PACKEDFIELDS() {
@@ -248,6 +261,9 @@ public:
 	}
 	LOGICALSCREENDESCRIPTOR_PACKEDFIELDS* generate();
 };
+
+int LOGICALSCREENDESCRIPTOR_PACKEDFIELDS::_parent_id = 0;
+int LOGICALSCREENDESCRIPTOR_PACKEDFIELDS::_index_start = 0;
 
 
 
@@ -318,12 +334,17 @@ public:
 	}
 
 	unsigned char generated = 0;
+	static int _parent_id;
+	static int _index_start;
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	LOGICALSCREENDESCRIPTOR& operator () () { return *instances.back(); }
 	LOGICALSCREENDESCRIPTOR& operator [] (int index) {
-		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return *instances[index];
+		assert_cond((unsigned)(_index_start + index) < instances.size(), "instance index out of bounds");
+		return *instances[_index_start + index];
+	}
+	std::size_t array_size() {
+		return instances.size() - _index_start;
 	}
 	LOGICALSCREENDESCRIPTOR(std::vector<LOGICALSCREENDESCRIPTOR*>& instances) : instances(instances) { instances.push_back(this); }
 	~LOGICALSCREENDESCRIPTOR() {
@@ -338,6 +359,9 @@ public:
 	}
 	LOGICALSCREENDESCRIPTOR* generate();
 };
+
+int LOGICALSCREENDESCRIPTOR::_parent_id = 0;
+int LOGICALSCREENDESCRIPTOR::_index_start = 0;
 
 
 
@@ -367,12 +391,17 @@ public:
 	}
 
 	unsigned char generated = 0;
+	static int _parent_id;
+	static int _index_start;
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	RGB& operator () () { return *instances.back(); }
 	RGB& operator [] (int index) {
-		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return *instances[index];
+		assert_cond((unsigned)(_index_start + index) < instances.size(), "instance index out of bounds");
+		return *instances[_index_start + index];
+	}
+	std::size_t array_size() {
+		return instances.size() - _index_start;
 	}
 	RGB(std::vector<RGB*>& instances) : instances(instances) { instances.push_back(this); }
 	~RGB() {
@@ -387,6 +416,9 @@ public:
 	}
 	RGB* generate();
 };
+
+int RGB::_parent_id = 0;
+int RGB::_index_start = 0;
 
 
 
@@ -435,12 +467,17 @@ public:
 	int size;
 
 	unsigned char generated = 0;
+	static int _parent_id;
+	static int _index_start;
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	GLOBALCOLORTABLE& operator () () { return *instances.back(); }
 	GLOBALCOLORTABLE& operator [] (int index) {
-		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return *instances[index];
+		assert_cond((unsigned)(_index_start + index) < instances.size(), "instance index out of bounds");
+		return *instances[_index_start + index];
+	}
+	std::size_t array_size() {
+		return instances.size() - _index_start;
 	}
 	GLOBALCOLORTABLE(std::vector<GLOBALCOLORTABLE*>& instances) : instances(instances) { instances.push_back(this); }
 	~GLOBALCOLORTABLE() {
@@ -455,6 +492,9 @@ public:
 	}
 	GLOBALCOLORTABLE* generate();
 };
+
+int GLOBALCOLORTABLE::_parent_id = 0;
+int GLOBALCOLORTABLE::_index_start = 0;
 
 
 
@@ -499,12 +539,17 @@ public:
 	std::vector<UBYTE> possible_values;
 
 	unsigned char generated = 0;
+	static int _parent_id;
+	static int _index_start;
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	IMAGEDESCRIPTOR_PACKEDFIELDS& operator () () { return *instances.back(); }
 	IMAGEDESCRIPTOR_PACKEDFIELDS& operator [] (int index) {
-		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return *instances[index];
+		assert_cond((unsigned)(_index_start + index) < instances.size(), "instance index out of bounds");
+		return *instances[_index_start + index];
+	}
+	std::size_t array_size() {
+		return instances.size() - _index_start;
 	}
 	IMAGEDESCRIPTOR_PACKEDFIELDS(std::vector<IMAGEDESCRIPTOR_PACKEDFIELDS*>& instances) : instances(instances) { instances.push_back(this); }
 	~IMAGEDESCRIPTOR_PACKEDFIELDS() {
@@ -519,6 +564,9 @@ public:
 	}
 	IMAGEDESCRIPTOR_PACKEDFIELDS* generate();
 };
+
+int IMAGEDESCRIPTOR_PACKEDFIELDS::_parent_id = 0;
+int IMAGEDESCRIPTOR_PACKEDFIELDS::_index_start = 0;
 
 
 
@@ -566,12 +614,17 @@ public:
 	}
 
 	unsigned char generated = 0;
+	static int _parent_id;
+	static int _index_start;
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	IMAGEDESCRIPTOR& operator () () { return *instances.back(); }
 	IMAGEDESCRIPTOR& operator [] (int index) {
-		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return *instances[index];
+		assert_cond((unsigned)(_index_start + index) < instances.size(), "instance index out of bounds");
+		return *instances[_index_start + index];
+	}
+	std::size_t array_size() {
+		return instances.size() - _index_start;
 	}
 	IMAGEDESCRIPTOR(std::vector<IMAGEDESCRIPTOR*>& instances) : instances(instances) { instances.push_back(this); }
 	~IMAGEDESCRIPTOR() {
@@ -586,6 +639,9 @@ public:
 	}
 	IMAGEDESCRIPTOR* generate();
 };
+
+int IMAGEDESCRIPTOR::_parent_id = 0;
+int IMAGEDESCRIPTOR::_index_start = 0;
 
 
 
@@ -607,12 +663,17 @@ public:
 	int size;
 
 	unsigned char generated = 0;
+	static int _parent_id;
+	static int _index_start;
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	LOCALCOLORTABLE& operator () () { return *instances.back(); }
 	LOCALCOLORTABLE& operator [] (int index) {
-		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return *instances[index];
+		assert_cond((unsigned)(_index_start + index) < instances.size(), "instance index out of bounds");
+		return *instances[_index_start + index];
+	}
+	std::size_t array_size() {
+		return instances.size() - _index_start;
 	}
 	LOCALCOLORTABLE(std::vector<LOCALCOLORTABLE*>& instances) : instances(instances) { instances.push_back(this); }
 	~LOCALCOLORTABLE() {
@@ -627,6 +688,9 @@ public:
 	}
 	LOCALCOLORTABLE* generate();
 };
+
+int LOCALCOLORTABLE::_parent_id = 0;
+int LOCALCOLORTABLE::_index_start = 0;
 
 
 
@@ -650,12 +714,17 @@ public:
 	}
 
 	unsigned char generated = 0;
+	static int _parent_id;
+	static int _index_start;
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	DATASUBBLOCK& operator () () { return *instances.back(); }
 	DATASUBBLOCK& operator [] (int index) {
-		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return *instances[index];
+		assert_cond((unsigned)(_index_start + index) < instances.size(), "instance index out of bounds");
+		return *instances[_index_start + index];
+	}
+	std::size_t array_size() {
+		return instances.size() - _index_start;
 	}
 	DATASUBBLOCK(std::vector<DATASUBBLOCK*>& instances) : instances(instances) { instances.push_back(this); }
 	~DATASUBBLOCK() {
@@ -670,6 +739,9 @@ public:
 	}
 	DATASUBBLOCK* generate(UBYTE& size);
 };
+
+int DATASUBBLOCK::_parent_id = 0;
+int DATASUBBLOCK::_index_start = 0;
 
 
 
@@ -698,12 +770,17 @@ public:
 	UBYTE size;
 
 	unsigned char generated = 0;
+	static int _parent_id;
+	static int _index_start;
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	DATASUBBLOCKS& operator () () { return *instances.back(); }
 	DATASUBBLOCKS& operator [] (int index) {
-		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return *instances[index];
+		assert_cond((unsigned)(_index_start + index) < instances.size(), "instance index out of bounds");
+		return *instances[_index_start + index];
+	}
+	std::size_t array_size() {
+		return instances.size() - _index_start;
 	}
 	DATASUBBLOCKS(std::vector<DATASUBBLOCKS*>& instances) : instances(instances) { instances.push_back(this); }
 	~DATASUBBLOCKS() {
@@ -718,6 +795,9 @@ public:
 	}
 	DATASUBBLOCKS* generate();
 };
+
+int DATASUBBLOCKS::_parent_id = 0;
+int DATASUBBLOCKS::_index_start = 0;
 
 
 
@@ -741,12 +821,17 @@ public:
 	}
 
 	unsigned char generated = 0;
+	static int _parent_id;
+	static int _index_start;
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	IMAGEDATA& operator () () { return *instances.back(); }
 	IMAGEDATA& operator [] (int index) {
-		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return *instances[index];
+		assert_cond((unsigned)(_index_start + index) < instances.size(), "instance index out of bounds");
+		return *instances[_index_start + index];
+	}
+	std::size_t array_size() {
+		return instances.size() - _index_start;
 	}
 	IMAGEDATA(std::vector<IMAGEDATA*>& instances) : instances(instances) { instances.push_back(this); }
 	~IMAGEDATA() {
@@ -761,6 +846,9 @@ public:
 	}
 	IMAGEDATA* generate();
 };
+
+int IMAGEDATA::_parent_id = 0;
+int IMAGEDATA::_index_start = 0;
 
 
 
@@ -796,12 +884,17 @@ public:
 	}
 
 	unsigned char generated = 0;
+	static int _parent_id;
+	static int _index_start;
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	GRAPHICCONTROLEXTENSION_DATASUBBLOCK_PACKEDFIELDS& operator () () { return *instances.back(); }
 	GRAPHICCONTROLEXTENSION_DATASUBBLOCK_PACKEDFIELDS& operator [] (int index) {
-		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return *instances[index];
+		assert_cond((unsigned)(_index_start + index) < instances.size(), "instance index out of bounds");
+		return *instances[_index_start + index];
+	}
+	std::size_t array_size() {
+		return instances.size() - _index_start;
 	}
 	GRAPHICCONTROLEXTENSION_DATASUBBLOCK_PACKEDFIELDS(std::vector<GRAPHICCONTROLEXTENSION_DATASUBBLOCK_PACKEDFIELDS*>& instances) : instances(instances) { instances.push_back(this); }
 	~GRAPHICCONTROLEXTENSION_DATASUBBLOCK_PACKEDFIELDS() {
@@ -816,6 +909,9 @@ public:
 	}
 	GRAPHICCONTROLEXTENSION_DATASUBBLOCK_PACKEDFIELDS* generate();
 };
+
+int GRAPHICCONTROLEXTENSION_DATASUBBLOCK_PACKEDFIELDS::_parent_id = 0;
+int GRAPHICCONTROLEXTENSION_DATASUBBLOCK_PACKEDFIELDS::_index_start = 0;
 
 
 
@@ -851,12 +947,17 @@ public:
 	}
 
 	unsigned char generated = 0;
+	static int _parent_id;
+	static int _index_start;
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	GRAPHICCONTROLSUBBLOCK& operator () () { return *instances.back(); }
 	GRAPHICCONTROLSUBBLOCK& operator [] (int index) {
-		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return *instances[index];
+		assert_cond((unsigned)(_index_start + index) < instances.size(), "instance index out of bounds");
+		return *instances[_index_start + index];
+	}
+	std::size_t array_size() {
+		return instances.size() - _index_start;
 	}
 	GRAPHICCONTROLSUBBLOCK(std::vector<GRAPHICCONTROLSUBBLOCK*>& instances) : instances(instances) { instances.push_back(this); }
 	~GRAPHICCONTROLSUBBLOCK() {
@@ -871,6 +972,9 @@ public:
 	}
 	GRAPHICCONTROLSUBBLOCK* generate();
 };
+
+int GRAPHICCONTROLSUBBLOCK::_parent_id = 0;
+int GRAPHICCONTROLSUBBLOCK::_index_start = 0;
 
 
 
@@ -906,12 +1010,17 @@ public:
 	}
 
 	unsigned char generated = 0;
+	static int _parent_id;
+	static int _index_start;
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	GRAPHICCONTROLEXTENSION& operator () () { return *instances.back(); }
 	GRAPHICCONTROLEXTENSION& operator [] (int index) {
-		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return *instances[index];
+		assert_cond((unsigned)(_index_start + index) < instances.size(), "instance index out of bounds");
+		return *instances[_index_start + index];
+	}
+	std::size_t array_size() {
+		return instances.size() - _index_start;
 	}
 	GRAPHICCONTROLEXTENSION(std::vector<GRAPHICCONTROLEXTENSION*>& instances) : instances(instances) { instances.push_back(this); }
 	~GRAPHICCONTROLEXTENSION() {
@@ -926,6 +1035,9 @@ public:
 	}
 	GRAPHICCONTROLEXTENSION* generate();
 };
+
+int GRAPHICCONTROLEXTENSION::_parent_id = 0;
+int GRAPHICCONTROLEXTENSION::_index_start = 0;
 
 
 
@@ -955,12 +1067,17 @@ public:
 	}
 
 	unsigned char generated = 0;
+	static int _parent_id;
+	static int _index_start;
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	COMMENTEXTENSION& operator () () { return *instances.back(); }
 	COMMENTEXTENSION& operator [] (int index) {
-		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return *instances[index];
+		assert_cond((unsigned)(_index_start + index) < instances.size(), "instance index out of bounds");
+		return *instances[_index_start + index];
+	}
+	std::size_t array_size() {
+		return instances.size() - _index_start;
 	}
 	COMMENTEXTENSION(std::vector<COMMENTEXTENSION*>& instances) : instances(instances) { instances.push_back(this); }
 	~COMMENTEXTENSION() {
@@ -975,6 +1092,9 @@ public:
 	}
 	COMMENTEXTENSION* generate();
 };
+
+int COMMENTEXTENSION::_parent_id = 0;
+int COMMENTEXTENSION::_index_start = 0;
 
 
 
@@ -1040,12 +1160,17 @@ public:
 	}
 
 	unsigned char generated = 0;
+	static int _parent_id;
+	static int _index_start;
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	PLAINTEXTSUBBLOCK& operator () () { return *instances.back(); }
 	PLAINTEXTSUBBLOCK& operator [] (int index) {
-		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return *instances[index];
+		assert_cond((unsigned)(_index_start + index) < instances.size(), "instance index out of bounds");
+		return *instances[_index_start + index];
+	}
+	std::size_t array_size() {
+		return instances.size() - _index_start;
 	}
 	PLAINTEXTSUBBLOCK(std::vector<PLAINTEXTSUBBLOCK*>& instances) : instances(instances) { instances.push_back(this); }
 	~PLAINTEXTSUBBLOCK() {
@@ -1060,6 +1185,9 @@ public:
 	}
 	PLAINTEXTSUBBLOCK* generate();
 };
+
+int PLAINTEXTSUBBLOCK::_parent_id = 0;
+int PLAINTEXTSUBBLOCK::_index_start = 0;
 
 
 
@@ -1095,12 +1223,17 @@ public:
 	}
 
 	unsigned char generated = 0;
+	static int _parent_id;
+	static int _index_start;
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	PLAINTEXTEXTENTION& operator () () { return *instances.back(); }
 	PLAINTEXTEXTENTION& operator [] (int index) {
-		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return *instances[index];
+		assert_cond((unsigned)(_index_start + index) < instances.size(), "instance index out of bounds");
+		return *instances[_index_start + index];
+	}
+	std::size_t array_size() {
+		return instances.size() - _index_start;
 	}
 	PLAINTEXTEXTENTION(std::vector<PLAINTEXTEXTENTION*>& instances) : instances(instances) { instances.push_back(this); }
 	~PLAINTEXTEXTENTION() {
@@ -1115,6 +1248,9 @@ public:
 	}
 	PLAINTEXTEXTENTION* generate();
 };
+
+int PLAINTEXTEXTENTION::_parent_id = 0;
+int PLAINTEXTEXTENTION::_index_start = 0;
 
 
 
@@ -1144,12 +1280,17 @@ public:
 	}
 
 	unsigned char generated = 0;
+	static int _parent_id;
+	static int _index_start;
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	APPLICATIONSUBBLOCK& operator () () { return *instances.back(); }
 	APPLICATIONSUBBLOCK& operator [] (int index) {
-		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return *instances[index];
+		assert_cond((unsigned)(_index_start + index) < instances.size(), "instance index out of bounds");
+		return *instances[_index_start + index];
+	}
+	std::size_t array_size() {
+		return instances.size() - _index_start;
 	}
 	APPLICATIONSUBBLOCK(std::vector<APPLICATIONSUBBLOCK*>& instances) : instances(instances) { instances.push_back(this); }
 	~APPLICATIONSUBBLOCK() {
@@ -1164,6 +1305,9 @@ public:
 	}
 	APPLICATIONSUBBLOCK* generate();
 };
+
+int APPLICATIONSUBBLOCK::_parent_id = 0;
+int APPLICATIONSUBBLOCK::_index_start = 0;
 
 
 
@@ -1199,12 +1343,17 @@ public:
 	}
 
 	unsigned char generated = 0;
+	static int _parent_id;
+	static int _index_start;
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	APPLICATIONEXTENTION& operator () () { return *instances.back(); }
 	APPLICATIONEXTENTION& operator [] (int index) {
-		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return *instances[index];
+		assert_cond((unsigned)(_index_start + index) < instances.size(), "instance index out of bounds");
+		return *instances[_index_start + index];
+	}
+	std::size_t array_size() {
+		return instances.size() - _index_start;
 	}
 	APPLICATIONEXTENTION(std::vector<APPLICATIONEXTENTION*>& instances) : instances(instances) { instances.push_back(this); }
 	~APPLICATIONEXTENTION() {
@@ -1219,6 +1368,9 @@ public:
 	}
 	APPLICATIONEXTENTION* generate();
 };
+
+int APPLICATIONEXTENTION::_parent_id = 0;
+int APPLICATIONEXTENTION::_index_start = 0;
 
 
 
@@ -1248,12 +1400,17 @@ public:
 	}
 
 	unsigned char generated = 0;
+	static int _parent_id;
+	static int _index_start;
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	UNDEFINEDDATA& operator () () { return *instances.back(); }
 	UNDEFINEDDATA& operator [] (int index) {
-		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return *instances[index];
+		assert_cond((unsigned)(_index_start + index) < instances.size(), "instance index out of bounds");
+		return *instances[_index_start + index];
+	}
+	std::size_t array_size() {
+		return instances.size() - _index_start;
 	}
 	UNDEFINEDDATA(std::vector<UNDEFINEDDATA*>& instances) : instances(instances) { instances.push_back(this); }
 	~UNDEFINEDDATA() {
@@ -1268,6 +1425,9 @@ public:
 	}
 	UNDEFINEDDATA* generate();
 };
+
+int UNDEFINEDDATA::_parent_id = 0;
+int UNDEFINEDDATA::_index_start = 0;
 
 
 
@@ -1331,12 +1491,17 @@ public:
 	int has_data;
 
 	unsigned char generated = 0;
+	static int _parent_id;
+	static int _index_start;
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	DATA& operator () () { return *instances.back(); }
 	DATA& operator [] (int index) {
-		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return *instances[index];
+		assert_cond((unsigned)(_index_start + index) < instances.size(), "instance index out of bounds");
+		return *instances[_index_start + index];
+	}
+	std::size_t array_size() {
+		return instances.size() - _index_start;
 	}
 	DATA(std::vector<DATA*>& instances) : instances(instances) { instances.push_back(this); }
 	~DATA() {
@@ -1351,6 +1516,9 @@ public:
 	}
 	DATA* generate();
 };
+
+int DATA::_parent_id = 0;
+int DATA::_index_start = 0;
 
 
 
@@ -1368,12 +1536,17 @@ public:
 	}
 
 	unsigned char generated = 0;
+	static int _parent_id;
+	static int _index_start;
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
 	TRAILER& operator () () { return *instances.back(); }
 	TRAILER& operator [] (int index) {
-		assert_cond((unsigned)index < instances.size(), "instance index out of bounds");
-		return *instances[index];
+		assert_cond((unsigned)(_index_start + index) < instances.size(), "instance index out of bounds");
+		return *instances[_index_start + index];
+	}
+	std::size_t array_size() {
+		return instances.size() - _index_start;
 	}
 	TRAILER(std::vector<TRAILER*>& instances) : instances(instances) { instances.push_back(this); }
 	~TRAILER() {
@@ -1388,6 +1561,9 @@ public:
 	}
 	TRAILER* generate();
 };
+
+int TRAILER::_parent_id = 0;
+int TRAILER::_index_start = 0;
 
 std::vector<byte> ReadByteInitValues;
 std::vector<ubyte> ReadUByteInitValues = {  };
@@ -1438,6 +1614,8 @@ std::vector<std::vector<int>> integer_ranges = { { 1, 16 } };
 
 class globals_class {
 public:
+	int _struct_id = 0;
+	int _struct_id_counter = 0;
 	char_class Signature_element;
 	char_array_class Signature;
 	char_class Version_element;
@@ -1616,12 +1794,18 @@ GIFHEADER* GIFHEADER::generate() {
 	if (!generated)
 		generated = 1;
 	_startof = FTell();
+	if (_parent_id != ::g->_struct_id && !global_indexing_of_arrays) {
+		_index_start = instances.size() - 1;
+	}
+	_parent_id = ::g->_struct_id;
+	::g->_struct_id = ++::g->_struct_id_counter;
 
 	evil = SetEvilBit(false);
 	GENERATE_VAR(Signature, ::g->Signature.generate(3));
 	SetEvilBit(evil);
 	GENERATE_VAR(Version, ::g->Version.generate(3, { {"87a"}, {"89a"} }));
 
+	::g->_struct_id = _parent_id;
 	_sizeof = FTell() - _startof;
 	return this;
 }
@@ -1636,12 +1820,18 @@ LOGICALSCREENDESCRIPTOR_PACKEDFIELDS* LOGICALSCREENDESCRIPTOR_PACKEDFIELDS::gene
 	if (!generated)
 		generated = 1;
 	_startof = FTell();
+	if (_parent_id != ::g->_struct_id && !global_indexing_of_arrays) {
+		_index_start = instances.size() - 1;
+	}
+	_parent_id = ::g->_struct_id;
+	::g->_struct_id = ++::g->_struct_id_counter;
 
 	GENERATE_VAR(GlobalColorTableFlag, ::g->GlobalColorTableFlag.generate(1));
 	GENERATE_VAR(ColorResolution, ::g->ColorResolution.generate(3));
 	GENERATE_VAR(SortFlag, ::g->SortFlag.generate(1));
 	GENERATE_VAR(SizeOfGlobalColorTable, ::g->SizeOfGlobalColorTable.generate(3));
 
+	::g->_struct_id = _parent_id;
 	_sizeof = FTell() - _startof;
 	return this;
 }
@@ -1656,6 +1846,11 @@ LOGICALSCREENDESCRIPTOR* LOGICALSCREENDESCRIPTOR::generate() {
 	if (!generated)
 		generated = 1;
 	_startof = FTell();
+	if (_parent_id != ::g->_struct_id && !global_indexing_of_arrays) {
+		_index_start = instances.size() - 1;
+	}
+	_parent_id = ::g->_struct_id;
+	::g->_struct_id = ++::g->_struct_id_counter;
 
 	GENERATE_VAR(Width, ::g->Width.generate());
 	GENERATE_VAR(Height, ::g->Height.generate());
@@ -1668,6 +1863,7 @@ LOGICALSCREENDESCRIPTOR* LOGICALSCREENDESCRIPTOR::generate() {
 		GENERATE_VAR(PixelAspectRatio, ::g->PixelAspectRatio.generate({ 0 }));
 	};
 
+	::g->_struct_id = _parent_id;
 	_sizeof = FTell() - _startof;
 	return this;
 }
@@ -1682,11 +1878,17 @@ RGB* RGB::generate() {
 	if (!generated)
 		generated = 1;
 	_startof = FTell();
+	if (_parent_id != ::g->_struct_id && !global_indexing_of_arrays) {
+		_index_start = instances.size() - 1;
+	}
+	_parent_id = ::g->_struct_id;
+	::g->_struct_id = ++::g->_struct_id_counter;
 
 	GENERATE_VAR(R, ::g->R.generate());
 	GENERATE_VAR(G, ::g->G.generate());
 	GENERATE_VAR(B, ::g->B.generate());
 
+	::g->_struct_id = _parent_id;
 	_sizeof = FTell() - _startof;
 	return this;
 }
@@ -1701,6 +1903,11 @@ GLOBALCOLORTABLE* GLOBALCOLORTABLE::generate() {
 	if (!generated)
 		generated = 1;
 	_startof = FTell();
+	if (_parent_id != ::g->_struct_id && !global_indexing_of_arrays) {
+		_index_start = instances.size() - 1;
+	}
+	_parent_id = ::g->_struct_id;
+	::g->_struct_id = ++::g->_struct_id_counter;
 
 	size = 1;
 	for (i = 0; (i <= ::g->LogicalScreenDescriptor().PackedFields().SizeOfGlobalColorTable()); i++) {
@@ -1709,6 +1916,7 @@ GLOBALCOLORTABLE* GLOBALCOLORTABLE::generate() {
 	};
 	GENERATE_VAR(rgb, ::g->rgb.generate(size));
 
+	::g->_struct_id = _parent_id;
 	_sizeof = FTell() - _startof;
 	return this;
 }
@@ -1723,6 +1931,11 @@ IMAGEDESCRIPTOR_PACKEDFIELDS* IMAGEDESCRIPTOR_PACKEDFIELDS::generate() {
 	if (!generated)
 		generated = 1;
 	_startof = FTell();
+	if (_parent_id != ::g->_struct_id && !global_indexing_of_arrays) {
+		_index_start = instances.size() - 1;
+	}
+	_parent_id = ::g->_struct_id;
+	::g->_struct_id = ++::g->_struct_id_counter;
 
 	if ((::g->LogicalScreenDescriptor().PackedFields().GlobalColorTableFlag() == 1)) {
 		possible_values = { 0, 1 };
@@ -1735,6 +1948,7 @@ IMAGEDESCRIPTOR_PACKEDFIELDS* IMAGEDESCRIPTOR_PACKEDFIELDS::generate() {
 	GENERATE_VAR(Reserved, ::g->Reserved.generate(2));
 	GENERATE_VAR(SizeOfLocalColorTable, ::g->SizeOfLocalColorTable.generate(3));
 
+	::g->_struct_id = _parent_id;
 	_sizeof = FTell() - _startof;
 	return this;
 }
@@ -1749,6 +1963,11 @@ IMAGEDESCRIPTOR* IMAGEDESCRIPTOR::generate() {
 	if (!generated)
 		generated = 1;
 	_startof = FTell();
+	if (_parent_id != ::g->_struct_id && !global_indexing_of_arrays) {
+		_index_start = instances.size() - 1;
+	}
+	_parent_id = ::g->_struct_id;
+	::g->_struct_id = ++::g->_struct_id_counter;
 
 	GENERATE_VAR(ImageSeperator, ::g->ImageSeperator.generate());
 	GENERATE_VAR(ImageLeftPosition, ::g->ImageLeftPosition.generate());
@@ -1757,6 +1976,7 @@ IMAGEDESCRIPTOR* IMAGEDESCRIPTOR::generate() {
 	GENERATE_VAR(ImageHeight, ::g->ImageHeight.generate());
 	GENERATE_VAR(PackedFields, ::g->PackedFields_.generate());
 
+	::g->_struct_id = _parent_id;
 	_sizeof = FTell() - _startof;
 	return this;
 }
@@ -1771,6 +1991,11 @@ LOCALCOLORTABLE* LOCALCOLORTABLE::generate() {
 	if (!generated)
 		generated = 1;
 	_startof = FTell();
+	if (_parent_id != ::g->_struct_id && !global_indexing_of_arrays) {
+		_index_start = instances.size() - 1;
+	}
+	_parent_id = ::g->_struct_id;
+	::g->_struct_id = ++::g->_struct_id_counter;
 
 	size = 1;
 	for (i = 0; (i <= ::g->ImageDescriptor().PackedFields().SizeOfLocalColorTable()); i++) {
@@ -1779,6 +2004,7 @@ LOCALCOLORTABLE* LOCALCOLORTABLE::generate() {
 	};
 	GENERATE_VAR(rgb, ::g->rgb.generate(size));
 
+	::g->_struct_id = _parent_id;
 	_sizeof = FTell() - _startof;
 	return this;
 }
@@ -1793,10 +2019,16 @@ DATASUBBLOCK* DATASUBBLOCK::generate(UBYTE& size) {
 	if (!generated)
 		generated = 1;
 	_startof = FTell();
+	if (_parent_id != ::g->_struct_id && !global_indexing_of_arrays) {
+		_index_start = instances.size() - 1;
+	}
+	_parent_id = ::g->_struct_id;
+	::g->_struct_id = ++::g->_struct_id_counter;
 
 	GENERATE_VAR(Size, ::g->Size.generate());
 	GENERATE_VAR(Data, ::g->Data.generate(size));
 
+	::g->_struct_id = _parent_id;
 	_sizeof = FTell() - _startof;
 	return this;
 }
@@ -1811,6 +2043,11 @@ DATASUBBLOCKS* DATASUBBLOCKS::generate() {
 	if (!generated)
 		generated = 1;
 	_startof = FTell();
+	if (_parent_id != ::g->_struct_id && !global_indexing_of_arrays) {
+		_index_start = instances.size() - 1;
+	}
+	_parent_id = ::g->_struct_id;
+	::g->_struct_id = ++::g->_struct_id_counter;
 
 	values = {  };
 	for (count = 1; (count < 256); ++count) {
@@ -1828,6 +2065,7 @@ DATASUBBLOCKS* DATASUBBLOCKS::generate() {
 	};
 	GENERATE_VAR(BlockTerminator, ::g->BlockTerminator.generate());
 
+	::g->_struct_id = _parent_id;
 	_sizeof = FTell() - _startof;
 	return this;
 }
@@ -1842,10 +2080,16 @@ IMAGEDATA* IMAGEDATA::generate() {
 	if (!generated)
 		generated = 1;
 	_startof = FTell();
+	if (_parent_id != ::g->_struct_id && !global_indexing_of_arrays) {
+		_index_start = instances.size() - 1;
+	}
+	_parent_id = ::g->_struct_id;
+	::g->_struct_id = ++::g->_struct_id_counter;
 
 	GENERATE_VAR(LZWMinimumCodeSize, ::g->LZWMinimumCodeSize.generate({ 8 }));
 	GENERATE_VAR(DataSubBlocks, ::g->DataSubBlocks.generate());
 
+	::g->_struct_id = _parent_id;
 	_sizeof = FTell() - _startof;
 	return this;
 }
@@ -1860,12 +2104,18 @@ GRAPHICCONTROLEXTENSION_DATASUBBLOCK_PACKEDFIELDS* GRAPHICCONTROLEXTENSION_DATAS
 	if (!generated)
 		generated = 1;
 	_startof = FTell();
+	if (_parent_id != ::g->_struct_id && !global_indexing_of_arrays) {
+		_index_start = instances.size() - 1;
+	}
+	_parent_id = ::g->_struct_id;
+	::g->_struct_id = ++::g->_struct_id_counter;
 
 	GENERATE_VAR(Reserved, ::g->Reserved.generate(3));
 	GENERATE_VAR(DisposalMethod, ::g->DisposalMethod.generate(3));
 	GENERATE_VAR(UserInputFlag, ::g->UserInputFlag.generate(1));
 	GENERATE_VAR(TransparentColorFlag, ::g->TransparentColorFlag.generate(1));
 
+	::g->_struct_id = _parent_id;
 	_sizeof = FTell() - _startof;
 	return this;
 }
@@ -1880,12 +2130,18 @@ GRAPHICCONTROLSUBBLOCK* GRAPHICCONTROLSUBBLOCK::generate() {
 	if (!generated)
 		generated = 1;
 	_startof = FTell();
+	if (_parent_id != ::g->_struct_id && !global_indexing_of_arrays) {
+		_index_start = instances.size() - 1;
+	}
+	_parent_id = ::g->_struct_id;
+	::g->_struct_id = ++::g->_struct_id_counter;
 
 	GENERATE_VAR(BlockSize, ::g->BlockSize.generate({ 4 }));
 	GENERATE_VAR(PackedFields, ::g->PackedFields__.generate());
 	GENERATE_VAR(DelayTime, ::g->DelayTime.generate());
 	GENERATE_VAR(TransparentColorIndex, ::g->TransparentColorIndex.generate());
 
+	::g->_struct_id = _parent_id;
 	_sizeof = FTell() - _startof;
 	return this;
 }
@@ -1900,12 +2156,18 @@ GRAPHICCONTROLEXTENSION* GRAPHICCONTROLEXTENSION::generate() {
 	if (!generated)
 		generated = 1;
 	_startof = FTell();
+	if (_parent_id != ::g->_struct_id && !global_indexing_of_arrays) {
+		_index_start = instances.size() - 1;
+	}
+	_parent_id = ::g->_struct_id;
+	::g->_struct_id = ++::g->_struct_id_counter;
 
 	GENERATE_VAR(ExtensionIntroducer, ::g->ExtensionIntroducer.generate());
 	GENERATE_VAR(GraphicControlLabel, ::g->GraphicControlLabel.generate());
 	GENERATE_VAR(GraphicControlSubBlock, ::g->GraphicControlSubBlock.generate());
 	GENERATE_VAR(BlockTerminator, ::g->BlockTerminator.generate());
 
+	::g->_struct_id = _parent_id;
 	_sizeof = FTell() - _startof;
 	return this;
 }
@@ -1920,11 +2182,17 @@ COMMENTEXTENSION* COMMENTEXTENSION::generate() {
 	if (!generated)
 		generated = 1;
 	_startof = FTell();
+	if (_parent_id != ::g->_struct_id && !global_indexing_of_arrays) {
+		_index_start = instances.size() - 1;
+	}
+	_parent_id = ::g->_struct_id;
+	::g->_struct_id = ++::g->_struct_id_counter;
 
 	GENERATE_VAR(ExtensionIntroducer, ::g->ExtensionIntroducer.generate());
 	GENERATE_VAR(CommentLabel, ::g->CommentLabel.generate());
 	GENERATE_VAR(CommentData, ::g->CommentData.generate());
 
+	::g->_struct_id = _parent_id;
 	_sizeof = FTell() - _startof;
 	return this;
 }
@@ -1939,6 +2207,11 @@ PLAINTEXTSUBBLOCK* PLAINTEXTSUBBLOCK::generate() {
 	if (!generated)
 		generated = 1;
 	_startof = FTell();
+	if (_parent_id != ::g->_struct_id && !global_indexing_of_arrays) {
+		_index_start = instances.size() - 1;
+	}
+	_parent_id = ::g->_struct_id;
+	::g->_struct_id = ++::g->_struct_id_counter;
 
 	GENERATE_VAR(BlockSize, ::g->BlockSize.generate());
 	GENERATE_VAR(TextGridLeftPosition, ::g->TextGridLeftPosition.generate());
@@ -1950,6 +2223,7 @@ PLAINTEXTSUBBLOCK* PLAINTEXTSUBBLOCK::generate() {
 	GENERATE_VAR(TextForegroundColorIndex, ::g->TextForegroundColorIndex.generate());
 	GENERATE_VAR(TextBackgroundColorIndex, ::g->TextBackgroundColorIndex.generate());
 
+	::g->_struct_id = _parent_id;
 	_sizeof = FTell() - _startof;
 	return this;
 }
@@ -1964,12 +2238,18 @@ PLAINTEXTEXTENTION* PLAINTEXTEXTENTION::generate() {
 	if (!generated)
 		generated = 1;
 	_startof = FTell();
+	if (_parent_id != ::g->_struct_id && !global_indexing_of_arrays) {
+		_index_start = instances.size() - 1;
+	}
+	_parent_id = ::g->_struct_id;
+	::g->_struct_id = ++::g->_struct_id_counter;
 
 	GENERATE_VAR(ExtensionIntroducer, ::g->ExtensionIntroducer.generate());
 	GENERATE_VAR(PlainTextLabel, ::g->PlainTextLabel.generate());
 	GENERATE_VAR(PlainTextSubBlock, ::g->PlainTextSubBlock.generate());
 	GENERATE_VAR(PlainTextData, ::g->PlainTextData.generate());
 
+	::g->_struct_id = _parent_id;
 	_sizeof = FTell() - _startof;
 	return this;
 }
@@ -1984,11 +2264,17 @@ APPLICATIONSUBBLOCK* APPLICATIONSUBBLOCK::generate() {
 	if (!generated)
 		generated = 1;
 	_startof = FTell();
+	if (_parent_id != ::g->_struct_id && !global_indexing_of_arrays) {
+		_index_start = instances.size() - 1;
+	}
+	_parent_id = ::g->_struct_id;
+	::g->_struct_id = ++::g->_struct_id_counter;
 
 	GENERATE_VAR(BlockSize, ::g->BlockSize.generate());
 	GENERATE_VAR(ApplicationIdentifier, ::g->ApplicationIdentifier.generate(8));
 	GENERATE_VAR(ApplicationAuthenticationCode, ::g->ApplicationAuthenticationCode.generate(3));
 
+	::g->_struct_id = _parent_id;
 	_sizeof = FTell() - _startof;
 	return this;
 }
@@ -2003,12 +2289,18 @@ APPLICATIONEXTENTION* APPLICATIONEXTENTION::generate() {
 	if (!generated)
 		generated = 1;
 	_startof = FTell();
+	if (_parent_id != ::g->_struct_id && !global_indexing_of_arrays) {
+		_index_start = instances.size() - 1;
+	}
+	_parent_id = ::g->_struct_id;
+	::g->_struct_id = ++::g->_struct_id_counter;
 
 	GENERATE_VAR(ExtensionIntroducer, ::g->ExtensionIntroducer.generate());
 	GENERATE_VAR(ApplicationLabel, ::g->ApplicationLabel.generate());
 	GENERATE_VAR(ApplicationSubBlock, ::g->ApplicationSubBlock.generate());
 	GENERATE_VAR(ApplicationData, ::g->ApplicationData.generate());
 
+	::g->_struct_id = _parent_id;
 	_sizeof = FTell() - _startof;
 	return this;
 }
@@ -2023,11 +2315,17 @@ UNDEFINEDDATA* UNDEFINEDDATA::generate() {
 	if (!generated)
 		generated = 1;
 	_startof = FTell();
+	if (_parent_id != ::g->_struct_id && !global_indexing_of_arrays) {
+		_index_start = instances.size() - 1;
+	}
+	_parent_id = ::g->_struct_id;
+	::g->_struct_id = ++::g->_struct_id_counter;
 
 	GENERATE_VAR(ExtensionIntroducer, ::g->ExtensionIntroducer.generate());
 	GENERATE_VAR(Label, ::g->Label.generate());
 	GENERATE_VAR(DataSubBlocks, ::g->DataSubBlocks.generate());
 
+	::g->_struct_id = _parent_id;
 	_sizeof = FTell() - _startof;
 	return this;
 }
@@ -2042,6 +2340,11 @@ DATA* DATA::generate() {
 	if (!generated)
 		generated = 1;
 	_startof = FTell();
+	if (_parent_id != ::g->_struct_id && !global_indexing_of_arrays) {
+		_index_start = instances.size() - 1;
+	}
+	_parent_id = ::g->_struct_id;
+	::g->_struct_id = ++::g->_struct_id_counter;
 
 	if ((::g->GifHeader().Version() == "89a")) {
 		possible = { 0x2C, 0x21 };
@@ -2089,6 +2392,7 @@ DATA* DATA::generate() {
 		};
 	};
 
+	::g->_struct_id = _parent_id;
 	_sizeof = FTell() - _startof;
 	return this;
 }
@@ -2103,9 +2407,15 @@ TRAILER* TRAILER::generate() {
 	if (!generated)
 		generated = 1;
 	_startof = FTell();
+	if (_parent_id != ::g->_struct_id && !global_indexing_of_arrays) {
+		_index_start = instances.size() - 1;
+	}
+	_parent_id = ::g->_struct_id;
+	::g->_struct_id = ++::g->_struct_id_counter;
 
 	GENERATE_VAR(GIFTrailer, ::g->GIFTrailer.generate({ 0x3B }));
 
+	::g->_struct_id = _parent_id;
 	_sizeof = FTell() - _startof;
 	return this;
 }
