@@ -520,10 +520,16 @@ void BitfieldLeftToRight() {
 }
 
 void BitfieldEnablePadding() {
+	if (is_padded_bitfield)
+		return;
+	file_acc.finish_bitfield();
 	is_padded_bitfield = true;
 }
 
 void BitfieldDisablePadding() {
+	if (!is_padded_bitfield)
+		return;
+	file_acc.finish_bitfield();
 	is_padded_bitfield = false;
 }
 
