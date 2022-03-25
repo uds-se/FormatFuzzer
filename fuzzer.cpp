@@ -1224,6 +1224,7 @@ smaller number of decision bytes.
 
 extern "C" int process_file(const char *file_name, const char *rand_name) {
 	rand_names.push_back(rand_name);
+	file_names.push_back(file_name);
 	insertion_points.push_back({});
 	deletable_chunks.push_back({});
 	non_optional_index.push_back({});
@@ -1260,15 +1261,15 @@ extern "C" int process_file(const char *file_name, const char *rand_name) {
 
 }
 
-unsigned read_rand_file(const char* file_name, unsigned char* rand_buffer) {
+unsigned read_file(const char* file_name, unsigned char* file_buffer) {
 	int file_fd = open(file_name, O_RDONLY);
 	if (file_fd == -1) {
 		perror(file_name);
 		exit(1);
 	}
-	ssize_t size = read(file_fd, rand_buffer, MAX_RAND_SIZE);
+	ssize_t size = read(file_fd, file_buffer, MAX_RAND_SIZE);
 	if (size < 0) {
-		perror("Failed to read seed file");
+		perror("Failed to read file");
 		exit(1);
 	}
 	close(file_fd);
@@ -1282,6 +1283,12 @@ size_t buf_size = 1024;
 void reset_info() {
 	print_pos = mutation_info;
 	buf_size = 1024;
+}
+
+void print_info() {
+	*print_pos = '\0';
+	if (debug_print)
+		printf("%s", mutation_info);
 }
 
 void log_info(const char * fmt, ...) {
@@ -1308,8 +1315,17 @@ extern "C" void generate_random_file(unsigned char** file, unsigned* file_size) 
 }
 
 
+enum SMART_MUTATION {
+	SMART_MUTATION_RANDOM,
+	SMART_REPLACE_NONOPT,
+	SMART_REPLACE_OPT,
+	SMART_INSERT,
+	SMART_DELETE,
+	SMART_ABSTRACT
+};
 
-extern "C" int one_smart_mutation(int target_file_index, unsigned char** file, unsigned* file_size) {
+
+extern "C" int one_smart_mutation(int target_file_index, unsigned char** file, unsigned* file_size, SMART_MUTATION mut = SMART_MUTATION_RANDOM, unsigned char** file_simple = NULL, unsigned* file_size_simple = NULL) {
 	static unsigned char *original_rand_t = NULL;
 	static unsigned char *rand_t = NULL;
 	static unsigned char *rand_s = NULL;
@@ -1323,17 +1339,47 @@ extern "C" int one_smart_mutation(int target_file_index, unsigned char** file, u
 			printf("Read only %ld bytes from /dev/urandom\n", r);
 		close(rand_fd);
 	}
+	if (file_simple && file_size_simple) {
+		*file_simple = NULL;
+		*file_size_simple = 0;
+	}
 	static int previous_file_index = -1;
 	static unsigned len_t = 0;
 	if (target_file_index != previous_file_index) {
-		len_t = read_rand_file(rand_names[target_file_index].c_str(), original_rand_t);
+		len_t = read_file(rand_names[target_file_index].c_str(), original_rand_t);
 		previous_file_index = target_file_index;
+	}
+
+	if (mut == SMART_MUTATION_RANDOM) {
+		switch (rand() % (deletable_chunks[target_file_index].size() ? 10 : 9)) {
+		case 0:
+			mut = SMART_REPLACE_NONOPT;
+			break;
+		case 1:
+		case 2:
+			mut = SMART_REPLACE_OPT;
+			break;
+		case 3:
+		case 4:
+			mut = SMART_INSERT;
+			break;
+		case 5:
+		case 6:
+		case 7:
+		case 8:
+			mut = SMART_ABSTRACT;
+			break;
+		case 9:
+			mut = SMART_DELETE;
+			break;
+		}
 	}
 
 	reset_info();
 	bool old_debug_print = debug_print;
-	switch (rand() % (deletable_chunks[target_file_index].size() ? 10 : 9)) {
-	case 0:
+
+	switch (mut) {
+	case SMART_REPLACE_NONOPT:
 	{
 		if (non_optional_index[target_file_index].size() == 0)
 			goto fail;
@@ -1345,9 +1391,15 @@ extern "C" int one_smart_mutation(int target_file_index, unsigned char** file, u
 		if (non_optional_chunks[no.type].size() == 0)
 			goto fail;
 		Chunk& s = non_optional_chunks[no.type][rand() % non_optional_chunks[no.type].size()];
+		if (&t == &s)
+			goto fail;
+#ifdef SIMPLE_MUTATIONS
+		log_info("Replacing: source non-optional chunk from file %d position %u %u %s %s\ninto target file %d non-optional chunk position %u %u %s %s\n", s.file_index, s.start_file, s.end_file, s.type, s.name, t.file_index, t.start_file, t.end_file, t.type, t.name);
+#else
 		log_info("Replacing: source non-optional chunk from file %d position %u %u %s %s\ninto target file %d non-optional chunk position %u %u %s %s\n", s.file_index, s.start, s.end, s.type, s.name, t.file_index, t.start, t.end, t.type, t.name);
+#endif
 		memcpy(rand_t, original_rand_t, len_t);
-		read_rand_file(rand_names[s.file_index].c_str(), rand_s);
+		read_file(rand_names[s.file_index].c_str(), rand_s);
 
 		unsigned rand_size = len_t + (s.end - s.start) - (t.end - t.start);
 		if (rand_size > MAX_RAND_SIZE) {
@@ -1376,20 +1428,32 @@ extern "C" int one_smart_mutation(int target_file_index, unsigned char** file, u
 		debug_print = old_debug_print;
 		if (!(*file) || !(*file_size)) {
 			log_info("Failed to generate mutated file!\n");
-			if (debug_print)
-				printf("%s", mutation_info);
+			print_info();
 			return -2;
 		}
 		if (rand_end0 < rand_end)
 			log_info("Warning: Consumed %u more decision bytes than expected while generating chunk.\n", rand_end - rand_end0);
 		if (rand_end0 > rand_end)
 			log_info("Warning: Consumed %u less decision bytes than expected while generating chunk.\n", rand_end0 - rand_end);
-		if (debug_print)
-			printf("%s", mutation_info);
+		print_info();
+
+#ifdef SIMPLE_MUTATIONS
+		if (file_simple && file_size_simple) {
+			unsigned len = read_file(file_names[target_file_index].c_str(), rand_t);
+			read_file(file_names[s.file_index].c_str(), rand_s);
+			if (s.end_file - s.start_file == t.end_file - t.start_file && !memcmp(rand_t + t.start_file, rand_s + s.start_file, s.end_file + 1 - s.start_file))
+				goto fail;
+			memmove(rand_t + t.start_file + s.end_file + 1 - s.start_file, rand_t + t.end_file + 1, len - (t.end_file + 1));
+			memcpy(rand_t + t.start_file, rand_s + s.start_file, s.end_file + 1 - s.start_file);
+			*file_simple = rand_t;
+			*file_size_simple = len + (s.end_file - s.start_file) - (t.end_file - t.start_file);
+		}
+#endif
+
 		return (rand_end > rand_end0) - (rand_end < rand_end0);
 	}
-	case 1:
-	case 2:
+
+	case SMART_REPLACE_OPT:
 	{
 		if ((optional_index[target_file_index+1] - optional_index[target_file_index]) == 0)
 			goto fail;
@@ -1398,9 +1462,13 @@ extern "C" int one_smart_mutation(int target_file_index, unsigned char** file, u
 		if (optional_chunks.size() == 0)
 			goto fail;
 		Chunk& s = optional_chunks[rand() % optional_chunks.size()];
+#ifdef SIMPLE_MUTATIONS
+		log_info("Replacing: source optional chunk from file %d position %u %u %s %s\ninto target file %d optional chunk position %u %u %s %s\n", s.file_index, s.start_file, s.end_file, s.type, s.name, t.file_index, t.start_file, t.end_file, t.type, t.name);
+#else
 		log_info("Replacing: source optional chunk from file %d position %u %u %s %s\ninto target file %d optional chunk position %u %u %s %s\n", s.file_index, s.start, s.end, s.type, s.name, t.file_index, t.start, t.end, t.type, t.name);
+#endif
 		memcpy(rand_t, original_rand_t, len_t);
-		read_rand_file(rand_names[s.file_index].c_str(), rand_s);
+		read_file(rand_names[s.file_index].c_str(), rand_s);
 
 		unsigned rand_size = len_t + (s.end - s.start) - (t.end - t.start);
 		if (rand_size > MAX_RAND_SIZE) {
@@ -1429,8 +1497,7 @@ extern "C" int one_smart_mutation(int target_file_index, unsigned char** file, u
 		debug_print = old_debug_print;
 		if (!(*file) || !(*file_size)) {
 			log_info("Failed to generate mutated file!\n");
-			if (debug_print)
-				printf("%s", mutation_info);
+			print_info();
 			return -2;
 		}
 		if (rand_end0 < rand_end)
@@ -1438,12 +1505,23 @@ extern "C" int one_smart_mutation(int target_file_index, unsigned char** file, u
 		if (rand_end0 > rand_end)
 			log_info("Warning: Consumed %u less decision bytes than expected while generating chunk.\n", rand_end0 - rand_end);
 
-		if (debug_print)
-			printf("%s", mutation_info);
+		print_info();
+
+#ifdef SIMPLE_MUTATIONS
+		if (file_simple && file_size_simple) {
+			unsigned len = read_file(file_names[target_file_index].c_str(), rand_t);
+			read_file(file_names[s.file_index].c_str(), rand_s);
+			memmove(rand_t + t.start_file + s.end_file + 1 - s.start_file, rand_t + t.end_file + 1, len - (t.end_file + 1));
+			memcpy(rand_t + t.start_file, rand_s + s.start_file, s.end_file + 1 - s.start_file);
+			*file_simple = rand_t;
+			*file_size_simple = len + (s.end_file - s.start_file) - (t.end_file - t.start_file);
+		}
+#endif
+
 		return (rand_end > rand_end0) - (rand_end < rand_end0);
 	}
-	case 3:
-	case 4:
+
+	case SMART_INSERT:
 	{
 		if (insertion_points[target_file_index].size() == 0)
 			goto fail;
@@ -1451,9 +1529,13 @@ extern "C" int one_smart_mutation(int target_file_index, unsigned char** file, u
 		if (optional_chunks.size() == 0)
 			goto fail;
 		Chunk& s = optional_chunks[rand() % optional_chunks.size()];
+#ifdef SIMPLE_MUTATIONS
+		log_info("Inserting: source chunk from file %d position %u %u %s %s\ninto target file %d position %u %s %s\n", s.file_index, s.start_file, s.end_file, s.type, s.name, target_file_index, ip.pos_file, ip.type, ip.name);
+#else
 		log_info("Inserting: source chunk from file %d position %u %u %s %s\ninto target file %d position %u %s %s\n", s.file_index, s.start, s.end, s.type, s.name, target_file_index, ip.pos, ip.type, ip.name);
+#endif
 		memcpy(rand_t, original_rand_t, len_t);
-		read_rand_file(rand_names[s.file_index].c_str(), rand_s);
+		read_file(rand_names[s.file_index].c_str(), rand_s);
 
 		unsigned rand_size = len_t + (s.end + 1 - s.start);
 		if (rand_size > MAX_RAND_SIZE) {
@@ -1482,8 +1564,7 @@ extern "C" int one_smart_mutation(int target_file_index, unsigned char** file, u
 		debug_print = old_debug_print;
 		if (!(*file) || !(*file_size)) {
 			log_info("Failed to generate mutated file!\n");
-			if (debug_print)
-				printf("%s", mutation_info);
+			print_info();
 			return -2;
 		}
 		if (rand_end0 < rand_end)
@@ -1491,14 +1572,23 @@ extern "C" int one_smart_mutation(int target_file_index, unsigned char** file, u
 		if (rand_end0 > rand_end)
 			log_info("Warning: Consumed %u less decision bytes than expected while generating chunk.\n", rand_end0 - rand_end);
 
-		if (debug_print)
-			printf("%s", mutation_info);
+		print_info();
+
+#ifdef SIMPLE_MUTATIONS
+		if (file_simple && file_size_simple) {
+			unsigned len = read_file(file_names[target_file_index].c_str(), rand_t);
+			read_file(file_names[s.file_index].c_str(), rand_s);
+			memmove(rand_t + ip.pos_file + s.end_file + 1 - s.start_file, rand_t + ip.pos_file, len - ip.pos_file);
+			memcpy(rand_t + ip.pos_file, rand_s + s.start_file, s.end_file + 1 - s.start_file);
+			*file_simple = rand_t;
+			*file_size_simple = len + s.end_file + 1 - s.start_file;
+		}
+#endif
+
 		return (rand_end > rand_end0) - (rand_end < rand_end0);
 	}
-	case 5:
-	case 6:
-	case 7:
-	case 8:
+
+	case SMART_ABSTRACT:
 	{
 		int start_t = -1;
 		int end_t = -1;
@@ -1548,31 +1638,33 @@ extern "C" int one_smart_mutation(int target_file_index, unsigned char** file, u
 		*file_size = ff_generate(rand_t, MAX_RAND_SIZE, file);
 		get_parse_tree = false;
 		debug_print = old_debug_print;
+		if (!(*file) || !(*file_size)) {
+			log_info("Failed to generate mutated file!\n");
+			print_info();
+			return -2;
+		}
 		if (smart_abstraction) {
 			smart_abstraction = false;
 			log_info("Abstracted chunk was not created!\n");
-			if (debug_print)
-				printf("%s", mutation_info);
+			print_info();
 			return -1;
 		}
-		if (!(*file) || !(*file_size)) {
-			log_info("Failed to generate mutated file!\n");
-			if (debug_print)
-				printf("%s", mutation_info);
-			return -2;
-		}
 
-		if (debug_print)
-			printf("%s", mutation_info);
+		print_info();
 		return 0;
 	}
-	case 9:
+
+	case SMART_DELETE:
 	{
 		if (deletable_chunks[target_file_index].size() == 0)
 			goto fail;
 		int index = rand() % deletable_chunks[target_file_index].size();
-		Chunk& t = deletable_chunks[target_file_index][index];
+		Chunk t = deletable_chunks[target_file_index][index];
+#ifdef SIMPLE_MUTATIONS
+		log_info("Deleting from file %d chunk %u %u %s %s\n", t.file_index, t.start_file, t.end_file, t.type, t.name);
+#else
 		log_info("Deleting from file %d chunk %u %u %s %s\n", t.file_index, t.start, t.end, t.type, t.name);
+#endif
 		memcpy(rand_t, original_rand_t, len_t);
 
 		memmove(rand_t + t.start, rand_t + t.end + 1, len_t - (t.end + 1));
@@ -1587,15 +1679,26 @@ extern "C" int one_smart_mutation(int target_file_index, unsigned char** file, u
 		debug_print = old_debug_print;
 		if (!(*file) || !(*file_size)) {
 			log_info("Failed to generate mutated file!\n");
-			if (debug_print)
-				printf("%s", mutation_info);
+			print_info();
 			return -2;
 		}
 
-		if (debug_print)
-			printf("%s", mutation_info);
+		print_info();
+
+#ifdef SIMPLE_MUTATIONS
+		if (file_simple && file_size_simple) {
+			unsigned len = read_file(file_names[target_file_index].c_str(), rand_t);
+			memmove(rand_t + t.start_file, rand_t + t.end_file + 1, len - (t.end_file + 1));
+			*file_simple = rand_t;
+			*file_size_simple = len - (t.end_file + 1 - t.start_file);
+		}
+#endif
+
 		return 0;
 	}
+	
+	default:
+		return -2;
 	}
 	return -2;
 fail:
@@ -1616,12 +1719,17 @@ int mutations(int argc, char **argv)
 	}
 	unsigned char* file;
 	unsigned size;
+	unsigned char* file_simple;
+	unsigned file_size_simple;
 	debug_print = true;
 	print_errors = true;
 	for (int i = 0; i < 10000; ++i) {
-		int result = one_smart_mutation(i % rand_names.size(), &file, &size);
-		if (debug_print)
+		file = file_simple = NULL;
+		size = file_size_simple = 0;
+		int result = one_smart_mutation(i % rand_names.size(), &file, &size, SMART_MUTATION_RANDOM, &file_simple, &file_size_simple);
+		if (debug_print) {
 			printf("%d\n", result);
+		}
 	}
 	return 0;
 }
@@ -1702,7 +1810,7 @@ int benchmark(int argc, char *argv[])
 	unsigned char* new_data = NULL;
 	int generated = 0;
 	int valid = 0;
-	uint64_t total_bytes = 0;
+	unsigned long long total_bytes = 0;
 	int i;
 	int iterations = 10000;
 	std::unordered_map<int,int> status;
@@ -1740,7 +1848,7 @@ int benchmark(int argc, char *argv[])
 	if (argc > 1)
 		printf("Valid %d/%d = %f\n", valid, generated, (double)valid/(double)generated);
 	if (generated)
-		printf("Average file size %lu bytes.\n", total_bytes / generated);
+		printf("Average file size %llu bytes.\n", total_bytes / generated);
 	printf("Speed %f / s.\n", generated / time);
 	delete[] data;
 	return 0;

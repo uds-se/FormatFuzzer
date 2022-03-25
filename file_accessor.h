@@ -33,6 +33,8 @@ unsigned rand_start;
 unsigned rand_end;
 unsigned rand_start2;
 unsigned rand_end2;
+unsigned delete_start;
+unsigned delete_end;
 bool is_optional = false;
 bool is_delete = false;
 
@@ -44,6 +46,7 @@ std::vector<int> optional_index = { 0 };
 std::unordered_map<std::string, std::vector<Chunk>> non_optional_chunks;
 std::vector<std::vector<NonOptional>> non_optional_index;
 std::vector<std::string> rand_names;
+std::vector<std::string> file_names;
 
 void swap_bytes(void* b, unsigned size) {
 	if (is_big_endian) {
@@ -313,7 +316,7 @@ public:
 				following_is_optional = lookahead;
 				is_following = false;
 				if (get_all_chunks && lookahead) {
-					deletable_chunks[file_index].emplace_back(file_index, rand_start, rand_end, variable_types[chunk_name].c_str(), chunk_name);
+					deletable_chunks[file_index].emplace_back(file_index, rand_start, rand_end, variable_types[chunk_name].c_str(), chunk_name, delete_start, delete_end);
 				}
 			}
 		}
@@ -387,7 +390,7 @@ public:
 				chunk_name = "file";
 			}
 			if (get_parse_tree && get_all_chunks && rand_last != UINT_MAX) {
-				insertion_points[file_index].emplace_back(rand_last, "File", "file");
+				insertion_points[file_index].emplace_back(rand_last, "File", "file", file_pos);
 			}
 		}
 	}
