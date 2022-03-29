@@ -11,6 +11,7 @@ from inspect import getframeinfo, stack
 DEBUG = True
 GENERATION_MARKER = True
 imported = {}
+ALIGN = None
 
 
 class Converter(object):
@@ -71,8 +72,8 @@ class Converter(object):
             self.root.global_type_table[str(name)]["PARAM_CUSTOM"] = custom_param_needed
 
     # registers enum in "global" table during parsing time
-    def register_enum(self, name, value):
-        self.root.global_enum_table[str(name)] = {"VALUE": value, "IMPLEMENTED": False}
+    def register_enum(self, name, value, size):
+        self.root.global_enum_table[str(name)] = {"VALUE": value, "IMPLEMENTED": False, "SIZE": size}
 
     # returns dict of value and possible doc/doc-ref as keys
     def lookup_instance(self, name, containing_type,
@@ -152,11 +153,12 @@ class Converter(object):
                 self.subtrees[local_key].parse_subtree(name=name)
 
     def generate_code_toplevel(self):
-        # print_debug(self.root.global_instance_table, True)
-        if "enums" in self.subtrees.keys():
-            self.output_enums.extend(self.subtrees["enums"].generate_code(called_lowlevel=False))
+        # print_debug(self.root.global_enum_table, True)
         self.output_types.extend(self.subtrees["types"].generate_code(called_lowlevel=False))
         self.output_seqs.extend(self.subtrees["seq"].generate_code(called_lowlevel=False))
+
+        if "enums" in self.subtrees.keys():
+            self.output_enums.extend(self.subtrees["enums"].generate_code(called_lowlevel=False))
 
         if self.endian == "be":
             self.output.append(f"BigEndian();{gen_marker()}")
@@ -229,16 +231,23 @@ class Converter(object):
             last = local_values[-1]
             bit_len = len(hex(last)[2::]) * 4
             if bit_len <= 8:
-                self.enum_size[enum_name] = f"<ubyte>"
+                self.enum_size[enum_name] = f"ubyte"
             elif bit_len <= 16:
-                self.enum_size[enum_name] = f"<uint16>"
+                self.enum_size[enum_name] = f"uint16"
             elif bit_len <= 32:
-                self.enum_size[enum_name] = f"<uint32>"
+                self.enum_size[enum_name] = f"uint32"
             elif bit_len <= 64:
-                self.enum_size[enum_name] = f"<uint64>"
+                self.enum_size[enum_name] = f"uint64"
             else:
 
                 print_debug(f"UNHANDLED ENUM SIZE {bit_len} OF ENUM {enum_name}")
+
+    def double_check_enum_size(self, enum_name, actual_size):
+        actual_size = self.resolve_datatype(actual_size)
+        # print_debug(actual_size)
+        if self.enum_size[enum_name] != actual_size:
+            self.enum_size[enum_name] = actual_size
+            self.root.global_enum_table[enum_name]["SIZE"] = actual_size
 
     def lookup_enum_size(self, enum):
         return self.enum_size[enum]
@@ -347,9 +356,9 @@ class Converter(object):
                 return expr
 
     def infer_type_top(self, input_str, containing_type=None, check_if=False):
-        print_debug(f'Inferring Type of {input_str} in {containing_type}')
+        # print_debug(f'Inferring Type of {input_str} in {containing_type}')
         type_ret = self.infer_type(input_str, containing_type, check_if)
-        print_debug(f'=> Inferred Type {type_ret}')
+        # print_debug(f'=> Inferred Type {type_ret}')
         if type_ret:
             return type_ret
         else:
@@ -367,7 +376,7 @@ class Converter(object):
         condition_list = ["and", "or", "&&", "||", "==", ">", "<", "<=", ">=", "!="]
         for cond in condition_list:
             if input_str == cond:
-                print_debug(f"returning int cause {input_str}")
+                # print_debug(f"returning int cause {input_str}")
                 return "int"
         if type(input_str) is dict:
             # print_debug(f"IMPLEMENT TYPE SWITCHING!!!! {input_str}")
@@ -413,7 +422,7 @@ class Converter(object):
             if "string" in present_types:
                 return "string"
             elif "double" in present_types:
-                print_debug(f"returning double cause {input_str}" + gen_marker())
+                # print_debug(f"returning double cause {input_str}" + gen_marker())
                 return "double"
             elif "int" in present_types:
                 return "int"
@@ -441,7 +450,7 @@ class Converter(object):
                 return else_case_type
             else:
                 if then_case_type == "double" or else_case_type == "double":
-                    print_debug(f"ERROR then_type {then_case_type} else_type {else_case_type}!!!")
+                    # print_debug(f"ERROR then_type {then_case_type} else_type {else_case_type}!!!")
                     return "double"
             # print_debug(f"Parsing value with if {input_str}")
             # print_debug(f" IF {condition} THEN {then_case} ELSE {else_case} containing type {containing_type}")
@@ -450,7 +459,7 @@ class Converter(object):
         arithmetic_ops = ["/"]
         for op in arithmetic_ops:
             if op in input_str:
-                print_debug(f"returning double cause {input_str}" + gen_marker())
+                # print_debug(f"returning double cause {input_str}" + gen_marker())
                 return "double"
         arithmetic_ops = ["/", "+", "-", "*", "|", "&"]
         for op in arithmetic_ops:
@@ -460,7 +469,7 @@ class Converter(object):
         condition_list = [" and ", " or ", " && ", " || ", " == ", " > ", " < ", " <= ", " >= ", " >> ", " << "]
         for cond in condition_list:
             if cond in input_str:
-                print_debug(f"returning int cause {input_str}" + gen_marker())
+                # print_debug(f"returning int cause {input_str}" + gen_marker())
                 return "int"
 
         if " " in input_str.strip():
@@ -479,21 +488,21 @@ class Converter(object):
             else:
                 # print_debug(f" SPACE SEPERATED TYPES missmatch {first_type} {second_type}")
                 if first_type == "int64" or second_type == "int64":
-                    print_debug(f"ERROR {input_str} first_type {first_type} second_type {second_type}!!!")
+                    # print_debug(f"ERROR {input_str} first_type {first_type} second_type {second_type}!!!")
                     return "int64"
                 if first_type == "double" or second_type == "double":
-                    print_debug(f"ERROR {input_str} first_type {first_type} second_type {second_type}!!!")
+                    # print_debug(f"ERROR {input_str} first_type {first_type} second_type {second_type}!!!")
                     return "double"
         can_conv_int = False
         can_conv_float = False
         try:
             val = int(input_str)
-            print_debug(f"returning int64 cause {input_str}" + gen_marker())
+            # print_debug(f"returning int64 cause {input_str}" + gen_marker())
             return "int64"
         except:
             try:
                 val = float(input_str)
-                print_debug(f"returning double cause {input_str}" + gen_marker())
+                # print_debug(f"returning double cause {input_str}" + gen_marker())
                 return "double"
             except:
                 pass
@@ -719,7 +728,7 @@ class enums(Converter):
         for this_level_key in self.this_level_keys:
             local_key = remap_keys(this_level_key)
             if local_key is not None:
-                self.root.register_enum(local_key, self.input[local_key])
+                self.root.register_enum(local_key, self.input[local_key], self.root.lookup_enum_size(local_key))
                 self.subtrees[local_key] = attribute(local_key, self.input[this_level_key])
                 # print(str(self.subtrees[local_key].get_name()) + " : " + str(self.subtrees[local_key].get_value()))
 
@@ -735,9 +744,11 @@ class enums(Converter):
             return [""]
         return self.output
 
-    def gen_single_enum(self, key, enumerations, type="<ubyte>"):
+    def gen_single_enum(self, key, enumerations, type="ubyte"):
         values = enumerations.get_value()
         lines = []
+        type = f'<{type}>'
+
         # TODO FIND CORRECT TYPE? defaulting to <byte> for now
         lines.append("enum " + type + " " + str(key) + "_ENUM{")
         keys = list(values.keys())
@@ -1013,8 +1024,10 @@ class data_point():
         if default_needed and "size" in self.input.keys():
             self.front.append("        default:")
             # self.output.append(f'    Warning("LENGTH %hu %hx",{str(self.input["size"])},{str(self.input["size"])});')
+            default_size = self.input["size"]
+
             self.front.append(
-                f"            {prefix}ubyte raw_data_CONVERTER[" + str(self.input["size"]) + f"];{gen_marker()}")
+                f"            {prefix}ubyte raw_data_CONVERTER[{gen_aligned_size(default_size)}];{gen_marker()}")
             self.front.append("            break;")
         elif default_needed and not switch_over_enum and not size and size_param_needed:
             self.front.append("        default:")
@@ -1258,6 +1271,12 @@ class data_point():
                     # self.front.append("    while(" + size + "){ //AD" + f"{gen_marker()}")
 
                 # if length_addon
+                if "_ENUM" in self.type and "type" in self.input.keys():
+                    enum_size_local = self.root.lookup_enum_size(self.type.split("_ENUM")[0])
+                    enum_size_actual = self.root.resolve_datatype(self.input["type"])
+                    self.root.double_check_enum_size(self.type.split("_ENUM")[0], self.input["type"])
+                    # print_debug(f'Got some sweet {self.type} of size {enum_size_local} vs actual {enum_size_actual} here!')
+
                 self.front.append(
                     prepend + str(self.type) + " " + str(self.id) + length_addon + f";{gen_marker()}" + loc_doc)
                 if self.size and self.root.input["types"][self.sanitize_type_name(self.type)] == {}:
@@ -1659,6 +1678,12 @@ class types(Converter):
             local_key = remap_keys(this_level_key)
             if local_key is not None:
                 sanitized_params = None
+                ##### ADDING PLACEHOLDER TO EMPTY STRUCTS###############
+                if "seq" not in self.input[this_level_key].keys():
+                    self.input[this_level_key]["seq"] = [{"id": "MISSING_SEQ_CONVERTER_BYTES", "type": "u1"}]
+                    # print_debug(f'GOTCHA {local_key} at {self.input[this_level_key]}')
+                ########################################################
+
                 if "params" in self.input[local_key]:
                     sanitized_params = self.sanitize_custom_params(self.input[local_key]["params"])
                 # print_debug(f'NAME {local_key} VALUE {self.input[local_key]} ')
@@ -1824,6 +1849,9 @@ class types(Converter):
                 pass
                 # TODO UNCOMMENT IN ORDER TO GENERATE local vars of parameters
                 output.append(custom_local_param)
+
+            # if "seq" not in item.input.keys():
+            #     item.input["seq"]={"id":"MISSING_SEQ_CONVERTER_BYTES","type":"u1"}
 
             output.extend(item.generate_code(sizer, called_lowlevel=True))  # GOING TO CHILD ITEM
             output.append("};\n")
@@ -2077,6 +2105,13 @@ def gen_marker():
 
 ##########################################################################
 
+def gen_aligned_size(size_var):
+    if ALIGN is not None:
+        return f"{size_var} + {size_var} % {ALIGN}"
+    else:
+        return f"{size_var}"
+
+
 # TODO HANDLE 0b0012.... (bmp.ksy)
 
 class Preprocessor():
@@ -2235,13 +2270,23 @@ class Preprocessor():
 
 
 def main():
-    global converter, DEBUG
+    global converter, DEBUG, ALIGN
 
-    if len(sys.argv) != 3:
-        print("USAGE = python3 Converter.py <input file path> <output file path>")  # TODO
+    if len(sys.argv) < 3 or len(sys.argv) > 4:
+        print("USAGE = python3 Converter.py <input file path> <output file path> [<alignment #byte>]")  # TODO
         exit(1)
+    if len(sys.argv) == 4:
+        ALIGN = sys.argv[3]
     input_file_name = sys.argv[1]
     output_file_name = sys.argv[2]
+    ########## MANUAL ALIGNEMENT OVERRIDE#################
+    if len(sys.argv) != 4 and True:
+        align_dict = {"avi": 2, "bmp": 4}
+        format_name = os.path.basename(output_file_name).split(".")[0]
+        if format_name in align_dict.keys():
+            ALIGN = align_dict[format_name]
+
+    #####################################################
     with open(input_file_name, "r") as in_file:
         input_file = in_file.read()
 
