@@ -3170,7 +3170,11 @@ class PfpInterp(object):
             node.cpp = node.op + node.expr.cpp
         if type(field) is type:
             field = field()
-        res = switch[node.op](field, 1)
+        res = None
+        try:
+            res = switch[node.op](field, 1)
+        except:
+            pass
         if type(res) is bool:
             new_res = field.__class__()
             if type(new_res) == int:

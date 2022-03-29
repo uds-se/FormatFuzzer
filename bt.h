@@ -256,6 +256,8 @@ void end_generation() {
 		chunk_name = back.name;
 		if (is_delete) {
 			is_following = true;
+			delete_start = back.min;
+			delete_end = back.max;
 		}
 	}
 
@@ -273,12 +275,14 @@ void end_generation() {
 	
 	if (get_all_chunks) {
 		if (back.rand_start != back.rand_start_real) {
-			optional_chunks.emplace_back(file_index, back.rand_start, file_acc.rand_pos - 1, variable_types[back.name].c_str(), back.name);
-			insertion_points[file_index].emplace_back(back.rand_start, variable_types[back.name].c_str(), back.name);
+			optional_chunks.emplace_back(file_index, back.rand_start, file_acc.rand_pos - 1, variable_types[back.name].c_str(), back.name, back.min, back.max);
+			insertion_points[file_index].emplace_back(back.rand_start, variable_types[back.name].c_str(), back.name, back.min);
 			is_following = true;
 			chunk_name = back.name;
 			rand_start = back.rand_start;
 			rand_end = file_acc.rand_pos - 1;
+			delete_start = back.min;
+			delete_end = back.max;
 		} else if (file_acc.rand_pos > back.rand_start) {
 			int size = non_optional_index[file_index].size();
 			int i;
@@ -291,10 +295,10 @@ void end_generation() {
 			if (i == size) {
 				non_optional_index[file_index].emplace_back(variable_types[back.name].c_str(), non_optional_chunks[variable_types[back.name]].size(), 1);
 			}
-			non_optional_chunks[variable_types[back.name]].emplace_back(file_index, back.rand_start, file_acc.rand_pos - 1, variable_types[back.name].c_str(), back.name);
+			non_optional_chunks[variable_types[back.name]].emplace_back(file_index, back.rand_start, file_acc.rand_pos - 1, variable_types[back.name].c_str(), back.name, back.min, back.max);
 		}
 		if (file_acc.rand_last != UINT_MAX) {
-			insertion_points[file_index].emplace_back(file_acc.rand_last, variable_types[back.name].c_str(), back.name);
+			insertion_points[file_index].emplace_back(file_acc.rand_last, variable_types[back.name].c_str(), back.name, back.max + 1);
 		}
 	}
 
@@ -529,10 +533,16 @@ void BitfieldLeftToRight() {
 }
 
 void BitfieldEnablePadding() {
+	if (is_padded_bitfield)
+		return;
+	file_acc.finish_bitfield();
 	is_padded_bitfield = true;
 }
 
 void BitfieldDisablePadding() {
+	if (!is_padded_bitfield)
+		return;
+	file_acc.finish_bitfield();
 	is_padded_bitfield = false;
 }
 
