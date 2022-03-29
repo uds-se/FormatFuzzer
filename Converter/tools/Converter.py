@@ -18,6 +18,7 @@ class Converter(object):
     # TODO CHECK IF DO WHILE ALWAYS WORKS IN CASE OF NO OBJECT GENERATED AT ALL
 
     def __init__(self, input_js, is_master=False, parent=None, root=None, name=None, preprocessor=None):
+        self.output_instance = []
         self.enum_size = {}
         self.output_enums = []
         self.output_types = []
@@ -132,7 +133,7 @@ class Converter(object):
             getter = self.root.global_enum_table
         elif type == "instance":
 
-            getter = self.root.global_instance_table[containing_type]
+            getter = self.root.global_instance_table[str(containing_type)]
         else:
             print_debug(str(type) + " TABLE NOT IMPLEMENTED\n")
             exit(-1)
@@ -153,9 +154,13 @@ class Converter(object):
                 self.subtrees[local_key].parse_subtree(name=name)
 
     def generate_code_toplevel(self):
-        # print_debug(self.root.global_enum_table, True)
+        # print_debug(self.root.global_instance_table, True)
+        # print_debug(self.subtrees.keys())
         self.output_types.extend(self.subtrees["types"].generate_code(called_lowlevel=False))
         self.output_seqs.extend(self.subtrees["seq"].generate_code(called_lowlevel=False))
+        if "instances" in self.subtrees.keys():
+            # print_debug(f'FOUND INSTANCES {self.subtrees["instances"]}' )
+            self.output_instance.extend(self.subtrees["instances"].generate_code(called_lowlevel=False))
 
         if "enums" in self.subtrees.keys():
             self.output_enums.extend(self.subtrees["enums"].generate_code(called_lowlevel=False))
@@ -172,6 +177,7 @@ class Converter(object):
         self.output.extend(self.output_enums)
         self.output.extend(self.output_types)
         self.output.extend(self.output_seqs)
+        self.output.extend(self.output_instance)
         #####GARBAGE COLLECTION####
         self.output.append("    if(FTell()<(FileSize()-1)){")
         self.output.append("        ubyte garbage_after_end_of_parsed_file_CONVERTER[(FileSize())-FTell()];")
@@ -319,6 +325,13 @@ class Converter(object):
                 return None
 
             try:
+                if "Str(" in expr:
+                    expr = expr.replace("Str(", "")
+                    expr = expr.replace(")", "")
+            except:
+                pass
+
+            try:
                 expr = expr.replace("_io.eof", "FEof()")
             except:
                 pass
@@ -334,6 +347,11 @@ class Converter(object):
             except:
                 pass
 
+            try:
+                if "._io" in expr:
+                    expr = expr.replace("._io", "")
+            except:
+                pass
             pass
             if "::" in expr:
                 for element in expr.split(" "):
@@ -385,7 +403,7 @@ class Converter(object):
         if type(input_str) is not str:
             print_debug(f"TRYING TO INFER TYPE OF {input_str} WHICH HAS TYPE {type(input_str)}")
 
-        known_replacements = {"_io.pos": "double", "to_s": "string", "Str": "string"}
+        known_replacements = {"_io.pos": "double", "to_s": "string", "Str": "string", "SPrintf": "string"}
         for element in known_replacements.keys():
             if input_str == element:
                 return known_replacements[element]
@@ -526,7 +544,10 @@ class Converter(object):
 
     def find_type_off_id(self, id_name, containing_type, get_whole_type=False):
         id_name = id_name.strip()
-        this_type_objects = self.root.lookup_type(containing_type)
+        if containing_type is None:
+            this_type_objects = self.root.input
+        else:
+            this_type_objects = self.root.lookup_type(containing_type)
         # print_debug(type(this_type_objects))
         # print_debug(id_name)
         tt_instances = this_type_objects["instances"] if "instances" in this_type_objects.keys() else []
@@ -554,7 +575,14 @@ class Converter(object):
                     # print_debug(f"calling infer_type with {containing_type}")
                     return self.infer_type_top(tt_instances[inst_name]["value"], containing_type)
                 else:
-                    print_debug(f'FOUND {id_name} OFF TYPE {tt_instances[inst_name]}')
+                    str_pattern = fr"{id_name}\.to_s"
+                    # print_debug(str_pattern)
+                    str_occurences = self.root.preprocessor.search_num_occurences(str_pattern, pattern_override=True)
+                    if str_occurences:
+                        # print_debug(f'FOUND {id_name} to be char')
+                        return "char"
+
+                    print_debug(f'FOUND {id_name} OFF TYPE {tt_instances[inst_name]} occuring {str_occurences}')
                     print_debug(f"returning ubyte")
                     return "ubyte"
 
@@ -852,6 +880,9 @@ class data_point():
     def generate_code(self, size=None, ignore_if=False, called_lowlevel=True, containing_type=None):
         if not called_lowlevel:
             self.called_lowlevel = False
+            self.output.append(f"    local uint32 struct_start_CONVERTER = FTell();{gen_marker()}")
+            self.output.append(f"    local uint32 length_CONVERTER = FileSize() - 1;{gen_marker()}")
+
         if not self.called_lowlevel:
             while_content = "!FEof()"
         else:
@@ -1015,6 +1046,10 @@ class data_point():
                     type_name = f'int{size_biggest}'
 
             self.switch_endian(self.root.resolve_datatype(cases[case_key], getendian=True), do_endian_switch)
+
+            if "_TYPE" in type_name:
+                prefix = " "
+                # print_debug(f'GOT {type_name}')
             self.front.append(
                 "            " + prefix + type_name + " " + str(self.id) + paramfield + f"{bitfiel_pad};{gen_marker()}")
 
@@ -1390,7 +1425,7 @@ class data_point():
                 # print_debug(inst_io)
                 start_of = self.root.expr_resolve(inst_io, translate_condition_2_c=True)
                 if start_of:
-                    start_point = f'startof({start_of}) + '
+                    start_point = f'startof( {start_of} ) + '
                 else:
                     start_point = ""
             else:
@@ -1437,6 +1472,7 @@ class data_point():
             prefix_field = "local "
 
             if not inst_type and not self.root.lookup_instance(name, containing_type, check_if_implemented=True):
+
                 type_field = self.root.infer_type_top(inst_value, containing_type)
                 resolved_datatype = self.root.resolve_datatype(type_field)
                 if_switch = False
@@ -1451,15 +1487,22 @@ class data_point():
                         self.front.extend(self.gen_instance_value_if(name, type_field, inst_value, containing_type))
                     type_field = f'{type_field}_TYPE'
 
+
                 # print_debug(f'Inferred Type {type_field} form {inst_value}')
                 if not if_switch:
                     self.front.append(
                         f"    {prefix_field}{type_field} {name} = ({c_value});{gen_marker()}{doc_field}")
         elif type(inst_type) is not dict:
+            str_pattern = fr"{name}\.to_s"
+            str_occurences = self.root.preprocessor.search_num_occurences(str_pattern, pattern_override=True)
+            if str_occurences:
+                # print_debug(f'FOUND {name} to be char')
+                type_field = "char"
+
             self.front.append(
                 f"    {prefix_field}{type_field} {name}{size_field};{gen_marker()}{doc_field}")
         else:
-            self.front.append(f"//PLACEHOLDER 1 ")
+            self.front.append(f"//PLACEHOLDER {gen_marker()}")  # TODO CHECK IF UNUSED ELSECASE
 
         if inst_pos is not None:
             self.front.append(f'        FSeek(temp_CONVERTER); {gen_marker()}')
@@ -1637,12 +1680,14 @@ class instances(data_point):
     def generate_code(self, size=None, ignore_if=False, called_lowlevel=True, containing_type=None):
 
         # print_debug(f"Generating Instance {self.name}")
+        # print_debug(self.this_level_keys)
         for this_level_key in self.this_level_keys:
             instance = self.root.lookup_instance(this_level_key, containing_type=self.name)
+            # print_debug(f'instance {instance}')
             if instance is not None and not self.root.lookup_instance(this_level_key, containing_type=self.name,
                                                                       check_if_implemented=True):
-                num_occurences = self.root.preprocessor.search_num_occurences(self.name)
-                # print_debug(f"Instance {self.name} occurs {num_occurences} Times")
+                num_occurences = self.root.preprocessor.search_num_occurences(this_level_key)
+                # print_debug(f"Instance {this_level_key} occurs {num_occurences} Times")
                 if num_occurences > 1:
                     self.gen_instance_full(instance, this_level_key, self.name)
 
@@ -1679,7 +1724,7 @@ class types(Converter):
             if local_key is not None:
                 sanitized_params = None
                 ##### ADDING PLACEHOLDER TO EMPTY STRUCTS###############
-                if "seq" not in self.input[this_level_key].keys():
+                if "seq" not in self.input[this_level_key].keys() and True:
                     self.input[this_level_key]["seq"] = [{"id": "MISSING_SEQ_CONVERTER_BYTES", "type": "u1"}]
                     # print_debug(f'GOTCHA {local_key} at {self.input[this_level_key]}')
                 ########################################################
@@ -1932,7 +1977,12 @@ def insert_imports(main_input, imports, path):
         try:
             imported_enums = imported_kaitai["enums"]
             for imp_enum in imported_enums.keys():
-                out["enums"][imp_enum] = imported_enums[imp_enum]
+                if imp_enum not in out["enums"].keys():
+                    out["enums"][imp_enum] = imported_enums[imp_enum]
+                elif len(imported_enums[imp_enum]) > len(out["enums"][imp_enum]):
+                    out["enums"][imp_enum] = imported_enums[imp_enum]
+                else:
+                    print_debug(f'Not inserting ENUM {imp_enum}')
         except:
             # print_debug("No Enums Imported")
             pass
@@ -2122,10 +2172,13 @@ class Preprocessor():
         self.enums = kaitaijs["enums"].keys()
         # self.types = kaitaijs["types"].keys()
 
-    def search_num_occurences(self, target, area=None):
-        if not area:
+    def search_num_occurences(self, target, area=None, pattern_override=False):
+        if area is None:
             area = self.input
-        pattern = fr'\W{target}'
+        if not pattern_override:
+            pattern = fr'\W{target}'
+        else:
+            pattern = fr'{target}'
         times = len(re.findall(pattern, area))
         return times
 
@@ -2238,13 +2291,14 @@ class Preprocessor():
                 match = re.match(pattern_to_s, word)
                 if match is not None:
                     object_ = match.group('object')
-                    words[index] = words[index].replace(f'{object_}to_s', f'Str({object_[:-1]})')
+                    # words[index] = words[index].replace(f'{object_}to_s', f'{object_[:-1]}')
+                    words[index] = words[index].replace(f'{object_}to_s', f'Str( {object_[:-1]} )')
 
                 # HANDLING _sizeof
                 match = re.match(pattern_sizeof, word)
                 if match is not None:
                     object_ = match.group('object')
-                    words[index] = words[index].replace(f'{object_}_sizeof', f'sizeof({object_[:-1]})')
+                    words[index] = words[index].replace(f'{object_}_sizeof', f'sizeof( {object_[:-1]} )')
 
                 # HANDLING size
                 match = re.match(pattern_size, word)
