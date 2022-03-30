@@ -14,7 +14,8 @@ imported = {}
 ALIGN = None
 format_name = ""
 EMPTY_STRUCT_FILLER = {}
-EMPTY_STRUCT_FILLER_FLAG = True
+EMPTY_STRUCT_FILLER_FLAG = False
+ALL_GET_ARGS = True
 
 
 class Converter(object):
@@ -588,8 +589,8 @@ class Converter(object):
                         # print_debug(f'FOUND {id_name} to be char')
                         return "char"
 
-                    print_debug(f'FOUND {id_name} OFF TYPE {tt_instances[inst_name]} occuring {str_occurences}')
-                    print_debug(f"returning ubyte")
+                    # print_debug(f'FOUND {id_name} OFF TYPE {tt_instances[inst_name]} occuring {str_occurences}')
+                    # print_debug(f"returning ubyte")
                     return "ubyte"
 
         type_params = self.root.lookup_type(containing_type, check_if_custom_param_needed=True)
@@ -916,7 +917,7 @@ class data_point():
             if "enum" in self.input.keys():
                 self.gen_atomic(type_override=self.input["enum"])
             elif "size-eos" in self.input.keys():
-                print_debug(self.subtrees.keys())
+                # print_debug(self.subtrees.keys())
                 # self.front.append("    while(FTell() < UNTIL_CONVERTER){")
                 self.front.append("    while(" + while_content + "){ " + gen_marker())
                 self.gen_atomic(indents=2, forwarding=True)
@@ -958,7 +959,7 @@ class data_point():
         ###INJECTION LOCAL VAR FOR START
         switch_term_instances = self.root.expr_resolve(switch_term)
         switch_term = self.root.expr_resolve(switch_term, translate_condition_2_c=True)
-        print_debug(f" INSTANCES {switch_term_instances} in {self.containing_type} or {self.id}")
+        # print_debug(f" INSTANCES {switch_term_instances} in {self.containing_type} or {self.id}")
         self.gen_instances(switch_term_instances, containing_type=self.containing_type, from_list=True)
         bitfield_primer = False
         sizes = []
@@ -1328,7 +1329,8 @@ class data_point():
                         type_kaitai = self.root.input["types"][sanitized_name]["seq"]
                     else:
                         type_kaitai = {}
-                if (self.size or (self.size_eos and False)) and type_kaitai == EMPTY_STRUCT_FILLER:
+                if (self.size or (
+                        self.size_eos and not EMPTY_STRUCT_FILLER_FLAG)) and type_kaitai == EMPTY_STRUCT_FILLER:
                     if self.size:
                         if EMPTY_STRUCT_FILLER_FLAG:
                             skipper = f'{self.size} - 1'
@@ -1796,7 +1798,8 @@ class types(Converter):
             local_key = remap_keys(this_level_key)
             if local_key is not None:
                 # print_debug(f'>>>>Checking {local_key}')
-                if self.parse_arguments_recursion(self.subtrees[local_key], origin_type=local_key, depth=0):
+                if self.parse_arguments_recursion(self.subtrees[local_key], origin_type=local_key,
+                                                  depth=0) or ALL_GET_ARGS:
                     # print_debug(f'<<<<{local_key} got PARAM')
                     self.root.register_type(name=local_key, size_param_needed=True)
 
@@ -1844,7 +1847,6 @@ class types(Converter):
                 hit = hit.split("(")[0]
                 # print_debug(hit)
                 # primer = True
-            # print_debug(f'Hit {hit} Resolved Hits {hit_list} actl {item.chck_flg("type", flag_to_val=True)} from {self.this_level_keys}')
             if type(hit) is dict:
                 hit_list = self.root.resolve_switch(hit)
             else:
@@ -1854,9 +1856,12 @@ class types(Converter):
                     included_types.append(hitter)
             hit = item.chck_flg("type", flag_to_val=True, excluded_values=exclusion_list)
 
+        # print_debug(f'Hit {hit} Resolved Hits {hit_list} actl {item.chck_flg("type", flag_to_val=True)} from {self.this_level_keys}')
+
         order_switch = depth / 2 == 0  # IMPORTANT PERFORMANCE INCREASE
 
         if included_types == []:  # LOWEST LATER // No SUBTYPES
+            # print_debug(f'No included types in {origin_type}')
             return False
         else:
             for sub_type in (included_types if order_switch else included_types[::-1]):
