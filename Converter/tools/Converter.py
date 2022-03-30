@@ -12,6 +12,9 @@ DEBUG = True
 GENERATION_MARKER = True
 imported = {}
 ALIGN = None
+format_name = ""
+EMPTY_STRUCT_FILLER = {}
+EMPTY_STRUCT_FILLER_FLAG = True
 
 
 class Converter(object):
@@ -156,11 +159,14 @@ class Converter(object):
     def generate_code_toplevel(self):
         # print_debug(self.root.global_instance_table, True)
         # print_debug(self.subtrees.keys())
+        self.root.global_type_table[f'{format_name}_CONVERTER']["PARAM"] = True
         self.output_types.extend(self.subtrees["types"].generate_code(called_lowlevel=False))
+
         self.output_seqs.extend(self.subtrees["seq"].generate_code(called_lowlevel=False))
-        if "instances" in self.subtrees.keys():
-            # print_debug(f'FOUND INSTANCES {self.subtrees["instances"]}' )
-            self.output_instance.extend(self.subtrees["instances"].generate_code(called_lowlevel=False))
+
+        # if "instances" in self.subtrees.keys():
+        #     # print_debug(f'FOUND INSTANCES {self.subtrees["instances"]}' )
+        #     self.output_instance.extend(self.subtrees["instances"].generate_code(called_lowlevel=False))
 
         if "enums" in self.subtrees.keys():
             self.output_enums.extend(self.subtrees["enums"].generate_code(called_lowlevel=False))
@@ -403,7 +409,7 @@ class Converter(object):
         if type(input_str) is not str:
             print_debug(f"TRYING TO INFER TYPE OF {input_str} WHICH HAS TYPE {type(input_str)}")
 
-        known_replacements = {"_io.pos": "double", "to_s": "string", "Str": "string", "SPrintf": "string"}
+        known_replacements = {"_io.pos": "uint32", "to_s": "string", "Str": "string", "SPrintf": "string"}
         for element in known_replacements.keys():
             if input_str == element:
                 return known_replacements[element]
@@ -910,9 +916,9 @@ class data_point():
             if "enum" in self.input.keys():
                 self.gen_atomic(type_override=self.input["enum"])
             elif "size-eos" in self.input.keys():
-
+                print_debug(self.subtrees.keys())
                 # self.front.append("    while(FTell() < UNTIL_CONVERTER){")
-                self.front.append("    while(" + while_content + "){ //AA")
+                self.front.append("    while(" + while_content + "){ " + gen_marker())
                 self.gen_atomic(indents=2, forwarding=True)
                 self.front.append("    }")
             else:
@@ -1146,7 +1152,7 @@ class data_point():
             pass
         elif "eos" == self.input["repeat"]:
             # self.front.append("    local uint32 UNTIL_CONVERTER = length_CONVERTER;") #TODO THIS IS OPTION B FOR EOS
-            self.front.append("    while(" + while_content + "){ //AB" + f"{gen_marker()}")
+            self.front.append("    while(" + while_content + "){" + f"{gen_marker()}")
             # self.front.append("    while(FTell() < UNTIL_CONVERTER){")
             self.gen_atomic(indents=2)
             self.front.append("    }")
@@ -1314,8 +1320,23 @@ class data_point():
 
                 self.front.append(
                     prepend + str(self.type) + " " + str(self.id) + length_addon + f";{gen_marker()}" + loc_doc)
-                if self.size and self.root.input["types"][self.sanitize_type_name(self.type)] == {}:
-                    self.front.append(f'    FSkip({self.size});' + gen_marker())
+
+                sanitized_name = self.sanitize_type_name(self.type)
+                if sanitized_name:
+                    if "seq" in self.root.input["types"][sanitized_name].keys():
+                        type_kaitai = self.root.input["types"][sanitized_name]["seq"]
+                    else:
+                        type_kaitai = {}
+                if (self.size or (self.size_eos and False)) and type_kaitai == EMPTY_STRUCT_FILLER:
+                    if self.size:
+                        if EMPTY_STRUCT_FILLER_FLAG:
+                            skipper = f'{self.size} - 1'
+                        else:
+                            skipper = f'{self.size}'
+                    elif self.size_eos:
+                        skipper = "length_CONVERTER -(FTell()-struct_start_CONVERTER)"
+
+                    self.front.append(f'    FSkip({skipper});' + gen_marker())
 
                 if size and length_addon != "" and param_addon != "":
                     self.front.append("    }while(" + size + ")" + f"{gen_marker()}")
@@ -1341,9 +1362,11 @@ class data_point():
             # print_debug(self.front)
 
     def sanitize_type_name(self, type_name):
-        out = type_name.split("_TYPE")[0]
-        # print_debug(out)
-        return out
+        if "_TYPE" in type_name:
+            return type_name.split("_TYPE")[0]
+        elif "_ENUM" in type_name:
+            return None
+        return type_name
 
     def get_lower_lvl_instances(self, child_name="", parent_name="", parent_instances=[]):
         needed_instances = []
@@ -1486,7 +1509,6 @@ class data_point():
                         if_switch = True
                         self.front.extend(self.gen_instance_value_if(name, type_field, inst_value, containing_type))
                     type_field = f'{type_field}_TYPE'
-
 
                 # print_debug(f'Inferred Type {type_field} form {inst_value}')
                 if not if_switch:
@@ -1645,7 +1667,7 @@ class seq(Converter):
             # if "length_CONVERTER" == size:
             # self.output.append("    local uint32 UNTIL_CONVERTER = FTell() + length_CONVERTER;") #TODO THIS IS OPTION A FOR EOS
             self.output.append(
-                f"    local uint32 UNTIL_CONVERTER = FTell() + length_CONVERTER;//A {gen_marker()}")  # TODO THIS IS OPTION B FOR EOS
+                f"    local uint32 UNTIL_CONVERTER = FTell() + length_CONVERTER;{gen_marker()}")  # TODO THIS IS OPTION B FOR EOS
             # self.output.append('    Warning("LENGTH %hu UNTIL %hu FTell %hu",length_CONVERTER,UNTIL_CONVERTER,FTell());')
 
         for this_level_key in self.this_level_keys:
@@ -1719,13 +1741,15 @@ class types(Converter):
         return out
 
     def parse_subtree(self, name=None):
+        global EMPTY_STRUCT_FILLER
         for this_level_key in self.this_level_keys:
             local_key = remap_keys(this_level_key)
             if local_key is not None:
                 sanitized_params = None
                 ##### ADDING PLACEHOLDER TO EMPTY STRUCTS###############
-                if "seq" not in self.input[this_level_key].keys() and True:
+                if "seq" not in self.input[this_level_key].keys() and EMPTY_STRUCT_FILLER_FLAG:
                     self.input[this_level_key]["seq"] = [{"id": "MISSING_SEQ_CONVERTER_BYTES", "type": "u1"}]
+                    EMPTY_STRUCT_FILLER = [{"id": "MISSING_SEQ_CONVERTER_BYTES", "type": "u1"}]
                     # print_debug(f'GOTCHA {local_key} at {self.input[this_level_key]}')
                 ########################################################
 
@@ -1864,6 +1888,7 @@ class types(Converter):
                     # custom_local_params.append(f'    local {cust_type} {cust_name}_CONVERTER = {cust_type}({cust_name});{gen_marker()}')
                 cust_cont = cust_cont[0:-1]
                 # print_debug(custom_local_params)
+
             if lenfield != "":
                 lenfield += lencontent
                 if custom_param:
@@ -1880,10 +1905,11 @@ class types(Converter):
             else:
                 forward_lenfield = ""
 
+
             ##############WIP FORWARD DECLARATION RESTRUCTURE################
             self.pre.append("struct " + str(this_level_key) + "_TYPE" + forward_lenfield + f";{gen_marker()}")
             ##############WIP FORWARD DECLARATION RESTRUCTURE################
-            output.append("struct " + str(this_level_key) + "_TYPE" + lenfield + " {")
+            output.append("struct " + str(this_level_key) + "_TYPE" + lenfield + " {" + gen_marker())
             if lenfield != "" or True:
                 output.append(f"    local uint32 struct_start_CONVERTER = FTell();{gen_marker()}")
             if lenfield != "":
@@ -1920,6 +1946,11 @@ def remap_keys(key):
     return key
 
 
+def insert_imports_top(kaitaijs_main, imports, filepath):
+    out = insert_imports(kaitaijs_main, imports, filepath)
+    return out
+
+
 def insert_imports(main_input, imports, path):
     # TODO INCLUDE ENDIANESS IN IMPORTED TYPES
     Converter_Loc = os.path.dirname(os.path.abspath(__file__))
@@ -1949,10 +1980,17 @@ def insert_imports(main_input, imports, path):
         try:
             imported_types = imported_kaitai["types"]
             for imp_type in imported_types.keys():
-                out["types"][imp_type] = imported_types[imp_type]
+                if imp_type in out["types"].keys():
+                    print_debug(f'Not inserting Type {imp_type}')
+                    pass
+                    # print_debug("AHH FUCK")
+                    # print_debug(out["types"][imp_type],True)
+                    # print_debug(imported_types[imp_type],True)
+                else:
+                    out["types"][imp_type] = imported_types[imp_type]
         except:
-            # print_debug(traceback.format_exc())
-            # print_debug("types didnt work")
+            print_debug(traceback.format_exc())
+            print_debug("types didnt work")
             pass
 
         try:
@@ -2324,7 +2362,7 @@ class Preprocessor():
 
 
 def main():
-    global converter, DEBUG, ALIGN
+    global converter, DEBUG, ALIGN, format_name
 
     if len(sys.argv) < 3 or len(sys.argv) > 4:
         print("USAGE = python3 Converter.py <input file path> <output file path> [<alignment #byte>]")  # TODO
@@ -2352,9 +2390,25 @@ def main():
         # print_debug(input_file_name)
         filepath = os.path.dirname(os.path.abspath(input_file_name))
         # print_debug(filepath)
-        kaitaijs = insert_imports(kaitaijs_main, imports, filepath)
+        out = insert_imports_top(kaitaijs_main, imports, filepath)
     except:
-        kaitaijs = kaitaijs_main
+        # print_debug(traceback.format_exc())
+        out = kaitaijs_main
+
+    try:
+        tl_keys = ["seq", "instances"]
+        out["types"][f'{format_name}_CONVERTER'] = {}
+        for key in tl_keys:
+            if key in out.keys():
+                out["types"][f'{format_name}_CONVERTER'][key] = out[key]
+        # out["types"][f'{format_name}_CONVERTER']["params"] = [{"id": "length", "type": "u4"}]
+        out["seq"] = [{"id": f"{format_name}", "type": f"{format_name}_CONVERTER"}]
+        # out["seq"] = [{"id": f"{format_name}", "type": f"{format_name}_CONVERTER(length_CONVERTER)"}]
+    except:
+        print_debug(traceback.format_exc())
+
+    kaitaijs = out
+    # kaitaijs = kaitaijs_main
     kaitai_sorter_main(kaitaijs)
 
     sorted_string = yaml.dump(kaitaijs)
