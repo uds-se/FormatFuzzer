@@ -1633,7 +1633,7 @@ class data_point():
                 # print_debug(f'Full Type {full_type}')
 
                 output.append(f'{indents}local int64 temp_CONVERTER{LL_postfix} = FTell();{gen_marker()}')
-                output.append(f'{indents}FSeek(startof({value.strip()}));{gen_marker()}')
+                output.append(f'{indents}FSeek(startof({value.strip()}[0]));{gen_marker()}')
                 output.append(f'{indents}{inst_type}_TYPE {name}{param_field};{gen_marker()}')
                 output.append(f'{indents}FSeek(temp_CONVERTER{LL_postfix});')
 
