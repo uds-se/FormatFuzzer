@@ -958,7 +958,7 @@ class data_point():
         ###INJECTION LOCAL VAR FOR START
         switch_term_instances = self.root.expr_resolve(switch_term)
         switch_term = self.root.expr_resolve(switch_term, translate_condition_2_c=True)
-        # print_debug(f" INSTANCES {switch_term_instances} in {self.containing_type} or {self.id}")
+        print_debug(f" INSTANCES {switch_term_instances} in {self.containing_type} or {self.id}")
         self.gen_instances(switch_term_instances, containing_type=self.containing_type, from_list=True)
         bitfield_primer = False
         sizes = []
@@ -982,6 +982,7 @@ class data_point():
             self.front.append("    BitfieldDisablePadding();" + gen_marker())
 
         # TODO CAST SWITCHTERM TO INT OR MAKE SURE ALL LOCALS USED IN SWITCHES ARE int
+
         self.front.append("    switch(" + str(switch_term) + ") {" + gen_marker())
         first_index_front = len(self.front)
         # print_debug(self.input)
@@ -1412,8 +1413,8 @@ class data_point():
     def gen_instance_full(self, instance_dict, name, containing_type=None):
 
         num_occurences = self.root.preprocessor.search_num_occurences(f'{name}')
-        # print_debug(f"Instance {name} occurs {num_occurences} Times")
         if num_occurences <= 1:
+            # print_debug(f"Instance {name} occurs {num_occurences} Times")
             return
 
         if not (instance_dict is not None and not self.root.lookup_instance(name, containing_type,
@@ -1442,18 +1443,32 @@ class data_point():
 
             self.front.append(
                 f'    if({self.root.expr_resolve(inst_if, True)})' + "{" + f"{gen_marker()}")
+        if inst_type is not None:
+            if type(inst_type) is dict:
+                switch = inst_type["switch-on"]
+                switch_drop = ["_root", "_parent", "_io"]
+                if switch.split(".")[0] in switch_drop:
+                    switch_term = ".".join(switch.split(".")[1:])
+                else:
+                    switch_term = switch
+                ###INJECTION LOCAL VAR FOR START
+                switch_term_instances = self.root.expr_resolve(switch_term)
+                self.gen_instances(switch_term_instances, containing_type=self.containing_type, from_list=True)
+
         if inst_pos is not None:
+
             self.front.append(f'        local int64 temp_CONVERTER = FTell();{gen_marker()}')
             if inst_io is not None:
                 # print_debug(inst_io)
                 start_of = self.root.expr_resolve(inst_io, translate_condition_2_c=True)
                 if start_of:
-                    start_point = f'startof( {start_of} ) + '
+                    start_point = f'startof( {start_of}[0] ) + '
                 else:
                     start_point = ""
             else:
                 start_point = ""
-            self.front.append(f'        FSeek({start_point}{inst_pos});{gen_marker()}')
+            self.front.append(f'        FSeek({start_point}{inst_pos} );{gen_marker()}')
+            # self.front.append(f'        FSeek({start_point}{inst_pos} +1 );{gen_marker()}')
         #     print_debug(f'Found {name}')
         # else:
         #     print_debug(f'Found not {name} {inst_pos}')
@@ -1462,6 +1477,7 @@ class data_point():
                 # print_debug(f"HELP Instance {name} has switch Type {inst_type}")
                 # print_debug(f"My Subtree contains {self.subtrees.keys()}")
                 # print_debug(f'Front Before{len(self.front)}')
+
                 temp_front = self.subtrees[name].front
                 self.subtrees[name].front = self.front
                 self.subtrees[name].gen_switch(is_local=True)
@@ -1712,7 +1728,9 @@ class instances(data_point):
                 # print_debug(f"Instance {this_level_key} occurs {num_occurences} Times")
                 if num_occurences > 1:
                     self.gen_instance_full(instance, this_level_key, self.name)
-
+                else:
+                    pass
+                    # print_debug(f"Instance {this_level_key} occurs {num_occurences} Times")
         self.output.extend(self.front)
         self.output.extend(self.back)
         return self.output
