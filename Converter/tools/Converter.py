@@ -1590,7 +1590,6 @@ class data_point():
             if resolved_datatype:
                 output.append(value)
             else:
-                param_field = ""
                 recursion_level_type = containing_type
                 if "." in value:
                     for element in value.split(".")[:-1]:
@@ -1602,11 +1601,39 @@ class data_point():
                     full_type = self.root.find_type_off_id(value.split(".")[-1], recursion_level_type, True)
                 else:
                     full_type = self.root.find_type_off_id(value.strip(), recursion_level_type, True)
+
+                param_addon = ""
+                if "_TYPE" not in full_type:
+                    if "(" in full_type:
+                        type_param_list = full_type.replace("(", "AAACONVERTER").replace(")", "AAACONVERTER").split(
+                            "AAACONVERTER")[:-1]
+                        inst_type = type_param_list[0]
+                        for i in range(len(type_param_list)):
+                            type_param_list[i] = self.root.expr_resolve(type_param_list[i],
+                                                                        translate_condition_2_c=True)
+                        print_debug(type_param_list)
+                        param_addon = str(type_param_list[1::]).replace("'", "")[1:-1]
+
+                    self.type = full_type + "_TYPE"
+
+                if self.called_lowlevel:
+                    length_addon = f"length_CONVERTER -(FTell()-struct_start_CONVERTER)"
+                else:
+                    length_addon = f"FileSize()-FTell()"
+                    pass
+                if length_addon != "" and param_addon != "":
+                    print_debug(f'LENGTH_ADDON {length_addon} PARAM_ADDON {param_addon}')
+                    length_addon = f'({length_addon},{param_addon})'
+                elif length_addon != "" or param_addon != "":
+                    print_debug(f'LENGTH_ADDON {length_addon} PARAM_ADDON {param_addon}')
+                    length_addon = f'({length_addon}{param_addon})'
+
+                param_field = length_addon
+
                 # print_debug(f'Full Type {full_type}')
-                param_field = "(" + full_type.split("(", 1)[1] if full_type else ""
 
                 output.append(f'{indents}local int64 temp_CONVERTER{LL_postfix} = FTell();{gen_marker()}')
-                output.append(f'{indents}FSeek(startof({value.strip()}));')
+                output.append(f'{indents}FSeek(startof({value.strip()}));{gen_marker()}')
                 output.append(f'{indents}{inst_type}_TYPE {name}{param_field};{gen_marker()}')
                 output.append(f'{indents}FSeek(temp_CONVERTER{LL_postfix});')
 
