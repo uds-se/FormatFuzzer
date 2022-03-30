@@ -1430,6 +1430,7 @@ class data_point():
         inst_value = instance_dict["value"] if "value" in inst_keys else None
         inst_doc = instance_dict["doc"] if "doc" in inst_keys else None
         inst_size = instance_dict["size"] if "size" in inst_keys else None
+        inst_repeat = instance_dict["repeat"] if "repeat" in inst_keys else None
         type_field = "ubyte"
         size_field = ""
         prefix_field = ""
@@ -1472,6 +1473,12 @@ class data_point():
         #     print_debug(f'Found {name}')
         # else:
         #     print_debug(f'Found not {name} {inst_pos}')
+        if inst_repeat is not None:
+            while_content = "FTell() < UNTIL_CONVERTER"
+            if inst_repeat == "eos":
+                self.front.append("    while(" + while_content + "){" + f"{gen_marker()}")
+                # self.front.append("    while(FTell() < UNTIL_CONVERTER){")
+
         if inst_type is not None:
             if type(inst_type) is dict:
                 # print_debug(f"HELP Instance {name} has switch Type {inst_type}")
@@ -1541,6 +1548,9 @@ class data_point():
                 f"    {prefix_field}{type_field} {name}{size_field};{gen_marker()}{doc_field}")
         else:
             self.front.append(f"//PLACEHOLDER {gen_marker()}")  # TODO CHECK IF UNUSED ELSECASE
+
+        if inst_repeat is not None:
+            self.front.append("    }")
 
         if inst_pos is not None:
             self.front.append(f'        FSeek(temp_CONVERTER); {gen_marker()}')
