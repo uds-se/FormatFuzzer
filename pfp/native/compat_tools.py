@@ -37,6 +37,7 @@ predefine(
     const int CHECKSUM_CRCCCITT = 12;
     const int CHECKSUM_CRC32 = 13;
     const int CHECKSUM_ADLER32 = 14;
+    const int CHECKSUM_CRC8 = 15;
 """
 )
 # int64 Checksum(
@@ -66,6 +67,7 @@ def Checksum(params, ctxt, scope, stream, coord):
     CHECKSUM_CRCCCITT
     CHECKSUM_CRC32
     CHECKSUM_ADLER32
+    CHECKSUM_CRC8
 
     If start and size are zero, the algorithm is run on the whole file. If
     they are not zero then the algorithm is run on size bytes starting at
@@ -94,6 +96,7 @@ def Checksum(params, ctxt, scope, stream, coord):
         12: "CHECKSUM_CRCCCITT",
         13: _crc32,
         14: _checksum_Adler32,
+        15: "CHECKSUM_CRC8",
     }
 
     if len(params) < 1:

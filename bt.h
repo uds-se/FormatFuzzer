@@ -80,6 +80,7 @@ const int CHECKSUM_CRC16 = 11;
 const int CHECKSUM_CRCCCITT = 12;
 const int CHECKSUM_CRC32 = 13;
 const int CHECKSUM_ADLER32 = 14;
+const int CHECKSUM_CRC8 = 15;
 const int FINDMETHOD_NORMAL = 0;
 const int FINDMETHOD_WILDCARDS = 1;
 const int FINDMETHOD_REGEX = 2;
@@ -551,6 +552,11 @@ int SetEvilBit(int allow) {
 uint32 Checksum(int checksum_type, int64 start, int64 size) {
 	assert_cond(start + size <= file_acc.file_size, "checksum range invalid");
 	switch(checksum_type) {
+	case CHECKSUM_CRC8: {
+		boost::crc_optimal<8, 0x07, 0x00, 0, false, false> res;
+		res.process_bytes(file_acc.file_buffer + start, size);
+		return res.checksum();
+	}
 	case CHECKSUM_CRC16: {
 		boost::crc_16_type res;
 		res.process_bytes(file_acc.file_buffer + start, size);
