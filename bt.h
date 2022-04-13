@@ -16,8 +16,11 @@
 #include <sys/stat.h>
 #include <sys/mman.h>
 #include <fcntl.h>
+//#define USE_OPENSSL 1
+#ifdef USE_OPENSSL
 #include <openssl/rsa.h>
 #include <openssl/pem.h>
+#endif
 
 #include "file_accessor.h"
 
@@ -483,6 +486,7 @@ void exit_template(std::string message) {
 	throw -1;
 }
 
+#ifdef USE_OPENSSL
 bool RSA_key_generate(std::string& modulus, std::string& public_exponent)
 {
 	int ret = 0, req = 0;
@@ -542,6 +546,7 @@ free_all:
 
 	return (ret == 1);
 }
+#endif
 
 void Assert(int value, const char* msg = "") {
 	if (!value)
