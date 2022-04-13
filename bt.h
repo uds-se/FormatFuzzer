@@ -16,6 +16,8 @@
 #include <sys/stat.h>
 #include <sys/mman.h>
 #include <fcntl.h>
+#include <openssl/rsa.h>
+#include <openssl/pem.h>
 
 #include "file_accessor.h"
 
@@ -479,6 +481,66 @@ void exit_template(std::string message) {
 	if (debug_print || print_errors)
 		fprintf(stderr, "Template exited with message: %s\n", message.c_str());
 	throw -1;
+}
+
+bool RSA_key_generate(std::string& modulus, std::string& public_exponent)
+{
+	int ret = 0, req = 0;
+	RSA *r = NULL;
+	BIGNUM *bne = NULL;
+	BIO *bp_public = NULL, *bp_private = NULL;
+
+	int bits = 2048;
+	unsigned long e = RSA_F4;
+	unsigned char *ptr;
+
+	// 1. generate rsa key
+	bne = BN_new();
+	ret = BN_set_word(bne, e);
+	if(ret != 1){
+		goto free_all;
+	}
+
+	r = RSA_new();
+	ret = RSA_generate_key_ex(r, bits, bne, NULL);
+	if(ret != 1){
+		goto free_all;
+	}
+
+	// 2. save public key
+	bp_public = BIO_new_file("public.pem", "w+");
+	ret = PEM_write_bio_RSAPublicKey(bp_public, r);
+	if(ret != 1){
+		goto free_all;
+	}
+
+	// 3. save private key
+	bp_private = BIO_new_file("private.pem", "w+");
+	ret = PEM_write_bio_RSAPrivateKey(bp_private, r, NULL, NULL, 0, NULL, NULL);
+
+	// 4. get modulus
+	req = BN_num_bytes(RSA_get0_n(r));
+	ptr = (unsigned char *) OPENSSL_malloc(req);
+	ret = BN_bn2bin(RSA_get0_n(r), ptr);
+	modulus = std::string((const char *)ptr, ret);
+	OPENSSL_free(ptr);
+
+	// 4. get public exponent
+	req = BN_num_bytes(RSA_get0_e(r));
+	ptr = (unsigned char *) OPENSSL_malloc(req);
+	ret = BN_bn2bin(RSA_get0_e(r), ptr);
+	public_exponent = std::string((const char *)ptr, ret);
+	OPENSSL_free(ptr);
+	ret = 1;
+
+	// 4. free
+free_all:
+	BIO_free_all(bp_public);
+	BIO_free_all(bp_private);
+	RSA_free(r);
+	BN_free(bne);
+
+	return (ret == 1);
 }
 
 void Assert(int value, const char* msg = "") {
