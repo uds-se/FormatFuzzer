@@ -1324,8 +1324,7 @@ enum SMART_MUTATION {
 	SMART_ABSTRACT
 };
 
-
-extern "C" int one_smart_mutation(int target_file_index, unsigned char** file, unsigned* file_size, SMART_MUTATION mut = SMART_MUTATION_RANDOM, unsigned char** file_simple = NULL, unsigned* file_size_simple = NULL) {
+int do_one_smart_mutation(int target_file_index, unsigned char** file, unsigned* file_size, SMART_MUTATION mut = SMART_MUTATION_RANDOM, unsigned char** file_simple = NULL, unsigned* file_size_simple = NULL) {
 	static unsigned char *original_rand_t = NULL;
 	static unsigned char *rand_t = NULL;
 	static unsigned char *rand_s = NULL;
@@ -1709,6 +1708,12 @@ fail:
 	return -2;
 }
 
+
+extern "C" int one_smart_mutation(int target_file_index, unsigned char** file, unsigned* file_size) {
+	return do_one_smart_mutation(target_file_index, file, file_size);
+}
+
+
 int mutations(int argc, char **argv)
 {
 	srand(time(NULL));
@@ -1726,7 +1731,7 @@ int mutations(int argc, char **argv)
 	for (int i = 0; i < 10000; ++i) {
 		file = file_simple = NULL;
 		size = file_size_simple = 0;
-		int result = one_smart_mutation(i % rand_names.size(), &file, &size, SMART_MUTATION_RANDOM, &file_simple, &file_size_simple);
+		int result = do_one_smart_mutation(i % rand_names.size(), &file, &size, SMART_MUTATION_RANDOM, &file_simple, &file_size_simple);
 		if (debug_print) {
 			printf("%d\n", result);
 		}
