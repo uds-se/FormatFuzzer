@@ -18,7 +18,9 @@
 #include <fcntl.h>
 //#define USE_OPENSSL 1
 #ifdef USE_OPENSSL
+#include <openssl/sha.h>
 #include <openssl/rsa.h>
+#include <openssl/ec.h>
 #include <openssl/pem.h>
 #endif
 
@@ -487,10 +489,13 @@ void exit_template(std::string message) {
 }
 
 #ifdef USE_OPENSSL
-bool RSA_key_generate(std::string& modulus, std::string& public_exponent)
-{
+
+RSA *rsa = NULL;
+EC_KEY *eckey = NULL;
+
+bool RSA_key_generate(std::string& modulus, std::string& public_exponent) {
 	int ret = 0, req = 0;
-	RSA *r = NULL;
+	rsa = NULL;
 	BIGNUM *bne = NULL;
 	BIO *bp_public = NULL, *bp_private = NULL;
 
@@ -505,44 +510,133 @@ bool RSA_key_generate(std::string& modulus, std::string& public_exponent)
 		goto free_all;
 	}
 
-	r = RSA_new();
-	ret = RSA_generate_key_ex(r, bits, bne, NULL);
+	rsa = RSA_new();
+	ret = RSA_generate_key_ex(rsa, bits, bne, NULL);
 	if(ret != 1){
 		goto free_all;
 	}
 
 	// 2. save public key
-	bp_public = BIO_new_file("public.pem", "w+");
-	ret = PEM_write_bio_RSAPublicKey(bp_public, r);
+	bp_public = BIO_new_file("public_rsa.pem", "w+");
+	ret = PEM_write_bio_RSAPublicKey(bp_public, rsa);
 	if(ret != 1){
 		goto free_all;
 	}
 
 	// 3. save private key
-	bp_private = BIO_new_file("private.pem", "w+");
-	ret = PEM_write_bio_RSAPrivateKey(bp_private, r, NULL, NULL, 0, NULL, NULL);
+	bp_private = BIO_new_file("private_rsa.pem", "w+");
+	ret = PEM_write_bio_RSAPrivateKey(bp_private, rsa, NULL, NULL, 0, NULL, NULL);
+	if(ret != 1){
+		goto free_all;
+	}
 
 	// 4. get modulus
-	req = BN_num_bytes(RSA_get0_n(r));
+	req = BN_num_bytes(RSA_get0_n(rsa));
 	ptr = (unsigned char *) OPENSSL_malloc(req);
-	ret = BN_bn2bin(RSA_get0_n(r), ptr);
+	ret = BN_bn2bin(RSA_get0_n(rsa), ptr);
 	modulus = std::string((const char *)ptr, ret);
 	OPENSSL_free(ptr);
 
-	// 4. get public exponent
-	req = BN_num_bytes(RSA_get0_e(r));
+	// 5. get public exponent
+	req = BN_num_bytes(RSA_get0_e(rsa));
 	ptr = (unsigned char *) OPENSSL_malloc(req);
-	ret = BN_bn2bin(RSA_get0_e(r), ptr);
+	ret = BN_bn2bin(RSA_get0_e(rsa), ptr);
 	public_exponent = std::string((const char *)ptr, ret);
 	OPENSSL_free(ptr);
 	ret = 1;
 
-	// 4. free
+	// 6. free
 free_all:
 	BIO_free_all(bp_public);
 	BIO_free_all(bp_private);
-	RSA_free(r);
 	BN_free(bne);
+
+	return (ret == 1);
+}
+
+bool EC_key_generate(std::string& public_point) {
+	int ret = 0;
+	eckey = NULL;
+	BIGNUM *bne = NULL;
+	BIO *bp_public = NULL, *bp_private = NULL;
+	EC_POINT *pub_key = NULL;
+	EC_GROUP *prime256v1_group = NULL;
+
+	unsigned char *ptr;
+
+	// 1. generate ec key
+	eckey = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
+	ret = EC_KEY_generate_key(eckey);
+	if(ret != 1){
+		goto free_all;
+	}
+
+	// 2. save public key
+	bp_public = BIO_new_file("public_ec.pem", "w+");
+	ret = PEM_write_bio_EC_PUBKEY(bp_public, eckey);
+	if(ret != 1){
+		goto free_all;
+	}
+
+	// 3. save private key
+	bp_private = BIO_new_file("private_ec.pem", "w+");
+	ret = PEM_write_bio_ECPrivateKey(bp_private, eckey, NULL, NULL, 0, NULL, NULL);
+	if(ret != 1){
+		goto free_all;
+	}
+
+	// 4. get public point
+	pub_key = (EC_POINT *)EC_KEY_get0_public_key(eckey);
+	prime256v1_group = EC_GROUP_new_by_curve_name(NID_X9_62_prime256v1);
+	ret = EC_POINT_point2buf(prime256v1_group, pub_key, POINT_CONVERSION_COMPRESSED, &ptr, nullptr);
+	EC_GROUP_free(prime256v1_group);
+	public_point = std::string((const char *)ptr, ret);
+	OPENSSL_free(ptr);
+	ret = 1;
+
+	// 5. free
+free_all:
+	BIO_free_all(bp_public);
+	BIO_free_all(bp_private);
+	BN_free(bne);
+
+	return (ret == 1);
+}
+
+bool RSA_sign_SHA256(int64 start, int64 size, std::string& signature) {
+	int ret = 0;
+
+	unsigned char hash[SHA256_DIGEST_LENGTH];
+	SHA256_CTX sha;
+	SHA256_Init(&sha);
+	SHA256_Update(&sha, file_acc.file_buffer + start, size);
+	SHA256_Final(hash, &sha);
+
+	unsigned char* sigret = (unsigned char *) OPENSSL_malloc(RSA_size(rsa));
+	unsigned int siglen = 0;
+	ret = RSA_sign(NID_sha256, hash, SHA256_DIGEST_LENGTH, sigret, &siglen, rsa);
+
+	signature = std::string((const char *)sigret, siglen);
+	OPENSSL_free(sigret);
+
+	return (ret == 1);
+}
+
+bool ECDSA_sign_SHA256(int64 start, int64 size, std::string& signature) {
+	int ret = 0;
+
+	unsigned char hash[SHA256_DIGEST_LENGTH];
+	SHA256_CTX sha;
+	SHA256_Init(&sha);
+	SHA256_Update(&sha, file_acc.file_buffer + start, size);
+	SHA256_Final(hash, &sha);
+
+	unsigned char* sigret = (unsigned char *) OPENSSL_malloc(ECDSA_size(eckey));
+	unsigned int siglen = 0;
+	ret = ECDSA_sign(0, hash, SHA256_DIGEST_LENGTH, sigret, &siglen, eckey);
+
+	signature = std::string((const char *)sigret, siglen);
+	OPENSSL_free(sigret);
 
 	return (ret == 1);
 }
