@@ -503,41 +503,55 @@ bool RSA_key_generate(std::string& modulus, std::string& public_exponent) {
 	unsigned long e = RSA_F4;
 	unsigned char *ptr;
 
-	// 1. generate rsa key
-	bne = BN_new();
-	ret = BN_set_word(bne, e);
-	if(ret != 1){
-		goto free_all;
+	if (file_acc.generate) {
+		// generate rsa key
+		bne = BN_new();
+		ret = BN_set_word(bne, e);
+		if(ret != 1){
+			goto free_all;
+		}
+
+		rsa = RSA_new();
+		ret = RSA_generate_key_ex(rsa, bits, bne, NULL);
+		if(ret != 1){
+			goto free_all;
+		}
+
+		// save private key
+		bp_private = BIO_new_file("private_rsa.pem", "w+");
+		ret = PEM_write_bio_RSAPrivateKey(bp_private, rsa, NULL, NULL, 0, NULL, NULL);
+		if(ret != 1){
+			goto free_all;
+		}
+		if (debug_print)
+			printf("Wrote RSA key to file private_rsa.pem\n");
+	} else {
+		// read rsa key
+		bp_private = BIO_new_file("private_rsa.pem", "r");
+		rsa = PEM_read_bio_RSAPrivateKey(bp_private, NULL, NULL, NULL);
+		if(!rsa){
+			fprintf(stderr, "Failed to read RSA key from file private_rsa.pem\n");
+			abort();
+		}
+		if (debug_print)
+			printf("Read RSA key from file private_rsa.pem\n");
 	}
 
-	rsa = RSA_new();
-	ret = RSA_generate_key_ex(rsa, bits, bne, NULL);
-	if(ret != 1){
-		goto free_all;
-	}
-
-	// 2. save public key
+	// save public key
 	bp_public = BIO_new_file("public_rsa.pem", "w+");
 	ret = PEM_write_bio_RSAPublicKey(bp_public, rsa);
 	if(ret != 1){
 		goto free_all;
 	}
 
-	// 3. save private key
-	bp_private = BIO_new_file("private_rsa.pem", "w+");
-	ret = PEM_write_bio_RSAPrivateKey(bp_private, rsa, NULL, NULL, 0, NULL, NULL);
-	if(ret != 1){
-		goto free_all;
-	}
-
-	// 4. get modulus
+	// get modulus
 	req = BN_num_bytes(RSA_get0_n(rsa));
 	ptr = (unsigned char *) OPENSSL_malloc(req);
 	ret = BN_bn2bin(RSA_get0_n(rsa), ptr);
 	modulus = std::string((const char *)ptr, ret);
 	OPENSSL_free(ptr);
 
-	// 5. get public exponent
+	// get public exponent
 	req = BN_num_bytes(RSA_get0_e(rsa));
 	ptr = (unsigned char *) OPENSSL_malloc(req);
 	ret = BN_bn2bin(RSA_get0_e(rsa), ptr);
@@ -545,7 +559,7 @@ bool RSA_key_generate(std::string& modulus, std::string& public_exponent) {
 	OPENSSL_free(ptr);
 	ret = 1;
 
-	// 6. free
+	// free
 free_all:
 	BIO_free_all(bp_public);
 	BIO_free_all(bp_private);
