@@ -618,6 +618,7 @@ free_all:
 }
 
 bool RSA_sign_SHA256(int64 start, int64 size, std::string& signature) {
+	assert_cond(rsa, "No RSA key available for signing");
 	int ret = 0;
 
 	unsigned char hash[SHA256_DIGEST_LENGTH];
@@ -637,6 +638,7 @@ bool RSA_sign_SHA256(int64 start, int64 size, std::string& signature) {
 }
 
 bool ECDSA_sign_SHA256(int64 start, int64 size, std::string& signature) {
+	assert_cond(eckey, "No EC key available for signing");
 	int ret = 0;
 
 	unsigned char hash[SHA256_DIGEST_LENGTH];
