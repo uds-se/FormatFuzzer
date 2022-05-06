@@ -197,9 +197,11 @@ class file_accessor {
 			bitfield_bits += write_bits;
 		}
 		bitfield_size = size;
-		while (bitfield_bits >= bitfield_size * 8) {
-			file_pos += bitfield_size;
-			bitfield_bits -= bitfield_size * 8;
+		if (!is_padded_bitfield)
+			size = 1;
+		while (bitfield_bits >= size * 8) {
+			file_pos += size;
+			bitfield_bits -= size * 8;
 		}
 		if (bitfield_bits == 0)
 			bitfield_size = 0;
