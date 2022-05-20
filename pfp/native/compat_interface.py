@@ -120,6 +120,8 @@ def Exec(params, ctxt, scope, stream, coord):
 # void Exit( int errorcode )
 @native(name="Exit", ret=pfp.fields.Void)
 def Exit(params, ctxt, scope, stream, coord):
+    if ctxt._pfp__interp._generate:
+        return
     if len(params) != 1:
         raise errors.InvalidArguments(
             coord, "1 arguments", "{} args".format(len(params))

@@ -3150,15 +3150,14 @@ class PfpInterp(object):
 
         if node.op in special_switch:
             result = special_switch[node.op](node, scope, ctxt, stream)
-            if node.op == "exists" and node.expr.__class__ == AST.StructRef:
-                node.cpp = node.expr.name.cpp + "." + node.expr.field.name + "_exists"
-            if node.op == "exists" and node.expr.__class__ == AST.ArrayRef:
-                node.cpp = "((unsigned long)" + node.expr.subscript.cpp + " < " + node.expr.name.cpp + ".size())"
             return result
 
         field = self._handle_node(node.expr, scope, ctxt, stream)
         if node.op == "sizeof":
-            node.cpp = node.expr.cpp + "._sizeof"
+            if not hasattr(node.expr, "cpp") and issubclass(field, fields.IntBase):
+                node.cpp = "{}".format(field.width)
+            else:
+                node.cpp = node.expr.cpp + "._sizeof"
         elif node.op == "startof":
             if node.expr.name == "this":
                 node.cpp = "_startof"
@@ -3243,6 +3242,15 @@ class PfpInterp(object):
                 res._pfp__set_value(0)
         except AttributeError:
             res._pfp__set_value(0)
+
+        if node.expr.__class__ == AST.StructRef:
+            node.cpp = node.expr.name.cpp + "." + node.expr.field.name + "_exists"
+        if node.expr.__class__ == AST.ArrayRef:
+            if a._pfp__name in self._variable_types and "_array_class" not in self._variable_types[a._pfp__name]:
+                node.cpp = "((unsigned long)" + node.expr.subscript.cpp + " < " + node.expr.name.cpp + ".array_size())"
+            else:
+                node.cpp = "((unsigned long)" + node.expr.subscript.cpp + " < " + node.expr.name.cpp + ".size())"
+
         return res
 
     def _handle_function_exists(self, node, scope, ctxt, stream):
@@ -3760,7 +3768,7 @@ class PfpInterp(object):
         """
         ary = self._handle_node(node.name, scope, ctxt, stream)
         subscript = self._handle_node(node.subscript, scope, ctxt, stream)
-        if hasattr(ary, "field_cls") and not hasattr(ary.field_cls, "format") and ary.field_cls != fields.String:
+        if hasattr(ary, "field_cls") and not hasattr(ary.field_cls, "format") and ary.field_cls != fields.String and ary._pfp__name in self._variable_types and "_array_class" in self._variable_types[ary._pfp__name]:
             node.cpp = "(*" + node.name.cpp + "[" + node.subscript.cpp + "])"
         else:
             node.cpp = node.name.cpp + "[" + node.subscript.cpp + "]"

@@ -1,0 +1,600 @@
+//------------------------------------------------
+//--- 010 Editor v3.0 Binary Template
+//
+//      File: DOC.bt
+//   Authors: Oto
+//   Version: 0.1
+//   Purpose: Parse main sections of Microsoft Doc format. 
+//            Assumes the file is defragmented.
+//  Category: Document
+// File Mask: *.doc
+//  ID Bytes: D0 CF 11 E0
+//   History: 
+//   0.1   2017-12-27 Oto: Released.
+//
+//  Note: this file refers to the compound document format as OLE SS
+//  Note: this template requires that the binary file be defragmented first 
+
+//  Note: When a 'chain' is mentioned, it is the way to determine the following
+//  Sector of a Stream.  Each Sector of a Stream could exist almost anywhere in
+//  the file, just like a file system.  The FAT contains information about which
+//  Sector follows a given Sector, which must be followed to sequentially
+//  regenerate a Stream.
+// =============================================================================
+// Setup defaults
+LittleEndian();
+SetBackColor( cLtGray );
+
+
+
+
+// =============================================================================
+// OLE SS structures
+// =============================================================================
+
+const DWORD FAT_FREESECT    = 0xFFFFFFFF;
+const DWORD FAT_ENDOFCHAIN  = 0xFFFFFFFE;
+const DWORD FAT_FATSECT     = 0xFFFFFFFD;
+const DWORD FAT_DIFSECT     = 0xFFFFFFFC;
+const DWORD FAT_TERMINAL    = FAT_DIFSECT;
+const DWORD FAT_NOSTREAM    = FAT_FREESECT;
+
+const local DWORD dwDefClr = cBlack;
+const local DWORD dwStClr1 = cBlack;
+const local DWORD dwStClr2 = cRed;
+
+
+typedef USHORT    OFFSET;
+typedef ULONG     SECT;
+typedef ULONG     FSINDEX;
+typedef USHORT    FSOFFSET;
+typedef USHORT    WCHAR;
+typedef ULONG     DFSIGNATURE;
+typedef ULONG     SID;
+typedef USHORT    WCHAR;
+
+
+typedef struct {
+   DWORD   dw1;
+   USHORT  w1;
+   USHORT  w2;
+   UBYTE   aby[8];
+} CLSID <read=ReadCLSID>;
+
+string ReadCLSID( CLSID &clsid )
+{
+   string s;
+   SPrintf( s, "%08lx-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x",
+        clsid.dw1,
+        clsid.w1,
+        clsid.w2,
+        clsid.aby[0],
+        clsid.aby[1],
+        clsid.aby[2],
+        clsid.aby[3],
+        clsid.aby[4],
+        clsid.aby[5],
+        clsid.aby[6],
+        clsid.aby[7] );
+   return s;
+}
+
+
+typedef enum {
+   STGTY_INVALID    = 0,
+   STGTY_STORAGE    = 1,
+   STGTY_STREAM     = 2,
+   STGTY_LOCKBYTES  = 3,
+   STGTY_PROPERTY   = 4,
+   STGTY_ROOT       = 5
+} STGTY;
+
+
+typedef enum {
+   DE_RED    = 0,
+   DE_BLACK  = 1
+} DECOLOR;
+
+
+typedef struct StructuredStorageDirectoryEntry {
+                           SetForeColor( dwStClr1 );
+   WCHAR          strEleName[32];
+                           SetForeColor( dwStClr2 );
+   USHORT         wCbEleName;
+                           SetForeColor( dwStClr1 );
+   UBYTE          byType;
+                           SetForeColor( dwStClr2 );
+   UBYTE          byFlags;
+                           SetForeColor( dwStClr1 );
+   SID            sidLeft;
+                           SetForeColor( dwStClr2 );
+   SID            sidRight;
+                           SetForeColor( dwStClr1 );
+   SID            sidChild;
+                           SetForeColor( dwStClr2 );
+   CLSID          clsidThis;
+                           SetForeColor( dwStClr1 );
+   ULONG          dwUserFlags;
+                           SetForeColor( dwStClr2 );
+   FILETIME       tCreateTime;
+                           SetForeColor( dwStClr1 );
+   FILETIME       tModifyTime;
+                           SetForeColor( dwStClr2 );
+   SECT           dwStartSect;
+                           SetForeColor( dwStClr1 );
+   ULONG          dwSizeLow;
+                           SetForeColor( dwStClr2 );
+   ULONG          dwSizeHigh;
+			   SetForeColor( dwDefClr );
+} SSDE <read=ReadSSDE>;
+
+string ReadSSDE( SSDE &ssde )
+{
+   string s;
+   DWORD  dwCtr;
+   DWORD  dwEnd = ssde.wCbEleName / 2;
+
+   if( dwEnd > 32 )
+      { dwEnd = 32; }
+
+   for( dwCtr = 0;
+        dwCtr < dwEnd;
+        ++dwCtr )
+   {
+      if( 0x20 <= ssde.strEleName[dwCtr] )
+      {
+         SPrintf( s, "%s%c", s, ssde.strEleName[dwCtr] );
+      }
+   }
+   return s;
+}
+
+
+
+
+struct OLESSHEAD
+{
+                           SetForeColor( dwStClr1 );
+   UBYTE   abySig[8];
+                           SetForeColor( dwStClr2 );
+   CLSID   clsidNull;
+                           SetForeColor( dwStClr1 );
+   USHORT  wVerMinor;
+                           SetForeColor( dwStClr2 );
+   USHORT  wVerDll;
+                           SetForeColor( dwStClr1 );
+   USHORT  wByteOrder;
+                           SetForeColor( dwStClr2 );
+   USHORT  wSectorShift;
+                           SetForeColor( dwStClr1 );
+   USHORT  wMiniSecShift;
+                           SetForeColor( dwStClr2 );
+   USHORT  wReserved;
+                           SetForeColor( dwStClr1 );
+   ULONG   dwReserved;
+                           SetForeColor( dwStClr2 );
+   FSINDEX dwNumDirSects;
+                           SetForeColor( dwStClr1 );
+   FSINDEX dwNumFatSects;
+                           SetForeColor( dwStClr2 );
+   SECT    dwDirSect1;
+                           SetForeColor( dwStClr1 );
+   DFSIGNATURE stTransactSig;
+                           SetForeColor( dwStClr2 );
+   ULONG   dwMiniStrMax;
+                           SetForeColor( dwStClr1 );
+   SECT    dwMiniFatSect1;
+                           SetForeColor( dwStClr2 );
+   FSINDEX dwNumMiniFatSects;
+                           SetForeColor( dwStClr1 );
+   SECT    dwDifatSect1;
+                           SetForeColor( dwStClr2 );
+   FSINDEX dwNumDifatSects;
+                           SetForeColor( dwStClr1 );
+   SECT    dwDiFat[109];
+			   SetForeColor( dwDefClr );
+};
+
+
+local DWORD _OleDataLen = 0;
+
+typedef struct {
+   UBYTE data[_OleDataLen];
+} OLE_DATA;
+
+
+
+
+// =============================================================================
+// OLE SS functions
+// =============================================================================
+
+QWORD SectOffset( DWORD dwSect )
+{
+   local QWORD qwSect = (QWORD)dwSect + 1;
+   return ( qwSect << OleHeader.wSectorShift );
+}
+
+
+
+
+QWORD MiniSectOffset( DWORD dwSect )
+{
+   local QWORD qwSect = (QWORD)dwSect;
+
+   // dwMiniSect is a global
+   if( 0 >= dwMiniSect )
+   {
+      Printf( "Corrupt document.\n" );
+      Exit( 1 );
+   }
+
+   // If this doc was fragmented, we would need to traverse the Mini-FAT chain,
+   //  which is chained like a normal sector in the FAT.
+
+   qwSect = SectOffset( dwMiniSect );
+   qwSect += ( (QWORD)dwSect << OleHeader.wMiniSecShift );
+   return qwSect;
+}
+
+
+
+
+DWORD ParseOleMiniStream( )
+{
+   local DWORD dwFatLoc = stDir.dwStartSect;
+
+   FSeek( MiniSectOffset( stDir.dwStartSect ) );
+
+   // If this doc was fragmented, the data would be contained in mini-sectors
+   //  which are contained within a normal Stream which is contained in Sectors.
+   //  We would need to lookup the Mini-stream's chain in the Mini-Fat (which
+   //  itself could be fragmented like a normal Stream) and simultaneously
+   //  follow the Stream's chain, while following the FAT's chain...... 
+
+   _OleDataLen = stDir.dwSizeLow;
+   OLE_DATA abyData;
+
+   return 1;
+}
+
+
+
+
+DWORD ParseOleStream( )
+{
+   local QWORD qwLastPos = FTell( );
+   if( stDir.dwSizeLow < OleHeader.dwMiniStrMax )
+   {
+      ParseOleMiniStream( );
+      FSeek( qwLastPos );
+      return 1;
+   }
+
+
+   FSeek( SectOffset( stDir.dwStartSect ) );
+
+   // If this doc was fragmented, the data would be contained in Sectors
+   //  which are chained by the FAT, which itself is chained by the DiFat.
+
+   _OleDataLen = stDir.dwSizeLow;
+   OLE_DATA abyData;
+
+
+   FSeek( qwLastPos );
+
+   return 1;
+}
+
+
+
+
+// =============================================================================
+// Start parsing
+// =============================================================================
+
+
+// Read the OLE SS header
+struct OLESSHEAD OleHeader;
+
+
+// Validate OLE SS magic number
+if(   OleHeader.abySig[0] != 0xD0 || OleHeader.abySig[1] != 0xCF
+   || OleHeader.abySig[2] != 0x11 || OleHeader.abySig[3] != 0xE0
+   || OleHeader.abySig[4] != 0xA1 || OleHeader.abySig[5] != 0xB1
+   || OleHeader.abySig[6] != 0x1A || OleHeader.abySig[7] != 0xE1 )
+{
+   Printf( "Read signature:     %02x %02x %02x %02x %02x %02x %02x %02x\n",
+        OleHeader.abySig[0], OleHeader.abySig[1], OleHeader.abySig[2],
+        OleHeader.abySig[3], OleHeader.abySig[4], OleHeader.abySig[5],
+        OleHeader.abySig[6], OleHeader.abySig[7] );
+   Printf( "Expected signature: d0 cf 11 e0 a1 b1 1a e1\n" );
+   Printf( "This is not an OLE Structured Storage document.\n" );
+   Exit( 0 );
+}
+
+
+// =============================================================================
+
+// Determine sector size
+local DWORD dwSectorSize = 1 << OleHeader.wSectorShift;
+local DWORD dwSPerS = dwSectorSize / sizeof( SECT );
+if( dwSectorSize < 128 )
+{
+   Printf( "Corrupt document.\n" );
+   Exit( 1 );
+}
+
+local DWORD dwMiniSectorSize = 1 << OleHeader.wMiniSecShift;
+if( dwMiniSectorSize < 16 || dwMiniSectorSize > OleHeader.dwMiniStrMax )
+{
+   Printf( "Corrupt document.\n" );
+   Exit( 1 );
+}
+
+
+// =============================================================================
+
+// After this point everything will start on sector boundaries.  iSectorSize
+//  contains the size of each sector and iMiniSectorSize contains the size of
+//  each Mini-sector.  dwSPerS is the number of SECTs that can fit in a Sector.
+//  Streams length < OleHeader.iMiniStrMax are Mini-Streams.
+
+
+local DWORD dwCtr;
+
+if( FAT_TERMINAL > OleHeader.dwDifatSect1 )
+{
+   // If this doc was fragmented, the DiFat would be chained by following the
+   //  final SECT in each DiFat Sector, which points to the next DiFat sector.
+   //  Note: The DiFat array contained in the OleHeader doesn't contain the
+   //   final chaining SECT.
+   FSeek( SectOffset( OleHeader.dwDifatSect1 ) );
+   SECT DiFat[ dwSPerS * OleHeader.dwNumDifatSects ];
+   local DWORD dwDiFatLen = dwSPerS * OleHeader.dwNumDifatSects;
+}
+
+
+// If this doc was fragmented, the FAT would be chained by the DiFat.  The
+//  Sectors which contain the FAT and DiFat are reserved in the FAT by the
+//  special markers FAT_FATSECT and FAT_DIFSECT respectively.
+FSeek( SectOffset( OleHeader.dwDiFat[0] ) );
+SECT Fat[ dwSPerS * OleHeader.dwNumFatSects ];
+local DWORD dwFatLen = dwSPerS * OleHeader.dwNumFatSects;
+
+
+// If this doc was fragmented, the MiniFAT would be treated like a normal
+//  Stream and chained in the FAT.
+if( FAT_TERMINAL > OleHeader.dwMiniFatSect1 )
+{
+   FSeek( SectOffset( OleHeader.dwMiniFatSect1 ) );
+   SECT MiniFat[ dwSPerS * OleHeader.dwNumMiniFatSects ];
+   local DWORD dwMiniFatLen = dwSPerS * OleHeader.dwNumMiniFatSects;
+}
+
+
+// =============================================================================
+
+// Now read the directory entries and search for our streams.
+// If this doc was fragmented, the directory entries would be chained in the FAT
+//  like a normal Stream.
+local DWORD dwMiniSect    = 0;
+local DWORD dwMiniSectLen = 0;
+
+local DWORD dwNextFat = OleHeader.dwDirSect1;
+local DWORD dwDirsPerSector = dwSectorSize / 128;
+local DWORD dwNumDirEntries = 0;
+
+
+FSeek( SectOffset( dwNextFat ) );
+
+do
+{
+   dwNumDirEntries += dwDirsPerSector;
+
+   for( dwCtr = 0; dwCtr < dwDirsPerSector; ++dwCtr )
+   {
+      if( ( dwCtr % 2 ) == 0 )
+         { SetBackColor( 0xf0e0e0 ); }
+      else
+         { SetBackColor( 0xe0d0d0 ); }
+
+      SSDE stDir;
+
+      if( stDir.dwSizeLow <= 0 )
+         { continue; }
+
+      if( stDir.byType == STGTY_ROOT )
+      {
+         if( 0 < dwMiniSect )
+         {
+            Printf( "Corrupt document.\n" );
+            Exit( 1 );
+         }
+
+         dwMiniSect = stDir.dwStartSect;
+         dwMiniSectLen = stDir.dwSizeLow;
+      }
+      else if( stDir.byType == STGTY_STREAM )
+      {
+         ParseOleStream( );
+      }
+   }
+
+   if( Fat[ dwNextFat ] >= FAT_TERMINAL )
+      { break; } // Loop exit
+
+   dwNextFat = Fat[ dwNextFat ];
+}
+while( 1 );
+
+
+
+
+
+// =============================================================================
+// =============================================================================
+// Word specific code
+// =============================================================================
+// =============================================================================
+
+
+local DWORD dwWordStream = 0;
+local DWORD dwWordStrLen = 0;
+local QWORD qwWordStrOffset = 0;
+
+local DWORD dwTableStream[2] = {0, 0};
+local DWORD dwTableStrLen[2] = {0, 0};
+local QWORD qwTableStrOffset[2] = {0, 0};
+
+local DWORD dwFound = 0;
+
+// Loop through all of the streams looking for the ones we are interested in
+for( dwCtr = 0; exists( stDir[dwCtr] ); ++dwCtr )
+{
+   // Memcmp doesn't compare arbitrary memory, just strings...
+   if(    stDir[dwCtr].wCbEleName     ==  14
+       && stDir[dwCtr].strEleName[ 0] ==  48   // 0
+       && stDir[dwCtr].strEleName[ 1] ==  84   // T
+       && stDir[dwCtr].strEleName[ 2] ==  97   // a
+       && stDir[dwCtr].strEleName[ 3] ==  98   // b
+       && stDir[dwCtr].strEleName[ 4] == 108   // l
+       && stDir[dwCtr].strEleName[ 5] == 101   // e
+       && stDir[dwCtr].strEleName[ 6] ==   0 )
+   {
+      dwTableStream[0] = dwCtr;
+      dwTableStrLen[0] = stDir[dwCtr].dwSizeLow;
+
+      if( dwTableStrLen[0] < OleHeader.dwMiniStrMax )
+      {
+         qwTableStrOffset[0] = MiniSectOffset( stDir[dwTableStream[0]].dwStartSect );
+      }
+      else
+      {
+         qwTableStrOffset[0] = SectOffset( stDir[dwTableStream[0]].dwStartSect );
+      }
+
+      dwFound++;
+   }
+   else
+   if(    stDir[dwCtr].wCbEleName     ==  14
+       && stDir[dwCtr].strEleName[ 0] ==  49   // 1
+       && stDir[dwCtr].strEleName[ 1] ==  84   // T
+       && stDir[dwCtr].strEleName[ 2] ==  97   // a
+       && stDir[dwCtr].strEleName[ 3] ==  98   // b
+       && stDir[dwCtr].strEleName[ 4] == 108   // l
+       && stDir[dwCtr].strEleName[ 5] == 101   // e
+       && stDir[dwCtr].strEleName[ 6] ==   0 )
+   {
+      dwTableStream[1] = dwCtr;
+      dwTableStrLen[1] = stDir[dwCtr].dwSizeLow;
+
+      if( dwTableStrLen[1] < OleHeader.dwMiniStrMax )
+      {
+         qwTableStrOffset[1] = MiniSectOffset( stDir[dwTableStream[1]].dwStartSect );
+      }
+      else
+      {
+         qwTableStrOffset[1] = SectOffset( stDir[dwTableStream[1]].dwStartSect );
+      }
+
+      dwFound++;
+   }
+   else
+
+   if(    stDir[dwCtr].wCbEleName     ==  26
+       && stDir[dwCtr].strEleName[ 0] ==  87   // W
+       && stDir[dwCtr].strEleName[ 1] == 111   // o
+       && stDir[dwCtr].strEleName[ 2] == 114   // r
+       && stDir[dwCtr].strEleName[ 3] == 100   // d
+       && stDir[dwCtr].strEleName[ 4] ==  68   // D
+       && stDir[dwCtr].strEleName[ 5] == 111   // o
+       && stDir[dwCtr].strEleName[ 6] ==  99   // c
+       && stDir[dwCtr].strEleName[ 7] == 117   // u
+       && stDir[dwCtr].strEleName[ 8] == 109   // m
+       && stDir[dwCtr].strEleName[ 9] == 101   // e
+       && stDir[dwCtr].strEleName[10] == 110   // n
+       && stDir[dwCtr].strEleName[11] == 116   // t
+       && stDir[dwCtr].strEleName[12] ==   0 )
+   {
+      dwWordStream = dwCtr;
+      dwWordStrLen = stDir[dwCtr].dwSizeLow;
+
+      if( dwWordStrLen < OleHeader.dwMiniStrMax )
+      {
+         qwWordStrOffset = MiniSectOffset( stDir[dwWordStream].dwStartSect );
+      }
+      else
+      {
+         qwWordStrOffset = SectOffset( stDir[dwWordStream].dwStartSect );
+      }
+
+      dwFound++;
+   }
+}
+
+if( dwFound < 2 )
+{
+   Printf( "Invalid Word Document.\n" );
+   Warning( "Invalid Word Document." );
+   Exit( 1 );
+}
+
+
+// Determine which table stream to use
+FSeek( qwWordStrOffset + 0xA );
+WORD Flags;
+local uint iWhichTableStream = (Flags & 0x200) >> 9;
+
+
+// =============================================================================
+// =============================================================================
+// Issue specific code
+// =============================================================================
+// =============================================================================
+
+// Get the offset into the Table Stream and structure length from the WordDocument stream
+FSeek( qwWordStrOffset + 0x42A );
+DWORD fcSttbfBkmkFactoid;
+DWORD lcbSttbfBkmkFactoid;
+
+if( lcbSttbfBkmkFactoid == 0 )
+{
+   Printf( "Clean document.\n" );
+   Printf( "This document doesn't contain any smart tags.\n" );
+   StatusMessage( "Clean document." );
+   Exit( 0 );
+}
+
+// Define data structures
+typedef struct
+{
+   WORD wWordCount;
+   byte bOtherData[12];
+   if( wWordCount < 6 )
+   {
+      Printf( "This document is malicious!\n" );
+      Warning( "This document is malicious!" );
+
+      Exit( 2 );
+   }
+} SMARTTAG <optimize=false>;
+typedef struct
+{
+   WORD wAlwaysFFFF;
+   WORD wNumSmartTags;
+   WORD wExtraData;
+} SMARTTAGSECTION <optimize=false>;
+
+// Seek to the smart tag structure in the xTable stream and read them
+FSeek( qwTableStrOffset[iWhichTableStream] + fcSttbfBkmkFactoid );
+SMARTTAGSECTION stSmartTagSection;
+for( dwCtr = 0; dwCtr < stSmartTagSection.wNumSmartTags; ++dwCtr )
+{
+   SMARTTAG stSmartTag;
+   FSeek( startof( stSmartTag ) + stSmartTag.wWordCount * sizeof( WORD ) + sizeof( WORD ) );
+}
+
+
+Exit( 0 );
+

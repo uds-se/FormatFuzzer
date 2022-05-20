@@ -715,7 +715,9 @@ void BitfieldDisablePadding() {
 	is_padded_bitfield = false;
 }
 
+void SetForeColor(int color) { }
 void SetBackColor(int color) { }
+void Exit(int errorcode) { exit_template(errorcode); }
 
 void DisplayFormatBinary() { }
 void DisplayFormatDecimal() { }
@@ -761,6 +763,16 @@ void Warning(const std::string fmt, ...) {
 }
 
 int Printf(const std::string fmt, ...) {
+	if (!debug_print)
+		return 0;
+	va_list args;
+	va_start(args,fmt);
+	int result = vprintf(fmt.c_str(), args);
+	va_end(args);
+	return result;
+}
+
+int StatusMessage(const std::string fmt, ...) {
 	if (!debug_print)
 		return 0;
 	va_list args;
