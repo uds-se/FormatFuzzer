@@ -18,6 +18,7 @@
 #include <fcntl.h>
 //#define USE_OPENSSL 1
 #ifdef USE_OPENSSL
+#include <openssl/md5.h>
 #include <openssl/sha.h>
 #include <openssl/rsa.h>
 #include <openssl/ec.h>
@@ -87,7 +88,16 @@ const int CHECKSUM_CRC16 = 11;
 const int CHECKSUM_CRCCCITT = 12;
 const int CHECKSUM_CRC32 = 13;
 const int CHECKSUM_ADLER32 = 14;
-const int CHECKSUM_CRC8 = 15;
+const int CHECKSUM_MD2 = 15;
+const int CHECKSUM_MD4 = 16;
+const int CHECKSUM_MD5 = 17;
+const int CHECKSUM_RIPEMD160 = 18;
+const int CHECKSUM_SHA1 = 19;
+const int CHECKSUM_SHA256 = 20;
+const int CHECKSUM_SHA384 = 21;
+const int CHECKSUM_SHA512 = 22;
+const int CHECKSUM_TIGER = 23;
+const int CHECKSUM_CRC8 = 24;
 const int FINDMETHOD_NORMAL = 0;
 const int FINDMETHOD_WILDCARDS = 1;
 const int FINDMETHOD_REGEX = 2;
@@ -729,7 +739,7 @@ int SetEvilBit(int allow) {
 }
 
 uint32 Checksum(int checksum_type, int64 start, int64 size) {
-	assert_cond(start + size <= file_acc.file_size, "checksum range invalid");
+	assert_cond(start >= 0 && size >= 0 && start + size <= file_acc.file_size, "checksum range invalid");
 	switch(checksum_type) {
 	case CHECKSUM_CRC8: {
 		boost::crc_optimal<8, 0x07, 0x00, 0, false, false> res;
@@ -750,6 +760,25 @@ uint32 Checksum(int checksum_type, int64 start, int64 size) {
 		abort();
 	}
 }
+
+#ifdef USE_OPENSSL
+int ChecksumAlgStr(int algorithm, std::string& result, int64 start = 0, int64 size = 0, std::string ignore = "", int64 crcPolynomial = -1, int64 crcInitValue = -1) {
+	// Other configurations not yet handled
+	assert(ignore == "" && crcPolynomial == -1 && crcInitValue == -1);
+
+	assert_cond(start >= 0 && size >= 0 && start + size <= file_acc.file_size, "checksum range invalid");
+	switch(algorithm) {
+	case CHECKSUM_MD5: {
+		unsigned char res[MD5_DIGEST_LENGTH];
+		MD5(file_acc.file_buffer + start, size, res);
+		result = std::string((const char*)res, MD5_DIGEST_LENGTH);
+		return MD5_DIGEST_LENGTH;
+	}
+	default:
+		abort();
+	}
+}
+#endif
 
 void Warning(const std::string fmt, ...) {
 	if (!debug_print && !print_errors)

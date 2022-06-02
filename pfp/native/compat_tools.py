@@ -37,7 +37,16 @@ predefine(
     const int CHECKSUM_CRCCCITT = 12;
     const int CHECKSUM_CRC32 = 13;
     const int CHECKSUM_ADLER32 = 14;
-    const int CHECKSUM_CRC8 = 15;
+    const int CHECKSUM_MD2 = 15;
+    const int CHECKSUM_MD4 = 16;
+    const int CHECKSUM_MD5 = 17;
+    const int CHECKSUM_RIPEMD160 = 18;
+    const int CHECKSUM_SHA1 = 19;
+    const int CHECKSUM_SHA256 = 20;
+    const int CHECKSUM_SHA384 = 21;
+    const int CHECKSUM_SHA512 = 22;
+    const int CHECKSUM_TIGER = 23;
+    const int CHECKSUM_CRC8 = 24;
 """
 )
 # int64 Checksum(
@@ -250,7 +259,8 @@ def ChecksumAlgStr(params, ctxt, scope, stream, coord):
     topic. See the Checksum function above for an explanation of the
     different checksum constants.
     """
-    raise NotImplementedError()
+    return 0
+    #raise NotImplementedError()
 
 
 # int ChecksumAlgBytes(
