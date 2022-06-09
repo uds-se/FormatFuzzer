@@ -1031,7 +1031,7 @@ class PfpInterp(object):
                     if param.type.cpp == "string":
                         param.type.cpp = "std::string"
                 cpp += param.type.cpp
-                if not hasattr(param, "is_func_param") or not param.is_func_param:
+                if cpp[-1] != "&" and (not hasattr(param, "is_func_param") or not param.is_func_param):
                     cpp += "&"
                 cpp += " " + param.name + ", "
             cpp = cpp[:-2]
