@@ -3029,9 +3029,13 @@ class PfpInterp(object):
                     exp = node.right
                     const = node.left
                 
-                if exp is not None and exp.__class__ == AST.ArrayRef:
+                if exp is not None and exp.__class__ == AST.ArrayRef and exp.subscript.__class__ == AST.Constant:
+                    name = None
                     if exp.name.__class__ == AST.StructRef:
                         name = exp.name.field.name
+                    elif exp.name.__class__ == AST.ID:
+                        name = exp.name.name
+                    if name is not None:
                         index = exp.subscript.value
                         value = const.cpp
                         if name not in self._known_values:
