@@ -160,6 +160,7 @@ class file_accessor {
 		unsigned start_pos = file_pos;
 		assert_cond(file_pos + size <= MAX_FILE_SIZE, "file size exceeded MAX_FILE_SIZE");
 		assert_cond(!has_size || file_pos + size <= file_size, "file size exceeded known size");
+		assert_cond(bits <= 64, "Bitfield too large");
 		value &= (1LLU << bits) - 1LLU;
 		unsigned new_bits = bits;
 		while (new_bits) {
@@ -468,6 +469,7 @@ public:
 
 	template<typename T>
 	long long file_integer(unsigned size, unsigned bits, std::vector<T>& known) {
+		assert(known.size());
 		assert_cond(0 < size && size <= 8, "sizeof integer invalid");
 		assert_cond(file_pos + size <= MAX_FILE_SIZE, "file size exceeded MAX_FILE_SIZE");
 		std::vector<T> compatible;
@@ -630,6 +632,7 @@ public:
 	}
 	
 	std::string file_string(std::vector<std::string>& known) {
+		assert(known.size());
 		int size = known[0].length();
 		assert_cond(file_pos + size <= MAX_FILE_SIZE, "file size exceeded MAX_FILE_SIZE");
 		std::vector<std::string> compatible;
