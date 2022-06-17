@@ -469,7 +469,8 @@ public:
 
 	template<typename T>
 	long long file_integer(unsigned size, unsigned bits, std::vector<T>& known) {
-		assert(known.size());
+		if(!known.size())
+			return file_integer(size, bits);
 		assert_cond(0 < size && size <= 8, "sizeof integer invalid");
 		assert_cond(file_pos + size <= MAX_FILE_SIZE, "file size exceeded MAX_FILE_SIZE");
 		std::vector<T> compatible;
