@@ -2197,7 +2197,7 @@ class PfpInterp(object):
                     cpp += "public:\n"
                     cpp += "\tint64 _startof = 0;\n"
                     cpp += "\tstd::size_t _sizeof = 0;\n"
-                    cpp += "\t" + node.type.cpp + " operator () () { return value; }\n"
+                    cpp += "\t" + node.type.cpp + "& operator () () { return value; }\n"
                     cpp += "\t" + classtype + " operator [] (int index) {\n"
                     cpp += "\t\tassert_cond((unsigned)index < value.size(), \"array index out of bounds\");\n"
                     cpp += "\t\treturn " + is_pointer + "value[index];\n"
