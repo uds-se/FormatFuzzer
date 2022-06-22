@@ -922,7 +922,7 @@ class PfpInterp(object):
                         decl.type.cpp = decl.type.type.name
                     elif hasattr(decl.type.type, "names"):
                         decl.type.cpp = " ".join(decl.type.type.names)
-                locals_cpp += "\t" + decl.type.cpp + " " + name + ";\n"
+                locals_cpp += "\t" + decl.type.cpp.replace("&", "") + " " + name + ";\n"
         if locals_cpp:
             cpp += "\n\t/* locals */\n" + locals_cpp.replace("/*local*/ ", "")
 
