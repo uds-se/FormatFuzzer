@@ -502,6 +502,7 @@ void exit_template(std::string message) {
 
 RSA *rsa = NULL;
 EC_KEY *eckey = NULL;
+RSA *ca_rsa = NULL;
 
 bool RSA_key_generate(std::string& modulus, std::string& public_exponent) {
 	int ret = 0, req = 0;
@@ -538,6 +539,10 @@ bool RSA_key_generate(std::string& modulus, std::string& public_exponent) {
 	} else {
 		// read rsa key
 		bp_private = BIO_new_file("private_rsa.pem", "r");
+		if(!bp_private){
+			fprintf(stderr, "Failed to read RSA key from file private_rsa.pem\n");
+			abort();
+		}
 		rsa = PEM_read_bio_RSAPrivateKey(bp_private, NULL, NULL, NULL);
 		if(!rsa){
 			fprintf(stderr, "Failed to read RSA key from file private_rsa.pem\n");
@@ -627,8 +632,26 @@ free_all:
 	return (ret == 1);
 }
 
+void read_ca_key() {
+	BIO *bp_private = NULL;
+
+	// read CA rsa key
+	bp_private = BIO_new_file("ca_rsa.pem", "r");
+	if(!bp_private){
+		fprintf(stderr, "Failed to read RSA key from file ca_rsa.pem\n");
+		abort();
+	}
+	ca_rsa = PEM_read_bio_RSAPrivateKey(bp_private, NULL, NULL, NULL);
+	if(!ca_rsa){
+		fprintf(stderr, "Failed to read RSA key from file ca_rsa.pem\n");
+		abort();
+	}
+	if (debug_print)
+		printf("Read CA RSA key from file ca_rsa.pem\n");
+}
+
 bool RSA_sign_SHA256(int64 start, int64 size, std::string& signature) {
-	assert_cond(rsa, "No RSA key available for signing");
+	read_ca_key();
 	int ret = 0;
 
 	unsigned char hash[SHA256_DIGEST_LENGTH];
@@ -637,9 +660,9 @@ bool RSA_sign_SHA256(int64 start, int64 size, std::string& signature) {
 	SHA256_Update(&sha, file_acc.file_buffer + start, size);
 	SHA256_Final(hash, &sha);
 
-	unsigned char* sigret = (unsigned char *) OPENSSL_malloc(RSA_size(rsa));
+	unsigned char* sigret = (unsigned char *) OPENSSL_malloc(RSA_size(ca_rsa));
 	unsigned int siglen = 0;
-	ret = RSA_sign(NID_sha256, hash, SHA256_DIGEST_LENGTH, sigret, &siglen, rsa);
+	ret = RSA_sign(NID_sha256, hash, SHA256_DIGEST_LENGTH, sigret, &siglen, ca_rsa);
 
 	signature = std::string((const char *)sigret, siglen);
 	OPENSSL_free(sigret);
