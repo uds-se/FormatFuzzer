@@ -43,7 +43,7 @@ class char_array_class {
 public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
-	std::string operator () () { return value; }
+	std::string& operator () () { return value; }
 	char operator [] (int index) {
 		assert_cond((unsigned)index < value.size(), "array index out of bounds");
 		return value[index];
@@ -428,7 +428,7 @@ class RGB_array_class {
 public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
-	std::vector<RGB*> operator () () { return value; }
+	std::vector<RGB*>& operator () () { return value; }
 	RGB operator [] (int index) {
 		assert_cond((unsigned)index < value.size(), "array index out of bounds");
 		return *value[index];

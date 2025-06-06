@@ -1706,7 +1706,7 @@ class PfpInterp(object):
         for n, c in self._globals:
             #node.cpp += "/*" + n + "*/\n"
             if c:
-                node.cpp += "\t" + re.sub("\(.*\)", "", c)
+                node.cpp += "\t" + re.sub(r"\(.*\)", "", c)
         node.cpp += "\n\n\tglobals_class() :\n"
         for n, c in self._globals:
             index = c.find(" " + n + "(") + 1
@@ -3043,7 +3043,8 @@ class PfpInterp(object):
                         if index not in self._known_values[name]:
                             self._known_values[name][index] = []
                         self._known_values[name][index].append(value)
-                        cpp = "_element, { "
+                        elemtype = self._variable_types[name].replace("_array_class", "")
+                        cpp = "_element, (std::unordered_map<int, std::vector<" + elemtype + ">>) { "
                         for index in self._known_values[name]:
                             cpp += "{ " + index + ", {{"
                             for value in self._known_values[name][index]:
@@ -3086,7 +3087,7 @@ class PfpInterp(object):
                             cpp += " });"
                             for i, (n, c) in enumerate(self._globals):
                                 if n == name:
-                                    self._globals[i] = (n, re.sub("\(1.*", "###", c).replace("###", cpp))
+                                    self._globals[i] = (n, re.sub(r"\(1.*", "###", c).replace("###", cpp))
 
                 if exp is not None and exp.__class__ == AST.FuncCall:
                     name = exp.name.name

@@ -109,7 +109,7 @@ class uint16_array_class {
 public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
-	std::vector<uint16> operator () () { return value; }
+	std::vector<uint16>& operator () () { return value; }
 	uint16 operator [] (int index) {
 		assert_cond((unsigned)index < value.size(), "array index out of bounds");
 		return value[index];
@@ -248,7 +248,7 @@ class char_array_class {
 public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
-	std::string operator () () { return value; }
+	std::string& operator () () { return value; }
 	char operator [] (int index) {
 		assert_cond((unsigned)index < value.size(), "array index out of bounds");
 		return value[index];
@@ -658,7 +658,7 @@ class PNG_PALETTE_PIXEL_array_class {
 public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
-	std::vector<PNG_PALETTE_PIXEL*> operator () () { return value; }
+	std::vector<PNG_PALETTE_PIXEL*>& operator () () { return value; }
 	PNG_PALETTE_PIXEL operator [] (int index) {
 		assert_cond((unsigned)index < value.size(), "array index out of bounds");
 		return *value[index];
@@ -1420,7 +1420,7 @@ class byte_array_class {
 public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
-	std::vector<byte> operator () () { return value; }
+	std::vector<byte>& operator () () { return value; }
 	byte operator [] (int index) {
 		assert_cond((unsigned)index < value.size(), "array index out of bounds");
 		return value[index];
@@ -1672,7 +1672,7 @@ class ubyte_array_class {
 public:
 	int64 _startof = 0;
 	std::size_t _sizeof = 0;
-	std::vector<ubyte> operator () () { return value; }
+	std::vector<ubyte>& operator () () { return value; }
 	ubyte operator [] (int index) {
 		assert_cond((unsigned)index < value.size(), "array index out of bounds");
 		return value[index];
@@ -2070,7 +2070,7 @@ public:
 
 	globals_class() :
 		btPngSignature_element(false),
-		btPngSignature(btPngSignature_element, { { 0, {{0x8950}} }, { 1, {{0x4E47}} }, { 2, {{0x0D0A}} }, { 3, {{0x1A0A}} } }),
+		btPngSignature(btPngSignature_element, (std::unordered_map<int, std::vector<uint16>>) { { 0, {{0x8950}} }, { 1, {{0x4E47}} }, { 2, {{0x0D0A}} }, { 3, {{0x1A0A}} } }),
 		sig(PNG_SIGNATURE_sig_instances),
 		length(2),
 		cname_element(false),

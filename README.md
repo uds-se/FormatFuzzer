@@ -38,10 +38,12 @@ If you plan to edit the build and configuration scripts (`.ac` and `.am` files),
 * GNU autoconf
 * GNU automake
 
-### Installing Requirements on Linux (Debian Packages)
+### Installing Requirements on Linux (Debian Packages, using a python virtual environment)
 
 ```
-sudo apt install git g++ make automake python3-pip zlib1g-dev libboost1.71-dev
+sudo apt install git g++ make automake python3-full zlib1g-dev libboost-dev
+python3 -m venv ~/fuzz
+source ~/fuzz/bin/activate
 pip3 install py010parser six intervaltree
 ```
 

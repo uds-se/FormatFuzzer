@@ -257,7 +257,7 @@ typedef struct
       local uint movi_blk_start = FTell();
       local char movi_blk_hdr[4];
       local string movi_blk_hdr_preferred[] = { "00db" };
-      local string movi_blk_hdr_possible[] = { "00db" }; //00dc 00wb
+      local string movi_blk_hdr_possible[] = { "00db", "00dc", "00pc", "00wb" }; //00dc 00wb
       ReadBytes(movi_blk_hdr, FTell(), 4);//, movi_blk_hdr_preferred, movi_blk_hdr_possible);
       
       if (movi_blk_hdr == "JUNK") {

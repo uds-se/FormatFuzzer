@@ -16,6 +16,7 @@
 #include <fcntl.h>
 #include <string>
 #include <stdarg.h>
+#include <ctime>
 
 #include "formatfuzzer.h"
 
