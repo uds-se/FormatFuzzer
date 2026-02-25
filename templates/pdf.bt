@@ -1,0 +1,1704 @@
+//------------------------------------------------
+//--- 010 Editor Binary Template
+//
+//      File: PDF.bt
+//   Authors: Didier Stevens, Christian Mehlmauer
+//   Version: 0.2
+//   Purpose: Template for Adobe PDF (Portable Document Format) files.
+//  Category: Document
+// File Mask: *.pdf
+//  ID Bytes: 25 50 44 46 //%PDF
+//   History: 
+//   0.2   2016-05-19 Christian Mehlmauer: Parsing of XREFs
+//   0.1   2016-01-28 SweetScape: Updated header for repository submission.
+//   0.0.1 DS: First public release.
+//
+//	As the PDF file format is not your usual binary file format for which it is easy to create
+//	010 templates, I had to resort to unusual template programming techniques.
+//	Some limitations of the 010 scripting language (like not being able to create local structures)
+//	also explain the unusual style.
+//	Summary of the algorithm used by this template:
+//		- search for keywords with FindAll (%PDF, %%EOF, obj, endobj): FindAllKeywords()
+//		- merge all found keywords into one array, and filter out found keywords that are not actual
+//		  PDF structures (like obj without preceding index and version): MergeAndFilterAllKeywords()
+//		- loop over all keywords and prepare data needed to create PDF structures: PrepareStructures()
+//		- create PDF structures: CreatePDFStructures()
+//
+//	Source code put in public domain by Didier Stevens, no Copyright
+//	https://DidierStevens.com
+//	Use at your own risk
+//
+//	History:
+//		2010/08/03: start development with 010 Editor v3.0.6
+//		2010/08/04: continue
+//		2010/08/05: continue
+//		2010/08/06: refactoring, cleanup
+//------------------------------------------------
+
+local int iCOLOR = 0x95E8FF; // Color used for highlighting PDF structures
+
+enum <int> {TYPE_UNKNOWN, TYPE_HEADER, TYPE_TRAILER, TYPE_OBJ, TYPE_ENDOBJ};
+
+// Global variables
+
+local int iKeywordCount;
+local int iStructureCount;
+local TFindResults tfrHeaders;
+local TFindResults tfrTrailers;
+local TFindResults tfrObjs;
+local TFindResults tfrEndobjs;
+
+local int iPDFHeaderCount = 0;
+local int iPDFTrailerCount = 0;
+local int iPDFUnknownCount = 0;
+local int iPDFCommentCount = 0;
+local int iPDFWhitespaceCount = 0;
+local int iPDFXrefCount = 0;
+local int iPDFObjectCount = 0;
+
+local int currentObjNum;
+local int ObjOffsets[0];
+local int ObjNums[0];
+local int numberOfObjects = 0;
+
+// Structures
+
+
+
+
+local int xRefOffset;
+
+
+
+
+
+
+
+
+local int iIntegerDataLength;
+typedef struct {
+	local int i = 0;
+	local int s = 0;                              //sign
+	for (i=0; i < iIntegerDataLength; i++)
+		if (i == 0) {
+			s = Random(5);
+			if (s == 0){
+				char sign = {'+'};
+			} else if ( s == 1) {
+				char sign = {'-'};
+			} else {
+				char IntegerPart = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9'};
+			}
+		} else {
+			char IntegerPart = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9'};
+		}
+} PDFIntegerObj;
+
+local int iRealBeforeCommaDataLength;
+local int iRealAfterCommaDataLength;
+typedef struct {
+	local int i = 0;
+	local int s = 0;                              //sign
+	for (i=0; i < iRealBeforeCommaDataLength; i++)
+		if (i == 0) {
+			s = Random(5);
+			if (s == 0){
+				char sign = {'+'};
+				char RealFirstPart = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9'};
+			} else if ( s == 1) {
+				char sign = {'-'};
+				char RealFirstPart = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9'};
+			} else {
+				char RealFirstPart = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9'};
+			}
+		} else {
+			char RealFirstPart = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9'};
+		}
+	char comma[1] = {"."};
+	local int j = 0;
+	for (j=0; j < iRealAfterCommaDataLength; j++)        //used to be before
+		char RealSecondPart = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9'};
+	Printf("firstPart: %d, secondPart: %d\n", iRealBeforeCommaDataLength, iRealAfterCommaDataLength);
+} PDFRealObj;
+
+string ReadPDFObj(PDFObj &sPDFObj)
+{
+	local string sResult;
+	SPrintf(sResult, "%s %s obj %s", sPDFObj.Index, sPDFObj.Version, sPDFObj.Data);
+	return sResult;
+}
+
+local int iHeaderSize;
+typedef struct {
+	char Header[(iHeaderSize-1)] = { "%PDF-1.7", "%PDF-1.6", "%PDF-1.5", "%PDF-1.4", "%PDF-1.3", "%PDF-1.2", "%PDF-1.1", "%PDF-1.0" };
+	char HeaderEnd[1] = {"\n", "\r"};
+	Printf("Created PDFHeader with size %d. Current pos %d\n", iHeaderSize, FTell());
+} PDFHeader;
+
+local int iCommentSize;
+typedef struct {
+	char CommentSignal[1] = {"%"};
+	local int i = 0;
+	for (i=0; i < iCommentSize -2; i++)
+		unsigned char IndexPart = {0xff, 0xd0, 0xd4, 0xc5};
+	char CommentEnd[1] = { "\n"};
+	Printf("Created PDFComment with size %d. Current pos %d\n", iCommentSize, FTell());
+} PDFStartComment;
+
+local int iWhitespaceSize;
+typedef struct {
+	char Whitespace[iWhitespaceSize] = {" ", "\n", "\r", "\t", "\f"};
+	Printf("Created PDFWhitespace with size %d. Current pos %d\n", iWhitespaceSize, FTell());
+} PDFWhitespace;
+
+
+
+
+// Lines 155 to 672 are commented out, since they where too random to be used in pdf-file generation
+//They were left in the file, to allow using them again, should they become useful in possible
+//future extensions, where a more random approach is possible. the appropriate Create functions were 
+// also commented out.
+
+
+/*
+local int iBooleanDataLength;
+typedef struct {
+	if (iBooleanDataLength == 4) {
+		char Data[iBooleanDataLength] = {"true"};
+	} else {
+		char Data[iBooleanDataLength] = {"false"};
+	}
+} PDFBooleanObj;
+
+local int iLiteralStringLength;
+typedef struct {
+	char openingParentheses[1] = {"("};
+	//char content[iLiteralStringLength - 2];
+	local byte characters[0];
+	local int i = 0;
+
+	for (i=0; i<256; i++){
+		characters += (byte) i;
+	}
+	characters -= ')';
+	local int count = 0;
+
+	for(i=0; i<(iLiteralStringLength - 2); i++) {
+		if ((iLiteralStringLength - 2) - i == count) {
+			byte c = {')'};
+		}
+		else{
+			byte content <values=characters>;  //probably needs different variable names here
+			if (content == (byte) '(') {
+				characters += ')';
+				count += 1;
+				}
+			if (content == ')') {
+				count -= 1;
+				if (count ==0) {
+					characters -= ')';
+				}
+			}
+		}
+	}
+	char closingParentheses[1] = {")"};                     // add reverse solidus as possible escape character (\n, \r etc.)   also: \ to mark end of a line
+} PDFLiteralStringObj;
+
+
+local int iHexStringLength;
+typedef struct {
+	char openingBrackets[1] = {"<"};
+	//char content[iHexStringLength - 2];
+	local byte characters[0];
+	local int i = 0;
+
+	for (i=48; i<58; i++){
+		characters += (byte) i;
+	}
+	for (i=65; i<71; i++){
+		characters += (byte) i;
+	}
+	for (i=97; i<103; i++){
+		characters += (byte) i;
+	}
+	/*for (i=0; i<(iHexStringLength - 2); i++){
+		byte c <values=characters>;
+	}
+	Printf("Hexstringlength: %d\n", iHexStringLength);
+	char closingBrackets[1] = {">"};
+} PDFHexStringObj;
+
+local int iNameObjectLength;
+typedef struct {
+	char openingSolidus[1] = {"/"};
+	local byte characters[0];
+	local int i = 0;
+
+	for (i=48; i<58; i++){
+		characters += (byte) i;
+	}
+	for (i=65; i<71; i++){
+		characters += (byte) i;
+	}
+	for (i=97; i<103; i++){
+		characters += (byte) i;
+	}                                                               // characters -> hex-characters
+	i = 0;						//regular vs. non-regular characters??
+	for (i=0; i<iNameObjectLength; i++){				//regular characters usable immediately
+		char numberSign = {'#'};
+		i++;
+		byte firstHexChar <values=characters>;
+		Printf("Creating name object with size %d.\n", iNameObjectLength);
+		i++;
+		byte secondHexChar <values=characters>;                 // length might not add up --> necessary???
+	}
+} PDFNameObj;
+
+typedef struct {
+	char content[4] = {"null"};
+} PDFNullObj;
+
+local int iArrayObjectLength;
+typedef struct {
+	char openingBrackets[1] = {"["};
+	if (iArrayObjectLength < 2) {
+		iArrayObjectLength = 2;
+	}
+	local int remainingLength = iArrayObjectLength - 2;
+	local int elementSize = 0;
+	local int elementType = 0;
+	local int minObjSize = 0;
+	while(remainingLength > minObjSize) {
+		elementSize = Random(remainingLength);
+		if (elementSize == 0) {
+			elementSize = remainingLength;
+		}
+		elementType = Random(9);
+		switch(elementType) {					//create random element (obj)
+			case 0:
+				if (elementSize < (remainingLength / 2)) {
+					elementSize = 4;
+					iBooleanDataLength = 4;
+					PDFBooleanObj sPDFBooleanObj;
+					break;
+				} else {
+					elementSize = 5;
+					iBooleanDataLength = 5;
+					PDFBooleanObj sPDFBooleanObj;
+					break;
+				}
+			case 1:
+				iIntegerDataLength = elementSize;
+				PDFIntegerObj sPDFIntegerObj;
+				break;
+			case 2:
+				iRealBeforeCommaDataLength = Random(elementSize);
+				if (iRealBeforeCommaDataLength == 0) {
+					iRealBeforeCommaDataLength = 1;
+				}
+				if (elementSize <= iRealBeforeCommaDataLength) {
+					elementSize = 1 + iRealBeforeCommaDataLength;
+				}
+				iRealAfterCommaDataLength = elementSize - iRealBeforeCommaDataLength;
+				PDFRealObj sPDFRealObj;
+				break;
+			case 3:
+				iLiteralStringLength = elementSize;
+				PDFLiteralStringObj sPDFLiteralStringObj;
+				break;
+			case 4:
+				iHexStringLength = elementSize;
+				PDFHexStringObj sPDFHexStringObj;
+				break;
+			case 5:
+				iNameObjectLength = elementSize;
+				PDFNameObj sPDFNameObj;
+				break;
+			case 6:
+				iArrayObjectLength = elementSize;
+				CreatePDFArrayObject(FTell(), elementSize);
+				//PDFArrayObj sPDFArrayObj;
+				break;
+			case 7:
+				iDictObjectLength = elementSize;
+				CreatePDFDictObject(FTell(), elementSize);
+				//PDFDictObj sPDFDictObj;
+				break;
+			case 8:
+				iStreamObjectLength = elementSize;
+				CreatePDFStreamObject(FTell(), elementSize);
+				//PDFStreamObj sPDFStreamObj;
+				break;
+			case 9:
+				elementSize = 4;
+				//CreatePDFNullObject(FTell());
+				PDFNullObj sPDFNullObj;
+				break;
+		}
+		if (remainingLength < (elementSize +1)){
+			remainingLength = 0;
+		} else {
+			remainingLength -= (elementSize + 1);
+		}
+		char whitespace[1] = {" "};
+	}
+	while (remainingLength > 0) {
+		char WhiteSpace1[1]= {" "};
+		remainingLength--;
+	}	
+	// how do I use other objects and have them be the correct size???
+	char closingBrackets[1] = {"]"};
+} PDFArrayObj;
+
+local int iDictObjectLength;
+typedef struct {
+	char openingBrackets[2] = {"<<"};
+	if (iDictObjectLength < 4) {
+		iDictObjectLength = 4;
+	}
+	Printf("dict obj length equals: %d\n", iDictObjectLength);
+	local int remainingLength = iDictObjectLength - 4;
+	Printf("remaining length equals %d\n", remainingLength);
+	local int elementSize = 0;
+	local int elementType = 0;
+	local int minObjSize = 0;
+	local int keySize = 0;
+	local int loopDetector = 0;
+	local int keySizeRandomHelper = 1;
+	//Printf("remaining length equals %d\n", remainingLength);
+	//loop
+		//nameObj (key)  (has to be unique inside of DictObj)
+		//anyObj  (value)
+	while(remainingLength > minObjSize) {
+		//Printf("remaining length equals %d\n", remainingLength);
+		elementSize = Random(remainingLength);
+		if (elementSize == 0) {
+			elementSize = remainingLength;
+		}
+		if ((elementSize / 2) == 0) {
+			keySizeRandomHelper = 1;
+		}else{
+			keySizeRandomHelper = elementSize/2;
+		}
+		keySize = Random(keySizeRandomHelper);
+		if (keySize == 0) {
+			keySize = 1;
+		}
+		while (elementSize < minObjSize){
+			if(loopDetector >= 30){
+				keySize = 5;					//adjust
+			}
+			keySize = Random(keySizeRandomHelper);
+			loopDetector++;
+			
+		}
+		if (elementSize <= (keySize + 1)) {
+			elementSize = 1;
+		} else {
+			elementSize -= (keySize + 1);
+		}
+		Printf("creating dict obj with size: %d, elementsize: %d and keysize: %d and remaining length: %d", iDictObjectLength, elementSize, keySize, remainingLength); 
+		iNameObjectLength = keySize;
+		PDFNameObj keyPDFNameObj;
+		char whitespace[1] = {" "};
+		elementType = Random(9);
+		/*switch(elementType) {					//create random element (obj)
+			case 0:
+				if (elementSize < (remainingLength / 2)) {
+					elementSize = 4;
+					iBooleanDataLength = 4;
+					PDFBooleanObj sPDFBooleanObj;
+					break;
+				} else {
+					elementSize = 5;
+					iBooleanDataLength = 5;
+					PDFBooleanObj sPDFBooleanObj;
+					break;
+				}
+			case 1:
+				iIntegerDataLength = elementSize;
+				PDFIntegerObj sPDFIntegerObj;
+				break;
+			case 2:
+				iRealBeforeCommaDataLength = Random(elementSize);
+				if (iRealBeforeCommaDataLength == 0) {
+					iRealBeforeCommaDataLength = 1;
+				}
+				if (elementSize <= iRealBeforeCommaDataLength) {
+					elementSize = 1 + iRealBeforeCommaDataLength;
+				}
+				iRealAfterCommaDataLength = elementSize - iRealBeforeCommaDataLength;
+				PDFRealObj sPDFRealObj;
+				break;
+			case 3:
+				iLiteralStringLength = elementSize;
+				PDFLiteralStringObj sPDFLiteralStringObj;
+				break;
+			case 4:
+				iHexStringLength = elementSize;
+				PDFHexStringObj sPDFHexStringObj;
+				break;
+			case 5:
+				iNameObjectLength = elementSize;
+				PDFNameObj sPDFNameObj;
+				break;
+			case 6:
+				iArrayObjectLength = elementSize;
+				PDFArrayObj sPDFArrayObj;
+				break;
+			case 7:
+				iDictObjectLength = elementSize;
+				CreatePDFDictObject(FTell(), elementSize);
+				//PDFDictObj sPDFDictObj;
+				break;
+			case 8:
+				iStreamObjectLength = elementSize;
+				CreatePDFStreamObject(FTell(), elementSize);
+				//PDFStreamObj sPDFStreamObj;
+				break;
+			case 9:
+				elementSize = 4;
+				//CreatePDFNullObject(FTell());
+				PDFNullObj sPDFNullObj;
+				break;
+		}
+		Printf("elementSize: %d\n", elementSize);
+		iRealBeforeCommaDataLength = Random(elementSize);
+				if (iRealBeforeCommaDataLength == 0) {
+					iRealBeforeCommaDataLength = 1;
+				}
+				if (elementSize <= iRealBeforeCommaDataLength) {
+					elementSize = 1 + iRealBeforeCommaDataLength;
+				}
+				iRealAfterCommaDataLength = elementSize - iRealBeforeCommaDataLength;
+				PDFRealObj sPDFRealObj;
+				
+		remainingLength -= elementSize;
+		char linefeed[1] = {"\n"};
+	}
+	while (remainingLength > 0) {
+		char WhiteSpace1[1]= {" "};
+		remainingLength--;
+	}
+	char closingBrackets[2] = {">>"};
+} PDFDictObj;   //main building block --> use more often
+
+local int iStreamObjectLength;
+typedef struct {
+	if (iStreamObjectLength < 18) {
+		iStreamObjectLength = 18;
+	}
+	iDictObjectLength = Random((iStreamObjectLength - 17));
+	//PDFDictObj contentDictObj;
+	//PDFDictObj               (direct Obj)
+	char startKeyWord[7] = {"stream\n"};
+	//byte byteStream[length-dictLength]   --> end of line marker
+	if (iStreamObjectLength < (iDictObjectLength +17)) {
+		iStreamObjectLength = iDictObjectLength + 17;
+	}
+	Printf("Creating stream object with size %d and dict size % d. diff: %d.\n", iStreamObjectLength, iDictObjectLength, (iStreamObjectLength - iDictObjectLength - 17));
+	byte byteStream[iStreamObjectLength - iDictObjectLength - 17];
+	char endKeyWord[10] = {"endstream\n"};
+} PDFStreamObj; //indirect Obj
+
+
+local int iIndexLength;
+local int iWhiteSpace1Length;
+local int iVersionLength;
+local int iWhiteSpace2Length;
+local int iDataLength;
+local int iFoundEndobj = 0;
+local int iWhiteSpace3Length;
+local int iPDFObjNum;
+typedef struct {
+	local int i = 0;
+	//for (i=0; i < iIndexLength; i++)
+	//	char IndexPart = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9'};
+		
+	local int digitNumObj = getDigitNumOfPositiveInteger(iPDFObjNum);
+	local char charObjectIndex[digitNumObj];
+	SPrintf(charObjectIndex, "%d", iPDFObjNum);
+	char objectIndex[digitNumObj] = {charObjectIndex};	
+		
+	char WhiteSpace1[iWhiteSpace1Length] = {" "};
+	char Version[iVersionLength] = {"0"};
+	char WhiteSpace2[iWhiteSpace2Length] = {" "};
+	char Object[4] = { "obj\n" };
+	Printf("Datalength: %d \n", iDataLength);
+	//int Data[iDataLength];
+	//local int remainingLength = iDataLength;
+	local int elementSize = 0;
+	local int elementType = 0;
+	local int minObjSize = 0;
+		//elementSize = Random(remainingLength);
+		if (iDataLength <= 0) {
+			iDataLength = 1;
+		}
+		elementType = Random(9);
+		//Printf( "Size: %d, type: %d, rem. length: %d\n", elementSize, elementType, remainingLength);
+	/*switch(elementType) {					//create random element (obj)
+		case 0:
+			local bool TrueOrFalse = Random(2);
+			if (TrueOrFalse == 1) {
+				iBooleanDataLength = 4;
+				PDFBooleanObj sPDFBooleanObj;
+				break;
+			} else {
+				iBooleanDataLength = 5;
+				PDFBooleanObj sPDFBooleanObj;
+				break;
+			}
+		case 1:
+			iIntegerDataLength = iDataLength;
+			PDFIntegerObj sPDFIntegerObj;
+			break;
+		case 2:
+			iRealBeforeCommaDataLength = Random(iDataLength);
+			if (iRealBeforeCommaDataLength == 0) {
+				iRealBeforeCommaDataLength = 1;
+			}
+			//if (elementSize <= iRealBeforeCommaDataLength) {
+			//	elementSize = 1 + iRealBeforeCommaDataLength;
+			//}
+			iRealAfterCommaDataLength = iDataLength - iRealBeforeCommaDataLength;
+			PDFRealObj sPDFRealObj;
+			break;
+		case 3:
+			iLiteralStringLength = iDataLength;
+			PDFLiteralStringObj sPDFLiteralStringObj;
+			break;
+		case 4:
+			iHexStringLength = iDataLength;
+			PDFHexStringObj sPDFHexStringObj;
+			break;
+		case 5:
+			iNameObjectLength = iDataLength;
+			PDFNameObj sPDFNameObj;
+			break;
+		case 6:
+			iArrayObjectLength = iDataLength;
+			//CreatePDFArrayObject(FTell(), iDataLength);
+			PDFArrayObj sPDFArrayObj;
+			break;
+		case 7:
+			iDictObjectLength = iDataLength;
+			//CreatePDFDictObject(FTell(), iDataLength);
+			PDFDictObj sPDFDictObj;
+			break;
+		case 8:
+			iStreamObjectLength = iDataLength;
+			CreatePDFStreamObject(FTell(), iDataLength);
+			//PDFStreamObj sPDFStreamObj;
+			break;
+		case 9:
+			iDataLength = 4;
+			//CreatePDFNullObject(FTell());
+			PDFNullObj sPDFNullObj;
+			break;
+	}
+	iDictObjectLength = iDataLength;
+			//CreatePDFDictObject(FTell(), iDataLength);
+	PDFDictObj sPDFDictObj;
+	remainingLength -= elementSize;
+	char whitespace[1] = {" "};
+	while (remainingLength > 0) {
+		char WhiteSpace1[1]= {" "};
+		remainingLength--;
+	}
+	if (iFoundEndobj)
+		char EndObject[8] = {"\nendobj\n"};
+	char WhiteSpace3[iWhiteSpace3Length] = {" "};
+	Printf("Created PDFObj with data-size %d. Current pos %d\n", iDataLength, FTell());
+} PDFObj <read=ReadPDFObj>;
+
+
+local int iPDFCrossRefSize;
+typedef struct {
+	int objectNums;
+	char whitespace[1] = {" "};
+	int objectCount;
+	
+	char byteOffset[10];
+	char generationNumber[5];
+	char inUse = {'f', 'n'};
+	char newLine[1] = {"\n"};
+}PDFCrossRef;
+
+
+
+local int iTrailerSize;
+typedef struct {
+	char TrailerStart[8] = {"trailer\n"};
+	char openingBrackets[2] = {"<<"};
+	char Whitespace[1] = {" "};
+	char Key[7];                       //adjust
+	char whitespace[1] = {" "};
+	char value[10];
+	char closingBrackets[2] = {">>"};
+	char CrossRefBeginning[10] = {"startxref\n"};
+	local int StartOfXRef[0];
+	StartOfXRef += xRefOffset;
+	int XRefLocation <values=StartOfXRef>;
+	char TrailerEnd[6] = {"%%EOF\r"};
+	Printf("Created PDFTrailer with size %d. Current pos %d\n", iTrailerSize, FTell());
+} PDFTrailer;
+
+local int iUnknownSize;
+typedef struct {
+	BYTE Data[iUnknownSize];
+} PDFUnknown;
+
+local int iCommentSize;
+typedef struct {
+	char CommentSignal[1] = {"%"};
+	char Comment[(iCommentSize - 2)];
+	char CommentEnd[1] = { "\n"};
+	Printf("Created PDFComment with size %d. Current pos %d\n", iCommentSize, FTell());
+} PDFComment;
+
+
+typedef struct (int idLen, int countLen, int crlfLen) {
+    BYTE id[idLen];
+    char ws1 <hidden=true>;
+    CHAR count[countLen];
+    byte crlf[crlfLen] <hidden=true>;
+    struct {
+        iWhitespaceSize = 1;
+        BYTE offset[10];
+        PDFWhitespace w <hidden=true>;
+        BYTE generationNumber[5];
+        PDFWhitespace w <hidden=true>;
+        BYTE used;
+        byte crlf[2] <hidden=true>;
+    } PDFXrefItem[Atoi(count)];
+} PDFXref;*/
+
+
+int64 FindStartOfObj(int64 iStart, int &iIndexLength, int &iWhiteSpace1Length, int &iVersionLength, int &iWhiteSpace2Length)
+{
+	local int iIter;
+	local BYTE bChar;
+	local int64 iIndex;
+	local int64 iStartIndex = -1;
+	local int64 iEndIndex = -1;
+	local int64 iStartVersion = -1;
+	local int64 iEndVersion = -1;
+
+	for(iIter = 1; iIter <= 20; iIter++)
+	{
+		iIndex = iStart - iIter;
+		if (iIndex < 0)
+			break;
+		bChar = ReadByte(iIndex);
+		if (iEndVersion == -1)
+		{
+			if (bChar == ' ')
+				;
+			else if (bChar >= '0' && bChar <= '9')
+				iEndVersion = iIndex;
+			else
+				break;
+		}
+		else if (iStartVersion == -1)
+		{
+			if (bChar >= '0' && bChar <= '9')
+				;
+			else if (bChar == ' ')
+				iStartVersion = iIndex + 1;
+			else
+				break;
+		}
+		else if (iEndIndex == -1)
+		{
+			if (bChar == ' ')
+				;
+			else if (bChar >= '0' && bChar <= '9')
+				iEndIndex = iIndex;
+			else
+				break;
+		}
+		else if (iStartIndex == -1)
+		{
+			if (bChar < '0' || bChar > '9')
+			{
+				iStartIndex = iIndex + 1;
+				break;
+			}
+		}
+	}
+
+	if (iEndIndex != -1 && iStartVersion != -1 && iEndVersion != -1)
+	{
+		if (iStartIndex == -1)
+		{
+			if (iIndex == -1)
+				iStartIndex = 0;
+			else
+				return -1;
+		}
+		iIndexLength = iEndIndex - iStartIndex + 1;
+		iWhiteSpace1Length = iStartVersion - iEndIndex - 1;
+		iVersionLength = iEndVersion - iStartVersion + 1;
+		iWhiteSpace2Length = iStart - iEndVersion;
+		return iStartIndex;
+	}
+	else
+		return -1;
+}
+
+int64 FindEOL(int64 iStart)
+{
+	local int64 iIter;
+	for(iIter = iStart; iIter < FileSize(); iIter++)
+		if (ReadByte(iIter) == 0x0D && iIter + 1 < FileSize() && ReadByte(iIter + 1) == 0x0A)
+			return iIter + 1;
+		else if (ReadByte(iIter) == 0x0D || ReadByte(iIter) == 0x0A)
+			return iIter;
+	return -1;
+}
+
+void FindAllKeywords(void)
+{
+	tfrHeaders = FindAll("%PDF");
+	tfrTrailers = FindAll("%%EOF");
+	tfrObjs = FindAll(" obj");
+	tfrEndobjs = FindAll("endobj");
+	iKeywordCount = tfrHeaders.count + tfrTrailers.count + tfrObjs.count + tfrEndobjs.count;
+}
+
+int MergeKeywords(int iMerge1Size, int iMerge2Size)
+{
+	local int64 iIndex1 = 0;
+	local int64 iIndex2 = 0;
+	local int64 iIndex3 = 0;
+
+	while (true)
+	{
+		if (iIndex1 == iMerge1Size)
+		{
+			while (iIndex2 < iMerge2Size)
+			{
+				aiMerge3KeywordType[iIndex3] = aiMerge2KeywordType[iIndex2];
+				aiMerge3KeywordStart[iIndex3] = aiMerge2KeywordStart[iIndex2];
+				aiMerge3KeywordSize[iIndex3] = aiMerge2KeywordSize[iIndex2];
+				iIndex2++;
+				iIndex3++;
+			}
+			break;
+		}
+		if (iIndex2 == iMerge2Size)
+		{
+			while (iIndex1 < iMerge1Size)
+			{
+				aiMerge3KeywordType[iIndex3] = aiMerge1KeywordType[iIndex1];
+				aiMerge3KeywordStart[iIndex3] = aiMerge1KeywordStart[iIndex1];
+				aiMerge3KeywordSize[iIndex3] = aiMerge1KeywordSize[iIndex1];
+				iIndex1++;
+				iIndex3++;
+			}
+			break;
+		}
+		if (aiMerge1KeywordStart[iIndex1] < aiMerge2KeywordStart[iIndex2])
+		{
+			aiMerge3KeywordType[iIndex3] = aiMerge1KeywordType[iIndex1];
+			aiMerge3KeywordStart[iIndex3] = aiMerge1KeywordStart[iIndex1];
+			aiMerge3KeywordSize[iIndex3] = aiMerge1KeywordSize[iIndex1];
+			iIndex1++;
+			iIndex3++;
+		}
+		else
+		{
+			aiMerge3KeywordType[iIndex3] = aiMerge2KeywordType[iIndex2];
+			aiMerge3KeywordStart[iIndex3] = aiMerge2KeywordStart[iIndex2];
+			aiMerge3KeywordSize[iIndex3] = aiMerge2KeywordSize[iIndex2];
+			iIndex2++;
+			iIndex3++;
+		}
+	}
+	for(iIndex1 = 0; iIndex1 < iMerge1Size + iMerge2Size; iIndex1++)
+	{
+		aiMerge1KeywordType[iIndex1] = aiMerge3KeywordType[iIndex1];
+		aiMerge1KeywordStart[iIndex1] = aiMerge3KeywordStart[iIndex1];
+		aiMerge1KeywordSize[iIndex1] = aiMerge3KeywordSize[iIndex1];
+	}
+	return iMerge1Size + iMerge2Size;
+}
+
+void MergeAndFilterAllKeywords(void)
+{
+	local int iIter;
+	local int iIter2;
+	local int iTempCount;
+
+	for(iIter = 0; iIter < tfrHeaders.count; iIter++)
+	{
+		aiMerge1KeywordType[iIter] = TYPE_HEADER;
+		aiMerge1KeywordStart[iIter] = tfrHeaders.start[iIter];
+		aiMerge1KeywordSize[iIter] = tfrHeaders.size[iIter];
+	}
+	for(iIter = 0; iIter < tfrTrailers.count; iIter++)
+	{
+		aiMerge2KeywordType[iIter] = TYPE_TRAILER;
+		aiMerge2KeywordStart[iIter] = tfrTrailers.start[iIter];
+		aiMerge2KeywordSize[iIter] = tfrTrailers.size[iIter];
+	}
+	iTempCount = MergeKeywords(tfrHeaders.count, tfrTrailers.count);
+	iIter2 = 0;
+	for(iIter = 0; iIter < tfrObjs.count; iIter++)
+	{
+		if (-1 != FindStartOfObj(tfrObjs.start[iIter], iIndexLength, iWhiteSpace1Length, iVersionLength, iWhiteSpace2Length))
+		{
+			aiMerge2KeywordType[iIter2] = TYPE_OBJ;
+			aiMerge2KeywordStart[iIter2] = tfrObjs.start[iIter];
+			aiMerge2KeywordSize[iIter2] = tfrObjs.size[iIter];
+			iIter2++;
+		}
+	}
+	iTempCount = MergeKeywords(iTempCount, iIter2);
+	for(iIter = 0; iIter < tfrEndobjs.count; iIter++)
+	{
+		aiMerge2KeywordType[iIter] = TYPE_ENDOBJ;
+		aiMerge2KeywordStart[iIter] = tfrEndobjs.start[iIter];
+		aiMerge2KeywordSize[iIter] = tfrEndobjs.size[iIter];
+	}
+	iKeywordCount = MergeKeywords(iTempCount, tfrEndobjs.count);
+}
+
+int CalculateSizeWithEOL(int64 iStart)
+{
+	local int64 iIndexEOL;
+
+	iIndexEOL = FindEOL(iStart);
+	if (iIndexEOL == -1)
+		return -1;
+	else
+		return iIndexEOL - iStart + 1;
+}
+
+void PrepareStructures(void)
+{
+	local int iIter;
+	local int64 iEndPreviousStructure = 0;
+	local int iSize;
+	local int64 iStartIndirectObject;
+	local BYTE bRead;
+	local int iWhitespaceCount;
+	iStructureCount = 0;
+
+	for(iIter = 0; iIter < iKeywordCount; iIter++)
+	{
+		if (aiMerge1KeywordType[iIter] == TYPE_OBJ)
+			iStartIndirectObject = FindStartOfObj(aiMerge1KeywordStart[iIter], iIndexLength, iWhiteSpace1Length, iVersionLength, iWhiteSpace2Length);
+		else
+			iStartIndirectObject = aiMerge1KeywordStart[iIter];
+
+		if (iStartIndirectObject != iEndPreviousStructure && aiMerge1KeywordType[iIter] != TYPE_ENDOBJ)
+		{
+			aiStructureType[iStructureCount] = TYPE_UNKNOWN;
+			aiStructureStart[iStructureCount] = iEndPreviousStructure;
+			aiStructureSize[iStructureCount] = iStartIndirectObject - iEndPreviousStructure;
+			iStructureCount++;
+		}
+
+		if (aiMerge1KeywordType[iIter] == TYPE_HEADER)
+		{
+			iSize = CalculateSizeWithEOL(aiMerge1KeywordStart[iIter]);
+			if (iSize == -1)
+				iSize = aiMerge1KeywordSize[iIter];
+			aiStructureType[iStructureCount] = TYPE_HEADER;
+			aiStructureStart[iStructureCount] = aiMerge1KeywordStart[iIter];
+			aiStructureSize[iStructureCount] = iSize;
+			iEndPreviousStructure = aiStructureStart[iStructureCount] + aiStructureSize[iStructureCount];
+			iStructureCount++;
+		}
+		else if (aiMerge1KeywordType[iIter] == TYPE_TRAILER)
+		{
+			iSize = CalculateSizeWithEOL(aiMerge1KeywordStart[iIter]);
+			if (iSize == -1)
+				iSize = aiMerge1KeywordSize[iIter];
+			aiStructureType[iStructureCount] = TYPE_TRAILER;
+			aiStructureStart[iStructureCount] = aiMerge1KeywordStart[iIter];
+			aiStructureSize[iStructureCount] = iSize;
+			iEndPreviousStructure = aiStructureStart[iStructureCount] + aiStructureSize[iStructureCount];
+			iStructureCount++;
+		}
+		else if (aiMerge1KeywordType[iIter] == TYPE_OBJ)
+		{
+			iSize = aiMerge1KeywordStart[iIter + 1] - iStartIndirectObject;
+			if (aiMerge1KeywordType[iIter + 1] == TYPE_ENDOBJ)
+				iSize += 6;
+			iWhitespaceCount = 0;
+			bRead = ReadByte(iStartIndirectObject + iSize);
+			while (bRead == 0x0D || bRead == 0x0A || bRead == 0x20)
+			{
+				iWhitespaceCount++;
+				bRead = ReadByte(iStartIndirectObject + iSize + iWhitespaceCount);
+			}
+			iSize += iWhitespaceCount;
+			aiStructureType[iStructureCount] = TYPE_OBJ;
+			aiStructureStart[iStructureCount] = iStartIndirectObject;
+			aiStructureSize[iStructureCount] = iSize;
+			aiStructureExtraParameter1[iStructureCount] = iIndexLength;
+			aiStructureExtraParameter2[iStructureCount] = iWhiteSpace1Length;
+			aiStructureExtraParameter3[iStructureCount] = iVersionLength;
+			aiStructureExtraParameter4[iStructureCount] = iWhiteSpace2Length;
+			aiStructureExtraParameter5[iStructureCount] = aiMerge1KeywordType[iIter + 1] == TYPE_ENDOBJ;
+			aiStructureExtraParameter6[iStructureCount] = iWhitespaceCount;
+			iEndPreviousStructure = aiStructureStart[iStructureCount] + aiStructureSize[iStructureCount];
+			iStructureCount++;
+		}
+	}
+
+	// code for unknown structure after last keyword
+	if (FileSize() - aiStructureStart[iStructureCount - 1] - aiStructureSize[iStructureCount - 1] != 0)
+	{
+		aiStructureType[iStructureCount] = TYPE_UNKNOWN;
+		aiStructureStart[iStructureCount] = aiStructureStart[iStructureCount - 1] + aiStructureSize[iStructureCount - 1];
+		aiStructureSize[iStructureCount] = FileSize() - aiStructureStart[iStructureCount - 1] - aiStructureSize[iStructureCount - 1];
+		iStructureCount++;
+	}
+}
+
+void CreatePDFHeader(int64 iStart, int iSize)
+{
+	iPDFHeaderCount++;
+	FSeek(iStart);
+	iHeaderSize = iSize;
+	PDFHeader sPDFHeader;
+}
+/**
+void CreatePDFTrailer(int64 iStart, int iSize)
+{
+	iPDFTrailerCount++;
+	FSeek(iStart);
+	iTrailerSize = iSize;
+	PDFTrailer sPDFTrailer;
+}
+
+void CreatePDFUnknown(int64 iStart, int iSize)
+{
+	iPDFUnknownCount++;
+	FSeek(iStart);
+	iUnknownSize = iSize;
+	PDFUnknown sPDFUnknown;
+}
+
+void CreatePDFComment(int64 iStart, int iSize)
+{
+	iPDFCommentCount++;
+	FSeek(iStart);
+	iCommentSize = iSize;
+	PDFComment sPDFComment;
+}*/
+
+void CreatePDFStartComment(int64 iStart, int iSize)
+{
+	iPDFCommentCount++;
+	FSeek(iStart);
+	iCommentSize = iSize;
+	PDFStartComment sPDFStartComment;
+}
+
+int IsWhitespace(int64 iStart, int iSize)
+{
+	local int64 iIter;
+	local BYTE bRead;
+
+	for(iIter = iStart; iIter < iStart + iSize; iIter++)
+	{
+		bRead = ReadByte(iIter);
+		if (bRead != 0x09 && bRead != 0x0A && bRead != 0x0D && bRead != 0x20)
+			return false;
+	}
+	return true;
+}
+
+void CreatePDFWhitespace(int64 iStart, int iSize)
+{
+	iPDFWhitespaceCount++;
+	FSeek(iStart);
+	iWhitespaceSize = iSize;
+	PDFWhitespace sPDFWhitespace;
+}
+
+int StartsWith(int64 iStart, int iSize, string sData)
+{
+	local int64 iIter;
+
+	if (Strlen(sData) > iSize)
+		return false;
+
+	for(iIter = 0; iIter < Strlen(sData); iIter++)
+		if (ReadByte(iStart + iIter) != sData[iIter])
+			return false;
+	return true;
+}
+
+/*void CreatePDFXref(int64 iStart, int iSize)
+{
+	iPDFXrefCount++;
+    local char xRefLine[] = ReadLine(iStart);
+    local int64 nextStart = iStart + Strlen(xRefLine);
+    FSeek(nextStart);
+    local char l[] = ReadLine(nextStart, -1, 0);
+    local int idLen = Strstr(l, " ");
+    local int countLen = Strlen(l) - idLen - 1;
+    local int crlfLen = (Strlen(ReadLine(nextStart, -1, 1)) - Strlen(l));
+    PDFXref sPDFXref(idLen, countLen, crlfLen);
+}
+
+void CreatePDFObject(int64 iStart, int iSize, int iIndexLengthArg, int iWhiteSpace1LengthArg, int iVersionLengthArg, int iWhiteSpace2LengthArg, int iFoundEndobjArg, int iWhiteSpace3LengthArg, int currentObject)
+{
+	iPDFObjectCount++;
+	iPDFObjNum = currentObject;
+	iIndexLength = iIndexLengthArg;
+	iWhiteSpace1Length = iWhiteSpace1LengthArg;
+	iVersionLength = iVersionLengthArg;
+	iWhiteSpace2Length = iWhiteSpace2LengthArg;
+	iFoundEndobj = iFoundEndobjArg;
+	iWhiteSpace3Length = iWhiteSpace3LengthArg;
+	FSeek(iStart);
+	if (iSize < (iIndexLength + iWhiteSpace1Length + iVersionLength + iWhiteSpace2Length + 6 + 3 + iWhiteSpace3LengthArg)){
+		iSize = iIndexLength + iWhiteSpace1Length + iVersionLength + iWhiteSpace2Length + 6 + 3 + iWhiteSpace3LengthArg;
+	}
+	iDataLength = iSize - iIndexLength - iWhiteSpace1Length - iVersionLength - iWhiteSpace2Length - 6 - 3 - iWhiteSpace3LengthArg;
+	PDFObj sPDFObj;
+}
+
+void CreatePDFLiteralStringObject(int64 iStart, int iSize)
+{
+	iPDFObjectCount++;
+	iLiteralStringLength = iSize;
+	FSeek(iStart);
+	PDFLiteralStringObj sPDFLiteralStringObj;
+}
+
+
+
+void CreatePDFBooleanObject(bool choice)
+{
+	if (choice) {
+		iBooleanDataLength = 4;
+		}
+	else {
+		iBooleanDataLength = 5;
+		}
+	PDFBooleanObj sPDFBooleanObj;
+}
+
+void CreatePDFArrayObject(int64 iStart, int iSize) {
+	iPDFObjectCount++;
+	iArrayObjectLength = iSize;
+	FSeek(iStart);
+	PDFArrayObj sPDFArrayObj;
+
+}
+
+void CreatePDFDictObject(int64 iStart, int iSize) {
+	iPDFObjectCount++;
+	iDictObjectLength = iSize;
+	FSeek(iStart);
+	PDFDictObj sPDFDictObj;
+
+}
+
+void CreatePDFStreamObject(int64 iStart, int iSize) {
+	iPDFObjectCount++;
+	iStreamObjectLength = iSize;
+	FSeek(iStart);
+	PDFStreamObj sPDFStreamObj;
+
+}
+
+void CreatePDFNullObject(int64 iStart) {
+	iPDFObjectCount++;
+	FSeek(iStart);
+	PDFNullObj sPDFNullObj;
+
+}
+
+void CreatePDFCrossRef(int64 iStart, int iSize) {
+	Printf("creating xref");
+	iPDFXrefCount++;
+	xRefOffset = iStart;
+	FSeek(iStart);
+	iPDFCrossRefSize = iSize;
+	PDFCrossRef sPDFCrossRef;
+	Printf("finished xref");
+}*/
+
+void GeneratePDFCrossRef( int iStart) {
+	iPDFXrefCount++;
+	xRefOffset = iStart;
+	FSeek(iStart);
+	char startingKeyWord[5] = {"xref\n"};
+	char firstObjNum[1] = {"0"};
+	char whitespace[1] = {" "};
+	local int digitNumXRef = getDigitNumOfPositiveInteger((numberOfObjects+1));
+	local char charObjectCount[digitNumXRef];
+	SPrintf(charObjectCount, "%d", (numberOfObjects+1));
+	char objectCount[digitNumXRef] = {charObjectCount};
+	char newLine[1] = {"\n"};
+	local string offsetHelper[0];
+	local int iterator = 0;
+	char firstOffset[10] = {"0000000000"};
+	char whitespace[1] = {" "};
+	local int randomOrNot = Random(2);
+	if(randomOrNot) {
+		char generation[5] = {"65535"};
+	}else{
+		local int generationNumber = Random(65535);
+		local char charGenerationNumber[5];
+		SPrintf(charGenerationNumber, "%05d", generationNumber);
+		char genNum[5] = {charGenerationNumber};
+	}
+	char whitespace[1] = {" "};
+	char freeMarker[2] = {"f\n"};
+	for(iterator = 0; iterator < numberOfObjects; iterator ++) {
+		local char offset[10];
+		SPrintf(offset, "%010d", ObjOffsets[iterator]);
+		offsetHelper +=  offset;
+		char objOffset[10] = {offset};        //0-extended in the front
+		offsetHelper -= offset;
+		char whitespace[1] = {" "};
+		char generationNumber[5] = {"00000"};
+		char whitespace[1] = {" "};
+		char inUse[1] = {"n"};
+		char newline[1] = {"\n"};
+	}
+}
+
+void GeneratePDFTrailer( int iStart, int xRefSize, int catalog) {
+	iPDFTrailerCount++;
+	FSeek(iStart);
+	char TrailerStart[8] = {"trailer\n"};
+	char openingBrackets[2] = {"<<"};
+	//can add newline/whitespace
+	char sizeKey[6] = {"/Size "};
+	local int digitNumTrailerXRefSize = getDigitNumOfPositiveInteger(xRefSize);
+	local char charXRefSize[digitNumTrailerXRefSize];
+	SPrintf(charXRefSize, "%d", xRefSize);
+	char XRefSize[digitNumTrailerXRefSize] = {charXRefSize};
+	char rootKey[6] = {"/Root "};
+	local int digitNumTrailerCatalog = getDigitNumOfPositiveInteger(catalog);
+	local char charCatalog[digitNumTrailerCatalog];
+	SPrintf(charCatalog, "%d", catalog);
+	char catalogLoc[digitNumTrailerCatalog] = {charCatalog};
+	char catalogRef[4] = {" 0 R"};
+	//char rootValue = ObjNum of the catalog          These are possible extensions
+	//Info (optional)
+	//Prev (optional)
+	//Encrypt (needed if document is encrypted)
+	//ID (needed if Encrypt is present)
+	char closingBrackets[2] = {">>"};
+	char lineFeed[1] = {"\n"};
+	char CrossRefBeginning[10] = {"startxref\n"};
+	local int digitNumTrailerXRefLocation = getDigitNumOfPositiveInteger(xRefOffset);
+	local char charStartOfXRef[digitNumTrailerXRefLocation];
+	SPrintf(charStartOfXRef, "%d", xRefOffset);
+	char xRefLocation[digitNumTrailerXRefLocation] = {charStartOfXRef};
+	char TrailerEnd[6] = {"%%EOF\r"};
+}
+
+
+
+void createCatalog(int64 iStart,int catalog, int pageTree){
+	FSeek(iStart);
+	local int digitNumCatalog = getDigitNumOfPositiveInteger(catalog);
+	local char charObjNum[digitNumCatalog];
+	SPrintf(charObjNum, "%d", catalog);
+	char objNum[digitNumCatalog] = {charObjNum};
+	char objMarker[7] = {" 0 obj\n"};
+	char TypeSpecification[17] = {"<</Type /Catalog\n"};
+	char PageTreeStart[7] = {"/Pages "};
+	local int digitNumCatalogPageTree = getDigitNumOfPositiveInteger(pageTree);
+	local char charPageTree[digitNumCatalogPageTree];
+	SPrintf(charPageTree, "%d", pageTree);
+	char PageTree[digitNumCatalogPageTree] = {charPageTree};
+	char PageTreeEnd[7] = {" 0 R\n>>"};
+	char endobj[7] = {"endobj\n"};
+}
+
+void createPageTree(int64 iStart, int catalog, int pageTree, int pageObj){
+	FSeek(iStart);
+	local int digitNumPageTree = getDigitNumOfPositiveInteger(pageTree);
+	local char charPageTree[digitNumPageTree];
+	SPrintf(charPageTree, "%d", pageTree);
+	char child[digitNumPageTree] = {charPageTree};
+	char objMarker[7] = {" 0 obj\n"};
+	char TypeSpecification[15] = {"<</Type /Pages\n"};
+	char count[9] = {"/Count 1\n"};
+	char kids[7] = {"/Kids ["};
+	local int digitNumPageTreePage = getDigitNumOfPositiveInteger(pageObj);
+	local char charPageObj[digitNumPageTreePage];
+	SPrintf(charPageObj, "%d", pageObj);
+	char child[digitNumPageTreePage] = {charPageObj};
+	char kidsEnd[8] = {" 0 R]\n>>"};
+	char endobj[7] = {"endobj\n"};
+}
+
+void createPageObject(int64 iStart, int catalog, int Parent, int pageObj, int contentStream, int resourceDictNum){
+	FSeek(iStart);
+	local int digitNumPageObject = getDigitNumOfPositiveInteger(pageObj);
+	local char charPage[digitNumPageObject];
+	SPrintf(charPage, "%d", pageObj);
+	char page[digitNumPageObject] = {charPage};
+	char objMarker[7] = {" 0 obj\n"};
+	char TypeSpecification[14] = {"<</Type /Page\n"};
+	char ParentStart[8] = {"/Parent "};
+	local int digitNumPageObjectParent = getDigitNumOfPositiveInteger(Parent);
+	local char charParent[digitNumPageObjectParent];
+	SPrintf(charParent, "%d", Parent);
+	char parent[digitNumPageObjectParent] = {charParent};
+	char ParentEnd[5] = {" 0 R\n"};
+	char contentsStart[10] = {"/Contents "};
+	getArrayOfInt(FTell(), contentStream);
+	char contentsEnd[5] = {" 0 R\n"};
+	char ressources[11] = {"/Resources "};
+	getArrayOfInt(FTell(), resourceDictNum);
+	char resourcesEnd[5] = {" 0 R\n"};
+	char mediaBoxStart[11] = {"/MediaBox ["};
+	local int boxIterator = 0;
+	for(boxIterator = 0; boxIterator < 3; boxIterator++){
+		local int realOrInt = Random(2);
+		if(realOrInt == 0) {
+			iRealBeforeCommaDataLength = RandomNonZero(5);
+			iRealAfterCommaDataLength = RandomNonZero(3);
+			PDFRealObj sPDFRealObj;
+		} else {
+			iIntegerDataLength = RandomNonZero(5);
+			PDFIntegerObj sPDFIntegerObj;
+		}
+		char whitespace[1] = {" "};
+	}
+	local int realOrInt = Random(2);
+	if(realOrInt == 0) {
+		iRealBeforeCommaDataLength = RandomNonZero(5);
+		iRealAfterCommaDataLength = RandomNonZero(3);
+		PDFRealObj sPDFRealObj;
+	} else {
+		iIntegerDataLength = RandomNonZero(5);
+		PDFIntegerObj sPDFIntegerObj;
+	}
+	char mediaBoxEnd[4] = {"]\n>>"};
+	char endobj[7] = {"endobj\n"};
+}
+
+void CreateContentStreamObj(int64 iStart, int streamNum) {
+	FSeek(iStart);
+	local int digitNumContentStream = getDigitNumOfPositiveInteger(streamNum);
+	local char charStreamNum[digitNumContentStream];
+	SPrintf(charStreamNum, "%d", streamNum);
+	char StreamNum[digitNumContentStream] = {charStreamNum};
+	char objMarker[7] = {" 0 obj\n"};
+	local int byteNum = RandomNonZero(3000);
+	char dictStart[2] = {"<<"};
+	char LengthMarker[8] = {"/Length "};
+	getArrayOfInt(FTell(), byteNum);
+	char lineFeed[1] = {"\n"};
+	char dictEnd[2] = {">>"};
+	char streamStart[7] = {"stream\n"};
+	byte stream[byteNum];
+	char streamEnd[10] = {"\nendstream"};
+	char objEnd[8] = {"\nendobj\n"};
+}
+
+void createMonospacedWidthsArray(int64 iStart, int objNum, int charNum, int widthValue) {
+	FSeek(iStart);
+	getArrayOfInt(FTell(), objNum);
+	char objMarker[7] = {" 0 obj\n"};
+	char openingParenthesis[1] = {"["};
+	local int i = 0;
+	for(i = 0; i<=charNum; i++) {
+		getArrayOfInt(FTell(), widthValue);
+		char whitespace[1] = {" "};
+	}
+	char closingParenthesis[2] = {"]\n"};
+	char endObj[7] = {"endobj\n"};
+}
+
+void createMultispacedWidthsArray(int64 iStart, int objNum, int charNum) {
+	FSeek(iStart);
+	getArrayOfInt(FTell(), objNum);
+	char objMarker[7] = {" 0 obj\n"};
+	char openingParenthesis[1] = {"["};
+	local int i = 0;
+	local int widthValueMultispaced;
+	for(i = 0; i<=charNum; i++) {
+		widthValueMultispaced = RandomNonZero(1000);
+		getArrayOfInt(FTell(), widthValueMultispaced);
+		char whitespace[1] = {" "};
+	}
+	char closingParenthesis[2] = {"]\n"};
+	char endObj[7] = {"endobj\n"};
+}
+
+void createTextResourceDict(int64 iStart, int objNum, int fontDictObjNum, int fontDictName) {
+	FSeek(iStart);
+	getArrayOfInt(FTell(), objNum);
+	char objMarker[7] = {" 0 obj\n"};
+	char openingParenthesis[2] = {"<<"};
+	char fontmarker[9] = {"/Font<</F"};
+	getArrayOfInt(FTell(), fontDictName);
+	char whitespace[1] = {" "};
+	getArrayOfInt(FTell(), fontDictObjNum);
+	char objReferenceEnd[4] = {" 0 R"};
+	char closingParenthesis[2] = {">>"};
+	char procSet[19] = {"/ProcSet[/PDF/Text]"};
+	char closingParenthesis[3] = {">>\n"};
+	char endObj[7] = {"endobj\n"};
+}
+
+void createFontDictionaryCMT10(int64 iStart, int objNum, int FontDescriptorObjNum, int firstchar, int lastchar, int WidthsObjNum) {
+	FSeek(iStart);
+	getArrayOfInt(FTell(), objNum);
+	char objMarker[7] = {" 0 obj\n"};
+	char openingParenthesis[2] = {"<<"};
+	char type[10] = {"/Type/Font"};
+	char subType[14] = {"/Subtype/Type1"};
+	char baseFont[10] = {"/BaseFont/"};
+	createFontName();
+	char fontDescriptor[16] = {"/FontDescriptor "};
+	getArrayOfInt(FTell(), FontDescriptorObjNum);
+	char objReferenceEnd[4] = {" 0 R"};
+	char FirstChar[11] = {"/FirstChar "};
+	getArrayOfInt(FTell(), firstchar);
+	char LastChar[10] = {"/LastChar "};
+	getArrayOfInt(FTell(), lastchar);
+	char widths[8] = {"/Widths "};
+	getArrayOfInt(FTell(), WidthsObjNum);
+	char objReferenceEnd[4] = {" 0 R"};
+	char closingParenthesis[3] = {">>\n"};
+	char endObj[7] = {"endobj\n"};
+}
+
+void createFontDescriptorCMTT10(int64 iStart, int objNum) {
+	FSeek(iStart);
+	getArrayOfInt(FTell(), objNum);
+	char objMarker[7] = {" 0 obj\n"};
+	char openingParenthesis[2] = {"<<"};
+	char type[20] = {"/Type/FontDescriptor"};
+	char fontNameMarker[10] = {"/FontName/"};
+	createFontName();
+	char flags[7] = {"/Flags "};
+	local int fontDescriptorFlag = Random(458863);
+	getArrayOfInt(FTell(), fontDescriptorFlag);
+	char FontBBoxStart[11] = {"/FontBBox ["};
+	local int boxIterator = 0;
+	for(boxIterator = 0; boxIterator < 3; boxIterator++){
+		local int realOrInt = Random(2);
+		if(realOrInt == 0) {
+			iRealBeforeCommaDataLength = RandomNonZero(5);
+			iRealAfterCommaDataLength = RandomNonZero(3);
+			PDFRealObj sPDFRealObj;
+		} else {
+			iIntegerDataLength = RandomNonZero(5);
+			PDFIntegerObj sPDFIntegerObj;
+		}
+		char whitespace[1] = {" "};
+	}
+	local int realOrInt = Random(2);
+	if(realOrInt == 0) {
+		iRealBeforeCommaDataLength = RandomNonZero(5);
+		iRealAfterCommaDataLength = RandomNonZero(3);
+		PDFRealObj sPDFRealObj;
+	} else {
+		iIntegerDataLength = RandomNonZero(5);
+		PDFIntegerObj sPDFIntegerObj;
+	}
+	char FontBBoxEnd[1] = {"]"};
+	local int angle = Random(181);
+	local int sign = Random(2);
+	if(sign == 0) {
+		angle = angle * (-1);
+	}
+	char italic[13] = {"/ItalicAngle "};
+	getArrayOfInt(FTell(), angle);
+	local int ascend = Random(1000);
+	sign = Random(2);
+	if(sign == 0) {
+		ascend = ascend * (-1);
+	}
+	char ascent[8] = {"/Ascent "};
+	getArrayOfInt(FTell(), ascend);
+	local int descend = Random(1000);
+	sign = Random(2);
+	if(sign == 0) {
+		descend = descend * (-1);
+	}
+	char descent[9] = {"/Descent "};
+	getArrayOfInt(FTell(), descend);
+	local int capHeight = Random(1000);
+	sign = Random(2);
+	if(sign == 0) {
+		capHeight = capHeight * (-1);
+	}
+	char CapHeight[11] = {"/CapHeight "};
+	getArrayOfInt(FTell(), capHeight);
+	local int stem = Random(1000);
+	sign = Random(2);
+	if(sign == 0) {
+		stem = stem * (-1);
+	}
+	char stemV[7] = {"/StemV "};
+	getArrayOfInt(FTell(), stem);
+	local int xHeight = Random(1000);
+	sign = Random(2);
+	if(sign == 0) {
+		xHeight = xHeight * (-1);
+	}
+	char XHeight[9] = {"/XHeight "};
+	getArrayOfInt(FTell(), xHeight);
+	char closingParenthesis[3] = {">>\n"};
+	char endObj[7] = {"endobj\n"};
+}
+
+
+
+
+
+local int iToggleColor = iCOLOR;
+void ToggleBackColor()
+{
+	if (iToggleColor == iCOLOR)
+		iToggleColor = cNone;
+	else
+		iToggleColor = iCOLOR;
+	SetBackColor(iToggleColor);
+}
+
+void CreatePDFStructures(void)
+{
+	local int iIter;
+	for(iIter = 0; iIter < iStructureCount; iIter++)
+	{
+		ToggleBackColor();
+		if (aiStructureType[iIter] == TYPE_UNKNOWN && StartsWith(aiStructureStart[iIter], aiStructureSize[iIter], "%"))
+			CreatePDFComment(aiStructureStart[iIter], aiStructureSize[iIter]);
+		else if (aiStructureType[iIter] == TYPE_UNKNOWN && StartsWith(aiStructureStart[iIter], aiStructureSize[iIter], "xref"))
+			CreatePDFXref(aiStructureStart[iIter], aiStructureSize[iIter]);
+		else if (aiStructureType[iIter] == TYPE_UNKNOWN && IsWhitespace(aiStructureStart[iIter], aiStructureSize[iIter]))
+			CreatePDFWhitespace(aiStructureStart[iIter], aiStructureSize[iIter]);
+		else if (aiStructureType[iIter] == TYPE_UNKNOWN)
+			CreatePDFUnknown(aiStructureStart[iIter], aiStructureSize[iIter]);
+		else if (aiStructureType[iIter] == TYPE_HEADER)
+			CreatePDFHeader(aiStructureStart[iIter], aiStructureSize[iIter]);
+		else if (aiStructureType[iIter] == TYPE_TRAILER)
+			CreatePDFTrailer(aiStructureStart[iIter], aiStructureSize[iIter]);
+		else if (aiStructureType[iIter] == TYPE_OBJ)
+			CreatePDFObject(aiStructureStart[iIter], aiStructureSize[iIter], aiStructureExtraParameter1[iIter], aiStructureExtraParameter2[iIter], aiStructureExtraParameter3[iIter], aiStructureExtraParameter4[iIter], aiStructureExtraParameter5[iIter], aiStructureExtraParameter6[iIter]);
+	}
+	SetBackColor(cNone);
+}
+
+void PrintPDFCounters(void)
+{
+	Printf("Structure counts:\n");
+	Printf("  PDFHeader     = %5d\n", iPDFHeaderCount);
+	Printf("  PDFTrailer    = %5d\n", iPDFTrailerCount);
+	Printf("  PDFObject     = %5d\n", iPDFObjectCount);
+	Printf("  PDFComment    = %5d\n", iPDFCommentCount);
+	Printf("  PDFXref       = %5d\n", iPDFXrefCount);
+	Printf("  PDFWhitespace = %5d\n", iPDFWhitespaceCount);
+	Printf("  PDFUnknown    = %5d\n", iPDFUnknownCount);
+}
+
+int getDigitNumOfPositiveInteger(int input) {
+	local char intString[20];
+	SPrintf(intString, "%d", input);
+	return Strlen(intString);
+}
+
+int RandomNonZero(int input) {
+	if(input < 2) {
+		return 1;
+	}
+	local int out = Random(input);
+	while(out == 0) {
+		out = Random(input);
+	}
+	return out;
+}
+
+void getArrayOfInt(int64 iStart, int input) {
+	FSeek(iStart);
+	local int digitNumInt = getDigitNumOfPositiveInteger(input);
+	local char charArray[digitNumInt];
+	SPrintf(charArray, "%d", input);
+	char printedArray[digitNumInt] = {charArray};
+}
+
+void createFontName() {
+	if(fontName == "") {
+		char fontNameChar[fontNameLength];
+		fontName = fontNameChar;                //Note, that this does not generate existing font-names and can cause problems with file interpretation. This issue needs a more precise way of getting a random string of arbitrary length with specific characters. In mutool, this problem causes the error "invalid key in dict", when a specific set of characters is included in fontNameChar.
+	} else {
+		char fontNameChar[fontNameLength] = {fontName};
+	}
+}
+
+
+// Main
+
+SetEvilBit(false);
+xRefOffset = 0;
+currentObjNum = 1;
+CreatePDFHeader(0, 9);
+CreatePDFStartComment(FTell(), 7);
+
+local int i = 0;
+local int ran = Random(20);
+if(ran<7) {
+	ran = 7;
+}
+local int catalogLocation = Random(ran+1);
+if (catalogLocation == 0) {
+	catalogLocation = 1;
+}
+local int PageTreeLocation = Random(ran+1);
+local int loopCheck = 0;
+while (loopCheck == 0) {
+	if (PageTreeLocation == 0 || PageTreeLocation == catalogLocation) {
+		PageTreeLocation = Random(ran+1);
+	}else{
+		loopCheck = 1;
+	}
+}
+local int PageObjLocation = Random(ran+1);
+loopCheck = 0;
+while (loopCheck == 0) {
+	if (PageObjLocation == 0 || PageObjLocation == catalogLocation || PageObjLocation == PageTreeLocation) {
+		PageObjLocation = Random(ran+1);
+	}else{
+		loopCheck = 1;
+	}
+}
+local int WidthsObjLocation = Random(ran+1);
+loopCheck = 0;
+while (loopCheck == 0) {
+	if (WidthsObjLocation == 0 || WidthsObjLocation == catalogLocation || WidthsObjLocation == PageTreeLocation || WidthsObjLocation == PageObjLocation) {
+		WidthsObjLocation = Random(ran+1);
+	}else{
+		loopCheck = 1;
+	}
+}
+local int resourceDictLocation = Random(ran+1);
+loopCheck = 0;
+while (loopCheck == 0) {
+	if (resourceDictLocation == 0 || resourceDictLocation == catalogLocation || resourceDictLocation == PageTreeLocation || resourceDictLocation == PageObjLocation || resourceDictLocation == WidthsObjLocation) {
+		resourceDictLocation = Random(ran+1);
+	}else{
+		loopCheck = 1;
+	}
+}
+local int fontDictLocation = Random(ran+1);
+loopCheck = 0;
+while (loopCheck == 0) {
+	if (fontDictLocation == 0 || fontDictLocation == catalogLocation || fontDictLocation == PageTreeLocation || fontDictLocation == PageObjLocation || fontDictLocation == WidthsObjLocation || fontDictLocation == resourceDictLocation) {
+		fontDictLocation = Random(ran+1);
+	}else{
+		loopCheck = 1;
+	}
+}
+local int fontDescriptorDictLocation = Random(ran+1);
+loopCheck = 0;
+while (loopCheck == 0) {
+	if (fontDescriptorDictLocation == 0 || fontDescriptorDictLocation == catalogLocation || fontDescriptorDictLocation == PageTreeLocation || fontDescriptorDictLocation == PageObjLocation || fontDescriptorDictLocation == WidthsObjLocation || fontDescriptorDictLocation == resourceDictLocation || fontDescriptorDictLocation == fontDictLocation) {
+		fontDescriptorDictLocation = Random(ran+1);
+	}else{
+		loopCheck = 1;
+	}
+}
+
+local byte streamNums[0];
+local int streamNumIterator = 1;
+local int firstChar = Random(128);
+local int lastChar = Random(128);
+local int width = lastChar - firstChar;
+if (width < 0) {
+	width = 0;
+}
+local int fontDictName = RandomNonZero(100);
+
+for (streamNumIterator=1; streamNumIterator<=ran; streamNumIterator++){
+	streamNums += (byte) streamNumIterator;
+}
+streamNums -= (byte) catalogLocation;
+streamNums -= (byte) PageTreeLocation;
+streamNums -= (byte) PageObjLocation;
+
+local int fontNameLength = RandomNonZero(15);
+local string fontName = "";
+
+
+local int ComponentChoice;
+local int size;
+local int j = 0;
+for(j = 0; j< ran-3; j++){
+	Printf("j: %d\n", streamNums[j]);
+}
+for(i = 0; i <= ran; i++) {
+	if (currentObjNum == catalogLocation) {
+		numberOfObjects += 1;
+		ObjOffsets += (int) FTell();
+		ObjNums +=  (int) currentObjNum;
+		createCatalog(FTell(), catalogLocation, PageTreeLocation);
+		currentObjNum += 1;
+	} else if (currentObjNum == PageTreeLocation) {
+		numberOfObjects += 1;
+		ObjOffsets += (int) FTell();
+		ObjNums +=  (int) currentObjNum;
+		createPageTree(FTell(), catalogLocation, PageTreeLocation, PageObjLocation);
+		currentObjNum += 1;
+	} else if (currentObjNum == PageObjLocation) {
+		numberOfObjects += 1;
+		ObjOffsets += (int) FTell();
+		ObjNums +=  (int) currentObjNum;
+		local int usedStreamIndex = Random(ran-3);
+		local int usedStream = (int) streamNums[usedStreamIndex];
+		createPageObject(FTell(), catalogLocation, PageTreeLocation, PageObjLocation, usedStream, resourceDictLocation);
+		currentObjNum += 1;
+	} else if (currentObjNum == WidthsObjLocation) {
+		numberOfObjects += 1;
+		ObjOffsets += (int) FTell();
+		ObjNums +=  (int) currentObjNum;
+		local int spaceChoice = Random(2);
+		if (spaceChoice == 0) {
+			local int widthValue = RandomNonZero(1000);
+			createMonospacedWidthsArray(FTell(), WidthsObjLocation, width, widthValue);
+		} else {
+			createMultispacedWidthsArray(FTell(), WidthsObjLocation, width);
+		}
+		currentObjNum += 1;
+	} else if (currentObjNum == resourceDictLocation) {
+		numberOfObjects += 1;
+		ObjOffsets += (int) FTell();
+		ObjNums +=  (int) currentObjNum;
+		createTextResourceDict(FTell(), resourceDictLocation, fontDictLocation, fontDictName);
+		currentObjNum += 1;
+	} else if (currentObjNum == fontDictLocation) {
+		numberOfObjects += 1;
+		ObjOffsets += (int) FTell();
+		ObjNums +=  (int) currentObjNum;
+		createFontDictionaryCMT10(FTell(), fontDictLocation, fontDescriptorDictLocation, firstChar, lastChar, WidthsObjLocation);
+		currentObjNum += 1;
+	} else if (currentObjNum == fontDescriptorDictLocation) {
+		numberOfObjects += 1;
+		ObjOffsets += (int) FTell();
+		ObjNums +=  (int) currentObjNum;
+		createFontDescriptorCMTT10(FTell(), fontDescriptorDictLocation);
+		currentObjNum += 1;
+	} else {
+		size = 16 + Random(200);
+		ObjOffsets += (int) FTell();
+		ObjNums +=  (int) currentObjNum;
+		numberOfObjects += 1;
+		CreateContentStreamObj(FTell(), currentObjNum);
+		currentObjNum += 1;
+	}
+}  
+
+
+GeneratePDFCrossRef(FTell());
+
+GeneratePDFTrailer(FTell(), (numberOfObjects + 1), catalogLocation);

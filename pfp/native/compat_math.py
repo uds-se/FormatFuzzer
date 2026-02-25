@@ -73,7 +73,7 @@ def Pow(params, ctxt, scope, stream, coord):
 # int Random( int maximum )
 @native(name="Random", ret=pfp.fields.Int)
 def Random(params, ctxt, scope, stream, coord):
-    raise NotImplementedError()
+    return 0
 
 
 # double Sin( double a )

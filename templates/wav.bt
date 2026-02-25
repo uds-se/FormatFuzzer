@@ -8,7 +8,7 @@
 //  Category: Audio
 // File Mask: *.wav
 //  ID Bytes: 52 49 46 46 [+4] 57 41 56 45 //RIFF????WAVE
-//   History:  
+//   History:
 //   1.2   2020-02-04 Paulo Max: Improved to correct parsing of DVI ADPCM and fix some issues in subchunk list parsing.
 //   1.1   2015-10-05 SweetScape: Updated header for repository submission.
 //   1.0   SweetScape: Initial release.
@@ -16,16 +16,36 @@
 // More information available at:
 //  https://en.wikipedia.org/wiki/WAV
 //------------------------------------------------
-
+// Additional information:
+//  http://www.piclist.com/techref/io/serial/midi/wave.html
+//
+//
+//  https://web.archive.org/web/20160104081350/http://www.iem.thm.de/telekom-labor/zinke/nw/vp/doku/dito41.htm
+//
+//
+//   http://www.topherlee.com/software/pcm-tut-wavformat.html
+//
+//
+//   https://web.archive.org/web/20101207002408/http://www.it.fht-esslingen.de/~schmidt/vorlesungen/mm/seminar/ss00/HTML/node107.html
+//
+//
+//   https://www.lightlink.com/tjweber/StripWav/WAVE.html
+//
+//
+//   http://www-mmsp.ece.mcgill.ca/Documents/AudioFormats/WAVE/WAVE.html
+//
+//ffmpeg debug
+//
+//-------------------------------------------------
 // Record whether we have found a format chunk yet
 local int haveValidFormat = false;
-local int data_size = 0;
+
 
 //-----------------------------------
 // Define structures used in WAV files
 
 // Stores the file header information
-typedef struct 
+typedef struct
 {
     char   groupID[4];
     long   hsize; //set at the end
@@ -34,43 +54,66 @@ typedef struct
 //Formattag ()
 typedef enum < ushort > e_Format_Tags {
 	PCM = 0x0001,
-    //MS_ADPCM = 0x0002,//3%, invalid number of samples in packet, block predictor invalid, needs compression algorithm to be fixed
-	//ALAW = 0x0006,//92%
-	//MULAW = 0x0007,//92%
-	//OKI_ADPCM = 0x0010,// 92%
-	//G723_ADPCM = 0x0014, //12%, invalid number of bits
-	//DILOGIC_OKI_ADPCM = 0x0017,//87%
-	//YAMAHA_ADPCM = 0x0020, //91%
-	//DSPGROUP_TRUESPEECH = 0x0022, //14%, too small input buffer, need at least 32 bytes
-	//GSM610 = 0x0031, //8%, packet too short
-	//NMS_VBXADPCM = 0x0038,//5%, corrupt bitstream
-	//G721_ADPCM = 0x0040, //26%, invalid number of bits
-	//MPEG_1_LAYER_I_II = 0x0050, //3%, header missing, invalid data found
-	//MPEG_1_LAYER_III_MP3 = 0x0055, //0%, header missing, invalid data found
-	//XBOX_ADPCM = 0x0069, //33%
-	//CREATIVE_ADPCM = 0x0200, //99%
+    MS_ADPCM = 0x0002,//3%, invalid number of samples in packet, block predictor invalid, needs compression algorithm to be fixed
+	ALAW = 0x0006,//92%
+	MULAW = 0x0007,//92%
+	OKI_ADPCM = 0x0010,// 92%
+	G723_ADPCM = 0x0014, //12%, invalid number of bits
+	DILOGIC_OKI_ADPCM = 0x0017,//87%
+	YAMAHA_ADPCM = 0x0020, //91%
+	DSPGROUP_TRUESPEECH = 0x0022, //14%, too small input buffer, need at least 32 bytes
+	GSM610 = 0x0031, //8%, packet too short
+	NMS_VBXADPCM = 0x0038,//5%, corrupt bitstream
+	G721_ADPCM = 0x0040, //26%, invalid number of bits
+	MPEG_1_LAYER_I_II = 0x0050, //3%, header missing, invalid data found
+	MPEG_1_LAYER_III_MP3 = 0x0055, //0%, header missing, invalid data found
+	XBOX_ADPCM = 0x0069, //33%
+	CREATIVE_ADPCM = 0x0200, //99%
 } E_FORMAT_TAGS;
-
+typedef enum < ushort > e_Format_Tags_no_decoder {
+	IEEE_FLOAT = 0x0003,
+	IBM_CVSD = 0x0005,
+	DVI_IMA_ADPCM = 0x0011,
+	MEDIASPACE_ADPCM = 0x0012,
+	SIERRA_ADPCM = 0x0013,
+	DIGISTD = 0x0015,
+	DIGIFIX = 0x0016,
+	SONARC = 0x0021,
+	ECHOSC1 = 0x0023,
+	AUDIOFILE_AF36 = 0x0024,
+	APTX = 0x0025,
+	AUDIOFILE_AF10 = 0x0026,
+	DOLBY_AC2 = 0x0030,
+	ANTEX_ADPCME = 0x0033,
+	CONTROL_RES_VQLPC = 0x0034,
+	CONTROL_RES_VQLPC_Alternate = 0x0035,
+	DIGIADPCM = 0x0036,
+	CONTROL_RES_CR10 = 0x0037,
+	CS_IMAADPCM_ROLAND_RDAC = 0x0039,
+	CREATIVE_FASTSPEECH8 = 0x0202,
+	CREATIVE_FASTSPEECH10 = 0x0203,
+	FM_TOWNS_SND = 0x0300,
+	OLIGSM = 0x1000,
+	OLIADPCM = 0x1001,
+	OLICELP = 0x1002,
+	OLISBC = 0x1003,
+	OLIOPR = 0x1004,
+} E_FORMAT_TAGS_NO_DECODER;
 // Stores the format information for the file
 typedef struct {
     char           chunkID[4];
     long           chunkSize = { 16 };
     local int pos = FTell();
-    E_FORMAT_TAGS          wFormatTag; //bugfixing formats 
-    unsigned short wChannels <min = 1, max = 256>;
-	data_size += wChannels; 
+	//E_FORMAT_TAGS current_format;
+	//TODO use ReadBytes with 2 vectors
+	//ReadBytes(current_format, FTell(), 4, e_format_tags, e_format_tags_no_decoder)
+    E_FORMAT_TAGS          wFormatTag; //bugfixing formats
+    unsigned short wChannels;
     unsigned long  dwSamplesPerSec;
     unsigned long  dwAvgBytesPerSec;
-    //local unsigned short bps = ReadUShort(FTell() + 2);
-    //unsigned short wBlockAlign = { (unsigned short) ((bps / 8) * wChannels) }; 
-	local unsigned short dummy_pos = FTell();
-	unsigned short dummy;    
-	unsigned short wBitsPerSample = { 8, 16, 32 };
-	data_size = data_size * ( wBitsPerSample / 8 );
-	local unsigned short bps_pos = FTell();
-	FSeek(dummy_pos);
-	unsigned short wBlockAlign = { (unsigned short) ((wBitsPerSample / 8) * wChannels) };
-	FSeek(bps_pos);
+    unsigned short wBlockAlign;
+    unsigned short wBitsPerSample;
+
     if (wFormatTag == 17) //DVI IMA ADPCM
     {
         unsigned short wcbsize;
@@ -81,8 +124,11 @@ typedef struct {
     haveValidFormat = true;
 
     // Unknown data at the end of the chunk
-    if( chunkSize > (FTell() - pos) )
+	Printf("ChunkSize: %d , pos: %i , FTell: %d\n", chunkSize, pos, FTell());
+    if( chunkSize > (FTell() - pos) ){
         uchar unknown[ chunkSize - (FTell() - pos) ];
+	}
+
 
     // Padding so the next chunk starts on an even byte
     if( chunkSize & 1 )
@@ -90,14 +136,12 @@ typedef struct {
 } FORMATCHUNK;
 
 // Stores the actual wave data
-typedef struct 
+typedef struct
 {
     char           chunkID[4];
-	local int 	   size_pos = FTell();
-    long           chunkSize_temp <min=1,max=16>;
-		
-	FSeek(size_pos);
-	long chunkSize = { chunkSize_temp * data_size };
+	local int size_pos = FTell();
+    long           chunkSize <min=32>;
+	local long start = FTell();
 
     // Test if we have a valid format
     if( !haveValidFormat )
@@ -105,9 +149,9 @@ typedef struct
         Warning( "File contains no valid WAVE format chunk." );
         return -1;
     }
-	//TODO change the way data is generated, size needs to be a multiple of data_size (single sample)
+
     // Parse the samples of the data
-    if( ((format.wBitsPerSample != 8) && (format.wBitsPerSample != 16) && (format.wBitsPerSample != 32)) 
+    if( ((format.wBitsPerSample != 8) && (format.wBitsPerSample != 16) && (format.wBitsPerSample != 32))
         || format.wBlockAlign == 0 || (chunkSize % (int)format.wBlockAlign != 0) )
     {
         // Unsupported storage method used
@@ -140,16 +184,17 @@ typedef struct
                  int   channels[ format.wChannels ];
         } samples[ chunkSize / (int)format.wBlockAlign ];
     }
-	//Fix size
-	//local long end = FTell();
-	//local long real_size = end - size_pos - 4;
-	//FSeek(size_pos);
-	//local int evil = SetEvilBit(false);
-	//long chunkSize = {real_size};
-	//SetEvilBit(evil);
-	//FSeek(end); 
+	//Fix size TODO
+	local long end = FTell();
+	local long real_size = end - start;
+	FSeek(size_pos);
+	local int evil = SetEvilBit(false);
+	long real_chunkSize = {real_size};
+	SetEvilBit(evil);
+	FSeek(end);
+	//Fix size*/
     // Padding so the next chunk starts on an even byte
-    if( (chunkSize & 1) && !FEof(0.0) )
+    if( (chunkSize & 1) && (FTell() < FileSize()) )
         uchar padding;
 } DATACHUNK;
 
@@ -175,65 +220,177 @@ typedef struct {
     char      chunkID[4];
 	local int size_pos = FTell();
     long      chunkSize;
-    local int pos = FTell();
-    long      dwCuePoints<min=1,max=16>;
+	local int pos = FTell();
+    local long start = FTell(); //TODO
+    long      dwCuePoints;
     CUEPOINT  points[dwCuePoints];
 	//Fix size TODO
 	local long end = FTell();
 	FSeek(size_pos);
 	local int evil = SetEvilBit(false);
-	long chunkSize = {end - pos};
+	long actual_chunkSize = {end - start};
 	SetEvilBit(evil);
-	FSeek(end); 
+	FSeek(end);
+	/*Fix size*/
     // Unknown data at the end of the chunk
     if( chunkSize > (FTell() - pos) )
         uchar unknown[ chunkSize - (FTell() - pos) ];
 } CUECHUNK;
 
-// Define a list chunk with a set of subchunks
+//subchunk struct for LIST chunk
+
+
 typedef struct {
     char      chunkID[4];
 	local int size_pos = FTell();
     long      chunkSize <min=1>;
+	local long start = FTell(); //TODO
     char      listData[chunkSize];
 
 	//Fix size TODO
 	local long end = FTell();
-	local long real_size = end - size_pos - 4;
+	local long real_size = end - start;
 	FSeek(size_pos);
 	local int evil = SetEvilBit(false);
-	long chunkSize = {real_size};
+	long real_chunkSize = {real_size};
 	SetEvilBit(evil);
-	FSeek(end); 
-    if( (chunkSize & 1) && !FEof(0.0) )
+	FSeek(end);
+	/*Fix size*/
+
+    if( (chunkSize & 1) && (FTell() < FileSize()) )
         uchar padding;
 } LISTSUBCHUNK;
 
+// Define a list chunk with a set of subchunks
+//chunkID = LIST
+//chunkSize = whole list size
+//chunkType = INFO (so far no other values found)
+//+ listsubchunks
+local string list_tag_values_possible[] = { //"0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
+											"a", "b", "c", "d", "e", "f", "g", "h", "i", "j",
+											"A", "B", "C", "D", "E", "F", "G", "H", "I", "J",
+											"k", "l", "m", "n", "o", "p", "q", "r", "s", "u",
+											"K", "L", "M", "N", "O", "P", "Q", "R", "S", "U",
+											"v", "w", "x", "y", "z",
+											"V", "W", "X", "Y", "Z"};
 typedef struct {
     char      chunkID[4];
     long      chunkSize <min=1>;
     local quad pos = FTell();
+	//List tag is not allowed to contain specific symbols
 	local char list_tag[1];
-    char      chunkType[4];
+	ReadBytes(list_tag, FTell(), 1, list_tag_values_possible, list_tag_values_possible);
+	ReadBytes(list_tag, FTell(), 1, list_tag_values_possible, list_tag_values_possible);
+	ReadBytes(list_tag, FTell(), 1, list_tag_values_possible, list_tag_values_possible);
+	ReadBytes(list_tag, FTell(), 1, list_tag_values_possible, list_tag_values_possible);
+    //char      chunkType[4];
     local uint size;
 
     // Read the subchunks
-    while( FTell() - pos <= chunkSize - 8 ) {
+    while( FTell() - pos < chunkSize ) {
         size = ReadUInt( FTell()+4 );
         if  (FTell() - pos + size<= chunkSize)
             LISTSUBCHUNK subchunk;
         else
-            break;
-    }
-    if ( FTell() - pos < chunkSize ) {
-        uchar unknown[ chunkSize - (FTell() - pos) ];       
+            uchar unknown[ chunkSize - (FTell() - pos) ];
     }
 
     // Padding so the next chunk starts on an even byte
-    if( (chunkSize & 1) && !FEof(0.0) )
+    if( (chunkSize & 1) && (FTell() < FileSize()) )
         uchar padding;
 } LISTCHUNK;
+//NEW CHUNKS------------------------------------------------------------------------------------------------------
+//Playlist chunk, sets order of cuepoints to be played ID is "plst"
+typedef struct {
+  long    dwIdentifier;
+  long    dwLength;
+  long    dwRepeats;
+} Segment;
 
+typedef struct {
+  char      chunkID[4];
+  long      chunkSize;//Segment size + dwSegments size
+  long      dwSegments;
+  Segment   Segments[dwSegments]; //no order needed
+} PlaylistChunk;
+/*
+//ID list
+typedef struct {
+  char      listID[4];    // 'list'
+  long    chunkSize;   // includes the Type ID below
+  char      typeID[4];     // 'adtl'
+} ListHeader;
+*/
+//ID labl
+typedef struct {
+  char      chunkID[4];
+  long    chunkSize; //dwIdentifier size + dwText size
+  long    dwIdentifier;
+  char    dwText[chunkSize - 4]; //null terminated string
+} LabelChunk;
+
+//ID note
+typedef struct {
+  char      chunkID[4];
+  long    chunkSize; //dwIdentifier size + dwText size
+  long    dwIdentifier;
+  char    dwText[chunkSize - 4]; //null terminated String
+} NoteChunk;
+
+//ID ltxt
+typedef struct {
+  char      chunkID[4];
+  long    chunkSize; //starts after chunkSize field
+  long    dwIdentifier;
+  long    dwSampleLength;
+  long    dwPurpose; //associated data list generic IDs
+  short   wCountry;
+  short   wLanguage;
+  short   wDialect;
+  short   wCodePage;
+  char    dwText[chunkSize - 28]; //null terminated string
+} LabelTextChunk;
+
+//ID smpl
+typedef struct {
+  char             chunkID[4];
+  long           chunkSize; //starts after chunkSize field
+  long           dwManufacturer; //set to 0 for no specific manufacturer
+  long           dwProduct;
+  long           dwSamplePeriod;
+  long           dwMIDIUnityNote;
+  long           dwMIDIPitchFraction;
+  long           dwSMPTEFormat;
+  long           dwSMPTEOffset;
+  long           cSampleLoops;
+  long           cbSamplerData;
+  struct SampleLoop Loops[];
+} SamplerChunk;
+
+//from SamplerChunk
+typedef struct {
+  long  dwIdentifier;
+  long  dwType;
+  long  dwStart;
+  long  dwEnd;
+  long  dwFraction;
+  long  dwPlayCount;
+} SampleLoop;
+
+//ID inst
+typedef struct {
+  char     chunkID[4];
+  long   chunkSize = { 7 }; //starts after chunkSize field
+  unsigned char UnshiftedNote;
+  char          FineTune;
+  char          Gain;
+  unsigned char LowNote;
+  unsigned char HighNote;
+  unsigned char LowVelocity;
+  unsigned char HighVelocity;
+} InstrumentChunk;
+//"inst", "smpl", "ltxt", "note", "labl", "list", "plst"
+//NEW CHUNKS END --------------------------------------------------------------------------------------------------
 // A chunk which could not be identified
 typedef struct {
     char      chunkID[4];
@@ -241,340 +398,14 @@ typedef struct {
     uchar     unknownData[chunkSize];
 
     // Padding so the next chunk starts on an even byte
-    if( (chunkSize & 1) && !FEof(0.0) )
+    if( (chunkSize & 1) && (FTell() < FileSize()) )
         uchar padding;
 } UNKNOWNCHUNK;
 
 //---------------------------------------------
-// SMPL / SMPL Loop
-//---------------------------------------------
-
-typedef long SMPLLOOPS_Cue_ID <read=WAV_SMPLLOOPS_Cue_ID>;
-
-string
-WAV_SMPLLOOPS_Cue_ID( SMPLLOOPS_Cue_ID cid )
-{
-    string  sret;
-    SPrintf( sret, "Cue Point ID: %u", cid );
-
-return sret;
-}
-
-//---------------------------------------------
-
-typedef long SMPLLOOPS_Play_Count <read=WAV_SMPLLOOPS_Play_Count>;
-
-string
-WAV_SMPLLOOPS_Play_Count( SMPLLOOPS_Play_Count pc )
-{
-    string  sret;
-
-    if (pc==0)
-    {
-        SPrintf( sret, " Infinite Sustain Loop (%u)", pc );
-    }
-    else
-    {
-        SPrintf( sret, "Play Count: %u", pc );
-    }
-
-return sret;
-}
-
-
-//---------------------------------------------
-typedef long SMPLLOOPS_Start <read=WAV_SMPLLOOPS_Start>;
-
-string
-WAV_SMPLLOOPS_Start( SMPLLOOPS_Start st )
-{
-    string  sret;
-    SPrintf( sret, "Loop Start at %u byte offset", st );
-
-return sret;
-}
-
-//---------------------------------------------
-typedef long SMPLLOOPS_End <read=WAV_SMPLLOOPS_End>;
-
-string
-WAV_SMPLLOOPS_End( SMPLLOOPS_End end )
-{
-    string  sret;
-    SPrintf( sret, "Loop End at %u byte offset", end );
-
-return sret;
-}
-
-//---------------------------------------------
-typedef long SMPLLOOPS_Fraction <read=WAV_SMPLLOOPS_Fraction>;
-
-string
-WAV_SMPLLOOPS_Fraction( SMPLLOOPS_Fraction f )
-{
-    string  sret;
-    SPrintf( sret, "Fraction: %u", f );
-
-return sret;
-}
-
-//---------------------------------------------
-typedef long SMPL_SL <read=WAV_SMPL_SL>;
-
-string
-WAV_SMPL_SL( SMPL_SL sl )
-{
-    string  sret;
-    SPrintf( sret, "Number of Samples Loops (Sustain Loops): %u", sl );
-
-return sret;
-}
-
-//---------------------------------------------
-typedef long SMPL_SD <read=WAV_SMPL_SD>;
-
-string
-WAV_SMPL_SD( SMPL_SD sd )
-{
-    string  sret;
-    SPrintf( sret, "Sample Data (number of bytes): %u", sd );
-
-return sret;
-}
-
-
-//---------------------------------------------
-typedef long SMPL_SMPTE_Offset <read=WAV_SMPL_SMPTE_Offset>;
-
-string
-WAV_SMPL_SMPTE_Offset( SMPL_SMPTE_Offset so )
-{
-    string  sret;
-    SPrintf( sret, "SMPTE Offset (for synchronization): %u", so );
-
-return sret;
-}
-
-//---------------------------------------------
-typedef long SMPL_MIDI_Pitch_Fraction <read=WAV_SMPL_MIDI_Pitch_Fraction>;
-
-string
-WAV_SMPL_MIDI_Pitch_Fraction( SMPL_MIDI_Pitch_Fraction pf )
-{
-    string  sret;
-    SPrintf( sret, "MIDI Pitch Fraction: %u", pf );
-
-return sret;
-}
-
-//---------------------------------------------
-typedef long SMPL_MIDI_Unity_Note <read=WAV_SMPL_MIDI_Unity_Note>;
-
-string
-WAV_SMPL_MIDI_Unity_Note( SMPL_MIDI_Unity_Note un )
-{
-    string  sret;
-    SPrintf( sret, "MIDI unity note value: %u", un );
-
-return sret;
-}
-
-//---------------------------------------------
-typedef long SMPL_Product <read=WAV_SMPL_Product>;
-
-string
-WAV_SMPL_Product( SMPL_Product product )
-{
-    string  sret;
-    SPrintf( sret, "MIDI model ID (defined by the manufacturer): %u", product );
-
-return sret;
-}
-
-//---------------------------------------------
-typedef long SMPL_Sample_Period <read=WAV_SMPL_Sample_Period>;
-
-string
-WAV_SMPL_Sample_Period( SMPL_Sample_Period sp )
-{
-    string  sret;
-     // The sample period specifies the duration of time that passes during the playback of one sample in nanoseconds (normally equal to 1 / Samplers Per Second, where Samples Per Second is the value found in the format chunk).
-    SPrintf( sret, "Sample Period: %u", sp );
-
-return sret;
-}
-
-//---------------------------------------------
-typedef long SMPL_SMPTE <read=WAV_SMPL_SMPTE>;
-
-string
-WAV_SMPL_SMPTE( SMPL_SMPTE smptef )
-{
-    string  s;
-    string  sret;
-
-    switch( smptef )
-    {
-    case 0: SPrintf( s, "No SMPTE offset" ); break;
-    case 24: SPrintf( s, "24 frames per second" ); break;
-    case 25: SPrintf( s, "25 frames per second" ); break;
-    case 29: SPrintf( s, "30 frames per second with frame dropping (30 drop)" ); break;
-    case 30: SPrintf( s, "30 frames per second" ); break;
-    default: SPrintf( s, "unknown (%u)", smptef ); break;
-    }
-
-    SPrintf( sret, "SMPTE Format: %s", s );
-
-return sret;
-}
-
-//---------------------------------------------
-typedef long SMPL_Manufacturer <read=WAV_SMPL_Manufacturer>;
-
-string
-WAV_SMPL_Manufacturer( SMPL_Manufacturer manufacture )
-{
-    string  s;
-    string  sret;
-
-    switch( manufacture )
-    {
-    case 0: SPrintf( s, "Unknown" ); break;
-    case 1: SPrintf( s, "Sequential Circuits"); break;
-    case 2: SPrintf( s, "Big Briar"); break;
-    case 3: SPrintf( s, "Octave / Plateau"); break;
-    case 4: SPrintf( s, "Moog"); break;
-    case 5: SPrintf( s, "Passport Designs"); break;
-    case 6: SPrintf( s, "Lexicon"); break;
-    case 7: SPrintf( s, "Kurzweil"); break;
-    case 8: SPrintf( s, "Fender"); break;
-    case 9: SPrintf( s, "Gulbransen"); break;
-    case 10: SPrintf( s, "Delta Labs"); break;
-    case 11: SPrintf( s, "Sound Comp."); break;
-    case 12: SPrintf( s, "General Electro"); break;
-    case 13: SPrintf( s, "Techmar"); break;
-    case 14: SPrintf( s, "Matthews Research"); break;
-    case 16: SPrintf( s, "Oberheim"); break;
-    case 17: SPrintf( s, "PAIA"); break;
-    case 18: SPrintf( s, "Simmons"); break;
-    case 19: SPrintf( s, "DigiDesign"); break;
-    case 20: SPrintf( s, "Fairlight"); break;
-    case 21: SPrintf( s, "JL Cooper"); break;
-    case 22: SPrintf( s, "Lowery"); break;
-    case 23: SPrintf( s, "Lin"); break;
-    case 24: SPrintf( s, "Emu"); break;
-    case 27: SPrintf( s, "Peavey"); break;
-    case 32: SPrintf( s, "Bon Tempi"); break;
-    case 33: SPrintf( s, "S.I.E.L."); break;
-    case 35: SPrintf( s, "SyntheAxe"); break;
-    case 36: SPrintf( s, "Hohner"); break;
-    case 37: SPrintf( s, "Crumar"); break;
-    case 38: SPrintf( s, "Solton"); break;
-    case 39: SPrintf( s, "Jellinghaus Ms"); break;
-    case 40: SPrintf( s, "CTS"); break;
-    case 41: SPrintf( s, "PPG"); break;
-    case 47: SPrintf( s, "Elka"); break;
-    case 54: SPrintf( s, "Cheetah"); break;
-    case 62: SPrintf( s, "Waldorf"); break;
-    case 64: SPrintf( s, "Kawai"); break;
-    case 65: SPrintf( s, "Roland"); break;
-    case 66: SPrintf( s, "Korg"); break;
-    case 67: SPrintf( s, "Yamaha"); break;
-    case 68: SPrintf( s, "Casio"); break;
-    case 70: SPrintf( s, "Kamiya Studio"); break;
-    case 71: SPrintf( s, "Akai"); break;
-    case 72: SPrintf( s, "Victor"); break;
-    case 75: SPrintf( s, "Fujitsu"); break;
-    case 76: SPrintf( s, "Sony"); break;
-    case 78: SPrintf( s, "Teac"); break;
-    case 80: SPrintf( s, "Matsushita"); break;
-    case 81: SPrintf( s, "Fostex"); break;
-    case 82: SPrintf( s, "Zoom"); break;
-    case 84: SPrintf( s, "Matsushita"); break;
-    case 85: SPrintf( s, "Suzuki"); break;
-    case 86: SPrintf( s, "Fuji Sound"); break;
-    case 87: SPrintf( s, "Acoustic Technical Laboratory"); break;
-    default: SPrintf( s, "Unknown"); break;
-    }
-
-SPrintf( sret, "Manufacturer: %s", s);
-
-return sret;
-}
-
-//----------------------------------------------------------------------
-typedef long SMPLLOOPS_Type <read=WAV_SMPL_Loop_Type>;
-
-string
-WAV_SMPL_Loop_Type( SMPLLOOPS_Type loop )
-{
-    string  s;
-
-    switch( loop )
-    {
-        case 0 :
-            SPrintf( s, "Loop: Forward (%u)", loop );
-            break;
-
-        case 1 :
-            SPrintf( s, "Loop: Ping Pong (%u)", loop );
-            break;
-
-        case 2 :
-            SPrintf( s, "Loop: Reverse (%u)", loop );
-            break;
-
-        case 3 :
-            SPrintf( s, "Loop [reserved for future standard types] (%u)", loop );
-            break;
-
-        default:
-            s = "Loop: <unknown>";
-    }
-
-    return s;
-}
-
-//----------------------------------------------------------------------
-// SMPL Loop
-typedef struct {
-    SMPLLOOPS_Cue_ID     Cue_Point;
-    SMPLLOOPS_Type       Type;
-    SMPLLOOPS_Start      Start;
-    SMPLLOOPS_End        End;
-    SMPLLOOPS_Fraction   Fraction;
-    SMPLLOOPS_Play_Count Play_Count;
-
-} SMPLLOOPS;
-
-//----------------------------------------------------------------------
-// Chunk SMPL
-typedef struct {
-    char                     chunkID[4];
-    long                     chunkSize;
-    SMPL_Manufacturer        Manufacturer;
-    SMPL_Product             Product; // Product code (Manufacture)
-    SMPL_Sample_Period       Sample_Period;
-    SMPL_MIDI_Unity_Note     MIDI_Unity_Note;
-    SMPL_MIDI_Pitch_Fraction MIDI_Pitch_Fraction;
-    SMPL_SMPTE               SMPTE;
-    SMPL_SMPTE_Offset        SMPTE_Offset;
-    SMPL_SL                  Num_Sample_Loops;
-    SMPL_SD                  Sampler_Data;
-    SMPLLOOPS                loops[Num_Sample_Loops];
-
-    //Padding so the next chunk starts on an even byte
-     if( (chunkSize & 1) && !FEof(0.0) )
-     uchar padding;
-
-} SMPLCHUNK;
-
-
-
-//---------------------------------------------
 
 // Define the headers
-LittleEndian(); 
+LittleEndian();
 SetBackColor( cLtPurple );
 WAVRIFFHEADER header;
 
@@ -588,8 +419,6 @@ if( header.groupID != "RIFF" || header.riffType != "WAVE" )
 // Read the file as a set of chunks
 local char chunk_tag[4];
 local int compressed_wav = false;
-
-local string ReadBytesInitValues[] = { "fmt ", "data", "fact", "cue ", "smpl", "LIST", "id3 " };
 
 local string tag_values_possible[] = { "fmt " };
 local string tag_values_preferred[] = { "fmt " };
@@ -611,12 +440,23 @@ while(ReadBytes(chunk_tag, FTell(), 4, tag_values_preferred, tag_values_possible
             DATACHUNK   data;
 			tag_values_preferred -= "data"; //remove data tag, it is only allowed once
 			tag_values_possible -= "data";
+			//if (isCompressed == 1) {
+				//tag_values_preferred -= "fact";
+				//tag_values_possible += "fact";
+				//break;
+			//}
 			tag_values_possible += ( "fact", "cue ", "LIST"); //TODO enforce fact chunk for compressed formats, check list
             break;
 		//TODO check number of occurences for fact chunk
         case "fact":
             SetBackColor( cLtBlue );
             FACTCHUNK   fact;
+			//if (isCompressed == 1){
+				//tag_values_preferred -= "fact" ;
+				//isCompressed = false;
+				//tag_values_possible += {"cue ", "LIST"};
+				//break;
+			//}
 			tag_values_possible -= "fact";
 			tag_values_preferred -= "fact" ;
             break;
@@ -625,10 +465,6 @@ while(ReadBytes(chunk_tag, FTell(), 4, tag_values_preferred, tag_values_possible
             CUECHUNK    cue;
 			tag_values_preferred -= "cue "; //remove cue tag, it is only allowed once
 			tag_values_possible -= "cue ";
-            break;
-        case "smpl":
-            SetBackColor( cLtGray );
-            SMPLCHUNK    smpl;
             break;
         case "LIST":
             SetBackColor( cLtYellow );
@@ -645,5 +481,5 @@ while(ReadBytes(chunk_tag, FTell(), 4, tag_values_preferred, tag_values_possible
 // adding file size to header, needed to be parsed
 local int file_size = FTell();
 FSeek(4);
-long hsize = { file_size - 8 };
+long real_hsize = { file_size - 8 };
 

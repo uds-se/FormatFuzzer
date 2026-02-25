@@ -285,7 +285,7 @@ typedef struct {
         ushort  Format;    //2 bytes  Format definition for this record
         ALGFLAG AlgID;     //2 bytes  Encryption algorithm identifier
         ushort  Bitlen;    //2 bytes  Bit length of encryption key
-        PRCFLAG Flags;     //2 bytes  Processing flags
+        PRCFLAG Flags = {0x1, 0x2, 0x3, 0xc};     //2 bytes  Processing flags
         if (efDataSize > 8)
             byte    CertData[efDataSize - 8];  //TSize-8  Certificate decryption extra field data        
         break;
@@ -410,7 +410,7 @@ string read_FILEATTRIBUTE (local FILEATTRIBUTE &af) {
 
 // Defintes the Data descriptor
 typedef struct {
-	SignatureTYPE ddSignature; //0x08074b50
+	SignatureTYPE ddSignature = {S_ZIPDATADESCR}; //0x08074b50
 	uint ddCRC <format=hex>;
 	uint ddCompressedSize;
 	uint ddUncompressedSize;
@@ -421,7 +421,7 @@ typedef struct {
 	// Header for the file
 	local uint offset = FTell();
 
-	SignatureTYPE frSignature;    //0x04034b50
+	SignatureTYPE frSignature = {S_ZIPFILERECORD};    //0x04034b50
 	VERECORD frVersion;
 	FLAGTYPE frFlags = { 0 };
 	COMPTYPE frCompression = { COMP_STORED };
@@ -468,7 +468,7 @@ typedef struct {
             ushort  Format;
             ALGFLAG AlgID;
             ushort  BitLen;
-            ushort  Flags;
+            ushort  Flags = {0x1, 0x2, 0x3, 0xc};
             ushort  ErdSize<arraylength=true>;
             byte    ErdData[ErdSize];
             uint    Reserved;
@@ -532,7 +532,7 @@ typedef struct {
 
 // Defines an entry in the directory table
 typedef struct {
-	SignatureTYPE deSignature;     //0x02014b50
+	SignatureTYPE deSignature = {S_ZIPDIRENTRY};     //0x02014b50
 	VERECORD deVersionMadeBy;
 	VERECORD deVersionToExtract;
 	FLAGTYPE deFlags;
@@ -585,8 +585,8 @@ typedef struct {
 
 // Defines the digital signature
 typedef struct {
-	SignatureTYPE dsSignature;    //0x05054b50
-	ushort   dsDataLength<arraylength=true>;
+	SignatureTYPE dsSignature = { S_ZIPDIGITALSIG };    //0x05054b50
+	ushort   dsDataLength = { 0x4, 0xb };
 	if( dsDataLength > 0 )
 		uchar 	dsData[ dsDataLength ];
 } ZIPDIGITALSIG;
@@ -634,7 +634,7 @@ typedef struct {
 
 // Defines the end of central directory locator
 typedef struct {
-	SignatureTYPE elSignature;    //0x06054b50
+	SignatureTYPE elSignature = { S_ZIPENDLOCATOR };    //0x06054b50
 	ushort   elDiskNumber = { 0 };
 	ushort   elStartDiskNumber = { 0 };
 	ushort   elEntriesOnDisk = { (ushort)frIndex };

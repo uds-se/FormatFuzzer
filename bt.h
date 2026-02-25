@@ -726,6 +726,8 @@ void GlobalIndexingOfArrays() {
 	global_indexing_of_arrays = true;
 }
 
+void RequiresVersion(int majorVer, int minorVer=0, int revision=0) {  }
+
 void BigEndian() { is_big_endian = true; }
 void LittleEndian() { is_big_endian = false; }
 int IsBigEndian() { return is_big_endian; }
@@ -926,6 +928,10 @@ int FSkip(int64 offset) {
 	if (debug_print && offset != 0)
 		fprintf(stderr, "FSkip from %u to %lld\n", file_acc.file_pos, file_acc.file_pos + offset);
 	return FSeek(file_acc.file_pos + offset, false);
+}
+
+int Random( int maximum ) {
+	return file_acc.rand_int(maximum, file_acc.parse);
 }
 
 int64 FileSize() {

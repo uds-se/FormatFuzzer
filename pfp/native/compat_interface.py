@@ -729,7 +729,7 @@ def RequiresFile(params, ctxt, scope, stream, coord):
 # void RequiresVersion( int majorVer, int minorVer=0, int revision=0 )
 @native(name="RequiresVersion", ret=pfp.fields.Void)
 def RequiresVersion(params, ctxt, scope, stream, coord):
-    raise NotImplementedError()
+    pass
 
 
 # void RunTemplate( const char filename[]="", int clearOutput=false )
