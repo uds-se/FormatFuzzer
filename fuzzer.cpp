@@ -81,6 +81,7 @@ int fuzz(int argc, char **argv)
 	{
 		char *out = argv[arg];
 		bool success = false;
+		set_generator();
 		setup_input(decision_source);
 		try
 		{
